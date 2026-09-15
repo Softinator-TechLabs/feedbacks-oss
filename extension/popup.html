@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Feedbacks</title>
+    <link rel="stylesheet" href="appearance.css" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <h1>Feedbacks</h1>
+    <p class="intro">Right-click. Comment. Done.</p>
+    <p id="installed-version" class="version"></p>
+    <aside id="update-notice" role="status" aria-live="polite" hidden>
+      <strong id="available-version"></strong>
+      <div class="update-links">
+        <a id="download-update" target="_blank" rel="noreferrer">Download update</a>
+        <a id="update-steps" target="_blank" rel="noreferrer">Update steps</a>
+      </div>
+    </aside>
+    <p id="connection" role="status"></p>
+    <label for="server">Your Feedbacks server</label>
+    <input
+      id="server"
+      type="url"
+      value="http://localhost:3000"
+      placeholder="https://feedback.example.com"
+    />
+    <button id="pair" class="primary">Connect to server</button>
+    <div id="project-choice" hidden>
+      <label for="project">Save to</label>
+      <select id="project" aria-describedby="routing"></select>
+    </div>
+    <p id="routing" role="status"></p>
+    <button id="instant" hidden>Enable right-click on all websites</button>
+    <p id="instant-help" class="hint" hidden>
+      One-time Chrome permission. Nothing is sent until you choose Send.
+    </p>
+    <button id="retry" hidden>Try this page again</button>
+    <button id="draft" hidden>Continue draft</button>
+    <section id="review-controls" hidden aria-label="Review controls">
+      <button id="capture" class="primary">Capture this page</button>
+      <button id="choose">Choose a point</button>
+      <div class="control-row">
+        <button id="pins">Hide pins</button><button id="resolved">Show resolved</button>
+      </div>
+      <div class="control-row" aria-label="Preview size">
+        <button id="mobile" title="Mobile">M</button
+        ><button id="tablet" title="Tablet">T</button>
+        <button id="desktop" title="Desktop">D</button
+        ><button id="wide" title="Restore width">W</button>
+      </div>
+      <a id="page-feedback" target="_blank" rel="noreferrer">View project comments</a>
+    </section>
+    <p id="message" role="status"></p>
+    <details id="connection-settings">
+      <summary>Advanced</summary>
+      <button id="pair-custom">Connect to this server</button>
+      <button id="disconnect">Disconnect account</button>
+      <button id="disable-instant" hidden>Turn off instant right-click</button>
+      <button id="narrow">Open mobile preview window</button>
+      <button id="stop">Stop review on this page</button>
+      <button id="check-updates">Check for updates</button>
+      <p id="update-status" class="hint" role="status"></p>
+    </details>
+    <a id="app" href="http://localhost:3000" target="_blank" rel="noreferrer"
+      >Open Projects</a
+    >
+    <script src="utils.js"></script>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

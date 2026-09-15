@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: feedbacks
+      POSTGRES_DB: feedbacks
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-replace-for-local-development}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - feedbacks-dev-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feedbacks -d feedbacks"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  feedbacks-dev-postgres:

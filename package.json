@@ -1,0 +1,66 @@
+{
+  "name": "feedbacks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0"
+  },
+  "scripts": {
+    "test": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit && tsc -p src/web/tsconfig.json",
+    "build:server": "tsc",
+    "build": "npm run build:server && npm run build:web && npm run build:site && npm run build:extension",
+    "build:extension": "node scripts/package-extension.mjs",
+    "build:web": "vite build",
+    "dev:web": "vite",
+    "start": "node dist/server/index.js",
+    "dev:server": "node --env-file=.env --import tsx --watch src/server/index.ts",
+    "bootstrap": "node --env-file=.env --import tsx src/cli/bootstrap.ts",
+    "mcp": "tsx src/cli/mcp.ts",
+    "cli": "tsx src/cli/feedbacks.ts",
+    "dev:site": "vite --config vite.site.config.ts",
+    "build:site": "vite build --config vite.site.config.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run typecheck && npm test && npm run build && npm run check:release",
+    "check:release": "node scripts/check-release.mjs",
+    "release:source": "node scripts/export-source.mjs",
+    "test:postgres": "FEEDBACKS_NATIVE_POSTGRES=1 node --import tsx --test tests/cursor-concurrency.test.ts",
+    "test:containers": "node scripts/smoke-containers.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1127.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "argon2": "^0.45.1",
+    "express": "^5.2.1",
+    "pg": "^8.23.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "sharp": "^0.35.4",
+    "tldts": "^7.4.12",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.5.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "prettier": "3.6.2",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  },
+  "description": "Visual website feedback with a browser extension, shared review workspace, HTTP API, MCP and CLI.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Softinator-TechLabs/feedbacks-oss.git"
+  },
+  "homepage": "https://feedbacks.softinator.ai",
+  "bugs": {
+    "url": "https://github.com/Softinator-TechLabs/feedbacks-oss/issues"
+  }
+}

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Review capture · Feedbacks</title>
+    <link rel="stylesheet" href="appearance.css" />
+    <link rel="stylesheet" href="editor.css" />
+  </head>
+  <body>
+    <header>
+      <strong>Feedbacks</strong><span>Review capture</span
+      ><button id="discard">Discard draft</button>
+    </header>
+    <section id="completion" hidden aria-labelledby="completion-title">
+      <svg viewBox="0 0 32 32" width="40" height="40" fill="none" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="1.5" />
+        <path
+          d="m9 16 5 5 9-10"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <h1 id="completion-title" tabindex="-1">Feedback sent</h1>
+      <p id="completion-copy">
+        Your team can now see it. The local draft has been cleared.
+      </p>
+      <div class="completion-actions">
+        <button id="return-page" class="primary">Return to website</button>
+        <a id="thread" hidden target="_blank" rel="noreferrer">Open feedback</a>
+      </div>
+      <p id="completion-error" role="status"></p>
+    </section>
+    <main id="editor-workspace">
+      <section class="image-workspace" aria-label="Screenshot annotation">
+        <div id="tools" role="toolbar" aria-label="Annotation tools">
+          <button data-tool="pencil" aria-pressed="true">Pencil</button
+          ><button data-tool="arrow">Arrow</button
+          ><button data-tool="rectangle">Rectangle</button
+          ><button data-tool="text">Text</button><button id="undo">Undo</button
+          ><button id="reset">Reset annotations</button>
+        </div>
+        <label class="text-label" for="annotation" hidden
+          >Text to place
+          <input
+            id="annotation"
+            maxlength="200"
+            placeholder="Write a label, then click the screenshot"
+        /></label>
+        <div class="canvas-scroll">
+          <canvas
+            id="canvas"
+            aria-label="Screenshot. Select a tool and draw with the pointer."
+          ></canvas>
+        </div>
+      </section>
+      <aside>
+        <h1>Send feedback</h1>
+        <p id="capture-origin" class="capture-origin"></p>
+        <details class="capture-details">
+          <summary id="capture-size">Capture details</summary>
+          <p id="context"></p>
+        </details>
+        <label for="project">Project</label
+        ><select id="project"></select>
+        <label for="body">Comment</label
+        ><textarea
+          id="body"
+          rows="7"
+          maxlength="12000"
+          placeholder="What should change, and why?"
+        ></textarea>
+        <label class="check"
+          ><input id="no-image" type="checkbox" /> Send without screenshot</label
+        >
+        <p class="hint">Your draft stays in this browser until you explicitly send it.</p>
+        <button id="send" class="primary">Send feedback</button>
+        <button id="retry-capture" hidden>Retry capture on original tab</button>
+        <p id="status" role="status"></p>
+      </aside>
+    </main>
+    <script type="module" src="editor.js"></script>
+  </body>
+</html>

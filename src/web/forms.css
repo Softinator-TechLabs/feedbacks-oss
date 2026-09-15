@@ -1,0 +1,129 @@
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 24px;
+  max-width: 900px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+.field > span,
+.field > label {
+  font-weight: 600;
+}
+.field input,
+.field textarea,
+.field select {
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+  min-height: 44px;
+  background: #fff;
+  color: #202c37;
+  font-weight: 400;
+}
+.field textarea {
+  resize: vertical;
+  line-height: 1.55;
+  min-height: 84px;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #687783;
+  opacity: 1;
+}
+.field input:hover,
+.field select:hover,
+.field textarea:hover {
+  border-color: var(--control-hover);
+}
+.form-grid .field {
+  margin: 0;
+}
+.form-grid > .field:has(textarea),
+.form-end,
+.wide {
+  grid-column: 1/-1;
+}
+.password-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.password-reset-form {
+  margin-bottom: 16px;
+}
+.password-actions button {
+  min-height: 40px;
+  padding: 8px 12px;
+}
+.password-field > small:last-child:empty {
+  display: none;
+}
+.project-access > .form-grid + .form-grid {
+  margin-top: 16px;
+}
+.form-end {
+  margin: 4px 0 16px;
+}
+.form-end p {
+  max-width: 70ch;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.9rem;
+  min-height: 40px;
+  cursor: pointer;
+}
+.check input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: var(--soft-surface);
+  padding: 16px;
+  margin-bottom: 24px;
+  border-radius: 8px;
+}
+.filters .field {
+  margin: 0;
+  flex: 1;
+  min-width: 130px;
+}
+.filters .field:first-child {
+  flex: 1.5;
+}
+.filters button {
+  margin-bottom: 1px;
+}
+.filters .check {
+  flex-basis: 100%;
+  min-height: 24px;
+}
+.field input[type="file"] {
+  padding: 6px;
+}
+input::file-selector-button {
+  font: inherit;
+  padding: 6px 10px;
+  margin-right: 12px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--soft-surface);
+  color: var(--accent);
+  cursor: pointer;
+}

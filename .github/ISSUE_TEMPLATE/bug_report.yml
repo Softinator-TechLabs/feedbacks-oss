@@ -1,0 +1,25 @@
+name: Bug report
+description: Report reproducible behavior using synthetic data.
+body:
+  - type: markdown
+    attributes:
+      value: "Security issue? Please use SECURITY.md. Do not include private feedback, tokens or screenshots."
+  - type: input
+    id: version
+    attributes:
+      label: Version and environment
+      description: App/extension version, browser and self-hosted or hosted environment.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include expected and actual behavior and a minimal example.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Relevant evidence
+      description: Sanitized logs or synthetic screenshots, if useful.

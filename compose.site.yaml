@@ -1,0 +1,10 @@
+services:
+  website:
+    build:
+      context: .
+      dockerfile: Dockerfile.site
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${SITE_PORT:-8080}:8080"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]

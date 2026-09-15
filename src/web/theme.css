@@ -1,0 +1,133 @@
+:root {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  color: #e3e9f0;
+  background: #11161c;
+  --surface: #171e26;
+  --accent: #cbddeb;
+  --muted: #a9b8c6;
+  --border: #374452;
+  --focus: #96c6ed;
+  --danger: #ffb1b6;
+  --control-border: #64798b;
+  --control-hover: #96b1c7;
+  --soft-surface: #1d2833;
+}
+:root[data-theme="dark"]
+  :is(
+    .topbar,
+    .project-list,
+    .thread-list,
+    .attachments img,
+    .upload-preview,
+    .skip-link,
+    .mention-menu,
+    .reply-options[open] > .field
+  ) {
+  background: var(--surface);
+}
+:root[data-theme="dark"] :is(button, .button) {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: #526374;
+}
+:root[data-theme="dark"] :is(button:enabled:hover, .button:hover) {
+  background: #293847;
+  color: #e3eff9;
+  border-color: #7893aa;
+}
+:root[data-theme="dark"] :is(button:enabled:active, .button:active) {
+  background: #354b5f;
+}
+:root[data-theme="dark"] .primary {
+  background: #cbddeb;
+  color: #142436;
+  border-color: #cbddeb;
+}
+:root[data-theme="dark"] :is(button.primary:enabled:hover, a.button.primary:hover) {
+  background: #e1edf6;
+  color: #142436;
+  border-color: #e1edf6;
+}
+:root[data-theme="dark"] :is(button.primary:enabled:active, a.button.primary:active) {
+  background: #aec8dd;
+  color: #142436;
+}
+:root[data-theme="dark"] :is(button:disabled, button.primary:disabled) {
+  color: #a4b1be;
+  background: #252e38;
+  border-color: #414f5e;
+}
+:root[data-theme="dark"] .danger {
+  color: var(--danger);
+}
+:root[data-theme="dark"] a:not(.button):hover {
+  color: #e1edf6;
+}
+:root[data-theme="dark"]
+  :is(
+    .field input,
+    .field select,
+    .field textarea,
+    .secret textarea,
+    .mention-composer textarea
+  ) {
+  background: #111820;
+  color: #e3e9f0;
+  border-color: #64798b;
+}
+:root[data-theme="dark"] :is(input, textarea)::placeholder {
+  color: #a9b8c6;
+}
+:root[data-theme="dark"] :is(.filters, .loading, .reading pre) {
+  background: #1d2833;
+}
+:root[data-theme="dark"] :is(.project-row:hover, .thread-row:hover) {
+  background: #202e3c;
+}
+:root[data-theme="dark"] .badge {
+  background: #2a3846;
+  color: #d2e0ec;
+}
+:root[data-theme="dark"] .badge.resolved {
+  background: #213d32;
+  color: #b4e3c7;
+}
+:root[data-theme="dark"] .badge.declined {
+  background: #422d31;
+  color: #efc0c3;
+}
+:root[data-theme="dark"] :is(.badge.in_progress, .badge.ready_for_review) {
+  background: #253e53;
+  color: #badbf7;
+}
+:root[data-theme="dark"] .error {
+  background: #3d252a;
+  color: #ffc4c8;
+  border-color: #83505a;
+}
+:root[data-theme="dark"] :is(.notice, .secret) {
+  background: #203548;
+  color: #d0e7fa;
+  border-color: #47667e;
+}
+:root[data-theme="dark"] :is(.thread-tabs button, .icon-action, .mention-trigger) {
+  background: transparent;
+}
+:root[data-theme="dark"] .thread-tabs button {
+  color: var(--muted);
+}
+:root[data-theme="dark"] .thread-tabs button[aria-pressed="true"] {
+  color: var(--accent);
+}
+:root[data-theme="dark"]
+  :is(.mention-menu button[aria-selected="true"], .thread-tools a:hover .icon-action) {
+  background: #293847;
+  color: #e3eff9;
+}
+:root[data-theme="dark"] ::selection {
+  background: #3b617e;
+  color: white;
+}

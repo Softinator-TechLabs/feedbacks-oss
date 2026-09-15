@@ -1,0 +1,9 @@
+# Runtime dependencies
+
+Node 22 is the container runtime. Express 5 handles bounded HTTP transport and static web delivery. `pg` is the only production database driver. Zod owns explicit shared input/output schemas. Argon2 hashes passwords; Node crypto generates random credentials and hashes high-entropy tokens. Sharp decodes, bounds, strips metadata from and converts approved images to WebP. AWS SDK v3 accesses operator-provided private S3-compatible storage, including Wasabi. The official MCP SDK implements Streamable HTTP and stdio protocol handling. No model provider or GitHub dependency is needed.
+
+Development only: TypeScript compiles/checks the service, tsx runs TypeScript verification and development entry points, Node/Express/pg typings support static checking, and PGlite executes the real migration SQL and domain queries in an isolated PostgreSQL-compatible engine. PGlite is excluded from production installs and is never selected by production configuration. The lockfile fixes exact dependency versions. Run `npm audit` against the current lockfile before release.
+
+React and React DOM implement the approved interactive web client. Vite bundles its static files into dist/web, which the existing Express application serves with same-origin cookies and API calls. React typings and Vite are development-only build dependencies. No routing, component library, analytics or external font dependency is needed. The client uses native browser navigation, fetch and Web Locks. `npm run build` builds the server, client, public website and extension; `npm run typecheck` checks both. The production image needs build dependencies in its build stage, and only runtime dependencies in its final stage.
+
+`tldts` derives public-suffix-aware registrable domains and subdomains from feedback URLs. This keeps website categorization correct for domains such as `example.co.uk`; localhost and IP hosts retain their literal host identity.

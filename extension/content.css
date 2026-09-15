@@ -1,0 +1,219 @@
+:host {
+  all: initial;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+.bar {
+  position: fixed;
+  right: 16px;
+  top: 60px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #dce1e5;
+  border-radius: 10px;
+  font:
+    13px/1.5 system-ui,
+    sans-serif;
+  color: #202c37;
+  z-index: 2147483647;
+}
+.drawer-handle {
+  position: fixed;
+  pointer-events: auto;
+  top: 12px;
+  right: 16px;
+  font:
+    600 13px/1.5 system-ui,
+    sans-serif;
+}
+.bar.hidden {
+  display: none !important;
+}
+.row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+button {
+  font: inherit;
+  background: #fff;
+  color: #17324d;
+  border: 1px solid #bdc5cc;
+  border-radius: 6px;
+  min-height: 40px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+button:not(:disabled):hover {
+  background: #edf1f4;
+  color: #17324d;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+button[aria-pressed="true"],
+.primary {
+  background: #17324d;
+  color: white;
+}
+button[aria-pressed="true"]:not(:disabled):hover,
+.primary:not(:disabled):hover,
+.pin:not(:disabled):hover {
+  background: #294f70;
+  color: #fff;
+}
+button[aria-pressed="true"]:disabled,
+button[aria-pressed="true"]:disabled:hover,
+.primary:disabled,
+.primary:disabled:hover,
+.pin:disabled,
+.pin:disabled:hover {
+  background: #17324d;
+  color: #fff;
+}
+button:focus-visible {
+  outline: 2px solid #3875a9;
+  outline-offset: 2px;
+}
+.meta {
+  color: #596672;
+  margin: 6px 0;
+  max-width: 540px;
+}
+.notice {
+  max-width: 540px;
+  color: #8d2e24;
+  margin: 6px 0;
+}
+.pin {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  background: #17324d;
+  color: #fff;
+  font-weight: 700;
+  border: 2px solid white;
+  z-index: 2147483646;
+}
+.preview {
+  position: fixed;
+  max-width: 280px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #aab7c2;
+  color: #202c37;
+  font:
+    13px/1.5 system-ui,
+    sans-serif;
+  z-index: 2147483647;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.target {
+  position: fixed;
+  pointer-events: none;
+  border: 2px solid #497eac;
+  z-index: 2147483645;
+}
+.draft-pin {
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  font:
+    600 20px/1 system-ui,
+    sans-serif;
+}
+.point-menu {
+  position: fixed;
+  pointer-events: auto;
+  width: 288px;
+  max-width: calc(100vw - 16px);
+  padding: 12px;
+  border: 1px solid #aab7c2;
+  border-radius: 8px;
+  background: white;
+  color: #202c37;
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+  z-index: 2147483647;
+}
+.point-menu button {
+  min-height: 40px;
+  margin-inline-end: 6px;
+}
+.point-tip {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #596672;
+}
+.hidden {
+  display: none !important;
+}
+.category-lists {
+  max-height: 30vh;
+  overflow: auto;
+  max-width: 540px;
+}
+.category-lists summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.category-lists ul {
+  padding-left: 22px;
+}
+.category-lists li {
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+.category-lists p {
+  margin: 4px 0;
+  white-space: pre-wrap;
+}
+@media (prefers-color-scheme: dark) {
+  :host {
+    color-scheme: dark;
+  }
+  .bar,
+  .point-menu,
+  .preview {
+    background: #171e25;
+    color: #e5ebf0;
+    border-color: #40515e;
+  }
+  button {
+    background: #171e25;
+    color: #d9e6f0;
+    border-color: #52616d;
+  }
+  button:not(:disabled):hover {
+    background: #283643;
+    color: white;
+  }
+  .primary,
+  button[aria-pressed="true"] {
+    background: #c3d8e8;
+    color: #142b3f;
+  }
+  .meta,
+  .point-tip {
+    color: #b0bec9;
+  }
+  .notice {
+    color: #e3afa9;
+  }
+  .pin {
+    background: #17324d;
+    color: white;
+  }
+}

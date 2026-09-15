@@ -1,0 +1,18 @@
+title = "Feedbacks source scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Exact synthetic password used only in isolated integration tests"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''(^|/)tests/.*\.test\.ts$''']
+regexes = ['''^Correct-Horse-Battery-123$''']
+
+[[allowlists]]
+description = "Character alphabet for cryptographically generated passwords, not a credential"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''(^|/)src/web/account-admin\.tsx$''']
+regexes = ['''^ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789$''']

@@ -1,0 +1,118 @@
+body {
+  width: 368px;
+  padding: 24px;
+}
+h1 {
+  font-size: 23px;
+  letter-spacing: -0.025em;
+  margin: 0 0 6px;
+  color: var(--accent);
+}
+.intro {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+.version {
+  color: var(--muted);
+  font-size: 12px;
+  margin: -12px 0 18px;
+}
+#update-notice {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin: 0 0 18px;
+  padding: 12px;
+}
+#update-notice strong {
+  display: block;
+  color: var(--accent);
+  font-size: 14px;
+}
+.update-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+.update-links a {
+  font-size: 13px;
+  font-weight: 600;
+}
+button {
+  width: 100%;
+  margin-top: 10px;
+}
+.control-row {
+  display: flex;
+  gap: 8px;
+}
+.control-row button {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+#page-feedback {
+  display: block;
+  margin-top: 16px;
+  text-align: center;
+}
+#connection {
+  margin: 0;
+}
+.connected {
+  color: var(--accent);
+  font-weight: 600;
+}
+.connected::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #23734c;
+  margin-right: 8px;
+}
+#project-choice {
+  margin-top: 18px;
+}
+#instant-help {
+  margin: 8px 0 16px;
+  font-size: 13px;
+}
+#connection-settings {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 20px;
+}
+#connection-settings > summary {
+  font-weight: 500;
+  color: var(--accent);
+}
+#connection-settings label {
+  margin-top: 12px;
+}
+#connection-settings .check {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+#update-status {
+  margin: 8px 0 0;
+  min-height: 1.3em;
+}
+#routing {
+  margin: 10px 0 12px;
+}
+#message {
+  margin: 12px 0;
+}
+#disconnect {
+  color: var(--muted);
+  background: transparent;
+}
+#app {
+  display: block;
+  padding-top: 18px;
+  font-size: 14px;
+  text-align: center;
+}
