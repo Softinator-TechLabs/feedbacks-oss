@@ -1,6 +1,6 @@
 # Contributing to Feedbacks
 
-Bug reports, documentation, accessibility improvements and focused fixes are welcome. Read the [architecture](docs/architecture.md) and [development guide](docs/development.md) first.
+Bug reports, documentation, accessibility improvements and focused fixes are welcome. Read [AGENTS.md](AGENTS.md), the [documentation map](docs/index.md) and [development guide](docs/development.md) first.
 
 ## Propose a change
 
@@ -14,7 +14,7 @@ Search existing issues before opening one. Include the version, expected and obs
 4. Run `npm run check`. Use `npm run test:postgres` for transaction, cursor or migration changes.
 5. Describe the problem, resulting behavior and verification. Include before/after screenshots for UI changes, using synthetic data.
 
-Keep generated builds, credentials, production screenshots, customer feedback and database exports out of commits. Preserve unrelated changes. A maintainer reviews each change before merge; review may ask for a smaller scope or additional evidence.
+Keep generated builds, credentials, production screenshots, customer feedback and database exports out of commits. Preserve unrelated changes. Maintainers are responsible for reviewing changes and their evidence. Independent approval is optional; required CI and pull requests remain the merge gates. See [the agent workflow](docs/agent-workflow.md).
 
 ## Design and engineering conventions
 

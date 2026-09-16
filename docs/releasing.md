@@ -18,9 +18,9 @@ The smoke check creates and removes its own disposable PostgreSQL, app and websi
 
 ## Initial public repository
 
-Existing private Git history may contain internal records even when the current source is clean. Review history separately; do not assume deleting a file removes it from history. Prefer creating the first public commit from the reviewed source export while preserving the original private repository. The archive itself never contains `.git`, secrets, feedback, dumps or operator inventory.
+Existing private Git history may contain internal records even when the current source is clean. Review history separately; do not assume deleting a file removes it from history. Prefer creating the first public commit from the reviewed source export while preserving the original private repository. The archive itself never contains `.git`, secrets, feedback, dumps or operator inventory. `SOURCE-MANIFEST.sha256` is regenerated inside each source archive; do not maintain a stale copy in the working tree.
 
-Confirm the intended GitHub owner/repository, license, copyright/provenance and security contact. Enable private vulnerability reporting, branch protection, required CI and human review. Set the default branch and website link. Check all public links after publication. Repository visibility and DNS changes are explicit publication steps.
+Confirm the intended GitHub owner/repository, license, copyright/provenance and security contact. Enable private vulnerability reporting, branch protection and required CI. Follow the [governance policy](../GOVERNANCE.md) for review; independent approval is not mandatory. Set the default branch and website link. Check all public links after publication. Repository visibility and DNS changes are explicit publication steps.
 
 ## Tag and publish
 

@@ -50,3 +50,13 @@ Authentication throttles are currently in process memory. Start with one applica
 The account lock currently serializes domain operations, including export construction and image upload. S3 requests have a 15-second abort deadline; PostgreSQL statements have a 30-second timeout and lock waits a 10-second timeout. Export creation has persistent per-user/project/deployment attempt and active-snapshot budgets plus content-size limits; pagination reuses an immutable snapshot. This bounds amplification but is not a throughput benchmark. Large image decoding and exports consume application resources. Set ingress body/time limits, monitor load and add bounded asynchronous processing only when measurements justify it. Retention, backups and restore objectives are deployment decisions; no automatic deletion policy is enabled.
 
 Shared-database multi-tenancy would require tenant-scoped identity, tenant predicates on every query, tenant-aware tokens and cache keys, isolation tests and a migration plan. This release does not claim those properties.
+
+## Mechanically checked runtime boundaries
+
+`npm run check:harness` parses literal runtime imports with the existing esbuild dependency. Shared modules depend on shared modules and Zod; server and web modules depend on their own layer and shared contracts; extension and site code stay inside their independently packaged directories. CLI modules use CLI/shared code, with these existing narrow exceptions:
+
+- `src/cli/bootstrap.ts` imports server config, database, migrations and authentication for the explicit operator entry point.
+- `src/cli/client.ts` and `src/cli/feedbacks.ts` reuse the server's `DomainError`.
+- `src/cli/mcp.ts` reuses the server MCP adapter, passing the HTTP client as its executor.
+
+These exceptions are exact file-to-file edges in [the checker](../scripts/lib/harness.mjs), not permission for arbitrary CLI imports into server internals. Extending one requires a documented reason and a regression test. The check excludes type-only and computed imports; review those explicitly. Internal domain layering within `src/server` remains a review responsibility.
