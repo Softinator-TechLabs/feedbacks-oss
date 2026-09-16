@@ -254,6 +254,22 @@ export function Privacy() {
         </p>
       </section>
       <section>
+        <h2>Optional diagnostics</h2>
+        <p>
+          Console and resource timing collection starts only when you choose it in the
+          extension. It ends on capture, navigation, stop or after five minutes, with at
+          most 25 console and 50 resource entries. Review the entries and explicitly
+          enable sharing in the editor before sending them with a thread.
+        </p>
+        <p>
+          URL credentials, queries and fragments are stripped. Headers, request bodies,
+          cookies and storage values are not collected. Redaction is best effort; review
+          messages and URL paths for private information. Shared entries follow the same
+          project access and retention rules as discussion. Page-generated diagnostics are
+          untrusted and may be incomplete.
+        </p>
+      </section>
+      <section>
         <h2>Access, retention and removal</h2>
         <p>
           Owners manage access. You can revoke agent tokens and paired extensions in

@@ -6,6 +6,8 @@ The principal runtime packages are React/React DOM, Express, pg, Zod, Argon2, Sh
 
 Existing reference research is recorded in [reference provenance](docs/reference-provenance.md). It records inspected examples, not a claim of copied code or permission to reuse proprietary features. New source reuse requires its exact origin, revision, license and required notices here.
 
-The extension icons are the project's own Feedbacks mark. No third-party marketing photographs, customer logos or production screenshots are included in the public website.
+The extension icons are the project's own Feedbacks mark. The public website uses self-hosted Manrope under SIL OFL 1.1 and an image generated for a fictional webpage. Font license text is retained in `site/public/fonts/OFL-Manrope.txt`; [website asset provenance](docs/website-assets.md) records sources and the image prompt. No customer logos or production screenshots are included.
 
 The extension contains packaged project scripts and does not bundle the server's npm dependencies. Its ZIP includes these project-wide notices; the referenced provenance document is also available in the [public source repository](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/reference-provenance.md).
+
+The Codex plugin build bundles its MCP adapter dependencies and copies their full license/notice files into `licenses/`. Its `BUILD.json` records the bundled inputs, package versions and license paths.

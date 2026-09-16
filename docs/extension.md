@@ -23,3 +23,15 @@ Restricted browser pages cannot be captured. Cross-origin frames, moving content
 The build produces a versioned ZIP, SHA-256 checksum and server download metadata. Unpacked installations require a manual update/reload. Server update checks offer an archive; they never execute a downloaded update automatically. Chrome Web Store publication is a separate release step and is not implied by the ZIP build.
 
 Before a release, check pairing, capture, redaction, submit/retry, project routing, existing connection persistence, origin rejection, permission denial and update notices in Chrome. Include license/notice files in the archive. See [releasing](releasing.md).
+
+## Optional console and network context
+
+Collection is off by default. In the popup's **Console & network** section, choose **Start collection**, reproduce the issue, then capture. Stop and discard is available before capture. The recorder ends on capture, navigation, review-session change or after five minutes. It uses the existing `activeTab`/scripting capability; this feature adds no Chrome permission.
+
+Only the top-level page is observed. Up to 25 console warning/error messages and 50 resource timing entries are retained. Console arguments other than the first string are not serialized. Network entries contain the URL origin/path, resource type, timing and HTTP status when the browser exposes it. Headers, bodies, cookies, storage contents and prior browsing history are not collected. Requests or console events that occur before collection starts are absent.
+
+URL credentials, query strings and fragments are stripped; common secrets and email patterns are redacted from messages. Redaction is best effort: URL paths and unusual console text can still contain private information. In the editor, inspect each entry, uncheck anything unsuitable and explicitly select **Share selected diagnostics with this feedback**. Sharing starts unchecked. Unshared entries stay in the local draft and are discarded with it. Submitted entries are part of the thread and follow that instance's retention and access policy.
+
+The target page can influence or fabricate its own console and performance data. The server validates and bounds the packet and labels it untrusted. A missing status does not mean a request succeeded. Cross-origin requests and browser restrictions can limit what is available; this is not a complete network trace or a session recording.
+
+Category and comma-separated tags are optional in the capture editor. See [review workflow](review-workflow.md) for navigation, saved filters and screenshot comparisons.

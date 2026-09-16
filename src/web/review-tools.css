@@ -1,0 +1,89 @@
+/* Review tools share the app's existing control and surface vocabulary. */
+.review-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-block: 12px;
+}
+.review-controls .field {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.review-controls select {
+  width: 100%;
+}
+.saved-views {
+  margin-bottom: 16px;
+}
+.thread-navigation {
+  margin-block: 0 24px;
+  border-bottom: 1px solid var(--border, #d9e0e6);
+  padding-bottom: 12px;
+}
+.thread-navigation .review-controls {
+  align-items: center;
+}
+.thread-navigation small {
+  margin-left: auto;
+}
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-block: 8px;
+}
+.tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border: 1px solid var(--border, #d9e0e6);
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.comparison-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.comparison-side figure {
+  margin: 0;
+  min-width: 0;
+}
+.comparison-side img,
+.comparison-overlay img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.comparison-overlay {
+  position: relative;
+  overflow: hidden;
+}
+.comparison-front {
+  position: absolute;
+  inset: 0;
+}
+.comparison-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #fff;
+  box-shadow: 1px 0 2px #162c4680;
+  pointer-events: none;
+}
+.screenshot-comparison input[type="range"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+}
+@media (max-width: 560px) {
+  .comparison-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .thread-navigation small {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}

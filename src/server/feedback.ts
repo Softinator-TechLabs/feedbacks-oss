@@ -6,6 +6,7 @@ import { hash, publicActor } from "./auth.js";
 import { fail } from "./errors.js";
 import { normalizeUrl, viewContext, viewStats } from "./views.js";
 import { reviewerContext } from "./accounts.js";
+import { threadQuery } from "./review-views.js";
 import { discussionLikes, setDiscussionLike } from "./discussion-likes.js";
 // Legacy human messages had no reliable intent. Treat them as requests on read;
 // preserve agent responses and explicit intent without rewriting work history.
@@ -51,7 +52,7 @@ export async function fullThread(db: Database, a: Actor, row: any) {
       [row.id],
     );
   const assets = await db.query(
-    "SELECT id,data FROM assets WHERE thread_id=$1 AND status='validated'",
+    "SELECT id,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',id",
     [row.id],
   );
   data.response = discussionResponse(
@@ -81,6 +82,7 @@ export async function fullThread(db: Database, a: Actor, row: any) {
   }
   return {
     ...data,
+    tags: data.tags ?? [],
     id: row.id,
     projectId: row.project_id,
     revision: row.revision,
@@ -129,7 +131,13 @@ export async function retry(db: Database, a: Actor, op: string, i: any) {
     [a.id, op, i.idempotencyKey],
   );
   if (!item) return null;
-  if (item.input_hash !== hash(JSON.stringify(i)))
+  // In-flight drafts made before optional tags existed retain their retry identity.
+  const legacy = { ...i };
+  if (op === "threads.create" && !i.tags?.length && !i.diagnostics) delete legacy.tags;
+  if (
+    item.input_hash !== hash(JSON.stringify(i)) &&
+    item.input_hash !== hash(JSON.stringify(legacy))
+  )
     fail("IDEMPOTENCY_CONFLICT", "Retry key was used with different content", 409);
   return item.entity_id;
 }
@@ -142,42 +150,32 @@ export async function remember(db: Database, a: Actor, op: string, i: any, id: s
 }
 export async function feedback(db: Database, a: Actor, op: string, i: any): Promise<any> {
   if (op === "threads.get") return fullThread(db, a, await threadRow(db, a, i.threadId));
+  if (op === "threads.neighbors") {
+    const row = await threadRow(db, a, i.threadId);
+    const { filter, args, order } = threadQuery(row.project_id, i);
+    args.push(row.id);
+    const result = await db.one(
+      `WITH ordered AS (
+      SELECT id, lag(id) OVER (ORDER BY ${order}) AS previous,
+      lead(id) OVER (ORDER BY ${order}) AS next,
+      row_number() OVER (ORDER BY ${order})::integer AS position
+      FROM threads WHERE ${filter}
+    ) SELECT previous,next,position,(SELECT count(*)::integer FROM ordered) AS total
+      FROM (SELECT 1) seed LEFT JOIN ordered ON ordered.id=$${args.length}`,
+      args,
+    );
+    return result;
+  }
   if (op === "threads.list") {
     await access(db, a, i.projectId);
-    const args: any[] = [i.projectId, `%${i.search}%`];
-    let filter =
-      "project_id=$1 AND (data->>'body' ILIKE $2 OR EXISTS(SELECT 1 FROM replies r WHERE r.thread_id=threads.id AND r.data->>'body' ILIKE $2)) AND COALESCE((data->>'archived')::boolean,false)=false";
-    if (!i.showResolved)
-      filter += " AND data->'work'->>'state' NOT IN ('resolved','declined')";
-    if (i.url) {
-      args.push(normalizeUrl(i.url));
-      filter += ` AND data->'context'->>'url'=$${args.length}`;
-    }
-    if (i.domain) {
-      args.push(i.domain.toLowerCase());
-      filter += ` AND data->'context'->>'domain'=$${args.length}`;
-    }
-    if (i.hostname) {
-      args.push(i.hostname.toLowerCase());
-      filter += ` AND data->'context'->>'hostname'=$${args.length}`;
-    }
-    if (i.deviceClass) {
-      args.push(i.deviceClass);
-      filter += ` AND data->'context'->>'deviceClass'=$${args.length}`;
-    }
+    const { filter, args, order } = threadQuery(i.projectId, i);
     const count = await db.one(
       `SELECT count(*)::integer AS total FROM threads WHERE ${filter}`,
       args,
     );
-    const order =
-      i.sort === "newest"
-        ? "created_at DESC"
-        : i.sort === "likes"
-          ? "(SELECT count(*) FROM view_likes v WHERE v.project_id=threads.project_id AND v.fingerprint=threads.data->'context'->>'fingerprint') DESC,updated_at DESC"
-          : "updated_at DESC";
     args.push(i.limit, i.offset);
     const rows = await db.query(
-      `SELECT * FROM threads WHERE ${filter} ORDER BY ${order},id LIMIT $${args.length - 1} OFFSET $${args.length}`,
+      `SELECT * FROM threads WHERE ${filter} ORDER BY ${order} LIMIT $${args.length - 1} OFFSET $${args.length}`,
       args,
     );
     const websiteRows = await db.query(
@@ -213,6 +211,8 @@ export async function feedback(db: Database, a: Actor, op: string, i: any): Prom
     const data = {
       body: i.body,
       category: i.category,
+      tags: i.tags,
+      ...(i.diagnostics ? { diagnostics: i.diagnostics } : {}),
       context: viewContext(i.context, p),
       author: actor,
       lastActor: actor,
@@ -249,7 +249,10 @@ export async function feedback(db: Database, a: Actor, op: string, i: any): Prom
   checkRevision(row, i.revision);
   const actor = publicActor(a),
     at = new Date().toISOString();
-  if (op === "threads.reply") {
+  if (op === "threads.organize") {
+    data.category = i.category;
+    data.tags = i.tags;
+  } else if (op === "threads.reply") {
     data.response = (await fullThread(db, a, row)).response;
     for (const userId of i.mentions) {
       const member = await db.one(

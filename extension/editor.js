@@ -120,6 +120,17 @@ function payload() {
     id: draft.id,
     imageRevision: draft.imageRevision || 0,
     body: $("body").value,
+    category: $("category").value,
+    tags: $("tags").value,
+    includeDiagnostics: $("include-diagnostics").checked,
+    diagnosticsSelection: Object.fromEntries(
+      ["console", "network"].map((kind) => [
+        kind,
+        [
+          ...document.querySelectorAll(`input[data-diagnostic-kind="${kind}"]:checked`),
+        ].map((input) => Number(input.value)),
+      ]),
+    ),
     projectId: $("project").value,
     noImage: $("no-image").checked,
     toolState: shapes,
@@ -167,6 +178,7 @@ async function loadBase(fresh) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (draft) draft.image = draft.approvedImage = null;
   draft = fresh;
+  renderDiagnostics();
   if (!fresh) {
     shapes = [];
     lock(true);
@@ -312,7 +324,15 @@ $("reset").onclick = () => {
     schedule();
   }
 };
-for (const id of ["body", "project", "no-image"]) $(id).oninput = schedule;
+for (const id of [
+  "body",
+  "project",
+  "no-image",
+  "category",
+  "tags",
+  "include-diagnostics",
+])
+  $(id).oninput = schedule;
 $("no-image").addEventListener("change", () => {
   canvas.style.opacity = $("no-image").checked ? ".35" : "1";
 });
@@ -404,6 +424,37 @@ addEventListener("beforeunload", (e) => {
     e.returnValue = "";
   }
 });
+function renderDiagnostics() {
+  $("diagnostics-review").hidden = !draft?.diagnostics;
+  $("include-diagnostics").checked = !!draft?.includeDiagnostics;
+  const entries = $("diagnostics-entries");
+  entries.replaceChildren();
+  if (!draft?.diagnostics) return;
+  for (const kind of ["console", "network"]) {
+    const heading = document.createElement("h3");
+    heading.textContent = `${kind === "console" ? "Console" : "Network"} (${draft.diagnostics[kind].length})`;
+    entries.append(heading);
+    for (const [index, entry] of draft.diagnostics[kind].entries()) {
+      const label = document.createElement("label"),
+        input = document.createElement("input"),
+        text = document.createElement("span");
+      label.className = "diagnostic-entry";
+      input.type = "checkbox";
+      input.value = String(index);
+      input.dataset.diagnosticKind = kind;
+      input.checked = draft.diagnosticsSelection
+        ? draft.diagnosticsSelection[kind]?.includes(index)
+        : true;
+      input.onchange = schedule;
+      text.textContent =
+        kind === "console"
+          ? `${entry.level} · ${entry.atMs} ms · ${entry.message}`
+          : `${entry.type} · ${entry.status ?? "status unavailable"} · ${entry.durationMs} ms · ${entry.url}`;
+      label.append(input, text);
+      entries.append(label);
+    }
+  }
+}
 async function init() {
   draft = await send({ type: "draft" });
   if (!draft) {
@@ -418,6 +469,9 @@ async function init() {
       $("project").add(new Option(p.name, p.id));
   $("project").value = draft.projectId;
   $("body").value = draft.body;
+  $("category").value = draft.category || "general";
+  $("tags").value = (draft.tags || []).join(", ");
+  renderDiagnostics();
   $("no-image").checked = draft.noImage;
   const legacy = (draft.toolState || []).filter((shape) => shape.tool === "redact");
   if (legacy.length && !draft.frozen)

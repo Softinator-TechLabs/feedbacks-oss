@@ -1,3 +1,4 @@
+import { diagnosticsSchema } from "./diagnostics.js";
 import { z } from "zod";
 const id = z.string().uuid(),
   text = z.string().trim().min(1).max(12000),
@@ -7,6 +8,35 @@ const page = {
   limit: z.number().int().min(1).max(100).default(30),
   offset: z.number().int().min(0).max(100000).default(0),
 };
+export const categorySchema = z.enum([
+  "general",
+  "visualDesign",
+  "productWorkflow",
+  "usabilityAccessibility",
+]);
+export const tagSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1)
+  .max(32)
+  .regex(/^[\p{L}\p{N}][\p{L}\p{N} _/-]*$/u, "Use letters, numbers, spaces, /, _ or -");
+export const tagsSchema = z
+  .array(tagSchema)
+  .max(12)
+  .transform((tags) => [...new Set(tags)].sort());
+export const reviewFiltersSchema = z.object({
+  search: z.string().max(200).default(""),
+  sort: z.enum(["newest", "activity", "likes"]).default("activity"),
+  showResolved: z.boolean().default(false),
+  url: z.string().url().max(4096).optional(),
+  domain: z.string().trim().min(1).max(253).optional(),
+  hostname: z.string().trim().min(1).max(253).optional(),
+  deviceClass: z.enum(["mobile", "tablet", "desktop"]).optional(),
+  category: categorySchema.optional(),
+  tag: tagSchema.optional(),
+});
+export type ReviewFilters = z.infer<typeof reviewFiltersSchema>;
 export const contextSchema = z.object({
   url: z.string().url().max(4096),
   title: z.string().max(300).optional(),
@@ -193,14 +223,23 @@ export const inputSchemas = {
   "threads.list": z.object({
     projectId: id,
     ...page,
-    search: z.string().max(200).default(""),
-    sort: z.enum(["newest", "activity", "likes"]).default("activity"),
-    showResolved: z.boolean().default(false),
-    url: z.string().url().optional(),
-    domain: z.string().trim().min(1).max(253).optional(),
-    hostname: z.string().trim().min(1).max(253).optional(),
-    deviceClass: z.enum(["mobile", "tablet", "desktop"]).optional(),
+    ...reviewFiltersSchema.shape,
   }),
+  "threads.neighbors": z.object({ threadId: id, ...reviewFiltersSchema.shape }),
+  "threads.organize": z.object({
+    ...tm,
+    category: categorySchema.default("general"),
+    tags: tagsSchema,
+  }),
+  "reviewViews.list": z.object({ projectId: id }),
+  "reviewViews.save": z.object({
+    projectId: id,
+    viewId: id.optional(),
+    revision: z.number().int().min(0).default(0),
+    name: z.string().trim().min(1).max(80),
+    filters: reviewFiltersSchema,
+  }),
+  "reviewViews.delete": z.object({ projectId: id, viewId: id, revision }),
   "threads.get": z.object({ threadId: id }),
   "threads.like": z.object({
     threadId: id,
@@ -211,9 +250,9 @@ export const inputSchemas = {
     projectId: id,
     body: text,
     context: contextSchema,
-    category: z
-      .enum(["general", "visualDesign", "productWorkflow", "usabilityAccessibility"])
-      .default("general"),
+    category: categorySchema.default("general"),
+    tags: tagsSchema.default([]),
+    diagnostics: diagnosticsSchema.optional(),
     idempotencyKey: z.string().min(8).max(200),
   }),
   "threads.reply": z.object({
@@ -402,6 +441,12 @@ const instructionsOutput = z.object({
     }),
   ),
 });
+const reviewViewOutput = z.object({
+  id,
+  revision,
+  name: z.string(),
+  filters: reviewFiltersSchema,
+});
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "auth.resetPassword": z.object({
     changed: z.boolean(),
@@ -538,6 +583,16 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     }),
   }),
   "threads.get": threadOutput,
+  "threads.neighbors": z.object({
+    previous: id.nullable(),
+    next: id.nullable(),
+    position: z.number().int().nullable(),
+    total: z.number().int(),
+  }),
+  "threads.organize": threadOutput,
+  "reviewViews.list": z.object({ items: z.array(reviewViewOutput) }),
+  "reviewViews.save": reviewViewOutput,
+  "reviewViews.delete": z.object({ deleted: z.boolean() }),
   "threads.like": discussionLikesOutput.extend({
     threadId: id,
     replyId: id.nullable(),
@@ -599,7 +654,15 @@ export const scopedAgentOperations = [
   "views.get",
 ] as const;
 
-export const agentTokenScopes = [...scopedAgentOperations, "context.policy"] as const;
+export const agentTokenScopes = [
+  ...scopedAgentOperations,
+  "context.policy",
+  "threads.neighbors",
+  "threads.organize",
+  "reviewViews.list",
+  "reviewViews.save",
+  "reviewViews.delete",
+] as const;
 
 // Authentication and browser/device transport are deliberately separate from
 // business operations. Every entry uses the same input/output contract as HTTP.
@@ -631,6 +694,8 @@ const readOperations = new Set<string>([
   "tokens.list",
   "threads.list",
   "threads.get",
+  "threads.neighbors",
+  "reviewViews.list",
   "views.get",
   "assets.get",
   "instructions.get",

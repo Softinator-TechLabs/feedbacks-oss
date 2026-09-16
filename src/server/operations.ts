@@ -14,6 +14,7 @@ import { projects, members } from "./projects.js";
 import { feedback } from "./feedback.js";
 import { assets, assetRow, assetPreview, type AssetStore } from "./assets.js";
 import { instructions, context } from "./context.js";
+import { reviewViews } from "./review-views.js";
 import { views } from "./views.js";
 import { fail } from "./errors.js";
 import { reserveExportRequest } from "./export-limits.js";
@@ -89,6 +90,7 @@ export class Operations {
         if (name.startsWith("projects.")) return projects(db, a, name, i);
         if (name.startsWith("members.")) return members(db, a, name, i);
         if (name.startsWith("threads.")) return feedback(db, a, name, i);
+        if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
         if (name.startsWith("views.")) return views(db, a, name, i);
         if (name.startsWith("assets.")) {
           const result = await assets(db, a, name, i, this.store, this.config);

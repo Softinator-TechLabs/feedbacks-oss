@@ -5,302 +5,254 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Open-source website feedback. Capture a page, point out a change, and keep screenshots, discussion and outcomes together. Self-host the app and Chrome extension."
+      content="Your team's slate for the web. Screenshot, mark up and discuss any web page. Give your coding assistant the full story through MCP. Open source and self-hosted."
     />
-    <meta name="theme-color" content="#17324d" />
-    <meta property="og:title" content="Feedbacks — website feedback, with context" />
+    <meta name="theme-color" content="#fffdfa" />
+    <meta property="og:title" content="Feedbacks — your team's slate for the web" />
     <meta
       property="og:description"
-      content="Point out a change. Keep the screenshot, conversation and outcome together. Open source, with your own server."
+      content="See it. Mark it. Work it out together. Your team and your coding assistant, on the same page."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://feedbacks.softinator.ai/" />
     <link rel="canonical" href="https://feedbacks.softinator.ai/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
-    <title>Feedbacks — website feedback, with context</title>
+    <link
+      rel="preload"
+      href="/fonts/manrope-800.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <title>Feedbacks — your team's slate for the web</title>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header wrap">
       <a class="wordmark" href="/" aria-label="Feedbacks home"
-        ><img src="/favicon.svg" width="32" height="32" alt="" />Feedbacks</a
+        ><img src="/favicon.svg" width="30" height="30" alt="" />feedbacks<span
+          class="wordmark-dot"
+          >.</span
+        ></a
       >
       <nav aria-label="Main navigation">
-        <a href="#workflow">How it works</a>
-        <a href="#self-host">Self-host</a>
-        <a href="https://github.com/Softinator-TechLabs/feedbacks-oss#readme">Docs</a>
-        <a class="github-link" href="https://github.com/Softinator-TechLabs/feedbacks-oss"
-          >GitHub
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 17 17 7M7 7h10v10" /></svg
-        ></a>
+        <a href="#workflow">Take a look</a><a href="#agents">For your AI</a
+        ><a class="nav-github" href="https://github.com/Softinator-TechLabs/feedbacks-oss"
+          >GitHub <span aria-hidden="true">↗</span></a
+        >
       </nav>
+      <a class="button header-cta" href="#self-host"
+        >Make it yours <span aria-hidden="true">↗</span></a
+      >
     </header>
     <main id="main">
       <section class="hero wrap" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <h1 id="hero-title">Point it out.<br />Keep the context.</h1>
-          <p>
-            Website feedback belongs on the website. Capture what you see, leave a precise
-            comment, and follow the change through.
-          </p>
-          <div class="actions">
-            <a class="button primary" href="#self-host">Get started</a
-            ><a
-              class="text-link"
-              href="https://github.com/Softinator-TechLabs/feedbacks-oss"
-              >Explore the source
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12h14m-6-6 6 6-6 6" /></svg
-            ></a>
-          </div>
-          <p class="hero-note">Open-source app. Chrome extension. Your server.</p>
-        </div>
-        <div
-          class="demo"
-          data-stage="capture"
-          aria-label="Interactive example of a website review"
-        >
-          <div class="demo-header">
-            <span>Website review</span
-            ><span class="demo-label">Illustrative example</span>
-          </div>
-          <div class="demo-controls" aria-label="Explore the review workflow">
-            <button type="button" data-step="capture" aria-pressed="true">Capture</button>
-            <button type="button" data-step="discuss" aria-pressed="false">
-              Discuss
-            </button>
-            <button type="button" data-step="resolve" aria-pressed="false">
-              Resolve
-            </button>
-          </div>
-          <div class="review-surface">
-            <div class="example-page">
-              <div class="example-nav">
-                <strong>Acorn</strong><span>About &nbsp; Journal</span>
-              </div>
-              <div class="example-copy">
-                <p>Room for<br />good work.</p>
-                <span>A quieter place for your next idea.</span>
-              </div>
-              <div class="annotated-target">
-                <span class="example-cta">Find your space</span
-                ><span class="pin" aria-label="Feedback point 1">1</span>
-              </div>
-              <div class="example-caption">
-                <span class="example-line"></span
-                ><span>Thoughtful spaces. Everyday possibilities.</span>
-              </div>
-              <div class="capture-context">
-                <span>acorn.example</span><span>1440 × 900</span>
-              </div>
-            </div>
-            <div class="example-discussion">
-              <div class="thread-top">
-                <span>Point 1</span><span id="demo-state" class="state">Open</span>
-              </div>
-              <h2>Give the button room to breathe</h2>
-              <p class="author">Maya <span>Designer</span></p>
-              <p class="comment">
-                Could we add a little space above this button? It feels too close to the
-                description.
-              </p>
-              <div id="demo-reply" class="demo-reply" hidden>
-                <p class="author">Alex <span>Developer</span></p>
-                <p id="demo-reply-text" class="comment">
-                  Agreed. I’ll adjust the spacing and check the mobile layout too.
-                </p>
-              </div>
-              <div class="thread-context">
-                <span>Attached to this feedback</span>
-                <p id="demo-evidence">Screenshot, page URL and viewport</p>
-              </div>
-            </div>
-          </div>
-          <p class="demo-explanation" id="demo-explanation" aria-live="polite">
-            Capture the page and mark the exact point that needs attention.
-          </p>
-          <noscript
-            ><p class="demo-explanation">
-              Enable JavaScript to try the discussion and resolution example.
-            </p></noscript
+        <h1 id="hero-title">
+          Your team’s
+          <span class="marked-word"
+            >slate<svg viewBox="0 0 320 30" aria-hidden="true">
+              <path d="M7 21C87 1 199 6 310 14M45 26C135 16 242 15 295 21" /></svg></span
+          >.<br />Right on the web.
+        </h1>
+        <p>
+          Screenshot a page. Mark what you mean.<br />Work it out with your team and your
+          AI coding assistant.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="#self-host"
+            >Self-host Feedbacks <span aria-hidden="true">↗</span></a
+          ><a
+            class="source-link"
+            href="https://github.com/Softinator-TechLabs/feedbacks-oss"
+            >Explore the source</a
           >
         </div>
       </section>
-      <section class="workflow wrap" id="workflow" aria-labelledby="workflow-title">
-        <div class="section-intro">
-          <h2 id="workflow-title">Less explaining.<br />More understanding.</h2>
-          <p>
-            A screenshot says where. A conversation says why. Feedbacks keeps both
-            together, even after the work moves on.
-          </p>
+      <section class="showcase" id="workflow" aria-label="An illustrated website review">
+        <div class="showcase-top wrap">
+          <p>A few marks. A lot less explaining.</p>
+          <span>Illustrative examples</span>
         </div>
-        <div class="workflow-rows">
-          <article>
-            <h3>Review where you work</h3>
-            <div>
-              <p>
-                Open the extension on a website, select a point or capture the page, and
-                mark the change. Redact sensitive details before you send.
-              </p>
-              <a
-                href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
-                >Install the extension
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 12h14m-6-6 6 6-6 6" /></svg
-              ></a>
+        <div class="slate-gallery">
+          <article class="scrap poster-scrap">
+            <div class="scrap-caption"><span>Campaign page</span><span>01</span></div>
+            <div class="poster-page">
+              <div class="poster-brand">OFFBEAT® <span>LIVE / 26</span></div>
+              <p>MAKE<br />SOME<br /><em>NOISE.</em></p>
+              <div class="waveform" aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                ><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <span class="poster-date">FRIDAY · 8 PM · STUDIO 04</span>
+            </div>
+            <div class="scrap-note">
+              <span class="avatar lilac">S</span>
+              <p><strong>Sam</strong>Can the date be easier to spot?</p>
             </div>
           </article>
-          <article>
-            <h3>Keep the conversation attached</h3>
-            <div>
-              <p>
-                Discuss the screenshot, mention the right teammate, and keep page context
-                close at hand. Project access determines who can see and respond.
-              </p>
+          <article class="scrap main-scrap" data-stage="mark">
+            <div class="page-chrome">
+              <span class="chrome-dots" aria-hidden="true">● ● ●</span
+              ><span>form.example / collection</span><span>1440 × 900</span>
+            </div>
+            <div class="furniture-page">
+              <img
+                src="/media/studio-chair.png"
+                width="1536"
+                height="1024"
+                alt="Illustrative furniture website featuring an orange lounge chair"
+                fetchpriority="high"
+              />
+              <div class="furniture-nav">
+                <strong>form.</strong><span>Collection &nbsp; About &nbsp; Bag (0)</span>
+              </div>
+              <div class="furniture-copy">
+                <p>Everyday.<br />Extraordinary.</p>
+                <span class="sample-button"
+                  >Find your favourite <span aria-hidden="true">↗</span></span
+                >
+              </div>
+              <svg class="pencil-mark" viewBox="0 0 660 440" aria-hidden="true">
+                <path
+                  pathLength="1"
+                  d="M54 297C22 279 34 247 83 242C117 235 217 233 237 261C271 295 208 316 129 313C64 312 36 298 40 272M236 251C279 210 309 211 353 220M345 208L357 223L338 229"
+                />
+              </svg>
+              <span class="annotation-pin">1</span>
+            </div>
+            <div class="conversation-strip">
+              <span class="avatar coral" id="example-avatar">M</span>
+              <div>
+                <p class="comment-author" id="example-author">
+                  Maya <span>Design reviewer</span>
+                </p>
+                <p id="example-comment">
+                  “Give this button a little more breathing room.”
+                </p>
+              </div>
+              <span class="comment-status" id="example-status">Open</span>
+            </div>
+            <div class="demo-controls" role="group" aria-label="Try the review workflow">
+              <button data-step="mark" aria-pressed="true">Mark it</button
+              ><button data-step="discuss" aria-pressed="false">Discuss it</button
+              ><button data-step="agent" aria-pressed="false">Let your AI read it</button>
             </div>
           </article>
-          <article>
-            <h3>Close the loop with evidence</h3>
-            <div>
-              <p>
-                A reply and a fix are different events. Track work status separately from
-                who owes a response, and record the outcome for the next review.
-              </p>
+          <article class="scrap checkout-scrap">
+            <div class="scrap-caption"><span>Product flow</span><span>02</span></div>
+            <div class="checkout-page">
+              <strong>FIELDNOTES</strong>
+              <p>Good things,<br />on their way.</p>
+              <div class="checkout-order">
+                <span class="book-shape" aria-hidden="true">ideas<br />&amp; things.</span
+                ><span>Pocket notebook<br /><small>Moss / set of 3</small></span>
+              </div>
+              <div class="checkout-line"><span>Subtotal</span><span>$24.00</span></div>
+              <div class="checkout-line marked-total">
+                <span>Shipping</span><span>$12.00</span>
+              </div>
+              <span class="checkout-button">Continue to payment</span>
+            </div>
+            <div class="scrap-note">
+              <span class="avatar green">A</span>
+              <p><strong>Arjun</strong>Show shipping before this step.</p>
             </div>
           </article>
+        </div>
+        <div class="showcase-bottom wrap">
+          <p id="demo-explanation" aria-live="polite">
+            A screenshot and a pencil mark keep the exact point in view.
+          </p>
+          <a
+            href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
+            >Get the Chrome extension <span aria-hidden="true">↗</span></a
+          >
         </div>
       </section>
-      <section class="integrations" aria-labelledby="integration-title">
-        <div class="wrap integration-layout">
-          <div>
-            <h2 id="integration-title">The same context.<br />For people and tools.</h2>
-            <p>
-              Connect your development workflow through HTTP, MCP or the CLI. Give each
-              tool access to the projects and operations it needs.
-            </p>
+      <section class="agent-section wrap" id="agents" aria-labelledby="agent-title">
+        <div class="agent-copy">
+          <h2 id="agent-title">Your AI gets<br />the <span>whole story.</span></h2>
+          <p>
+            The screenshot. The discussion. Who said what, and where their expertise
+            helps.
+          </p>
+          <div class="client-names" aria-label="Coding assistants using MCP">
+            <span>Codex</span><span>Claude Code</span><span>Antigravity</span>
+          </div>
+          <a
+            class="source-link"
+            href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md"
+            >Connect through MCP <span aria-hidden="true">↗</span></a
+          >
+        </div>
+        <div
+          class="context-composition"
+          aria-label="Illustrative context passed to a coding assistant"
+        >
+          <div class="context-paper">
+            <div class="context-heading">
+              <span class="context-dot"></span
+              ><strong>One thread. All the context.</strong><span>MCP</span>
+            </div>
+            <div class="context-line">
+              <span class="context-key">The mark</span>
+              <p>Button spacing · screenshot attached</p>
+            </div>
+            <div class="context-line">
+              <span class="context-key">The people</span>
+              <p>Maya · visual design guidance</p>
+            </div>
+            <div class="context-line">
+              <span class="context-key">The discussion</span>
+              <p>“Keep the mobile layout in mind, too.”</p>
+            </div>
+            <div class="context-line">
+              <span class="context-key">The reply</span>
+              <p>“I’ll check both sizes and post the result.”</p>
+            </div>
+            <small>Reviewer guidance is advisory. Project permissions still apply.</small>
+          </div>
+          <div class="handoff-note">
+            <p>Discuss here.<br />Decide what comes next.</p>
+            <span>Figma &nbsp; / &nbsp; GitHub Issues &nbsp; / &nbsp; Projects</span
+            ><small>Link agreed work when you’re ready.</small>
+          </div>
+        </div>
+      </section>
+      <section class="self-host wrap" id="self-host" aria-labelledby="host-title">
+        <div>
+          <h2 id="host-title">Your server.<br />Your slate.</h2>
+          <p>
+            App, extension and MCP. Apache-2.0.<br />Your PostgreSQL. Your S3 storage,
+            including Wasabi.
+          </p>
+          <div class="actions">
             <a
-              class="light-link"
-              href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agent-setup.md"
-              >Connect an MCP client
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12h14m-6-6 6 6-6 6" /></svg
-            ></a>
-          </div>
-          <div class="contract-example">
-            <div class="contract-heading">
-              <span>One feedback thread</span><span>Across every interface</span>
-            </div>
-            <dl>
-              <div>
-                <dt>Read the context</dt>
-                <dd><code>threads.get</code></dd>
-              </div>
-              <div>
-                <dt>Add a response</dt>
-                <dd><code>threads.reply</code></dd>
-              </div>
-              <div>
-                <dt>Record the outcome</dt>
-                <dd><code>threads.status</code></dd>
-              </div>
-            </dl>
-            <p>Shared permissions. Scoped credentials. Traceable replies.</p>
-          </div>
-        </div>
-      </section>
-      <section class="ownership wrap" aria-labelledby="ownership-title">
-        <h2 id="ownership-title">Your feedback.<br />Your infrastructure.</h2>
-        <div class="ownership-details">
-          <p>
-            Run the full application and extension from source. Keep discussions in
-            PostgreSQL and screenshots in your own private S3-compatible storage,
-            including Wasabi or AWS S3.
-          </p>
-          <dl>
-            <div>
-              <dt>Read the code</dt>
-              <dd>The app, extension and website are Apache-2.0 licensed.</dd>
-            </div>
-            <div>
-              <dt>Choose who gets access</dt>
-              <dd>Project grants and scoped tokens apply to every interface.</dd>
-            </div>
-            <div>
-              <dt>Choose where it lives</dt>
-              <dd>Deploy on your infrastructure with your own domain and storage.</dd>
-            </div>
-          </dl>
-          <a
-            href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/architecture.md"
-            >Read the architecture
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h14m-6-6 6 6-6 6" /></svg
-          ></a>
-        </div>
-      </section>
-      <section
-        class="get-started wrap"
-        id="self-host"
-        aria-labelledby="get-started-title"
-      >
-        <div>
-          <h2 id="get-started-title">Bring it to<br />your next review.</h2>
-          <p>Start with a local workspace or follow the production deployment guide.</p>
-          <a
-            class="button primary"
-            href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md"
-            >Self-host Feedbacks
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h14m-6-6 6 6-6 6" /></svg
-          ></a>
-        </div>
-        <div class="setup">
-          <h3>Get the source</h3>
-          <pre><code id="clone-command">git clone https://github.com/Softinator-TechLabs/feedbacks-oss.git
-cd feedbacks-oss
-npm ci</code></pre>
-          <button type="button" class="copy-button" id="copy-command" hidden>
-            Copy commands
-          </button>
-          <p class="copy-status" id="copy-status" role="status"></p>
-          <p>
-            Next: configure your database and create the first owner. The
-            <a href="https://github.com/Softinator-TechLabs/feedbacks-oss#run-locally"
-              >quickstart</a
+              class="button primary"
+              href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md"
+              >Start self-hosting <span aria-hidden="true">↗</span></a
+            ><a href="https://github.com/Softinator-TechLabs/feedbacks-oss"
+              >View GitHub</a
             >
-            walks you through it.
-          </p>
+          </div>
         </div>
-      </section>
-      <section class="hosting wrap" id="hosting" aria-labelledby="hosting-title">
-        <div>
-          <h2 id="hosting-title">Prefer a hosted workspace?</h2>
-          <p>
-            Talk to Softinator about hosting Feedbacks for your team. Public self-service
-            signup is not available yet.
-          </p>
+        <div class="start-note">
+          <strong>Bring the whole team.</strong>
+          <p>Keep quick requests here.<br />Keep your backlog for agreed work.</p>
+          <a href="mailto:business@softinator.ai?subject=Feedbacks%20hosting"
+            >Prefer hosting? Talk to us <span aria-hidden="true">↗</span></a
+          ><small>Hosted access by arrangement.</small>
         </div>
-        <a
-          class="text-link"
-          href="mailto:business@softinator.ai?subject=Feedbacks%20hosting"
-          >Discuss hosting
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 12h14m-6-6 6 6-6 6" /></svg
-        ></a>
       </section>
     </main>
     <footer class="site-footer wrap">
       <div>
-        <a class="wordmark" href="/">Feedbacks</a>
-        <p>
-          Built by <a href="https://softinator.ai">Softinator</a>. Open to contributions.
-        </p>
+        <a class="wordmark" href="/">feedbacks.</a>
+        <p>By <a href="https://softinator.ai">Softinator</a>. Built in the open.</p>
       </div>
       <nav aria-label="Footer navigation">
-        <a href="https://github.com/Softinator-TechLabs/feedbacks-oss">GitHub</a
-        ><a
+        <a
           href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/CONTRIBUTING.md"
           >Contribute</a
         ><a

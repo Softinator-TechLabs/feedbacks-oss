@@ -72,5 +72,15 @@ INSERT INTO migrations(version) VALUES(5);`;
       for (const statement of sql.split(";").filter((s) => s.trim()))
         await tx.query(statement);
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=6"))) {
+      await tx.query(
+        `CREATE TABLE review_views(id uuid PRIMARY KEY, project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, name text NOT NULL, filters jsonb NOT NULL, revision integer NOT NULL DEFAULT 1)`,
+      );
+      await tx.query(
+        "CREATE INDEX review_views_user_project ON review_views(user_id,project_id)",
+      );
+      await tx.query("CREATE INDEX threads_tags ON threads USING gin ((data->'tags'))");
+      await tx.query("INSERT INTO migrations(version) VALUES(6)");
+    }
   });
 }

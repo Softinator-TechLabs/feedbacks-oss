@@ -72,6 +72,12 @@ async function start(projectId) {
     const settings = await send({ type: "settings" });
     $("page-feedback").href = settings.server + "/projects/" + result.project.id;
     const controls = await send({ type: "popupAction", tabId: tab.id, action: "state" });
+    const diagnostics = await send({
+      type: "diagnostics",
+      tabId: tab.id,
+      action: "status",
+    }).catch(() => ({ active: false }));
+    showDiagnostics(diagnostics.active);
     $("pins").textContent = controls.showPins ? "Hide pins" : "Show pins";
     $("resolved").textContent = controls.showResolved ? "Hide resolved" : "Show resolved";
   } catch (e) {
@@ -151,6 +157,18 @@ action("instant", async () => {
   });
   await refresh();
 });
+function showDiagnostics(active) {
+  $("diagnostics-start").hidden = active;
+  $("diagnostics-stop").hidden = !active;
+  $("diagnostics-status").textContent = active
+    ? "Recording locally. Reproduce the issue, then capture this page within 5 minutes."
+    : "Off. No diagnostics are being collected.";
+}
+for (const name of ["start", "stop"])
+  action(`diagnostics-${name}`, async () => {
+    const result = await send({ type: "diagnostics", tabId: tab.id, action: name });
+    showDiagnostics(result.active);
+  });
 action("retry", () => start());
 for (const id of [
   "capture",

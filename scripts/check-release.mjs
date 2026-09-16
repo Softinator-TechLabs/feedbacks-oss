@@ -7,7 +7,7 @@ const root = resolve(import.meta.dirname, "..");
 const files = await sourceFiles(root);
 const errors = [];
 for (const file of files) {
-  if (/\.(png|woff2?)$/.test(file)) continue;
+  if (/\.(png|ttf|woff2?)$/.test(file)) continue;
   const text = await readFile(join(root, file), "utf8");
   if (
     file !== "scripts/check-release.mjs" &&
@@ -51,6 +51,24 @@ if (
   release.sha256 !== createHash("sha256").update(zip).digest("hex")
 )
   errors.push("Extension metadata does not match the packaged ZIP");
+const pluginZip = await readFile(join(root, "dist/feedbacks-codex-plugin.zip"));
+const pluginDigest = (
+  await readFile(join(root, "dist/feedbacks-codex-plugin.zip.sha256"), "utf8")
+).split(/\s/)[0];
+if (pluginDigest !== createHash("sha256").update(pluginZip).digest("hex"))
+  errors.push("Plugin checksum does not match its ZIP");
+for (const directory of ["plugins/feedbacks", "dist/codex-plugin/feedbacks"]) {
+  const portable = JSON.parse(
+    await readFile(join(root, directory, "plugin.json"), "utf8"),
+  );
+  const compatibility = JSON.parse(
+    await readFile(join(root, directory, ".codex-plugin/plugin.json"), "utf8"),
+  );
+  if (portable.name !== compatibility.name || portable.version !== compatibility.version)
+    errors.push("Plugin manifests have inconsistent identities");
+}
+await lstat(join(root, "dist/codex-plugin/feedbacks/mcp.mjs"));
+await lstat(join(root, "dist/codex-plugin/.agents/plugins/marketplace.json"));
 for (const file of [
   "dist/web/index.html",
   "dist/site/index.html",

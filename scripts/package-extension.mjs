@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir, readdir, copyFile } from "node:fs/promises";
 import { resolve, relative } from "node:path";
-import { deflateRawSync } from "node:zlib";
+import { zipFiles } from "./zip.mjs";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 import { compareChromeVersions, validateReleaseRecord } from "../extension/updates.js";
@@ -41,20 +41,8 @@ async function walk(dir) {
   }
   return files.sort();
 }
-const crcTable = Array.from({ length: 256 }, (_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  return c >>> 0;
-});
-const crc32 = (b) => {
-  let c = 0xffffffff;
-  for (const byte of b) c = crcTable[(c ^ byte) & 255] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-};
-let offset = 0;
-const chunks = [],
-  central = [];
-const names = [];
+const names = [],
+  entries = [];
 const packageFiles = (await walk(source)).map((path) => ({
   path,
   name: relative(source, path).replaceAll("\\", "/"),
@@ -67,50 +55,18 @@ for (const { path, name } of packageFiles) {
     !/^(?:[a-z][a-z0-9-]*\.(?:js|html|css|json)|icons\/(?:16|32|48|128)\.png)$/.test(name)
   )
     throw Error(`File is not on the upload allowlist: ${name}`);
-  const data = await readFile(path),
-    filename = Buffer.from(name),
-    compressed = deflateRawSync(data),
-    crc = crc32(data);
+  const data = await readFile(path);
   if (
     name.endsWith(".js") &&
     /\beval\s*\(|new\s+Function\s*\(|sourceMappingURL/.test(data.toString())
   )
     throw Error(`Unsafe executable content: ${name}`);
-  const local = Buffer.alloc(30);
-  local.writeUInt32LE(0x04034b50, 0);
-  local.writeUInt16LE(20, 4);
-  local.writeUInt16LE(8, 8);
-  local.writeUInt16LE(33, 12);
-  local.writeUInt32LE(crc, 14);
-  local.writeUInt32LE(compressed.length, 18);
-  local.writeUInt32LE(data.length, 22);
-  local.writeUInt16LE(filename.length, 26);
-  const entry = Buffer.alloc(46);
-  entry.writeUInt32LE(0x02014b50, 0);
-  entry.writeUInt16LE(20, 4);
-  entry.writeUInt16LE(20, 6);
-  entry.writeUInt16LE(8, 10);
-  entry.writeUInt16LE(33, 14);
-  entry.writeUInt32LE(crc, 16);
-  entry.writeUInt32LE(compressed.length, 20);
-  entry.writeUInt32LE(data.length, 24);
-  entry.writeUInt16LE(filename.length, 28);
-  entry.writeUInt32LE(offset, 42);
-  chunks.push(local, filename, compressed);
-  central.push(entry, filename);
-  offset += local.length + filename.length + compressed.length;
+  entries.push({ name, data });
   names.push(name);
 }
 if (!names.includes("manifest.json") || !names.includes("icons/128.png"))
   throw Error("Missing manifest or icon.");
-const directory = Buffer.concat(central),
-  end = Buffer.alloc(22);
-end.writeUInt32LE(0x06054b50, 0);
-end.writeUInt16LE(names.length, 8);
-end.writeUInt16LE(names.length, 10);
-end.writeUInt32LE(directory.length, 12);
-end.writeUInt32LE(offset, 16);
-const zip = Buffer.concat([...chunks, directory, end]),
+const zip = zipFiles(entries),
   hash = createHash("sha256").update(zip).digest("hex");
 const owner = resolve(root, `dist/extension/feedbacks-extension-${manifest.version}.zip`),
   download = resolve(root, "dist/web/downloads/feedbacks-extension.zip"),

@@ -2,6 +2,7 @@ import { lstat, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 export const sourceDirectories = [
+  "plugins",
   "src",
   "extension",
   "site",
@@ -55,7 +56,13 @@ export async function sourceFiles(root) {
       throw new Error(`Source export refuses symlinks: ${relative}`);
     if (info.isDirectory()) {
       for (const entry of await readdir(join(root, relative))) {
-        if (!/^[A-Za-z0-9_.-]+$/.test(entry) || entry.startsWith("."))
+        if (
+          !/^[A-Za-z0-9_.-]+$/.test(entry) ||
+          (entry.startsWith(".") &&
+            !["plugins/feedbacks/.codex-plugin", "plugins/feedbacks/.mcp.json"].includes(
+              `${relative}/${entry}`,
+            ))
+        )
           throw new Error(`Unexpected source entry: ${relative}/${entry}`);
         await walk(`${relative}/${entry}`);
       }

@@ -1,3 +1,4 @@
+import { diagnosticCollector, cleanDiagnostics } from "./diagnostics.js";
 import "./utils.js";
 import { createReviewController } from "./review-session.js";
 const U = globalThis.FeedbacksUtil;
@@ -331,6 +332,20 @@ async function capture(sender, retryId, pointToken = null) {
       projectId: state.draft?.projectId || session.projectId,
       sourceTabId: tab.id,
       context,
+      diagnostics: retryId
+        ? state.draft?.diagnostics
+        : cleanDiagnostics(
+            (
+              await chrome.scripting
+                .executeScript({
+                  target: { tabId: tab.id },
+                  world: "MAIN",
+                  func: diagnosticCollector,
+                  args: ["take", session.reviewId],
+                })
+                .catch(() => [])
+            )[0]?.result,
+          ),
       image: null,
       approvedImage: null,
       body: state.draft?.body || "",
@@ -478,6 +493,33 @@ async function saveDraft(message) {
     throw Error("Redactions must be permanently saved before continuing.");
   const allowed = {
     body: String(message.body || "").slice(0, 12000),
+    category: [
+      "general",
+      "visualDesign",
+      "productWorkflow",
+      "usabilityAccessibility",
+    ].includes(message.category)
+      ? message.category
+      : "general",
+    tags: String(message.tags || "")
+      .slice(0, 394)
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean),
+    // Select from the saved capture; editor messages cannot replace diagnostic data.
+    diagnosticsSelection: {
+      console: Array.isArray(message.diagnosticsSelection?.console)
+        ? message.diagnosticsSelection.console.filter(
+            (n) => Number.isInteger(n) && n >= 0 && n < 25,
+          )
+        : [],
+      network: Array.isArray(message.diagnosticsSelection?.network)
+        ? message.diagnosticsSelection.network.filter(
+            (n) => Number.isInteger(n) && n >= 0 && n < 50,
+          )
+        : [],
+    },
+    includeDiagnostics: message.includeDiagnostics === true && !!draft.diagnostics,
     noImage: !draft.image || !!message.noImage,
     toolState: message.toolState,
     projectId: message.projectId,
@@ -563,6 +605,19 @@ async function submit(message) {
         ...draft,
         frozen: true,
         approvedImage: draft.noImage ? null : message.image,
+        approvedDiagnostics:
+          draft.includeDiagnostics && draft.diagnostics
+            ? {
+                ...draft.diagnostics,
+                approved: true,
+                console: draft.diagnostics.console.filter((_, index) =>
+                  draft.diagnosticsSelection.console.includes(index),
+                ),
+                network: draft.diagnostics.network.filter((_, index) =>
+                  draft.diagnosticsSelection.network.includes(index),
+                ),
+              }
+            : undefined,
         image: null,
         toolState: [],
       };
@@ -575,6 +630,11 @@ async function submit(message) {
           projectId: draft.projectId,
           body: draft.body,
           context: draft.context,
+          category: draft.category || "general",
+          tags: draft.tags || [],
+          ...(draft.approvedDiagnostics
+            ? { diagnostics: draft.approvedDiagnostics }
+            : {}),
           idempotencyKey: draft.id,
         },
         draft.server,
@@ -782,6 +842,19 @@ async function route(message, sender) {
         await review.stop(Number(tabId));
       }
       return {};
+    }
+    case "diagnostics": {
+      const tab = await chrome.tabs.get(message.tabId);
+      if (!tab.active || !["start", "stop", "status"].includes(message.action))
+        throw Error("Select the review page first.");
+      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        world: "MAIN",
+        func: diagnosticCollector,
+        args: [message.action, session.reviewId],
+      });
+      return { active: results[0]?.result?.active === true };
     }
     case "activate":
       return review.activate(message.tabId, message.projectId);

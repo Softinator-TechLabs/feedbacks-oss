@@ -182,6 +182,8 @@ export type Thread = {
   body: string;
   likes: { uniqueLikes: number; liked: boolean };
   category: string;
+  tags?: string[];
+  diagnostics?: import("../shared/diagnostics.js").Diagnostics;
   revision: number;
   context: Context;
   author: Actor;

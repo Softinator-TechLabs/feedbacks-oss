@@ -32,6 +32,15 @@ function publish() {
   });
 }
 
+export function navigate(href: string) {
+  const url = new URL(href, location.origin);
+  if (url.origin !== location.origin || !ordinaryPage(url.pathname) || !mayLeave())
+    return false;
+  history.pushState({ feedbacksPosition: ++position }, "", url);
+  publish();
+  return true;
+}
+
 document.addEventListener("click", (event) => {
   if (
     event.defaultPrevented ||
@@ -58,9 +67,7 @@ document.addEventListener("click", (event) => {
     return;
   if (url.pathname + url.search === snapshot()) return; // Native hash navigation.
   event.preventDefault();
-  if (!mayLeave()) return;
-  history.pushState({ feedbacksPosition: ++position }, "", url);
-  publish();
+  navigate(url.href);
 });
 
 window.addEventListener("popstate", (event) => {

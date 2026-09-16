@@ -1,0 +1,27 @@
+{
+  "name": "feedbacks",
+  "version": "0.1.0",
+  "description": "Visual website feedback, team discussion and reviewer context for coding assistants.",
+  "author": {
+    "name": "Softinator TechLabs",
+    "url": "https://softinator.ai"
+  },
+  "homepage": "https://feedbacks.softinator.ai",
+  "repository": "https://github.com/Softinator-TechLabs/feedbacks-oss",
+  "license": "Apache-2.0",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Feedbacks",
+    "shortDescription": "Read visual feedback and discuss it with your team.",
+    "longDescription": "Connect to your chosen Feedbacks server. Read screenshots, complete discussion and approved reviewer guidance; reply and attach evidence within your granted project scope.",
+    "developerName": "Softinator TechLabs",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://feedbacks.softinator.ai",
+    "privacyPolicyURL": "https://feedbacks.softinator.ai/privacy.html",
+    "defaultPrompt": "Read the Feedbacks thread for this task, including its screenshot, discussion and approved reviewer guidance. Summarize the request before making authorized changes.",
+    "brandColor": "#17324d",
+    "logo": "./assets/icon.png"
+  }
+}

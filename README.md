@@ -1,16 +1,18 @@
 # Feedbacks
 
-**Website feedback, with the context attached.**
+**Your team's slate for the web.**
 
-Capture a page, mark what needs attention, and keep the screenshot, conversation and outcome in one place. Feedbacks includes the web application, Chrome extension, HTTP API, MCP server and JSON CLI.
+Take a screenshot of a web page, draw what you mean with a pencil, and discuss it with your team or coding agent. Keep the original context together before deciding what belongs in Figma, GitHub Issues or Projects. Feedbacks includes the web application, Chrome extension, HTTP API, MCP server and JSON CLI.
 
-[Website](https://feedbacks.softinator.ai) · [Self-hosting](docs/self-hosting.md) · [Extension](docs/extension.md) · [API & MCP](docs/api.md) · [Contributing](CONTRIBUTING.md)
+[Website](https://feedbacks.softinator.ai) · [Why Feedbacks](docs/why-feedbacks.md) · [Self-hosting](docs/self-hosting.md) · [Extension](docs/extension.md) · [Coding assistants & Codex plugin](docs/agents.md) · [API & MCP](docs/api.md) · [Contributing](CONTRIBUTING.md)
 
 ## What it does
 
 - Capture and annotate website screenshots, redact sensitive areas, and attach page and viewport context.
 - Organize feedback by project with explicit member access and allowed website origins.
 - Discuss changes, mention teammates, and track response obligations separately from work status.
+- Move between filtered threads with arrow keys, add optional tags and reuse personal saved views.
+- Compare screenshot attachments and deliberately share selected console/network context.
 - Give tools and agents project-scoped access through the same authorization layer as the web app.
 - Keep screenshot objects private; the application checks access before serving them.
 
@@ -43,17 +45,18 @@ Build with `npm run build:extension`. Load the `extension/` directory from Chrom
 
 ## Repository map
 
-| Path          | Responsibility                                                                  |
-| ------------- | ------------------------------------------------------------------------------- |
-| `src/server/` | Authentication, project access, business operations, persistence and transports |
-| `src/shared/` | Typed operation inputs, outputs and descriptions                                |
-| `src/web/`    | Authenticated React application                                                 |
-| `src/cli/`    | Bootstrap, JSON CLI and stdio MCP adapter                                       |
-| `extension/`  | Chrome Manifest V3 capture and review extension                                 |
-| `site/`       | Independently deployable public website                                         |
-| `tests/`      | Isolated authorization, transport and database tests                            |
-| `ops/`        | Generic deployment configuration                                                |
-| `docs/`       | Public contributor and operator documentation                                   |
+| Path          | Responsibility                                                                    |
+| ------------- | --------------------------------------------------------------------------------- |
+| `src/server/` | Authentication, project access, business operations, persistence and transports   |
+| `src/shared/` | Typed operation inputs, outputs and descriptions                                  |
+| `src/web/`    | Authenticated React application                                                   |
+| `src/cli/`    | Bootstrap, JSON CLI and stdio MCP adapter                                         |
+| `plugins/`    | Codex plugin manifests and review skill; standalone MCP bundle generated at build |
+| `extension/`  | Chrome Manifest V3 capture and review extension                                   |
+| `site/`       | Independently deployable public website                                           |
+| `tests/`      | Isolated authorization, transport and database tests                              |
+| `ops/`        | Generic deployment configuration                                                  |
+| `docs/`       | Public contributor and operator documentation                                     |
 
 ## Development
 

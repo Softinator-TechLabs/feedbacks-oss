@@ -2,7 +2,21 @@ import React, { useEffect, useRef, useState } from "react";
 import { ThreadStatus } from "./thread-status.js";
 import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
-import { useUnsavedChanges } from "./navigation.js";
+import { usePageLocation, navigate, useUnsavedChanges } from "./navigation.js";
+import {
+  readFilters,
+  readOffset,
+  filterQuery,
+  splitTags,
+  categories,
+} from "./review-filters.js";
+import {
+  SavedReviewViews,
+  ThreadNavigation,
+  ThreadOrganization,
+  ScreenshotComparison,
+  ThreadDiagnostics,
+} from "./review-tools.js";
 import { MentionInput } from "./mention-input.js";
 import {
   mentionIds,
@@ -24,48 +38,43 @@ import {
   useLoad,
 } from "./ui.js";
 export function ThreadList({ project }: { project: Project }) {
-  const [search, setSearch] = useState(""),
-    [sort, setSort] = useState<"activity" | "newest" | "likes">("activity"),
-    [showResolved, setResolved] = useState(false),
-    [deviceClass, setDevice] = useState(""),
-    [url, setUrl] = useState(""),
-    [domain, setDomain] = useState(""),
-    [hostname, setHostname] = useState(""),
-    [offset, setOffset] = useState(0),
-    [creating, setCreating] = useState(false),
+  const pageLocation = usePageLocation(),
+    query = pageLocation.split("?")[1] ?? "";
+  const filters = readFilters(query),
+    offset = readOffset(query);
+  const {
+    search,
+    url,
+    domain,
+    hostname,
+    deviceClass,
+    sort,
+    showResolved,
+    category,
+    tag,
+  } = filters;
+  const [creating, setCreating] = useState(false),
     [version, setVersion] = useState(0);
-  const { data, error } = useLoad(
-    () =>
-      api<{
+  const { data: loaded, error } = useLoad(
+    async () => ({
+      query,
+      projectId: project.id,
+      result: await api<{
         items: Thread[];
         total: number;
         nextOffset: number | null;
         websiteFilters: { domains: string[]; hostnames: string[] };
-      }>("threads.list", {
-        projectId: project.id,
-        search,
-        sort,
-        showResolved,
-        ...(deviceClass ? { deviceClass: deviceClass as "mobile" } : {}),
-        ...(url ? { url } : {}),
-        ...(domain ? { domain } : {}),
-        ...(hostname ? { hostname } : {}),
-        offset,
-      }),
-    [
-      project.id,
-      search,
-      sort,
-      showResolved,
-      deviceClass,
-      url,
-      domain,
-      hostname,
-      offset,
-      version,
-    ],
+      }>("threads.list", { projectId: project.id, ...filters, offset }),
+    }),
+    [project.id, query, version],
     true,
   );
+  const data =
+    loaded?.query === query && loaded.projectId === project.id
+      ? loaded.result
+      : undefined;
+  const apply = (next = filters, nextOffset = 0) =>
+    navigate(`/projects/${project.id}${filterQuery(next, nextOffset)}`);
   return (
     <>
       <div className="page-heading">
@@ -91,16 +100,20 @@ export function ThreadList({ project }: { project: Project }) {
           }}
         />
       )}
+      <SavedReviewViews
+        projectId={project.id}
+        filters={filters}
+        onApply={(next) => apply(next)}
+      />
       <form
+        key={`${project.id}:${query}`}
         className="filters"
         onSubmit={(e) => {
           e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          setSearch(String(f.get("search")));
-          setUrl(String(f.get("url")));
-          setDomain(String(f.get("domain")));
-          setHostname(String(f.get("hostname")));
-          setOffset(0);
+          const f = new FormData(e.currentTarget),
+            p = new URLSearchParams();
+          for (const [key, value] of f) if (String(value)) p.set(key, String(value));
+          apply(readFilters(p.toString()));
         }}
       >
         <Field label="Search">
@@ -116,44 +129,54 @@ export function ThreadList({ project }: { project: Project }) {
           <input name="url" type="url" placeholder="All pages" defaultValue={url} />
         </Field>
         <Field label="Domain">
-          <select name="domain" defaultValue={domain}>
+          <select name="domain" defaultValue={domain ?? ""}>
             <option value="">All domains</option>
-            {data?.websiteFilters.domains.map((value) => (
-              <option key={value}>{value}</option>
+            {[
+              ...new Set([
+                ...(domain ? [domain] : []),
+                ...(data?.websiteFilters.domains ?? []),
+              ]),
+            ].map((v) => (
+              <option key={v}>{v}</option>
             ))}
           </select>
         </Field>
         <Field label="Hostname">
-          <select name="hostname" defaultValue={hostname}>
+          <select name="hostname" defaultValue={hostname ?? ""}>
             <option value="">All hostnames</option>
-            {data?.websiteFilters.hostnames.map((value) => (
-              <option key={value}>{value}</option>
+            {[
+              ...new Set([
+                ...(hostname ? [hostname] : []),
+                ...(data?.websiteFilters.hostnames ?? []),
+              ]),
+            ].map((v) => (
+              <option key={v}>{v}</option>
             ))}
           </select>
         </Field>
-        <button>Apply</button>
         <Field label="Device">
-          <select
-            value={deviceClass}
-            onChange={(e) => {
-              setDevice(e.target.value);
-              setOffset(0);
-            }}
-          >
+          <select name="deviceClass" defaultValue={deviceClass ?? ""}>
             <option value="">All devices</option>
-            {["mobile", "tablet", "desktop"].map((d) => (
-              <option key={d}>{d}</option>
+            {["mobile", "tablet", "desktop"].map((v) => (
+              <option key={v}>{v}</option>
             ))}
           </select>
+        </Field>
+        <Field label="Category">
+          <select name="category" defaultValue={category ?? ""}>
+            <option value="">All categories</option>
+            {categories.map((v) => (
+              <option key={v} value={v}>
+                {labels[v]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Tag">
+          <input name="tag" defaultValue={tag} maxLength={32} placeholder="Any tag" />
         </Field>
         <Field label="Sort">
-          <select
-            value={sort}
-            onChange={(e) => {
-              setSort(e.target.value as typeof sort);
-              setOffset(0);
-            }}
-          >
+          <select name="sort" defaultValue={sort}>
             <option value="activity">Latest activity</option>
             <option value="newest">Newest</option>
             <option value="likes">Most liked views</option>
@@ -161,15 +184,17 @@ export function ThreadList({ project }: { project: Project }) {
         </Field>
         <label className="check">
           <input
+            name="showResolved"
             type="checkbox"
-            checked={showResolved}
-            onChange={(e) => {
-              setResolved(e.target.checked);
-              setOffset(0);
-            }}
+            value="true"
+            defaultChecked={showResolved}
           />
-          Show resolved & declined
+          Show resolved &amp; declined
         </label>
+        <button>Apply filters</button>
+        <button type="button" onClick={() => apply(readFilters(""))}>
+          Clear
+        </button>
       </form>
       <ErrorNotice error={error} />
       {error && <button onClick={() => setVersion((v) => v + 1)}>Retry loading</button>}
@@ -179,9 +204,22 @@ export function ThreadList({ project }: { project: Project }) {
         <>
           <div className="thread-list">
             {data.items.map((t) => (
-              <a className="thread-row" key={t.id} href={`/threads/${t.id}`}>
+              <a
+                className="thread-row"
+                key={t.id}
+                href={`/threads/${t.id}${filterQuery(filters, offset)}`}
+              >
                 <div className="thread-summary">
                   <h2>{t.body}</h2>
+                  {!!t.tags?.length && (
+                    <div className="tag-list">
+                      {t.tags.map((tag) => (
+                        <span className="tag" key={tag}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="meta">
                     <span>{t.author?.name ?? "Member"}</span>
                     <span>
@@ -210,7 +248,7 @@ export function ThreadList({ project }: { project: Project }) {
           <div className="pagination">
             <button
               disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - 30))}
+              onClick={() => apply(filters, Math.max(0, offset - 30))}
             >
               Previous
             </button>
@@ -219,7 +257,7 @@ export function ThreadList({ project }: { project: Project }) {
             </span>
             <button
               disabled={data.nextOffset === null}
-              onClick={() => setOffset(data.nextOffset!)}
+              onClick={() => apply(filters, data.nextOffset!)}
             >
               Next
             </button>
@@ -228,7 +266,14 @@ export function ThreadList({ project }: { project: Project }) {
       ) : (
         data && (
           <Empty title="No feedback in this view">
-            {search || url || domain || hostname || deviceClass || showResolved
+            {search ||
+            url ||
+            domain ||
+            hostname ||
+            deviceClass ||
+            showResolved ||
+            category ||
+            tag
               ? "Change the filters to find other feedback."
               : "Capture a page with the Chrome extension, or create feedback here with its page URL and viewport."}
           </Empty>
@@ -265,6 +310,7 @@ export function ThreadComposer({
                 },
               },
               category: String(f.get("category")) as "general",
+              tags: splitTags(String(f.get("tags") ?? "")),
             };
           const signature = JSON.stringify(input);
           if (retry.current?.signature !== signature)
@@ -291,7 +337,7 @@ export function ThreadComposer({
             }
           />
         </Field>
-        <Field label="Category">
+        <Field label="Category (optional)">
           <select name="category">
             {["general", "visualDesign", "productWorkflow", "usabilityAccessibility"].map(
               (c) => (
@@ -301,6 +347,9 @@ export function ThreadComposer({
               ),
             )}
           </select>
+        </Field>
+        <Field label="Tags (optional)" hint="Comma separated, up to 12 tags.">
+          <input name="tags" maxLength={394} placeholder="checkout, mobile" />
         </Field>
         <Field label="Viewport width (CSS px)">
           <input
@@ -436,7 +485,7 @@ export function ThreadDetail({
       <div className="page-heading">
         <div>
           <h1>
-            <a className="back" href={`/projects/${t.projectId}`}>
+            <a className="back" href={`/projects/${t.projectId}${location.search}`}>
               ← Feedback
             </a>
           </h1>
@@ -533,6 +582,7 @@ export function ThreadDetail({
           </button>
         </Notice>
       )}
+      <ThreadNavigation key={threadId} threadId={threadId} />
       <div className="detail-grid">
         <div className="evidence-pane">
           <article className="first-comment">
@@ -542,6 +592,15 @@ export function ThreadDetail({
               </div>
             )}
             <p className="message">{t.body}</p>
+            {!!t.tags?.length && (
+              <div className="tag-list">
+                {t.tags.map((tag) => (
+                  <span className="tag" key={tag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </article>
           <div className="state-line">
             <span className={`badge ${t.work.state}`}>{labels[t.work.state]}</span>
@@ -558,6 +617,7 @@ export function ThreadDetail({
               }
             />
           </div>
+          {t.assets?.length > 1 && <ScreenshotComparison assets={t.assets} />}
           {t.assets?.length > 0 && (
             <section className="attachments">
               <h2 className="sr-only">Screenshot</h2>
@@ -803,7 +863,13 @@ export function ThreadDetail({
             id="thread-details"
             hidden={panel !== "details"}
           >
+            <ThreadOrganization
+              thread={t}
+              canWrite={!!project?.permissions.canWrite}
+              onSaved={setThread}
+            />
             <ContextPanel context={t.context} />
+            {t.diagnostics && <ThreadDiagnostics diagnostics={t.diagnostics} />}
             <details className="section compact-details">
               <summary>View preferences</summary>
               <p>

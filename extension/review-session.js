@@ -1,3 +1,4 @@
+import { diagnosticCollector } from "./diagnostics.js";
 // Website routing and opt-in, document-start review. No page is sent to the
 // service until the user opens Feedbacks or explicitly asks to add feedback.
 export function createReviewController({ get, set, authenticated, defaultServer }) {
@@ -51,7 +52,19 @@ export function createReviewController({ get, set, authenticated, defaultServer 
         !latest.accounts?.[server]?.token
       )
         throw Error("The connection changed. Open Feedbacks again.");
-      const reviewId = crypto.randomUUID();
+      const old = latest.sessions?.[tabId];
+      const reusable =
+        old?.server === server && old?.origin === origin && old?.projectId === project.id;
+      if (old && !reusable)
+        await chrome.scripting
+          .executeScript({
+            target: { tabId },
+            world: "MAIN",
+            func: diagnosticCollector,
+            args: ["stop", old.reviewId],
+          })
+          .catch(() => {});
+      const reviewId = reusable ? old.reviewId : crypto.randomUUID();
       await set({
         projectId: project.id,
         siteProjects: { ...latest.siteProjects, [`${server}|${origin}`]: project.id },
@@ -159,6 +172,14 @@ export function createReviewController({ get, set, authenticated, defaultServer 
   async function stop(tabId) {
     const state = await get(),
       sessions = { ...state.sessions };
+    await chrome.scripting
+      .executeScript({
+        target: { tabId },
+        world: "MAIN",
+        func: diagnosticCollector,
+        args: ["stop", sessions[tabId]?.reviewId],
+      })
+      .catch(() => {});
     delete sessions[tabId];
     await set({ sessions });
     await chrome.action.setBadgeText({ tabId, text: "" }).catch(() => {});

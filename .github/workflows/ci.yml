@@ -53,6 +53,8 @@ jobs:
             dist/releases/sbom.cdx.json
             dist/extension/*.zip
             dist/extension/*.sha256
+            dist/feedbacks-codex-plugin.zip
+            dist/feedbacks-codex-plugin.zip.sha256
 
   containers:
     runs-on: ubuntu-24.04

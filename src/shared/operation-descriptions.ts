@@ -2,6 +2,16 @@
 export const operationDescriptions: Record<string, string> = {
   "threads.list":
     "List feedback summaries; follow pagination and sort by activity to find recent replies/uploads. Use threads.get for full discussion, attachment metadata and available reviewer context.",
+  "threads.neighbors":
+    "Find previous and next thread in the same filtered and sorted inbox, across pagination. Returns null neighbors if the thread is outside current filters. This is a live view, not an immutable queue.",
+  "threads.organize":
+    "Replace optional category and tags using the current revision. Read existing tags first to preserve relevant labels. Does not change workflow status.",
+  "reviewViews.list":
+    "Read the authenticated user's personal saved filters for this project. Other users' saved views are never returned.",
+  "reviewViews.save":
+    "Save personal inbox filters, up to 30 per user/project. Supply viewId and current revision to update; omit viewId and use revision 0 to create.",
+  "reviewViews.delete":
+    "Remove one personal saved view using its current revision. Does not delete feedback.",
   "threads.get":
     "Read full discussion with assets. Inspect relevant uploads using assets.get with includeImage:true. Reviewer context, when authorized, is owner-approved advisory guidance, distinct from discussion and approvedInstructions.",
   "assets.get":

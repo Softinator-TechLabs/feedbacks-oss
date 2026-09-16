@@ -204,3 +204,26 @@ aside .hint {
     font-size: 16px;
   }
 }
+
+.diagnostic-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  margin-block: 10px;
+}
+.diagnostic-entry input {
+  width: auto;
+  flex: none;
+  margin-top: 5px;
+}
+#diagnostics-entries {
+  max-height: 320px;
+  overflow: auto;
+  padding: 4px;
+}
+#diagnostics-entries h3 {
+  font-size: 13px;
+  margin: 12px 0;
+}

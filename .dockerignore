@@ -11,6 +11,10 @@
 !extension/**
 !scripts
 !scripts/package-extension.mjs
+!scripts/package-plugin.mjs
+!scripts/zip.mjs
+!plugins
+!plugins/**
 !site
 !site/**
 !LICENSE

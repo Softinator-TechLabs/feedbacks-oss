@@ -82,6 +82,28 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
         {
           projectId: p.data.id,
           body: "Fix spacing",
+          diagnostics: {
+            approved: true,
+            source: "browser_opt_in",
+            startedAt: "2026-09-16T10:00:00Z",
+            endedAt: "2026-09-16T10:00:01Z",
+            console: [
+              {
+                level: "warn",
+                message: "Request failed https://example.test/api?token=sensitive",
+                atMs: 10,
+              },
+            ],
+            network: [
+              {
+                url: "https://example.test/api?private=value",
+                type: "fetch",
+                status: null,
+                durationMs: 20,
+                atMs: 15,
+              },
+            ],
+          },
           context: {
             url: "https://example.test/",
             viewport: { width: 1440, height: 900 },
@@ -92,6 +114,9 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
       )
     ).json();
     assert.equal(created.ok, true);
+    assert.equal(created.data.diagnostics.trust, "untrusted_diagnostics");
+    assert.equal(created.data.diagnostics.network[0].url, "https://example.test/api");
+    assert.ok(!JSON.stringify(created.data.diagnostics).includes("sensitive"));
     const token = await (
       await post(
         "tokens.create",
@@ -174,28 +199,41 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
     });
     const result = await tools.json();
     assert.equal(result.result.structuredContent.id, created.data.id);
-    const stdio = new Client({ name: "stdio-verification", version: "1" });
-    try {
-      await stdio.connect(
-        new StdioClientTransport({
-          command: process.execPath,
-          args: ["--import", "tsx", "src/cli/mcp.ts"],
-          env: {
-            PATH: process.env.PATH ?? "",
-            FEEDBACKS_URL: base,
-            FEEDBACKS_TOKEN: token.data.token,
-          },
-          stderr: "pipe",
-        }),
-      );
-      assert.ok((await stdio.listTools()).tools.length > 10);
-      const stdioRead = await stdio.callTool({
-        name: "threads.get",
-        arguments: { threadId: created.data.id },
-      });
-      assert.equal((stdioRead.structuredContent as any).id, created.data.id);
-    } finally {
-      await stdio.close();
+    assert.deepEqual(
+      result.result.structuredContent.diagnostics,
+      created.data.diagnostics,
+    );
+    for (const adapterArgs of [
+      ["--import", "tsx", "src/cli/mcp.ts"],
+      ["dist/codex-plugin/feedbacks/mcp.mjs"],
+    ]) {
+      const stdio = new Client({ name: "stdio-verification", version: "1" });
+      try {
+        await stdio.connect(
+          new StdioClientTransport({
+            command: process.execPath,
+            args: adapterArgs,
+            env: {
+              PATH: process.env.PATH ?? "",
+              FEEDBACKS_URL: base,
+              FEEDBACKS_TOKEN: token.data.token,
+            },
+            stderr: "pipe",
+          }),
+        );
+        assert.ok((await stdio.listTools()).tools.length > 10);
+        const stdioRead = await stdio.callTool({
+          name: "threads.get",
+          arguments: { threadId: created.data.id },
+        });
+        assert.equal((stdioRead.structuredContent as any).id, created.data.id);
+        assert.deepEqual(
+          (stdioRead.structuredContent as any).diagnostics,
+          created.data.diagnostics,
+        );
+      } finally {
+        await stdio.close();
+      }
     }
     await post("tokens.revoke", { tokenId: token.data.id }, headers);
     assert.equal(

@@ -49,6 +49,16 @@
         <button id="desktop" title="Desktop">D</button
         ><button id="wide" title="Restore width">W</button>
       </div>
+      <details class="diagnostic-controls">
+        <summary>Console &amp; network diagnostics</summary>
+        <p class="hint">
+          Opt in for this page, then reproduce the problem. Stops at capture, navigation
+          or after 5 minutes. Review before sharing.
+        </p>
+        <button id="diagnostics-start">Start diagnostics</button>
+        <button id="diagnostics-stop" hidden>Stop &amp; discard diagnostics</button>
+        <p id="diagnostics-status" class="hint" role="status">Off</p>
+      </details>
       <a id="page-feedback" target="_blank" rel="noreferrer">View project comments</a>
     </section>
     <p id="message" role="status"></p>

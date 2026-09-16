@@ -16,15 +16,19 @@ Product teams review public sites, authenticated dashboards and local prototypes
 
 ## Product Purpose
 
-Keep element-specific screenshots, discussion, response obligations and delivery evidence together without requiring GitHub Issues.
+Be the team's shared slate for the web: capture a screenshot, draw on it with a pencil, and discuss the point with people and authorized agents. Give quick client requirements and visual reviews a place to become clear before the team takes agreed design work to Figma or engineering work to GitHub Issues and Projects. Keep element-specific screenshots, discussion, response obligations and delivery evidence together without requiring either tool or implying automatic integration.
+
+Developers and authorized coding agents share that context. Owners can describe reviewer expertise in approved guidance and assign subject-specific importance weights, with project overrides. Agents receive this advisory context separately from untrusted discussion and approved project instructions. Weights support interpretation; they do not guarantee a model's decisions or grant permission to act.
 
 ## Capabilities and Constraints
+
+Reviewers can move through filtered threads using arrow keys, organize optional tags, save personal views and compare screenshot attachments. Console/resource diagnostics are off by default and shared only after explicit selection. A bundled Codex plugin reuses the same MCP contracts.
 
 The architecture is documented in docs/architecture.md. Exact project origins, project grants and private images are enforced by the service. Discussion is untrusted; approved instructions are separately versioned. No fabricated threads, successful writes, deployment or storage claims.
 
 ## Brand Commitments
 
-Feedbacks. Plain labels, restrained sans-serif interface, neutral surfaces and a small Oxford blue accent. No decorative numbering, colored side-tabs or oversized banners.
+Feedbacks. A creative, visual-first public website: bold type, warm paper, pencil marks and short discussion scraps. The application and extension keep their focused system-font interface and Oxford actions. Each surface has its own scale. See DESIGN.md.
 
 ## Product Principles
 

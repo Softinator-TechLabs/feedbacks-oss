@@ -251,3 +251,13 @@ Broad-compatible stdio configuration (Codex and Antigravity support this server 
 The adapter forwards tool inputs over HTTPS through the authorized HTTP operations, produces no stdout logs besides the MCP protocol, and never executes discussion content. `npm run build:server` builds the adapter. For native Codex TOML, use `[mcp_servers.feedbacks]`, `command="node"`, `args=["/absolute/path/to/feedbacks/dist/cli/mcp.js"]` and `[mcp_servers.feedbacks.env]` with the same environment keys. Keep real tokens out of Git.
 
 Liveness: GET `/healthz`; readiness: GET `/readyz` checks database connectivity and reports configured storage driver. Readiness does not claim a Wasabi object read/write test. Configure production secrets separately and perform authorized live object verification.
+
+## Review navigation and organization
+
+- `threads.list` accepts optional `category` and `tag`, alongside the existing search/website/device/status/sort filters.
+- `threads.neighbors` accepts a thread ID and the same filters; returns nullable `previous`, `next`, one-based `position`, and `total`. It authorizes the current thread's project before calculating neighbors.
+- `threads.organize` updates optional category/tags with `threadId` and the current `revision`.
+- `reviewViews.list`, `reviewViews.save` and `reviewViews.delete` manage the actor's personal views within an accessible project. Saved views hold typed filters, a name and revision. Updates/deletes require the current revision; another person's view is not accessible even to an owner.
+- `threads.create` accepts optional tags and a reviewer-approved diagnostics packet. Diagnostics are strictly bounded and marked `untrusted_diagnostics` in output. No arbitrary headers, bodies or other fields are accepted.
+
+These operations use the same HTTP, MCP and CLI dispatch. Explicit token scopes are required; existing token presets are not expanded silently. The exact field and output contracts are in `src/shared/contracts.ts` and `src/shared/diagnostics.ts`. Screenshot comparison is a browser presentation of authorized attachments, so it needs no new server operation. See [agent setup](agents.md) and [review workflow](review-workflow.md).

@@ -72,6 +72,34 @@
           maxlength="12000"
           placeholder="What should change, and why?"
         ></textarea>
+        <details class="capture-details">
+          <summary>Category &amp; tags (optional)</summary>
+          <label for="category">Category</label
+          ><select id="category">
+            <option value="general">General</option>
+            <option value="visualDesign">Visual design</option>
+            <option value="productWorkflow">Product workflow</option>
+            <option value="usabilityAccessibility">Usability &amp; accessibility</option>
+          </select>
+          <label for="tags">Tags, separated by commas</label
+          ><input id="tags" maxlength="394" placeholder="checkout, mobile" />
+        </details>
+        <details id="diagnostics-review" class="capture-details" hidden>
+          <summary>Review diagnostics</summary>
+          <p class="hint">
+            Only checked entries will be shared. Check messages and URL paths for private
+            information. Redaction is a best-effort filter.
+          </p>
+          <div id="diagnostics-entries"></div>
+          <label class="check"
+            ><input id="include-diagnostics" type="checkbox" />Share the selected
+            diagnostics with this project</label
+          >
+          <p class="hint">
+            No cookies, headers, request bodies, console objects or storage values. Status
+            may be unavailable for cross-origin requests.
+          </p>
+        </details>
         <label class="check"
           ><input id="no-image" type="checkbox" /> Send without screenshot</label
         >
