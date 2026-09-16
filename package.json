@@ -23,12 +23,17 @@
     "build:site": "vite build --config vite.site.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run typecheck && npm test && npm run build && npm run check:release",
+    "check": "npm run format:check && npm run check:harness && npm run typecheck && npm test && npm run build && npm run harness:smoke && npm run check:release",
     "check:release": "node scripts/check-release.mjs",
     "release:source": "node scripts/export-source.mjs",
     "test:postgres": "FEEDBACKS_NATIVE_POSTGRES=1 node --import tsx --test tests/cursor-concurrency.test.ts",
     "test:containers": "node scripts/smoke-containers.mjs",
-    "build:plugin": "node scripts/package-plugin.mjs"
+    "build:plugin": "node scripts/package-plugin.mjs",
+    "harness:dev": "npm run build && node scripts/dev-sandbox.mjs",
+    "harness:smoke": "node scripts/dev-sandbox.mjs --smoke",
+    "check:harness": "node scripts/check-harness.mjs && npm run docs:check",
+    "docs:generate": "node --import tsx scripts/generate-operation-docs.ts",
+    "docs:check": "node --import tsx scripts/generate-operation-docs.ts --check"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",

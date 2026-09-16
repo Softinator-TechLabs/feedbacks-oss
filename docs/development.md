@@ -14,6 +14,12 @@ Follow the README for local setup. The development database binds only to `127.0
 | `npm run check`          | Contributor quality gate                                       |
 | `npm run release:source` | Build a source-only archive with no Git history                |
 
+## Disposable agent sandbox
+
+Run `npm run harness:dev` after `npm ci`. Each run creates an in-memory PGlite database, local assets, random owner credentials and a fresh loopback port. Access details are written with owner-only permissions under ignored `.local/`; passwords are not logged. No `.env`, external database or S3 configuration is loaded. Stop with Ctrl+C to discard the instance. Rebuild/restart after source edits.
+
+Run `npm run harness:smoke` after `npm run build` for the same fixture with automatic sign-in, create/readback, denial and readiness checks followed by cleanup. See [verification](verification.md) for its limits.
+
 ## Database testing
 
 PGlite tests create isolated databases and temporary asset directories. They never connect to a configured production database. Native PostgreSQL tests create and stop a temporary local cluster using `initdb` and `pg_ctl`; put those binaries on PATH. They use a Unix socket and do not listen on TCP. Run them for migration or transaction changes because PGlite serializes its single connection and cannot prove concurrent commit behavior.

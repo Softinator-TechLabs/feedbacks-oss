@@ -25,3 +25,13 @@ graphify-out/
 .impeccable/build/
 .impeccable/mocks/
 *.tar.gz
+
+# Agent machine state and installed third-party skills stay local.
+CLAUDE.local.md
+.claude/
+.gemini/
+.codex/
+.agents/
+
+# Regenerated inside each source-release archive, never a live checkout snapshot.
+/SOURCE-MANIFEST.sha256

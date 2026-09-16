@@ -58,6 +58,17 @@ Build with `npm run build:extension`. Load the `extension/` directory from Chrom
 | `ops/`        | Generic deployment configuration                                                  |
 | `docs/`       | Public contributor and operator documentation                                     |
 
+## Agent development
+
+Start with [AGENTS.md](AGENTS.md) and the [documentation map](docs/index.md). Claude Code and Gemini CLI have thin adapters to the same instructions. See [supported skills and client setup](docs/agent-tools.md). For an isolated app with synthetic data and no deployment credentials:
+
+```sh
+npm ci
+npm run harness:dev
+```
+
+The command builds the app and prints its loopback URL and private local access-file path. Each run has a disposable database and independent port.
+
 ## Development
 
 ```sh
@@ -66,7 +77,7 @@ npm run check
 npm run test:postgres
 ```
 
-`check` runs formatting, type checking, tests, all builds and release-content checks. CI also runs the native PostgreSQL tests, dependency audit and secret scanning. A passing build is not evidence of production deployment or capacity.
+`check` runs formatting, architecture/docs checks, type checking, tests, all builds, an isolated app smoke check and release-content checks. CI also runs the native PostgreSQL tests, dependency audit and secret scanning. A passing build is not evidence of production deployment or capacity.
 
 ## License and community
 
