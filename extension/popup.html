@@ -22,9 +22,19 @@
     <input
       id="server"
       type="url"
-      value="http://localhost:3000"
       placeholder="https://feedback.example.com"
+      aria-describedby="server-help"
+      autocomplete="url"
     />
+    <p id="server-help" class="hint">
+      Use your team's Feedbacks address. You need an account on that server.
+      <a
+        href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/self-hosting.md"
+        target="_blank"
+        rel="noreferrer"
+        >Set up your own</a
+      >.
+    </p>
     <button id="pair" class="primary">Connect to server</button>
     <div id="project-choice" hidden>
       <label for="project">Save to</label>
@@ -33,7 +43,8 @@
     <p id="routing" role="status"></p>
     <button id="instant" hidden>Enable right-click on all websites</button>
     <p id="instant-help" class="hint" hidden>
-      One-time Chrome permission. Nothing is sent until you choose Send.
+      Optional Chrome permission. Loads existing pins from your server; new screenshots
+      and comments are shared only when you choose Send.
     </p>
     <button id="retry" hidden>Try this page again</button>
     <button id="draft" hidden>Continue draft</button>
@@ -64,6 +75,11 @@
     <p id="message" role="status"></p>
     <details id="connection-settings">
       <summary>Advanced</summary>
+      <label class="check"
+        ><input id="allow-local" type="checkbox" /> Allow local HTTP development
+        server</label
+      >
+      <p class="hint">Local HTTP is unencrypted. Use HTTPS for a shared team server.</p>
       <button id="pair-custom">Connect to this server</button>
       <button id="disconnect">Disconnect account</button>
       <button id="disable-instant" hidden>Turn off instant right-click</button>
@@ -72,9 +88,18 @@
       <button id="check-updates">Check for updates</button>
       <p id="update-status" class="hint" role="status"></p>
     </details>
-    <a id="app" href="http://localhost:3000" target="_blank" rel="noreferrer"
-      >Open Projects</a
-    >
+    <a id="app" hidden target="_blank" rel="noreferrer">Open Projects</a>
+    <footer>
+      <a href="https://feedbacks.softinator.ai" target="_blank" rel="noreferrer"
+        >About Feedbacks</a
+      >
+      <a
+        href="https://feedbacks.softinator.ai/privacy.html"
+        target="_blank"
+        rel="noreferrer"
+        >Privacy</a
+      >
+    </footer>
     <script src="utils.js"></script>
     <script type="module" src="popup.js"></script>
   </body>

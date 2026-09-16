@@ -8,7 +8,11 @@
 4. Choose **Connect to server**, grant permission to that server and approve pairing in its web application.
 5. Open a website registered in a project you can access. Start a review, capture or select a point, redact sensitive content, and send the feedback.
 
-The default loopback address supports local development. It does not send data to an official or internal hosted instance. Existing installations retain their saved server address and account connections.
+The first installation starts without a server address. Existing installations retain their saved server address and account connections. For local development, enter a loopback address such as `http://localhost:3000` and enable **Advanced → Allow local HTTP development server** before connecting. Use HTTPS for shared team servers.
+
+## Private preset build
+
+For a separate internal distribution, set `FEEDBACKS_EXTENSION_DEFAULT_SERVER=https://feedback.example.com` when running `npm run build:extension`. The build produces `feedbacks-extension-internal-VERSION.zip` with an Internal label and that server preset. It does not overwrite the public server download ZIP or its release metadata. Saved connections take precedence over the preset. Build without this variable for a public, server-neutral package; never include credentials in a preset.
 
 ## Permissions and data
 
@@ -20,7 +24,7 @@ Restricted browser pages cannot be captured. Cross-origin frames, moving content
 
 ## Release and updates
 
-The build produces a versioned ZIP, SHA-256 checksum and server download metadata. Unpacked installations require a manual update/reload. Server update checks offer an archive; they never execute a downloaded update automatically. Chrome Web Store publication is a separate release step and is not implied by the ZIP build.
+The build produces a versioned ZIP, SHA-256 checksum and server download metadata. Unpacked installations require a manual update/reload. Server update checks offer an archive; they never execute a downloaded update automatically. Chrome-managed installations use their configured update channel and do not show manual ZIP update notices. Chrome Web Store publication is a separate release step and is not implied by the ZIP build.
 
 Before a release, check pairing, capture, redaction, submit/retry, project routing, existing connection persistence, origin rejection, permission denial and update notices in Chrome. Include license/notice files in the archive. See [releasing](releasing.md).
 

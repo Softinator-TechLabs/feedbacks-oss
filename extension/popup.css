@@ -116,3 +116,17 @@ button {
   font-size: 14px;
   text-align: center;
 }
+#server-help {
+  margin: 8px 0 4px;
+  font-size: 13px;
+}
+footer {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
+  font-size: 12px;
+}
+[hidden] {
+  display: none !important;
+}

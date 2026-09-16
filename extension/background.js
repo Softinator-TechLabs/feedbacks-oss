@@ -1,8 +1,9 @@
 import { diagnosticCollector, cleanDiagnostics } from "./diagnostics.js";
 import "./utils.js";
 import { createReviewController } from "./review-session.js";
+import { createPairingCoordinator } from "./pairing.js";
 const U = globalThis.FeedbacksUtil;
-const DEFAULT = "http://localhost:3000";
+import { DEFAULT_SERVER as DEFAULT } from "./config.js";
 const ready = chrome.storage.local.setAccessLevel({
   accessLevel: "TRUSTED_CONTEXTS",
 });
@@ -75,6 +76,35 @@ const review = createReviewController({
   authenticated,
   defaultServer: DEFAULT,
 });
+const pairing = createPairingCoordinator({
+  get,
+  set,
+  remove: (key) => chrome.storage.local.remove(key),
+  contains: (permissions) => chrome.permissions.contains(permissions),
+  start: async ({ server: origin, allowLocal }) => {
+    const current = await get();
+    if (
+      current.pair?.server === origin &&
+      Date.parse(current.pair.expiresAt) > Date.now()
+    )
+      return;
+    const pair = await api(origin, "pairing.request", {
+      name: "Feedbacks Chrome extension",
+    });
+    const approval = new URL(pair.approvalPath, origin);
+    if (approval.origin !== origin || approval.pathname !== "/pair")
+      throw Error("The server returned an invalid approval address.");
+    await set({
+      server: origin,
+      instantReview: true,
+      allowLocal,
+      pair: { ...pair, server: origin, nextAt: Date.now() + 3000 },
+    });
+    await chrome.alarms.create("pair", { periodInMinutes: 0.5 });
+    await chrome.tabs.create({ url: approval.href });
+  },
+});
+chrome.permissions.onAdded.addListener(() => pairing.finish().catch(() => {}));
 chrome.runtime.onStartup.addListener(() => review.syncInstant().catch(() => {}));
 chrome.permissions.onRemoved.addListener(() => review.syncInstant().catch(() => {}));
 chrome.runtime.onInstalled.addListener(async () => {
@@ -796,40 +826,46 @@ async function route(message, sender) {
       await pollPair();
       return {
         server,
+        serverDraft: state.serverDraft,
         allowLocal: !!state.allowLocal,
         connected: !!state.accounts?.[server]?.token,
         pending: !!state.pair,
         projectId: state.projectId,
         instantReview: !!state.instantReview,
         hasDraft: !!state.draft,
-        captureError: state.captureError || "",
+        captureError: state.captureError || state.pairError || "",
       };
     case "projects":
       return authenticated("projects.list");
     case "draftProjects":
       if (!state.draft) throw Error("No draft.");
       return authenticated("projects.list", {}, state.draft.server);
-    case "pair": {
-      const origin = U.server(message.server || DEFAULT, true);
-      if (!(await chrome.permissions.contains({ origins: [origin + "/*"] })))
-        throw Error("Grant server permission first.");
-      const pair = await api(origin, "pairing.request", {
-        name: "Feedbacks Chrome extension",
-      });
-      const approval = new URL(pair.approvalPath, origin);
-      if (approval.origin !== origin || approval.pathname !== "/pair")
-        throw Error("The server returned an invalid approval address.");
-      await set({
-        server: origin,
-        instantReview: true,
-        allowLocal: true,
-        pair: { ...pair, server: origin, nextAt: Date.now() + 3000 },
-      });
-      await chrome.alarms.create("pair", { periodInMinutes: 0.5 });
-      await chrome.tabs.create({ url: approval.href });
+    case "saveServerDraft": {
+      if (typeof message.value !== "string" || message.value.length > 2048)
+        throw Error("Server address is too long.");
+      await set({ serverDraft: message.value });
       return {};
     }
+    case "preparePair": {
+      const origin = U.server(message.server || DEFAULT, message.allowLocal === true);
+      if (
+        typeof message.requestId !== "string" ||
+        !/^[a-f0-9-]{36}$/.test(message.requestId)
+      )
+        throw Error("Invalid connection request.");
+      return pairing.prepare({
+        server: origin,
+        allowLocal: message.allowLocal === true,
+        requestId: message.requestId,
+      });
+    }
+    case "finishPair":
+      return pairing.finish();
+    case "cancelPair":
+      return pairing.cancel(message.requestId);
     case "disconnect": {
+      await pairing.cancel(state.pairIntent?.requestId);
+      await chrome.storage.local.remove("pairError");
       const accounts = { ...state.accounts };
       delete accounts[server];
       await set({ accounts });
