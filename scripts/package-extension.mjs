@@ -8,6 +8,12 @@ import { compareChromeVersions, validateReleaseRecord } from "../extension/updat
 const root = resolve(import.meta.dirname, ".."),
   source = resolve(root, "extension");
 const manifest = JSON.parse(await readFile(resolve(source, "manifest.json"), "utf8"));
+const preset = process.env.FEEDBACKS_EXTENSION_DEFAULT_SERVER?.trim() || "";
+if (preset) {
+  const url = new URL(preset);
+  if (url.origin !== preset || url.protocol !== "https:" || url.username || url.password)
+    throw Error("A private extension preset must be an exact HTTPS server origin.");
+}
 if (manifest.manifest_version !== 3) throw Error("Invalid MV3 version.");
 try {
   compareChromeVersions(manifest.version, manifest.version);
@@ -55,7 +61,17 @@ for (const { path, name } of packageFiles) {
     !/^(?:[a-z][a-z0-9-]*\.(?:js|html|css|json)|icons\/(?:16|32|48|128)\.png)$/.test(name)
   )
     throw Error(`File is not on the upload allowlist: ${name}`);
-  const data = await readFile(path);
+  let data = await readFile(path);
+  if (name === "config.js")
+    data = Buffer.from(`export const DEFAULT_SERVER = ${JSON.stringify(preset)};\n`);
+  if (preset && name === "manifest.json")
+    data = Buffer.from(
+      JSON.stringify(
+        { ...manifest, name: "Feedbacks Internal: Website Review" },
+        null,
+        2,
+      ) + "\n",
+    );
   if (
     name.endsWith(".js") &&
     /\beval\s*\(|new\s+Function\s*\(|sourceMappingURL/.test(data.toString())
@@ -68,7 +84,11 @@ if (!names.includes("manifest.json") || !names.includes("icons/128.png"))
   throw Error("Missing manifest or icon.");
 const zip = zipFiles(entries),
   hash = createHash("sha256").update(zip).digest("hex");
-const owner = resolve(root, `dist/extension/feedbacks-extension-${manifest.version}.zip`),
+const channel = preset ? "internal-" : "";
+const owner = resolve(
+    root,
+    `dist/extension/feedbacks-extension-${channel}${manifest.version}.zip`,
+  ),
   download = resolve(root, "dist/web/downloads/feedbacks-extension.zip"),
   store = resolve(root, "dist/store-assets");
 for (const dir of [
@@ -78,7 +98,7 @@ for (const dir of [
 ])
   await mkdir(dir, { recursive: true });
 await writeFile(owner, zip);
-await writeFile(download, zip);
+if (!preset) await writeFile(download, zip);
 await writeFile(owner + ".sha256", hash + "  " + owner.split("/").at(-1) + "\n");
 await copyFile(resolve(source, "icons/128.png"), resolve(store, "icon-128.png"));
 const promo =
@@ -91,10 +111,11 @@ const release = {
   bytes: zip.length,
 };
 if (!validateReleaseRecord(release)) throw Error("Invalid extension release metadata.");
-await writeFile(
-  resolve(root, "dist/web/downloads/extension-release.json"),
-  JSON.stringify(release) + "\n",
-);
+if (!preset)
+  await writeFile(
+    resolve(root, "dist/web/downloads/extension-release.json"),
+    JSON.stringify(release) + "\n",
+  );
 console.log(
   JSON.stringify(
     {

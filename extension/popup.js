@@ -6,14 +6,20 @@ const send = async (message) => {
   if (!r.ok) throw Error(r.error);
   return r.data;
 };
-const installedVersion = chrome.runtime.getManifest().version;
+const manifest = chrome.runtime.getManifest();
+const installedVersion = manifest.version;
+const managedUpdates = Boolean(manifest.update_url);
 const releaseGate = createReleaseSelectionGate();
 let tab,
   refreshing = false,
   loadedConnection,
   noticeServer = "",
-  pairingPending = false;
+  pairingPending = false,
+  serverEdited = false;
 $("installed-version").textContent = `Installed extension ${installedVersion}`;
+$("check-updates").hidden = managedUpdates;
+if (managedUpdates)
+  $("update-status").textContent = "Chrome manages updates for this installation.";
 const connectionKey = (state) =>
   JSON.stringify([state.server, state.connected, state.pending]);
 function hideUpdateNotice() {
@@ -24,6 +30,12 @@ function hideUpdateNotice() {
 }
 async function refreshRelease(state, bypassCache = false, manual = false) {
   const ticket = releaseGate.select(state.server);
+  if (managedUpdates || !state.server) {
+    hideUpdateNotice();
+    if (!managedUpdates && manual)
+      $("update-status").textContent = "Connect to your Feedbacks server first.";
+    return;
+  }
   if (noticeServer !== state.server) {
     noticeServer = state.server;
     hideUpdateNotice();
@@ -93,8 +105,11 @@ async function refresh() {
     const state = await send({ type: "settings" });
     loadedConnection = connectionKey(state);
     pairingPending = state.pending;
-    $("server").value = state.server;
+    if (!serverEdited) $("server").value = state.serverDraft ?? state.server;
+    $("allow-local").checked = !!state.allowLocal;
     $("app").href = state.server + "/";
+    $("app").hidden = !state.server;
+    $("server-help").hidden = state.connected;
     $("pair").hidden = state.connected;
     $("pair").disabled = state.pending;
     $("pair-custom").disabled = state.pending;
@@ -138,11 +153,27 @@ function action(id, fn) {
     }
   };
 }
+$("server").oninput = () => {
+  serverEdited = true;
+  $("message").textContent = "";
+  void send({ type: "saveServerDraft", value: $("server").value }).catch(() => {});
+};
 async function connect(server) {
-  server = FeedbacksUtil.server(server, true);
-  if (!(await chrome.permissions.request({ origins: [server + "/*"] })))
+  if (!server.trim()) throw Error("Enter your team's Feedbacks server address.");
+  const allowLocal = $("allow-local").checked;
+  server = FeedbacksUtil.server(server.trim(), allowLocal);
+  const requestId = crypto.randomUUID();
+  // Queue the durable background intent without awaiting: the permission request
+  // must retain this click gesture, and Chrome may close the popup while granting it.
+  const prepared = send({ type: "preparePair", server, allowLocal, requestId });
+  prepared.catch(() => {});
+  const allowed = await chrome.permissions.request({ origins: [server + "/*"] });
+  await prepared;
+  if (!allowed) {
+    await send({ type: "cancelPair", requestId });
     throw Error("Allow access to your Feedbacks server to connect.");
-  await send({ type: "pair", server });
+  }
+  await send({ type: "finishPair" });
   await refresh();
 }
 action("pair", () => connect($("server").value));
