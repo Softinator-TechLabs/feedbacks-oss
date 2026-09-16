@@ -78,7 +78,7 @@ Copy this into the relevant repository's agent instructions and fill in its auth
 2. `threads.list` / `threads.get` retrieves the exact URL, actual viewport, anchor, conversation, independent statuses and authorized image paths.
 3. `threads.reply` records the agent's response without pretending the work is fixed.
 4. If separately authorized, the agent creates an Issue using its own GitHub tooling and registers the **actual** URL with `threads.linkIssue`.
-5. `threads.evidence` records the actual commit, PR or incorporated-in view. `threads.status` moves through in-progress / ready-for-review / resolved with a required resolution note and permission.
+5. `threads.evidence` records the actual commit, PR or incorporated-in view. `threads.status` moves through in-progress / ready-for-review / resolved with the required permission. Outcome notes are optional; include useful context when available.
 6. Resolved pins hide by default. A reply or Issue link alone does not hide them. Reopening restores them.
 
 `context.export` provides stable paginated JSON with a cursor. `context.changes` returns later events; re-fetch the referenced thread for current authorized data. Save exports privately outside Git unless the owner explicitly authorizes a sanitized export. Use [API reference](api.md) for exact payloads, revisions, pagination, idempotency and errors.

@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { api, labels, type Thread } from "./api.js";
-import { ActionState, Field, Notice, useAction } from "./ui.js";
+import { ErrorNotice, Field, Notice, useAction } from "./ui.js";
 import { useUnsavedChanges } from "./navigation.js";
 type StatusDraft = {
-  state: string;
+  state: "open" | "in_progress" | "ready_for_review" | "resolved" | "declined";
   note: string;
   duplicateOf: string;
   revision: number;
@@ -18,98 +18,149 @@ export function ThreadStatus({
   onSaved: (thread: Thread) => void;
 }) {
   const [draft, setDraft] = useState<StatusDraft>(),
+    pending = useRef(false),
     a = useAction();
-  const current = draft ?? {
-    state:
-      !canResolve && ["resolved", "declined"].includes(thread.work.state)
-        ? ""
-        : thread.work.state,
+  const current: StatusDraft = draft ?? {
+    state: thread.work.state as StatusDraft["state"],
     note: "",
-    duplicateOf: "",
+    duplicateOf: thread.work.duplicateOf ?? "",
     revision: thread.revision,
   };
   const changed = !!draft && draft.revision !== thread.revision;
+  const canSave = canResolve || !["resolved", "declined"].includes(current.state);
   useUnsavedChanges(!!draft || a.busy);
   const update = (patch: Partial<StatusDraft>) => setDraft({ ...current, ...patch });
+  async function save(submitted: StatusDraft) {
+    if (pending.current || changed) return;
+    pending.current = true;
+    setDraft(submitted);
+    try {
+      await a.run(async () => {
+        const result = await api<Thread>("threads.status", {
+          threadId: thread.id,
+          revision: submitted.revision,
+          state: submitted.state,
+          ...(submitted.note.trim() ? { note: submitted.note.trim() } : {}),
+          ...(submitted.duplicateOf ? { duplicateOf: submitted.duplicateOf } : {}),
+        });
+        onSaved(result);
+        setDraft(undefined);
+      }, `Status saved: ${labels[submitted.state]}.`);
+    } finally {
+      pending.current = false;
+    }
+  }
   return (
-    <details className="status-editor">
-      <summary>Update status · {labels[thread.work.state]}</summary>
-      {changed && (
-        <Notice>
-          Latest saved status: {labels[thread.work.state]} (revision {thread.revision}).
-          Your unsent selection and note are preserved.{" "}
-          <button
-            type="button"
-            disabled={a.busy}
-            onClick={() => update({ revision: thread.revision })}
-          >
-            Use latest revision and keep draft
-          </button>
-        </Notice>
-      )}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (a.busy || changed) return;
-          const submitted = current;
-          void a.run(async () => {
-            const result = await api<Thread>("threads.status", {
-              threadId: thread.id,
-              revision: submitted.revision,
-              state: submitted.state as "open",
-              note: submitted.note,
-              ...(submitted.duplicateOf ? { duplicateOf: submitted.duplicateOf } : {}),
-            });
-            onSaved(result);
-            setDraft((value) => (value === submitted ? undefined : value));
-          }, "Status saved.");
-        }}
-      >
+    <section className="status-editor" aria-label="Thread status" aria-busy={a.busy}>
+      <div className="status-controls">
         <Field label="Status">
           <select
             name="state"
-            required
+            disabled={a.busy || changed}
             value={current.state}
-            onChange={(e) => update({ state: e.target.value })}
+            onChange={(e) =>
+              void save({ ...current, state: e.target.value as StatusDraft["state"] })
+            }
           >
-            <option value="" disabled>
-              Choose a new status
-            </option>
             {[
               "open",
               "in_progress",
               "ready_for_review",
               ...(canResolve ? ["resolved", "declined"] : []),
+              ...(!canResolve && ["resolved", "declined"].includes(thread.work.state)
+                ? [thread.work.state]
+                : []),
             ].map((state) => (
-              <option value={state} key={state}>
+              <option
+                value={state}
+                key={state}
+                disabled={!canResolve && ["resolved", "declined"].includes(state)}
+              >
                 {labels[state]}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="Outcome note" hint="Required when resolving or declining.">
+        {canResolve && thread.work.state !== "resolved" && (
+          <button
+            type="button"
+            className="primary"
+            disabled={a.busy || changed}
+            onClick={() => void save({ ...current, state: "resolved" })}
+          >
+            Resolve
+          </button>
+        )}
+        {thread.work.state === "resolved" && (
+          <button
+            type="button"
+            disabled={a.busy || changed}
+            onClick={() => void save({ ...current, state: "open" })}
+          >
+            Reopen
+          </button>
+        )}
+        <span className="muted" role="status">
+          {a.busy ? "Saving…" : `Saved status: ${labels[thread.work.state]}`}
+        </span>
+      </div>
+      <ErrorNotice error={a.error} />
+      {draft && !changed && !a.busy && !a.error.includes("CONFLICT") && (
+        <button
+          type="button"
+          disabled={a.busy || !canSave}
+          onClick={() => void save(current)}
+        >
+          {a.error ? "Retry status update" : "Save pending status"}
+        </button>
+      )}
+      {(changed || a.error.includes("CONFLICT")) && (
+        <Notice>
+          This thread changed. Your selection and note are preserved.{" "}
+          <button
+            type="button"
+            disabled={a.busy}
+            onClick={() =>
+              void a.run(async () => {
+                const latest = await api<Thread>("threads.get", { threadId: thread.id });
+                onSaved(latest);
+                setDraft({ ...current, revision: latest.revision });
+              })
+            }
+          >
+            Load latest status and keep draft
+          </button>
+        </Notice>
+      )}
+      <details className="status-options">
+        <summary>Add a note or duplicate link</summary>
+        <Field label="Outcome note (optional)">
           <textarea
             name="note"
-            rows={3}
+            rows={2}
             maxLength={12000}
+            disabled={a.busy}
             value={current.note}
             onChange={(e) => update({ note: e.target.value })}
           />
         </Field>
-        <details className="duplicate-details">
-          <summary>Mark as duplicate</summary>
-          <Field label="Original thread ID">
-            <input
-              name="duplicateOf"
-              placeholder="UUID"
-              value={current.duplicateOf}
-              onChange={(e) => update({ duplicateOf: e.target.value })}
-            />
-          </Field>
-        </details>
-        <button disabled={a.busy || changed}>Update status</button>
-        <ActionState action={a} />
-      </form>
-    </details>
+        <Field label="Duplicate of thread ID (optional)">
+          <input
+            name="duplicateOf"
+            placeholder="UUID"
+            disabled={a.busy}
+            value={current.duplicateOf}
+            onChange={(e) => update({ duplicateOf: e.target.value })}
+          />
+        </Field>
+        <button
+          type="button"
+          disabled={a.busy || changed || !draft || !canSave}
+          onClick={() => void save(current)}
+        >
+          Save details
+        </button>
+      </details>
+    </section>
   );
 }

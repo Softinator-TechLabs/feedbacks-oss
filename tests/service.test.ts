@@ -163,19 +163,59 @@ test("authorization, independent response/work/issue/pins, conflict and retry be
       }),
       { code: "CONFLICT" },
     );
+    // Quick closing still requires resolve permission, even without an outcome note.
+    for (const state of ["resolved", "declined"]) {
+      await assert.rejects(
+        ops.executeOperation(reviewer, "threads.status", {
+          threadId: thread.id,
+          revision: reply.revision,
+          state,
+        }),
+        { code: "FORBIDDEN" },
+      );
+    }
     const resolved = await ops.executeOperation(owner, "threads.status", {
       threadId: thread.id,
       revision: reply.revision,
       state: "resolved",
-      note: "Checked",
     });
     assert.equal(resolved.pins.defaultVisible, false);
+    assert.equal(resolved.work.state, "resolved");
+    assert.equal(resolved.work.note, null);
+    assert.equal(resolved.work.history.at(-1)?.state, "resolved");
+    assert.equal(resolved.work.history.at(-1)?.actor.id, owner.userId);
+    assert.ok(resolved.work.history.at(-1)?.at);
+    assert.equal(resolved.response.state, reply.response.state);
+    await assert.rejects(
+      ops.executeOperation(owner, "threads.status", {
+        threadId: thread.id,
+        revision: reply.revision,
+        state: "declined",
+      }),
+      { code: "CONFLICT" },
+    );
     const reopened = await ops.executeOperation(owner, "threads.status", {
       threadId: thread.id,
       revision: resolved.revision,
       state: "open",
     });
     assert.equal(reopened.pins.defaultVisible, true);
+    const declined = await ops.executeOperation(owner, "threads.status", {
+      threadId: thread.id,
+      revision: reopened.revision,
+      state: "declined",
+    });
+    assert.equal(declined.work.note, null);
+    assert.equal(declined.pins.defaultVisible, false);
+    const annotated = await ops.executeOperation(owner, "threads.status", {
+      threadId: thread.id,
+      revision: declined.revision,
+      state: "resolved",
+      note: "Verified on the review page",
+    });
+    assert.equal(annotated.work.note, "Verified on the review page");
+    assert.equal(annotated.work.history.at(-1)?.note, "Verified on the review page");
+    assert.equal(annotated.work.history.at(-2)?.state, "declined");
     const hidden = await ops.executeOperation(owner, "threads.create", {
       ...input,
       projectId: other.id,

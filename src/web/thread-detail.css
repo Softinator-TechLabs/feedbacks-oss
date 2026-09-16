@@ -218,19 +218,47 @@
   max-height: 400px;
   overflow: auto;
 }
-.status-editor > summary {
-  font-size: 1rem;
-}
 .status-editor {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
-.status-editor form {
+.status-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.status-controls .field {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+.status-controls select {
+  width: auto;
+  max-width: 100%;
+}
+.status-controls > .muted {
+  font-size: 0.88rem;
+}
+.status-options {
   margin-top: 8px;
+  max-width: 560px;
 }
-.status-editor .duplicate-details {
-  margin-bottom: 12px;
+.status-options > summary {
+  display: list-item;
+  width: fit-content;
+  min-height: 44px;
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.status-options > .field {
+  margin-top: 12px;
+}
+@media (max-width: 500px) {
+  .status-controls > .muted {
+    flex-basis: 100%;
+  }
 }
 .context-panel > .section {
   margin: 16px 0;
@@ -238,9 +266,6 @@
 }
 .context-panel > .compact-details > summary {
   font-size: 1rem;
-}
-.context-panel > .status-editor {
-  margin-top: 16px;
 }
 .page-heading h1 .back {
   margin: 0;

@@ -190,6 +190,7 @@ export type Thread = {
   response: { state: string };
   work: {
     state: string;
+    duplicateOf?: string | null;
     history: Array<{
       state?: string;
       note?: string;
