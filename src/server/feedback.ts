@@ -290,8 +290,6 @@ export async function feedback(db: Database, a: Actor, op: string, i: any): Prom
       row.project_id,
       ["resolved", "declined"].includes(i.state) ? "resolve" : "write",
     );
-    if (["resolved", "declined"].includes(i.state) && !i.note)
-      fail("VALIDATION", "Closing feedback requires a resolution note");
     if (i.duplicateOf) {
       if (i.duplicateOf === row.id)
         fail("VALIDATION", "A thread cannot duplicate itself");

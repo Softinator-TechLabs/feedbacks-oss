@@ -582,6 +582,14 @@ export function ThreadDetail({
           </button>
         </Notice>
       )}
+      {project?.permissions.canWrite && (
+        <ThreadStatus
+          key={`status:${t.id}`}
+          thread={t}
+          canResolve={project.permissions.canResolve}
+          onSaved={setThread}
+        />
+      )}
       <ThreadNavigation key={threadId} threadId={threadId} />
       <div className="detail-grid">
         <div className="evidence-pane">
@@ -905,13 +913,6 @@ export function ThreadDetail({
                 </button>
               )}
             </details>
-            {project?.permissions.canWrite && (
-              <ThreadStatus
-                thread={t}
-                canResolve={project.permissions.canResolve}
-                onSaved={setThread}
-              />
-            )}
             <details className="section compact-details">
               <summary>Linked issues</summary>
               {t.externalIssues?.length ? (
