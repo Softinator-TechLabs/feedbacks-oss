@@ -67,7 +67,7 @@ for (const { path, name } of packageFiles) {
   if (preset && name === "manifest.json")
     data = Buffer.from(
       JSON.stringify(
-        { ...manifest, name: "Feedbacks Internal — website review" },
+        { ...manifest, name: "Feedbacks Internal: Website Review" },
         null,
         2,
       ) + "\n",
