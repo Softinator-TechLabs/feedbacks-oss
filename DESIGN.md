@@ -27,7 +27,7 @@ typography:
 
 Lead with a big, plain promise and an illustrated web review. Warm paper, heavy Manrope type, a coral pencil mark and three differently composed webpage scraps give the page its character. Keep prose short. Use the screenshot and tiny discussions to explain the workflow before adding another paragraph.
 
-The source files are `site/index.html`, `site/site.css` and `site/site.js`. The source and self-hosting actions are primary; hosted access is secondary. Examples are explicitly fictional. Figma, GitHub Issues and Projects are possible manual follow-ups, not integrations. Reviewer expertise is advisory.
+The source files are `site/index.html`, `site/site.css` and `site/site.js`. The Chrome Web Store download is the primary hero action, with a direct install link in the header. Source and self-hosting links remain easy to find; hosted access is secondary. Examples are explicitly fictional. Figma, GitHub Issues and Projects are possible manual follow-ups, not integrations. Reviewer expertise is advisory.
 
 The center example has three native buttons: Mark it, Discuss it and Let your AI read it. Selected state uses `aria-pressed`; updates use polite live text. The pencil draws only after interaction, once, with no looping animation. Reduced-motion preferences disable that animation. Keep the composition stable between stages.
 
