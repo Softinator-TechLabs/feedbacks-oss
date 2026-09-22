@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY vite.site.config.ts ./
+COPY .prettierrc.json ./
+COPY scripts/generate-comparisons.mjs ./scripts/
 COPY site ./site
 RUN npm run build:site
 
