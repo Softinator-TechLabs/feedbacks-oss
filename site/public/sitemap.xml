@@ -1,2 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://feedbacks.softinator.ai/</loc></url><url><loc>https://feedbacks.softinator.ai/privacy.html</loc></url></urlset>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://feedbacks.softinator.ai/</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/privacy.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/bugpin.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/fasterfixes.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/siteping.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/openreplay.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/bugherd.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/marker-io.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/markup-io.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/markup-hero.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/redpen-ai.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/pastel.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/ruttl.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/superflow.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/usersnap.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/userback.html</loc></url>
+  <url><loc>https://feedbacks.softinator.ai/compare/atarim.html</loc></url>
+</urlset>
