@@ -8,6 +8,7 @@ Exact schemas and callable operation names are in the [API reference](api.md). T
 | -------------- | ---------------------------------------------------------------------------------- | ------------------------------------------- |
 | Response       | `unanswered`, `responded`, `needs-follow-up`; last request/response actor and time | No                                          |
 | Work           | `open`, `in_progress`, `ready_for_review`, `resolved`, `declined`                  | Resolved and declined hide by default       |
+| Review         | Open round, human approval, or changes requested with attributed history           | No                                          |
 | External issue | No link, or one/more supplied GitHub Issue URLs with provenance                    | No                                          |
 | Fix evidence   | Attributed commit/PR/variant/incorporated-in URL and note                          | Only an authorized resolution hides the pin |
 
@@ -20,6 +21,7 @@ The transport returns `structuredContent` with an explicit output schema and a s
 - `id`, `projectId`, `revision`, `createdAt` and `updatedAt`.
 - `response`: state, last human request, last response, actor and time.
 - `work`: current state and attributed state-change history; resolution requires a note.
+- `review`: current round, decision state and attributed history. Older export snapshots may not contain this field. Human sign-off is independent of work status; agent tokens cannot write it.
 - `externalIssues`: URL, repository, issue number, linked-by actor, link time and optional reported creation time. `verification` is always `reported`; the product does not fetch GitHub state.
 - `fixEvidence`: attributable commit/PR/variant/incorporated-in links and notes. A supplied URL is not proof that the target is deployed or verified.
 - `pins.defaultVisible`: resolved/declined/archived pins are hidden by default. Original context and client anchor match remain separate.

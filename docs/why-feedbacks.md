@@ -6,7 +6,7 @@ Feedbacks is your team's slate for the web. Take a screenshot, circle a detail o
 
 An unclear requirement, a copy correction and a reproducible bug can arrive in the same review. They need different next steps. Keeping that discussion in Feedbacks lets the team ask questions, involve the right reviewer and decide what belongs in GitHub Issues and Projects. Clients need access to their Feedbacks project, not to the source repository.
 
-A small change can be discussed and completed within its thread. Continue agreed design work in Figma when a design artifact is needed. For work that needs engineering tracking, create an Issue through your existing GitHub workflow and attach its actual URL. These are handoffs through your team's own tools; Feedbacks has no automatic Figma integration and does not create or synchronize GitHub Issues automatically. It keeps the original request, replies, response obligations, work status and fix evidence together; an Issue link or agent reply alone does not resolve the feedback.
+A small change can be discussed and completed within its thread. Continue agreed design work in Figma when a design artifact is needed. For work that needs engineering tracking, an authorized coding agent can read the decided discussion through Feedbacks MCP, create an Issue with separately granted GitHub access, and call `threads.linkIssue` with the resulting URL. The agent must verify the Issue was created before linking it. Feedbacks itself does not store a GitHub credential or automatically create or synchronize Issues. The original request, replies, response obligations, work status and fix evidence stay together; an Issue link or agent reply alone does not resolve the feedback.
 
 ## Give agents the discussion and its context
 

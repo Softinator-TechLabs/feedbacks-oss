@@ -79,11 +79,65 @@
 .matrix-intro p {
   text-align: right;
 }
+.matrix-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #5e5952;
+}
+.matrix-controls[hidden] {
+  display: none;
+}
+.matrix-controls > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+.matrix-controls button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--site-paper, #fffdfa);
+  color: var(--ink);
+  font: inherit;
+  font-size: 22px;
+  cursor: pointer;
+}
+.matrix-controls button:hover:not(:disabled),
+.matrix-controls button:focus-visible {
+  background: var(--ink);
+  color: var(--site-paper, #fffdfa);
+}
+.matrix-controls button:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 2px;
+}
+.matrix-controls button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
 .matrix-scroll {
   overflow-x: auto;
   border: 1px solid var(--line);
   scrollbar-color: #9f9689 #f2eee7;
-  scrollbar-width: thin;
+  scrollbar-width: auto;
+  overscroll-behavior-inline: contain;
+  touch-action: pan-x pan-y;
+}
+.matrix-scroll::-webkit-scrollbar {
+  height: 13px;
+}
+.matrix-scroll::-webkit-scrollbar-track {
+  background: #f2eee7;
+}
+.matrix-scroll::-webkit-scrollbar-thumb {
+  background: #9f9689;
+  border: 3px solid #f2eee7;
 }
 .matrix-scroll:focus-visible {
   outline: 3px solid var(--coral);
@@ -372,6 +426,12 @@
   .matrix-intro p {
     margin-top: 8px;
     text-align: left;
+  }
+  .matrix-controls {
+    align-items: start;
+  }
+  .matrix-controls > p {
+    max-width: 16ch;
   }
   .compare-matrix table {
     min-width: 1130px;

@@ -6,4 +6,4 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
-No active tracked plans. The initial harness decision is recorded in [Decision 0001](../decisions/0001-repository-harness.md); current capability gaps are tracked in [quality](../quality.md).
+[Expand review and agent handoff](feature-suite.md) is active. The initial harness decision is recorded in [Decision 0001](../decisions/0001-repository-harness.md); current capability gaps are tracked in [quality](../quality.md).

@@ -14,6 +14,10 @@ The status selector at the top of a thread saves as soon as you choose a state. 
 
 The saved status remains visible while a request is pending or fails. Failed updates retain their selection and details for retry. A conflicting revision must be loaded before retrying; the app does not silently overwrite another member's changes. Status history still records the actor and time. Resolving a thread does not claim delivery evidence or change its response obligation.
 
+## Record a review decision
+
+Review rounds record an explicit human decision separately from work status. A project writer can choose **Approve this round** or **Request changes**, with an optional note. The decision records the reviewer, time and round. **Open another round** increments the round number and preserves earlier decisions. An approval does not resolve the thread or assert that work is deployed. Agent keys cannot record a human sign-off. The thread revision prevents concurrent decisions from overwriting one another.
+
 ## Optional organization
 
 Category defaults to General. Tags are optional, case-insensitive and shared with the thread. Use up to 12 tags, each 32 characters; letters, numbers, spaces, hyphens, underscores and slashes are accepted. The app and extension both allow tags when creating feedback. Project writers can update them afterward. Changes use the thread revision, so concurrent edits cannot silently overwrite each other.
@@ -28,4 +32,4 @@ A thread with two or more screenshots offers **Compare screenshots**. Pick any t
 
 In the extension popup, open **Console & network**, start collection, reproduce the problem and take a screenshot. Collection covers the top-level page from that moment until capture, stop, navigation or five minutes. Review the entries in the editor and explicitly enable sharing. See [extension privacy and limits](extension.md#optional-console-and-network-context).
 
-Quick requests and discussion stay here. Link agreed follow-up work to Figma, GitHub Issues or Projects when your team is ready. No automatic handoff or synchronization with those products is included.
+Quick requests and discussion stay here. An agent with separately granted GitHub access can create an Issue after the team agrees and link its actual URL to the thread through MCP. Feedbacks does not automatically create or synchronize Issues.
