@@ -41,6 +41,7 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `threads.create`        | No                   | No                             |
 | `threads.evidence`      | No                   | Yes                            |
 | `threads.get`           | Yes                  | Yes                            |
+| `threads.issueDraft`    | Yes                  | Yes                            |
 | `threads.like`          | No                   | No                             |
 | `threads.linkIssue`     | No                   | Yes                            |
 | `threads.list`          | Yes                  | Yes                            |

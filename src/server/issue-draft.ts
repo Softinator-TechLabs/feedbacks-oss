@@ -1,0 +1,44 @@
+// An Issue draft is only a transcription aid. It never authorizes an external
+// write, and deliberately excludes attachments, diagnostics and reviewer policy.
+export function issueDraft(thread: any, repositoryUrl: string | null) {
+  const safe = (value: string) =>
+    value
+      .replace(/\r\n?/g, "\n")
+      .replace(/@/g, "＠")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .trim();
+  const quote = (value: string) =>
+    safe(value)
+      .split("\n")
+      .map((line) => `> ${line}`)
+      .join("\n");
+  const firstLine = safe(thread.body).split("\n")[0].replace(/\s+/g, " ");
+  const title = `Feedback: ${firstLine}`.slice(0, 120);
+  const sections = ["## Request", quote(thread.body)];
+  for (const reply of thread.replies ?? []) {
+    if (sections.join("\n\n").length > 7000) break;
+    sections.push(
+      `## ${safe(reply.author.name).slice(0, 80)} replied`,
+      quote(reply.body),
+    );
+  }
+  const body = sections.join("\n\n").slice(0, 8000);
+  return {
+    projectId: thread.projectId,
+    threadId: thread.id,
+    revision: thread.revision,
+    repositoryUrl,
+    sourcePath: `/threads/${thread.id}`,
+    title,
+    body,
+    trust: "untrusted_discussion" as const,
+    requiresReview: true as const,
+    warnings: [
+      "Check the draft for private information and accuracy before creating an Issue.",
+      "Screenshot assets and private reviewer notes are not copied into this draft.",
+      "Use a separately authorized GitHub tool, then verify and link the created Issue URL.",
+    ],
+  };
+}

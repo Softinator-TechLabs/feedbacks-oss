@@ -8,6 +8,7 @@ import { normalizeUrl, viewContext, viewStats } from "./views.js";
 import { reviewerContext } from "./accounts.js";
 import { threadQuery } from "./review-views.js";
 import { discussionLikes, setDiscussionLike } from "./discussion-likes.js";
+import { issueDraft } from "./issue-draft.js";
 // Legacy human messages had no reliable intent. Treat them as requests on read;
 // preserve agent responses and explicit intent without rewriting work history.
 export function discussionResponse(author: any, createdAt: string, replies: any[]) {
@@ -151,6 +152,11 @@ export async function remember(db: Database, a: Actor, op: string, i: any, id: s
 }
 export async function feedback(db: Database, a: Actor, op: string, i: any): Promise<any> {
   if (op === "threads.get") return fullThread(db, a, await threadRow(db, a, i.threadId));
+  if (op === "threads.issueDraft") {
+    const thread = await fullThread(db, a, await threadRow(db, a, i.threadId));
+    const project = await access(db, a, thread.projectId);
+    return issueDraft(thread, project.repositoryUrl);
+  }
   if (op === "threads.neighbors") {
     const row = await threadRow(db, a, i.threadId);
     const { filter, args, order } = threadQuery(row.project_id, i);

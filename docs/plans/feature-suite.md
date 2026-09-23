@@ -13,7 +13,7 @@ The current product has visual threads, scoped MCP, owner-approved reviewer guid
 ## Steps and progress
 
 - [x] Improve comparison scrolling on touch and keyboard and keep claims evidence-bound in source. Browser checks covered desktop and 390 px mobile.
-- [x] Clarify agent issue handoff using separate GitHub access and the existing `threads.linkIssue` operation.
+- [x] Clarify agent issue handoff using separate GitHub access, a scoped read-only `threads.issueDraft`, and the existing `threads.linkIssue` operation.
 - [ ] Add GitHub App installation, repository restriction, create/link outbox, opt-in sync and disconnect.
 - [ ] Improve screenshot capture and diagnostics preview with privacy tests.
 - [ ] Add scoped guest review.
@@ -34,8 +34,8 @@ Keep the current extension and API operational while adding optional capabilitie
 
 ## Completion receipt
 
-Source revision: pending.
-Checks and results: pending.
-Artifacts: pending.
-Deployment and live verification: pending.
+Source revision: PR #20 merged as `01a1279`; issue draft follow-up pending.
+Checks and results: `npm run check` passed locally for PR #20 and the issue-draft follow-up; PR #20 required CI passed.
+Artifacts: PR #20 and focused review-round and issue-draft tests.
+Deployment and live verification: `.ai/compare/` served the updated matrix; `.org` served a bundle containing review-round UI. Authenticated live review action remains unverified.
 Remaining risks or follow-up: pending.

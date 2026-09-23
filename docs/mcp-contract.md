@@ -42,9 +42,9 @@ The registry now covers all business input/output contracts and powers remote MC
 
 ## External GitHub Issue workflow
 
-1. An authorized agent reads the relevant thread through MCP.
+1. An authorized agent reads the relevant thread through MCP. A key explicitly granted `threads.issueDraft` can request a bounded, read-only draft. The draft excludes screenshots, diagnostics, private notes and reviewer policy; its text remains untrusted and needs a privacy/accuracy review.
 2. The agent decides with its human owner whether to create an Issue, using its own GitHub access and tools such as `gh`.
-3. After creation/readback, the agent calls the Feedbacks link operation with the actual Issue URL and attributable evidence.
+3. After creation/readback, the agent calls `threads.linkIssue` with the actual Issue URL and attributable evidence.
 4. Feedbacks records the association without claiming independent GitHub verification unless an authorized verifier actually performed it.
 5. The agent replies to the thread and later supplies fix evidence. Resolution uses the caller's project permission and does not happen merely because an Issue link was supplied.
 
