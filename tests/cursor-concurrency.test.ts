@@ -9,6 +9,7 @@ import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
 import { feedback } from "../src/server/feedback.js";
+import sharp from "sharp";
 
 // Opt-in native PostgreSQL: PGlite intentionally serializes its one connection and
 // cannot reproduce different transactions committing in reversed cursor order.
@@ -159,6 +160,90 @@ test(
         (await db.one("SELECT count(*)::integer AS count FROM export_snapshots")).count,
         4,
         "concurrent connections cannot exceed the shared snapshot budget",
+      );
+
+      const image = await sharp({
+        create: { width: 4, height: 4, channels: 3, background: "#ffffff" },
+      })
+        .png()
+        .toBuffer();
+      let releasePut: (() => void) | undefined;
+      let putStarted: (() => void) | undefined;
+      const putReady = () =>
+        new Promise<void>((resolve) => {
+          putStarted = resolve;
+        });
+      const removed: string[] = [];
+      const uploadOps = new Operations(
+        db,
+        {
+          put: async () => {
+            putStarted?.();
+            await new Promise<void>((resolve) => {
+              releasePut = resolve;
+            });
+          },
+          get: async () => image,
+          remove: async (key) => {
+            removed.push(key);
+          },
+        },
+        { organizationId: "test", production: false } as any,
+      );
+      const third = await ops.executeOperation(owner, "threads.create", {
+        ...base,
+        idempotencyKey: "upload-lock-third",
+      });
+      let startedPut = putReady();
+      const upload = uploadOps.executeOperation(owner, "assets.upload", {
+        threadId: third.id,
+        revision: third.revision,
+        imageBase64: image.toString("base64"),
+        idempotencyKey: "upload-lock-success",
+      });
+      await startedPut;
+      try {
+        const list = await Promise.race([
+          ops.executeOperation(owner, "projects.list", {}),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("account lock held during object upload")),
+              2000,
+            ),
+          ),
+        ]);
+        assert.ok((list as any).items.some((item: any) => item.id === p.id));
+      } finally {
+        releasePut?.();
+      }
+      const uploaded = await upload;
+      assert.equal(uploaded.asset.contentType, "image/webp");
+      assert.deepEqual(removed, []);
+
+      startedPut = putReady();
+      const staleUpload = uploadOps.executeOperation(owner, "assets.upload", {
+        threadId: third.id,
+        revision: uploaded.thread.revision,
+        imageBase64: image.toString("base64"),
+        idempotencyKey: "upload-lock-stale",
+      });
+      await startedPut;
+      try {
+        await ops.executeOperation(owner, "threads.reply", {
+          threadId: third.id,
+          revision: uploaded.thread.revision,
+          body: "Change during upload",
+          mentions: [],
+          idempotencyKey: "upload-lock-reply",
+        });
+      } finally {
+        releasePut?.();
+      }
+      await assert.rejects(staleUpload, { code: "CONFLICT" });
+      assert.equal(removed.length, 1, "uncommitted private object must be removed");
+      assert.equal(
+        (await db.one("SELECT count(*)::integer AS count FROM assets")).count,
+        1,
       );
     } finally {
       if (a) {

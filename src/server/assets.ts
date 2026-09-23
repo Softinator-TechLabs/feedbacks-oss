@@ -1,8 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import type { Database } from "./db.js";
 import type { Actor } from "../shared/contracts.js";
 import type { Config } from "./config.js";
@@ -19,6 +24,7 @@ import {
 export interface AssetStore {
   put(key: string, bytes: Buffer): Promise<void>;
   get(key: string): Promise<Buffer>;
+  remove(key: string): Promise<void>;
 }
 // Called only after the operation has authorized access and released its transaction.
 export async function assetPreview(
@@ -58,6 +64,9 @@ export class LocalAssets implements AssetStore {
   async get(key: string) {
     return readFile(path.join(this.directory, key));
   }
+  async remove(key: string) {
+    await rm(path.join(this.directory, key), { force: true });
+  }
 }
 export class S3Assets implements AssetStore {
   private client: S3Client;
@@ -91,6 +100,12 @@ export class S3Assets implements AssetStore {
     if (!result.Body) throw new Error("Asset content missing");
     return Buffer.from(await result.Body.transformToByteArray());
   }
+  async remove(key: string) {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.config.s3Bucket, Key: key }),
+      { abortSignal: AbortSignal.timeout(15000) },
+    );
+  }
 }
 export function assetStore(config: Config): AssetStore {
   if (config.production && config.assetDriver !== "s3")
@@ -107,32 +122,33 @@ export async function assetRow(db: Database, a: Actor, id: string) {
     fail("UPLOAD_PENDING", "Image validation is incomplete", 409);
   return row;
 }
-export async function assets(
-  db: Database,
-  a: Actor,
-  op: string,
-  i: any,
-  store: AssetStore,
-  config: Config,
-): Promise<any> {
-  if (op === "assets.get") {
-    const row = await assetRow(db, a, i.assetId);
-    return {
-      id: row.id,
-      projectId: row.project_id,
-      threadId: row.thread_id,
-      ...row.data,
-      url: `/api/assets/${row.id}`,
-    };
-  }
-  const row = await threadRow(db, a, i.threadId, "write", true);
-  const prior = await retry(db, a, op, i);
+export async function assets(db: Database, a: Actor, i: any): Promise<any> {
+  const row = await assetRow(db, a, i.assetId);
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    threadId: row.thread_id,
+    ...row.data,
+    url: `/api/assets/${row.id}`,
+  };
+}
+
+export async function assetUploadPreflight(db: Database, a: Actor, i: any) {
+  const row = await threadRow(db, a, i.threadId, "write");
+  const prior = await retry(db, a, "assets.upload", i);
   if (prior)
     return {
-      thread: await fullThread(db, a, row),
-      asset: await assets(db, a, "assets.get", { assetId: prior }, store, config),
+      projectId: row.project_id as string,
+      prior: {
+        thread: await fullThread(db, a, row),
+        asset: await assets(db, a, { assetId: prior }),
+      },
     };
   checkRevision(row, i.revision);
+  return { projectId: row.project_id as string, prior: null };
+}
+
+export async function prepareAssetUpload(i: any, config: Config, projectId: string) {
   const raw = i.imageBase64.replace(/^data:image\/(?:png|jpeg|webp);base64,/, "");
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(raw))
     fail("VALIDATION", "Expected a base64 PNG, JPEG or WebP image");
@@ -162,7 +178,7 @@ export async function assets(
   }
   const id = randomUUID(),
     captureId = randomUUID();
-  const key = `feedbacks/${config.production ? "production" : "development"}/organizations/${config.organizationId}/projects/${row.project_id}/feedback/${row.id}/captures/${captureId}/${i.rendition}.webp`;
+  const key = `feedbacks/${config.production ? "production" : "development"}/organizations/${config.organizationId}/projects/${projectId}/feedback/${i.threadId}/captures/${captureId}/${i.rendition}.webp`;
   const data = {
     captureId,
     rendition: i.rendition,
@@ -172,27 +188,42 @@ export async function assets(
     contentType: "image/webp",
     createdAt: new Date().toISOString(),
   };
+  return { id, key, data, output, projectId };
+}
+
+export async function commitAssetUpload(
+  db: Database,
+  a: Actor,
+  i: any,
+  prepared: Awaited<ReturnType<typeof prepareAssetUpload>>,
+) {
+  const row = await threadRow(db, a, i.threadId, "write", true);
+  const prior = await retry(db, a, "assets.upload", i);
+  if (prior)
+    return {
+      committed: false,
+      result: {
+        thread: await fullThread(db, a, row),
+        asset: await assets(db, a, { assetId: prior }),
+      },
+    };
+  checkRevision(row, i.revision);
+  if (row.project_id !== prepared.projectId)
+    fail("CONFLICT", "Feedback changed; reload before retrying", 409);
   await db.query(
-    "INSERT INTO assets(id,project_id,thread_id,object_key,data,status) VALUES($1,$2,$3,$4,$5,'pending')",
-    [id, row.project_id, row.id, key, JSON.stringify(data)],
+    "INSERT INTO assets(id,project_id,thread_id,object_key,data,status) VALUES($1,$2,$3,$4,$5,'validated')",
+    [prepared.id, row.project_id, row.id, prepared.key, JSON.stringify(prepared.data)],
   );
-  try {
-    await store.put(key, output);
-  } catch {
-    fail(
-      "UPLOAD_FAILED",
-      "Private image storage is unavailable; your draft can be retried",
-      503,
-    );
-  }
-  await db.query("UPDATE assets SET status='validated' WHERE id=$1", [id]);
-  await remember(db, a, op, i, id);
-  await event(db, a, row.project_id, id, "asset.validated", {
+  await remember(db, a, "assets.upload", i, prepared.id);
+  await event(db, a, row.project_id, prepared.id, "asset.validated", {
     threadId: row.id,
   });
   const saved = await saveThread(db, a, row, "thread.asset");
   return {
-    asset: { id, ...data, url: `/api/assets/${id}` },
-    thread: await fullThread(db, a, saved),
+    committed: true,
+    result: {
+      asset: { id: prepared.id, ...prepared.data, url: `/api/assets/${prepared.id}` },
+      thread: await fullThread(db, a, saved),
+    },
   };
 }
