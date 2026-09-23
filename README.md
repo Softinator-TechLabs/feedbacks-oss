@@ -4,7 +4,7 @@
 
 Take a screenshot of a web page, draw what you mean with a pencil, and discuss it with your team or coding agent. Keep the original context together before deciding what belongs in Figma, GitHub Issues or Projects. Feedbacks includes the web application, Chrome extension, HTTP API, MCP server and JSON CLI.
 
-[Website](https://feedbacks.softinator.ai) · [Why Feedbacks](docs/why-feedbacks.md) · [Self-hosting](docs/self-hosting.md) · [Extension](docs/extension.md) · [Coding assistants & Codex plugin](docs/agents.md) · [API & MCP](docs/api.md) · [Contributing](CONTRIBUTING.md)
+[Website](https://feedbacks.softinator.ai) · [Why Feedbacks](docs/why-feedbacks.md) · [Self-hosting](docs/self-hosting.md) · [Extension](docs/extension.md) · [Coding assistants & Codex plugin](docs/agents.md) · [API & MCP](docs/api.md) · [Roadmap](https://github.com/orgs/Softinator-TechLabs/projects/4) · [Contributing](CONTRIBUTING.md)
 
 ## What it does
 

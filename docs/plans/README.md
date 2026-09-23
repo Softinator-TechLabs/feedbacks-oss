@@ -1,9 +1,9 @@
 # Execution plans
 
-Use a tracked plan for a change spanning components, migrations or several sessions. Small fixes can keep their acceptance criteria in the PR. Start from [the template](template.md), give the plan a descriptive filename, and link it below. Keep private operational details outside the repository.
+Use a tracked plan for a public change spanning components, migrations or several sessions. Small fixes can keep their acceptance criteria in the PR. Start from [the template](template.md), give the plan a descriptive filename, and link it below. Keep confidential feature backlogs and operational plans outside the repository.
 
 A plan records intent, progress, decisions, verification and unresolved risk. It is not proof that an action ran. Mark it completed only after the stated acceptance criteria have evidence. Keep completed plans linked so later contributors can understand the decision history.
 
 ## Plans
 
-[Expand review and agent handoff](feature-suite.md) is active. The initial harness decision is recorded in [Decision 0001](../decisions/0001-repository-harness.md); current capability gaps are tracked in [quality](../quality.md).
+The initial harness decision is recorded in [Decision 0001](../decisions/0001-repository-harness.md); current public capability gaps are tracked in [quality](../quality.md).
