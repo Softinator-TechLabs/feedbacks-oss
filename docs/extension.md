@@ -1,5 +1,9 @@
 # Browser extension
 
+## Install from Chrome Web Store
+
+Open the [Feedbacks Chrome Web Store listing](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo) and choose **Add to Chrome**. Pin and open Feedbacks, enter your team's Feedbacks server address, then choose **Connect to server**. Grant access to that server, sign in and approve pairing. Chrome updates the Store installation after a new version is published there. The signed-in app's `/help` page shows its own server address and these steps.
+
 ## Install from source
 
 1. Run `npm ci` and `npm run build:extension`.
@@ -8,7 +12,7 @@
 4. Choose **Connect to server**, grant permission to that server and approve pairing in its web application.
 5. Open a website registered in a project you can access. Start a review, capture or select a point, redact sensitive content, and send the feedback.
 
-The first installation starts without a server address. Existing installations retain their saved server address and account connections. For local development, enter a loopback address such as `http://localhost:3000` and enable **Advanced → Allow local HTTP development server** before connecting. Use HTTPS for shared team servers.
+The public Store installation and a first source installation start without a server address. Existing installations retain their saved server address and account connections. For local development, enter a loopback address such as `http://localhost:3000` and enable **Advanced → Allow local HTTP development server** before connecting. Use HTTPS for shared team servers.
 
 ## Private preset build
 

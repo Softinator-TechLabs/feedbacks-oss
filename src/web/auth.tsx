@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { api, type Actor } from "./api.js";
 import { ActionState, ErrorNotice, Field, useAction } from "./ui.js";
+import { officialWebsiteUrl } from "../shared/product-links.js";
 export function AuthScreen({
   onAuthenticated,
   inviteToken = "",
@@ -80,6 +81,7 @@ export function AuthScreen({
       </form>
       <p className="muted">Need access or a password reset? Contact your team owner.</p>
       <footer>
+        <a href={officialWebsiteUrl}>About Feedbacks</a>
         <a href="/help">Help & extension</a>
         <a href="/privacy">Privacy</a>
       </footer>
