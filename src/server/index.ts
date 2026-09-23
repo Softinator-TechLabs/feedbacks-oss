@@ -5,6 +5,7 @@ import { assetStore } from "./assets.js";
 import { createApp } from "./app.js";
 import type { Pool } from "pg";
 import { purgeExpiredExports } from "./export-limits.js";
+import { purgeExpiredPairings } from "./auth.js";
 
 try {
   const config = configFromEnv();
@@ -17,10 +18,18 @@ try {
   );
   server.requestTimeout = 30000;
   server.headersTimeout = 15000;
+  let maintenanceRunning = false;
   const maintenance = setInterval(() => {
-    void purgeExpiredExports(db).catch(() =>
-      console.error("Export expiry cleanup failed."),
-    );
+    if (maintenanceRunning) return;
+    maintenanceRunning = true;
+    void Promise.allSettled([purgeExpiredExports(db), purgeExpiredPairings(db)])
+      .then((results) => {
+        if (results.some((result) => result.status === "rejected"))
+          console.error("Expiry cleanup failed.");
+      })
+      .finally(() => {
+        maintenanceRunning = false;
+      });
   }, 60000).unref();
   let stopping = false;
   const stop = () => {

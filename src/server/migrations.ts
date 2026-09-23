@@ -82,5 +82,9 @@ INSERT INTO migrations(version) VALUES(5);`;
       await tx.query("CREATE INDEX threads_tags ON threads USING gin ((data->'tags'))");
       await tx.query("INSERT INTO migrations(version) VALUES(6)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=7"))) {
+      await tx.query("CREATE INDEX pairing_expiry ON pairing(expires_at)");
+      await tx.query("INSERT INTO migrations(version) VALUES(7)");
+    }
   });
 }

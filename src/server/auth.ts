@@ -16,6 +16,11 @@ export const person = (u: any): Actor => ({
 });
 export const accountLock = (db: Database) =>
   db.query("SELECT pg_advisory_xact_lock(hashtextextended('feedbacks.accounts',0))");
+const pendingPairingLimit = 1000;
+export const purgeExpiredPairings = (db: Database) =>
+  db.query(
+    "DELETE FROM pairing WHERE id IN (SELECT id FROM pairing WHERE expires_at<=now() ORDER BY expires_at LIMIT 10000)",
+  );
 export async function revokeCredentials(db: Database, userId: string) {
   await db.query("DELETE FROM sessions WHERE user_id=$1", [userId]);
   await db.query(
@@ -269,10 +274,22 @@ export class Auth {
     const id = randomUUID(),
       deviceSecret = secret(),
       expiresAt = new Date(Date.now() + 10 * 60000).toISOString();
-    await this.db.query(
-      "INSERT INTO pairing(id,secret_hash,name,expires_at) VALUES($1,$2,$3,$4)",
-      [id, hash(deviceSecret), name, expiresAt],
-    );
+    await this.db.transaction(async (tx) => {
+      // Bound public device requests across app replicas without taking the
+      // organization-wide account lock used by signed-in operations.
+      await tx.query(
+        "SELECT pg_advisory_xact_lock(hashtextextended('feedbacks.pairing',0))",
+      );
+      const pending = await tx.one(
+        "SELECT count(*)::integer AS count FROM pairing WHERE expires_at>now() AND consumed_at IS NULL",
+      );
+      if (pending.count >= pendingPairingLimit)
+        fail("RATE_LIMITED", "Too many pending devices; retry shortly", 429);
+      await tx.query(
+        "INSERT INTO pairing(id,secret_hash,name,expires_at) VALUES($1,$2,$3,$4)",
+        [id, hash(deviceSecret), name, expiresAt],
+      );
+    });
     return {
       pairingId: id,
       deviceSecret,
