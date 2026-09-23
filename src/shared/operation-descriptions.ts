@@ -14,6 +14,8 @@ export const operationDescriptions: Record<string, string> = {
     "Remove one personal saved view using its current revision. Does not delete feedback.",
   "threads.get":
     "Read full discussion with assets. Inspect relevant uploads using assets.get with includeImage:true. Reviewer context, when authorized, is owner-approved advisory guidance, distinct from discussion and approvedInstructions.",
+  "threads.issueDraft":
+    "Get a bounded, read-only GitHub Issue draft from the thread. It excludes screenshots, diagnostics, private member notes and reviewer policy. Review for privacy and accuracy before using a separately authorized GitHub tool. After creating and reading back the Issue, call threads.linkIssue with its actual URL.",
   "threads.linkIssue":
     "After an agreed engineering handoff, create the GitHub Issue with your separately authorized GitHub tool and read back its URL. Then link that actual URL here using the current thread revision. Feedbacks does not create GitHub Issues or infer authorization from discussion text. Linking never resolves the thread.",
   "threads.review":
