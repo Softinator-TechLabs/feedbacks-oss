@@ -14,6 +14,7 @@ import "./thread-detail.css";
 import "./theme.css";
 import { ThemeSwitch } from "./theme.js";
 import { usePageLocation } from "./navigation.js";
+import { officialWebsiteUrl } from "../shared/product-links.js";
 function App() {
   const pageLocation = usePageLocation();
   const path = pageLocation.split("?")[0];
@@ -156,7 +157,10 @@ function App() {
             </a>
           )}
           <a href="/help" aria-current={path === "/help" ? "page" : undefined}>
-            Help & extension
+            Help
+          </a>
+          <a className="official-site-link" href={officialWebsiteUrl}>
+            Website <span aria-hidden="true">↗</span>
           </a>
         </nav>
         <div className="account-nav">
@@ -273,6 +277,7 @@ function App() {
         </main>
         <footer className="site-footer">
           <span>Feedbacks</span>
+          <a href={officialWebsiteUrl}>Official website</a>
           <a href="/privacy">Privacy</a>
           <a href="/help">Help</a>
         </footer>

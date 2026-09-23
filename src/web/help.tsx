@@ -3,9 +3,9 @@ import { ownerTokenScopes } from "../shared/contracts.js";
 import { agentSetupPrompt, type AgentIssuance } from "./agent-setup.js";
 import { api, type Actor, type Project } from "./api.js";
 import { ActionState, useAction, useLoad, Loading, ErrorNotice } from "./ui.js";
+import { chromeWebStoreUrl, officialWebsiteUrl } from "../shared/product-links.js";
 
 type HelpContent = {
-  downloadHtml: string;
   moreHtml: string;
   instructions: string;
 };
@@ -26,10 +26,10 @@ function HelpAgentSetup({
 
   if (!actor?.owner)
     return (
-      <li>
-        <h2>Copy agent setup</h2>
-        <p>Ask an owner to create the private agent setup prompt for you.</p>
-      </li>
+      <section className="help-agent">
+        <h2>Connect your coding agent</h2>
+        <p>Ask a workspace owner to create a private agent setup prompt.</p>
+      </section>
     );
 
   async function copyAgentSetup() {
@@ -72,39 +72,57 @@ function HelpAgentSetup({
   }
 
   return (
-    <li>
-      <h2>Copy agent setup</h2>
-      <p>Paste the copied prompt into Codex, Claude or your agent.</p>
-      <p>
-        Full owner administration · all current and future projects · 90 days.
-        {actor.primaryOwner
-          ? " Includes your private member notes."
-          : " Primary-owner private notes stay restricted."}{" "}
-        Share this private key only with your trusted agent.
-      </p>
-      <button
-        className="primary"
-        disabled={action.busy || !instructions}
-        onClick={() =>
-          void action.run(
-            copyAgentSetup,
-            issued
-              ? "Agent setup prompt copied again."
-              : "Agent setup prompt created and copied.",
-          )
-        }
-      >
-        {action.busy ? (issued ? "Copying…" : "Creating & copying…") : "Copy agent setup"}
-      </button>
-      <ActionState action={action} />
-      {!instructions && (
-        <p className="error" role="alert">
-          Agent setup instructions are unavailable. Ask the owner to update this server
-          before creating a key.
+    <section className="help-agent">
+      <div>
+        <h2>Connect your coding agent</h2>
+        <p>
+          Give Codex, Claude or another MCP client a private connection to this workspace.
+          The prompt includes the server address, a newly issued API key, permissions,
+          expiry and setup instructions. Your agent reads current discussions through MCP
+          after connecting.
         </p>
-      )}
+        <p className="help-key-warning">
+          This creates a 90-day key with full owner administration across current and
+          future projects.
+          {actor.primaryOwner
+            ? " It can access your private member notes."
+            : " Primary-owner private notes stay restricted."}{" "}
+          Share it only with an agent you trust.
+        </p>
+      </div>
+      <div className="help-agent-actions">
+        <button
+          className="primary"
+          disabled={action.busy || !instructions}
+          onClick={() =>
+            void action.run(
+              copyAgentSetup,
+              issued
+                ? "Agent setup prompt copied again."
+                : "Private key created and setup prompt copied.",
+            )
+          }
+        >
+          {action.busy
+            ? issued
+              ? "Copying…"
+              : "Creating key…"
+            : issued
+              ? "Copy setup again"
+              : "Create key and copy setup"}
+        </button>
+        <a href="/account#agent-setup">Choose limited access instead</a>
+        <ActionState action={action} />
+        {!instructions && (
+          <p className="error" role="alert">
+            Setup instructions are unavailable. Ask the owner to update this server before
+            creating a key.
+          </p>
+        )}
+      </div>
       {prompt && (
         <details
+          className="help-prompt"
           open={showPrompt}
           onToggle={(event) => setShowPrompt(event.currentTarget.open)}
         >
@@ -117,7 +135,7 @@ function HelpAgentSetup({
           />
         </details>
       )}
-    </li>
+    </section>
   );
 }
 
@@ -135,14 +153,6 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
     const instructions = template?.content.textContent?.trim() ?? "";
     template?.remove();
     const install = document.querySelector("section");
-    const installHelp = install?.cloneNode(true) as HTMLElement | undefined;
-    const download = install?.querySelector("a.button") ?? install?.querySelector("p");
-    const downloadHtml = download?.outerHTML ?? "";
-    const repeatedDownload =
-      installHelp?.querySelector("a.button") ?? installHelp?.querySelector("p");
-    repeatedDownload?.remove();
-    if (installHelp && install)
-      document.body.insertBefore(installHelp, install.nextSibling);
     document.querySelector("h1")?.remove();
     document.body.querySelector(":scope > p")?.remove();
     install?.remove();
@@ -158,7 +168,6 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
       disclosure.replaceWith(section);
     }
     return {
-      downloadHtml,
       moreHtml: document.body.innerHTML,
       instructions,
     } satisfies HelpContent;
@@ -178,30 +187,48 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
     <>
       <ErrorNotice error={error} />
       {data ? (
-        <article className="reading">
-          <h1>Help &amp; Chrome extension</h1>
-          <ol>
-            <li>
-              <h2>Download extension</h2>
-              <div dangerouslySetInnerHTML={{ __html: data.downloadHtml }} />
-            </li>
-            <li>
-              <h2>Install in Chrome</h2>
-              <p>
-                Unzip → open <code>chrome://extensions</code> → turn on Developer mode →
-                choose Load unpacked.
-              </p>
-            </li>
-            <HelpAgentSetup
-              actor={actor}
-              projects={projects}
-              instructions={data.instructions}
-            />
-          </ol>
+        <article className="reading help-page">
+          <div className="help-intro">
+            <h1>Review the web together.</h1>
+            <p>
+              Capture a page, mark the exact spot and keep the discussion in one place.
+            </p>
+          </div>
+          <section className="help-install" aria-labelledby="help-install-title">
+            <div>
+              <h2 id="help-install-title">Get the Chrome extension</h2>
+              <p>Install from Chrome Web Store for automatic Store updates.</p>
+              <a
+                className="button primary"
+                href={chromeWebStoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Get it from Chrome Web Store
+              </a>
+            </div>
+            <ol>
+              <li>Choose Add to Chrome on the Store page.</li>
+              <li>
+                Pin and open Feedbacks. Enter <code>{location.origin}</code> as your
+                server.
+              </li>
+              <li>Connect, sign in and approve the pairing request.</li>
+            </ol>
+          </section>
+          <HelpAgentSetup
+            actor={actor}
+            projects={projects}
+            instructions={data.instructions}
+          />
           <details id="more-help">
             <summary>More help</summary>
             <div dangerouslySetInnerHTML={{ __html: data.moreHtml }} />
           </details>
+          <p className="help-website-link">
+            Looking for the product overview?{" "}
+            <a href={officialWebsiteUrl}>Visit the Feedbacks website</a>.
+          </p>
         </article>
       ) : (
         !error && <Loading />
