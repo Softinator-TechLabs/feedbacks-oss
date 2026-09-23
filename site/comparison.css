@@ -174,13 +174,17 @@
 .compare-matrix td a:focus-visible {
   text-decoration: underline;
 }
-.compare-matrix td.matrix-yes a {
+.compare-matrix td.matrix-yes a,
+.compare-matrix td.matrix-no a {
   font-size: 19px;
+}
+.compare-matrix td.matrix-no a {
+  color: #a23e31;
 }
 .compare-matrix td.matrix-unknown {
   color: #77716a;
 }
-.compare-matrix td:not(.matrix-yes, .matrix-unknown) a {
+.compare-matrix td:not(.matrix-yes, .matrix-no, .matrix-unknown) a {
   color: #564e47;
   font-size: 11px;
 }

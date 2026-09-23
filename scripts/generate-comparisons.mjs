@@ -71,7 +71,7 @@ const ours = {
 
 const statusLabels = {
   yes: "✓",
-  no: "No",
+  no: "✕",
   paid: "Paid",
   required: "External",
   components: "Parts",
@@ -104,12 +104,12 @@ function matrix(activeSlug) {
     })
     .join("");
   return `<section class="compare-matrix" aria-labelledby="matrix-heading">
-    <div class="matrix-intro"><h2 id="matrix-heading">The whole field, at a glance.</h2><p>Verified features only. Scroll across for every column. Open a tick to see the source.</p></div>
+    <div class="matrix-intro"><h2 id="matrix-heading">The whole field, at a glance.</h2><p>Scroll across for every column. Open any mark to see the evidence.</p></div>
     <div class="matrix-scroll" role="region" aria-label="Feature comparison table" tabindex="0">
       <table><caption>Feedbacks and 15 website feedback tools, compared by documented capability</caption><thead><tr><th scope="col">Tool</th>${header}</tr></thead><tbody>${rows}</tbody></table>
     </div>
-    <p class="matrix-key"><strong>✓</strong> Confirmed in linked documentation <span>·</span> <strong>?</strong> Not verified, not a claim that the feature is absent <span>·</span> <strong>Parts</strong> Self-hosted components that you assemble <span>·</span> <strong>External</strong> External accounts required <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Manual</strong> Your own workflow <span>·</span> <strong>No</strong> Not in Feedbacks today</p>
-    <p class="matrix-date">Documentation checked ${matrixReviewed}. Plan availability can change. This table compares the specific capabilities named in each column; a tick in one row does not imply the products work in the same way.</p>
+    <p class="matrix-key"><strong>✓</strong> Confirmed <span>·</span> <strong>✕</strong> Not in the linked public product or edition <span>·</span> <strong>?</strong> Evidence insufficient <span>·</span> <strong>Parts</strong> Components to assemble <span>·</span> <strong>External</strong> Required account <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Manual</strong> Manual handoff</p>
+    <p class="matrix-date">Documentation and available public source checked ${matrixReviewed}. A cross describes the documented product or edition, not every private offer or future release. Features and plans can change. Recording means creating a feedback video or session replay, not reviewing an uploaded video. A tick does not imply identical workflows.</p>
   </section>`;
 }
 
