@@ -29,8 +29,11 @@ test("diagnostics need consent, reject extra payloads, strip URL credentials and
     ],
   };
   const out = diagnosticsSchema.parse(input);
-  assert.equal(out.network[0].url, "https://example.test/path");
-  assert.doesNotMatch(out.console[0].message, /secret|credential|user@example|u:p|#frag/);
+  assert.equal(out.network[0].url, "https://example.test");
+  assert.doesNotMatch(
+    out.console[0].message,
+    /secret|credential|user@example|u:p|#frag|\/path/,
+  );
   assert.equal(out.trust, "untrusted_diagnostics");
   assert.equal(diagnosticsSchema.safeParse({ ...input, approved: false }).success, false);
   assert.equal(
@@ -126,7 +129,8 @@ test("page recorder stays off until asked, preserves console behavior, caps capt
   );
   assert.equal(out.console.length, 25);
   assert.equal(out.network.length, 50);
-  assert.doesNotMatch(JSON.stringify(out), /private|never-read|u:p|\?key|#f/);
+  assert.doesNotMatch(JSON.stringify(out), /private|never-read|u:p|\?key|#f|\/a/);
+  assert.equal(out.network[0].url, "https://example.test");
   assert.equal(out.network[0].status, null);
   assert.equal(run("console.error"), original);
   assert.equal(handlers.size, 0);

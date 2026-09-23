@@ -59,6 +59,9 @@
       <aside>
         <h1>Send feedback</h1>
         <p id="capture-origin" class="capture-origin"></p>
+        <p class="hint">
+          The screenshot covers the visible browser area. Review it before sending.
+        </p>
         <details class="capture-details">
           <summary id="capture-size">Capture details</summary>
           <p id="context"></p>
@@ -87,8 +90,8 @@
         <details id="diagnostics-review" class="capture-details" hidden>
           <summary>Review diagnostics</summary>
           <p class="hint">
-            Only checked entries will be shared. Check messages and URL paths for private
-            information. Redaction is a best-effort filter.
+            Only checked entries will be shared. URLs are reduced to their origin. Check
+            messages for private information; redaction is best effort.
           </p>
           <div id="diagnostics-entries"></div>
           <label class="check"

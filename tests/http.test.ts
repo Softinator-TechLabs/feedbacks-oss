@@ -115,7 +115,7 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
     ).json();
     assert.equal(created.ok, true);
     assert.equal(created.data.diagnostics.trust, "untrusted_diagnostics");
-    assert.equal(created.data.diagnostics.network[0].url, "https://example.test/api");
+    assert.equal(created.data.diagnostics.network[0].url, "https://example.test");
     assert.ok(!JSON.stringify(created.data.diagnostics).includes("sensitive"));
     const token = await (
       await post(
