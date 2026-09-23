@@ -12,11 +12,19 @@ import { accounts, reviewerContext } from "./accounts.js";
 import { access, event, ownerOnly } from "./access.js";
 import { projects, members } from "./projects.js";
 import { feedback } from "./feedback.js";
-import { assets, assetRow, assetPreview, type AssetStore } from "./assets.js";
+import {
+  assets,
+  assetRow,
+  assetPreview,
+  assetUploadPreflight,
+  prepareAssetUpload,
+  commitAssetUpload,
+  type AssetStore,
+} from "./assets.js";
 import { instructions, context } from "./context.js";
 import { reviewViews } from "./review-views.js";
 import { views } from "./views.js";
-import { fail } from "./errors.js";
+import { DomainError, fail } from "./errors.js";
 import { reserveExportRequest } from "./export-limits.js";
 export class Operations {
   readonly auth: Auth;
@@ -35,6 +43,7 @@ export class Operations {
         "VALIDATION",
         parsed.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(";"),
       );
+    if (name === "assets.upload") return this.uploadAsset(actor, parsed.data);
     if (name === "context.export" && !(parsed.data as any).snapshotId)
       await reserveExportRequest(this.db, actor, (parsed.data as any).projectId);
     let preview: { objectKey: string; maxDimension: number } | undefined;
@@ -44,19 +53,8 @@ export class Operations {
         // waiting requests must see revocation committed by the previous lock holder.
         await accountLock(db);
         const auth = new Auth(db),
-          a = await auth.current(actor),
+          a = await this.currentForOperation(db, actor, name),
           i: any = parsed.data;
-        if (a.scopes && !a.scopes.includes(name))
-          fail("FORBIDDEN", "Operation outside token scope", 403);
-        if (
-          a.mustChangePassword &&
-          !["auth.me", "auth.changePassword", "auth.logout"].includes(name)
-        )
-          fail(
-            "PASSWORD_CHANGE_REQUIRED",
-            "Replace your temporary password before continuing",
-            403,
-          );
         if (name === "auth.me")
           return {
             actor: {
@@ -93,7 +91,7 @@ export class Operations {
         if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
         if (name.startsWith("views.")) return views(db, a, name, i);
         if (name.startsWith("assets.")) {
-          const result = await assets(db, a, name, i, this.store, this.config);
+          const result = await assets(db, a, i);
           if (name === "assets.get" && i.includeImage) {
             const row = await assetRow(db, a, i.assetId);
             preview = { objectKey: row.object_key, maxDimension: i.maxDimension };
@@ -175,5 +173,69 @@ export class Operations {
         preview.maxDimension,
       );
     return result;
+  }
+
+  private async currentForOperation(db: Database, actor: Actor, name: string) {
+    const a = await new Auth(db).current(actor);
+    if (a.scopes && !a.scopes.includes(name))
+      fail("FORBIDDEN", "Operation outside token scope", 403);
+    if (
+      a.mustChangePassword &&
+      !["auth.me", "auth.changePassword", "auth.logout"].includes(name)
+    )
+      fail(
+        "PASSWORD_CHANGE_REQUIRED",
+        "Replace your temporary password before continuing",
+        403,
+      );
+    return a;
+  }
+
+  private async uploadAsset(actor: Actor, i: any) {
+    // Keep the organization lock only around authorization and database writes.
+    // Image decoding and private object storage can take seconds.
+    const preflight = await this.db.transaction(async (db) => {
+      await accountLock(db);
+      const a = await this.currentForOperation(db, actor, "assets.upload");
+      return assetUploadPreflight(db, a, i);
+    });
+    if (preflight.prior) return JSON.parse(JSON.stringify(preflight.prior));
+
+    const prepared = await prepareAssetUpload(i, this.config, preflight.projectId);
+    let committed = false;
+    let cleanupAllowed = true;
+    try {
+      try {
+        await this.store.put(prepared.key, prepared.output);
+      } catch {
+        fail(
+          "UPLOAD_FAILED",
+          "Private image storage is unavailable; your draft can be retried",
+          503,
+        );
+      }
+      // A transport error during COMMIT has an unknown outcome. Preserve the
+      // private object in that case so a committed asset never loses its bytes.
+      cleanupAllowed = false;
+      let settled;
+      try {
+        settled = await this.db.transaction(async (db) => {
+          await accountLock(db);
+          const a = await this.currentForOperation(db, actor, "assets.upload");
+          return commitAssetUpload(db, a, i, prepared);
+        });
+      } catch (error) {
+        if (error instanceof DomainError) cleanupAllowed = true;
+        throw error;
+      }
+      committed = settled.committed;
+      cleanupAllowed = !committed;
+      return JSON.parse(JSON.stringify(settled.result));
+    } finally {
+      if (!committed && cleanupAllowed)
+        await this.store.remove(prepared.key).catch(() => {
+          console.error("Uncommitted image cleanup failed");
+        });
+    }
   }
 }
