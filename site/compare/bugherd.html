@@ -72,10 +72,7 @@
         <section class="compare-matrix" aria-labelledby="matrix-heading">
           <div class="matrix-intro">
             <h2 id="matrix-heading">The whole field, at a glance.</h2>
-            <p>
-              Verified features only. Scroll across for every column. Open a tick to see
-              the source.
-            </p>
+            <p>Scroll across for every column. Open any mark to see the evidence.</p>
           </div>
           <div
             class="matrix-scroll"
@@ -96,8 +93,8 @@
                   <th scope="col">S3 in no-fee self-hosting</th>
                   <th scope="col">Browser extension capture</th>
                   <th scope="col">Draw on screenshots</th>
-                  <th scope="col">MCP for agents</th>
-                  <th scope="col">Recording or session replay</th>
+                  <th scope="col">Feedback via MCP</th>
+                  <th scope="col">Record feedback or replay</th>
                   <th scope="col">GitHub Issues handoff</th>
                   <th scope="col">Approved reviewer expertise for agents</th>
                 </tr>
@@ -156,17 +153,17 @@
                   <td class="matrix-yes">
                     <a
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md"
-                      aria-label="Feedbacks: MCP for agents. Confirmed. Read source."
-                      title="Read source for Feedbacks: MCP for agents"
+                      aria-label="Feedbacks: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for Feedbacks: Feedback via MCP"
                       >✓</a
                     >
                   </td>
                   <td class="matrix-no">
                     <a
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md"
-                      aria-label="Feedbacks: Recording or session replay. No. Read source."
-                      title="Read source for Feedbacks: Recording or session replay"
-                      >No</a
+                      aria-label="Feedbacks: Record feedback or replay. ✕. Read source."
+                      title="Read source for Feedbacks: Record feedback or replay"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-manual">
@@ -220,9 +217,12 @@
                       >Paid</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="BugPin: Browser extension capture not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://github.com/aranticlabs/bugpin/tree/main/src/widget"
+                      aria-label="BugPin: Browser extension capture. ✕. Read source."
+                      title="Read source for BugPin: Browser extension capture"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -233,12 +233,20 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="BugPin: MCP for agents not verified">?</span>
+                  <td class="matrix-no">
+                    <a
+                      href="https://github.com/aranticlabs/bugpin/tree/main/src"
+                      aria-label="BugPin: Feedback via MCP. ✕. Read source."
+                      title="Read source for BugPin: Feedback via MCP"
+                      >✕</a
+                    >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="BugPin: Recording or session replay not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://bugpin.io/editions/"
+                      aria-label="BugPin: Record feedback or replay. ✕. Read source."
+                      title="Read source for BugPin: Record feedback or replay"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -290,28 +298,36 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="FasterFixes: Browser extension capture not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.faster-fixes.com/docs/concepts/how-it-works"
+                      aria-label="FasterFixes: Browser extension capture. ✕. Read source."
+                      title="Read source for FasterFixes: Browser extension capture"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="FasterFixes: Draw on screenshots not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.faster-fixes.com/docs/getting-started/quickstart"
+                      aria-label="FasterFixes: Draw on screenshots. ✕. Read source."
+                      title="Read source for FasterFixes: Draw on screenshots"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://www.faster-fixes.com/docs/mcp/setup"
-                      aria-label="FasterFixes: MCP for agents. Confirmed. Read source."
-                      title="Read source for FasterFixes: MCP for agents"
+                      aria-label="FasterFixes: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for FasterFixes: Feedback via MCP"
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="FasterFixes: Recording or session replay not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.faster-fixes.com/docs/concepts/how-it-works"
+                      aria-label="FasterFixes: Record feedback or replay. ✕. Read source."
+                      title="Read source for FasterFixes: Record feedback or replay"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -347,35 +363,60 @@
                       >Parts</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="SitePing: No required external account not verified"
-                      >?</span
+                  <td class="matrix-yes">
+                    <a
+                      href="https://github.com/NeosiaNexus/SitePing/blob/main/apps/demo/content/docs/adapters/localstorage.mdx"
+                      aria-label="SitePing: No required external account. Confirmed. Read source."
+                      title="Read source for SitePing: No required external account"
+                      >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="SitePing: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-components">
+                    <a
+                      href="https://github.com/NeosiaNexus/SitePing/blob/main/apps/demo/content/docs/adapters/prisma.mdx"
+                      aria-label="SitePing: S3 in no-fee self-hosting. Parts. Read source."
+                      title="Read source for SitePing: S3 in no-fee self-hosting"
+                      >Parts</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="SitePing: Browser extension capture not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://github.com/NeosiaNexus/SitePing/tree/main/packages"
+                      aria-label="SitePing: Browser extension capture. ✕. Read source."
+                      title="Read source for SitePing: Browser extension capture"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="SitePing: Draw on screenshots not verified">?</span>
-                  </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="SitePing: MCP for agents not verified">?</span>
-                  </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="SitePing: Recording or session replay not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://github.com/NeosiaNexus/SitePing/blob/main/apps/demo/content/docs/index.mdx"
+                      aria-label="SitePing: Draw on screenshots. ✕. Read source."
+                      title="Read source for SitePing: Draw on screenshots"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="SitePing: GitHub Issues handoff not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://github.com/NeosiaNexus/SitePing/tree/main/packages"
+                      aria-label="SitePing: Feedback via MCP. ✕. Read source."
+                      title="Read source for SitePing: Feedback via MCP"
+                      >✕</a
+                    >
+                  </td>
+                  <td class="matrix-no">
+                    <a
+                      href="https://github.com/NeosiaNexus/SitePing/tree/main/packages"
+                      aria-label="SitePing: Record feedback or replay. ✕. Read source."
+                      title="Read source for SitePing: Record feedback or replay"
+                      >✕</a
+                    >
+                  </td>
+                  <td class="matrix-no">
+                    <a
+                      href="https://github.com/NeosiaNexus/SitePing/tree/main/packages"
+                      aria-label="SitePing: GitHub Issues handoff. ✕. Read source."
+                      title="Read source for SitePing: GitHub Issues handoff"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-unknown">
@@ -405,16 +446,20 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="OpenReplay + Spot: No required external account not verified"
-                      >?</span
+                  <td class="matrix-yes">
+                    <a
+                      href="https://docs.openreplay.com/en/deployment/"
+                      aria-label="OpenReplay + Spot: No required external account. Confirmed. Read source."
+                      title="Read source for OpenReplay + Spot: No required external account"
+                      >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="OpenReplay + Spot: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-yes">
+                    <a
+                      href="https://docs.openreplay.com/en/configuration/external-storage/"
+                      aria-label="OpenReplay + Spot: S3 in no-fee self-hosting. Confirmed. Read source."
+                      title="Read source for OpenReplay + Spot: S3 in no-fee self-hosting"
+                      >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -425,31 +470,36 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="OpenReplay + Spot: Draw on screenshots not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://docs.openreplay.com/en/spot/"
+                      aria-label="OpenReplay + Spot: Draw on screenshots. ✕. Read source."
+                      title="Read source for OpenReplay + Spot: Draw on screenshots"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://docs.openreplay.com/en/mcp/setup/"
-                      aria-label="OpenReplay + Spot: MCP for agents. Confirmed. Read source."
-                      title="Read source for OpenReplay + Spot: MCP for agents"
+                      aria-label="OpenReplay + Spot: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for OpenReplay + Spot: Feedback via MCP"
                       >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://docs.openreplay.com/en/spot/"
-                      aria-label="OpenReplay + Spot: Recording or session replay. Confirmed. Read source."
-                      title="Read source for OpenReplay + Spot: Recording or session replay"
+                      aria-label="OpenReplay + Spot: Record feedback or replay. Confirmed. Read source."
+                      title="Read source for OpenReplay + Spot: Record feedback or replay"
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="OpenReplay + Spot: GitHub Issues handoff not verified"
-                      >?</span
+                  <td class="matrix-yes">
+                    <a
+                      href="https://docs.openreplay.com/en/integrations/github/"
+                      aria-label="OpenReplay + Spot: GitHub Issues handoff. Confirmed. Read source."
+                      title="Read source for OpenReplay + Spot: GitHub Issues handoff"
+                      >✓</a
                     >
                   </td>
                   <td class="matrix-unknown">
@@ -461,22 +511,36 @@
                 </tr>
                 <tr class="matrix-active">
                   <th scope="row"><a href="/compare/bugherd.html">BugHerd</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="BugHerd: Public server source not verified">?</span>
-                  </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="BugHerd: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://bugherd.com/pricing"
+                      aria-label="BugHerd: Public server source. ✕. Read source."
+                      title="Read source for BugHerd: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="BugHerd: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://bugherd.com/pricing"
+                      aria-label="BugHerd: Whole service self-hosted. ✕. Read source."
+                      title="Read source for BugHerd: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="BugHerd: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://bugherd.com/pricing"
+                      aria-label="BugHerd: No required external account. ✕. Read source."
+                      title="Read source for BugHerd: No required external account"
+                      >✕</a
+                    >
+                  </td>
+                  <td class="matrix-no">
+                    <a
+                      href="https://bugherd.com/pricing"
+                      aria-label="BugHerd: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for BugHerd: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -487,22 +551,27 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="BugHerd: Draw on screenshots not verified">?</span>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://bugherd.com/website-annotation-tool"
+                      aria-label="BugHerd: Draw on screenshots. Confirmed. Read source."
+                      title="Read source for BugHerd: Draw on screenshots"
+                      >✓</a
+                    >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://bugherd.com/feature/mcp"
-                      aria-label="BugHerd: MCP for agents. Confirmed. Read source."
-                      title="Read source for BugHerd: MCP for agents"
+                      aria-label="BugHerd: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for BugHerd: Feedback via MCP"
                       >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://bugherd.com/blog/record-website"
-                      aria-label="BugHerd: Recording or session replay. Confirmed. Read source."
-                      title="Read source for BugHerd: Recording or session replay"
+                      aria-label="BugHerd: Record feedback or replay. Confirmed. Read source."
+                      title="Read source for BugHerd: Record feedback or replay"
                       >✓</a
                     >
                   </td>
@@ -523,25 +592,36 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/marker-io.html">Marker.io</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="Marker.io: Public server source not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://marker.io/website-annotation-tool"
+                      aria-label="Marker.io: Public server source. ✕. Read source."
+                      title="Read source for Marker.io: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Marker.io: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://marker.io/website-annotation-tool"
+                      aria-label="Marker.io: Whole service self-hosted. ✕. Read source."
+                      title="Read source for Marker.io: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Marker.io: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://marker.io/website-annotation-tool"
+                      aria-label="Marker.io: No required external account. ✕. Read source."
+                      title="Read source for Marker.io: No required external account"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Marker.io: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://marker.io/website-annotation-tool"
+                      aria-label="Marker.io: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for Marker.io: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -563,16 +643,16 @@
                   <td class="matrix-yes">
                     <a
                       href="https://help.marker.io/en/articles/14034657-mcp-integration-model-context-protocol"
-                      aria-label="Marker.io: MCP for agents. Confirmed. Read source."
-                      title="Read source for Marker.io: MCP for agents"
+                      aria-label="Marker.io: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for Marker.io: Feedback via MCP"
                       >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://marker.io/features/session-replay"
-                      aria-label="Marker.io: Recording or session replay. Confirmed. Read source."
-                      title="Read source for Marker.io: Recording or session replay"
+                      aria-label="Marker.io: Record feedback or replay. Confirmed. Read source."
+                      title="Read source for Marker.io: Record feedback or replay"
                       >✓</a
                     >
                   </td>
@@ -593,25 +673,36 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/markup-io.html">MarkUp.io</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="MarkUp.io: Public server source not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.markup.io/"
+                      aria-label="MarkUp.io: Public server source. ✕. Read source."
+                      title="Read source for MarkUp.io: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="MarkUp.io: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.markup.io/"
+                      aria-label="MarkUp.io: Whole service self-hosted. ✕. Read source."
+                      title="Read source for MarkUp.io: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="MarkUp.io: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.markup.io/"
+                      aria-label="MarkUp.io: No required external account. ✕. Read source."
+                      title="Read source for MarkUp.io: No required external account"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="MarkUp.io: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.markup.io/"
+                      aria-label="MarkUp.io: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for MarkUp.io: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -631,11 +722,14 @@
                     >
                   </td>
                   <td class="matrix-unknown">
-                    <span aria-label="MarkUp.io: MCP for agents not verified">?</span>
+                    <span aria-label="MarkUp.io: Feedback via MCP not verified">?</span>
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="MarkUp.io: Recording or session replay not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.markup.io/"
+                      aria-label="MarkUp.io: Record feedback or replay. ✕. Read source."
+                      title="Read source for MarkUp.io: Record feedback or replay"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-unknown">
@@ -652,25 +746,36 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/markup-hero.html">Markup Hero</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="Markup Hero: Public server source not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://markuphero.com/"
+                      aria-label="Markup Hero: Public server source. ✕. Read source."
+                      title="Read source for Markup Hero: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Markup Hero: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://markuphero.com/"
+                      aria-label="Markup Hero: Whole service self-hosted. ✕. Read source."
+                      title="Read source for Markup Hero: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Markup Hero: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://markuphero.com/"
+                      aria-label="Markup Hero: No required external account. ✕. Read source."
+                      title="Read source for Markup Hero: No required external account"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Markup Hero: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://markuphero.com/"
+                      aria-label="Markup Hero: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for Markup Hero: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -690,12 +795,14 @@
                     >
                   </td>
                   <td class="matrix-unknown">
-                    <span aria-label="Markup Hero: MCP for agents not verified">?</span>
+                    <span aria-label="Markup Hero: Feedback via MCP not verified">?</span>
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Markup Hero: Recording or session replay not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://markuphero.com/"
+                      aria-label="Markup Hero: Record feedback or replay. ✕. Read source."
+                      title="Read source for Markup Hero: Record feedback or replay"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-unknown">
@@ -712,25 +819,36 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/redpen-ai.html">Redpen.ai</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="Redpen.ai: Public server source not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.redpen.ai/getting-started"
+                      aria-label="Redpen.ai: Public server source. ✕. Read source."
+                      title="Read source for Redpen.ai: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Redpen.ai: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.redpen.ai/getting-started"
+                      aria-label="Redpen.ai: Whole service self-hosted. ✕. Read source."
+                      title="Read source for Redpen.ai: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Redpen.ai: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.redpen.ai/getting-started"
+                      aria-label="Redpen.ai: No required external account. ✕. Read source."
+                      title="Read source for Redpen.ai: No required external account"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Redpen.ai: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.redpen.ai/getting-started"
+                      aria-label="Redpen.ai: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for Redpen.ai: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -750,13 +868,13 @@
                     >
                   </td>
                   <td class="matrix-unknown">
-                    <span aria-label="Redpen.ai: MCP for agents not verified">?</span>
+                    <span aria-label="Redpen.ai: Feedback via MCP not verified">?</span>
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://www.redpen.ai/getting-started"
-                      aria-label="Redpen.ai: Recording or session replay. Confirmed. Read source."
-                      title="Read source for Redpen.ai: Recording or session replay"
+                      aria-label="Redpen.ai: Record feedback or replay. Confirmed. Read source."
+                      title="Read source for Redpen.ai: Record feedback or replay"
                       >✓</a
                     >
                   </td>
@@ -777,43 +895,68 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/pastel.html">Pastel</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="Pastel: Public server source not verified">?</span>
-                  </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Pastel: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://help.usepastel.com/en/articles/16399951-connecting-pastel-to-cursor"
+                      aria-label="Pastel: Public server source. ✕. Read source."
+                      title="Read source for Pastel: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Pastel: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://help.usepastel.com/en/articles/16399951-connecting-pastel-to-cursor"
+                      aria-label="Pastel: Whole service self-hosted. ✕. Read source."
+                      title="Read source for Pastel: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Pastel: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://help.usepastel.com/en/articles/16399951-connecting-pastel-to-cursor"
+                      aria-label="Pastel: No required external account. ✕. Read source."
+                      title="Read source for Pastel: No required external account"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Pastel: Browser extension capture not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://help.usepastel.com/en/articles/16399951-connecting-pastel-to-cursor"
+                      aria-label="Pastel: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for Pastel: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Pastel: Draw on screenshots not verified">?</span>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://help.usepastel.com/en/articles/8168731-pastel-chrome-extension"
+                      aria-label="Pastel: Browser extension capture. Confirmed. Read source."
+                      title="Read source for Pastel: Browser extension capture"
+                      >✓</a
+                    >
+                  </td>
+                  <td class="matrix-no">
+                    <a
+                      href="https://usepastel.com/website-annotation-tool"
+                      aria-label="Pastel: Draw on screenshots. ✕. Read source."
+                      title="Read source for Pastel: Draw on screenshots"
+                      >✕</a
+                    >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server"
-                      aria-label="Pastel: MCP for agents. Confirmed. Read source."
-                      title="Read source for Pastel: MCP for agents"
+                      aria-label="Pastel: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for Pastel: Feedback via MCP"
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Pastel: Recording or session replay not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usepastel.com/website-annotation-tool"
+                      aria-label="Pastel: Record feedback or replay. ✕. Read source."
+                      title="Read source for Pastel: Record feedback or replay"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-unknown">
@@ -828,45 +971,67 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/ruttl.html">Ruttl</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="Ruttl: Public server source not verified">?</span>
-                  </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Ruttl: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.ruttl.com/"
+                      aria-label="Ruttl: Public server source. ✕. Read source."
+                      title="Read source for Ruttl: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Ruttl: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.ruttl.com/"
+                      aria-label="Ruttl: Whole service self-hosted. ✕. Read source."
+                      title="Read source for Ruttl: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Ruttl: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.ruttl.com/"
+                      aria-label="Ruttl: No required external account. ✕. Read source."
+                      title="Read source for Ruttl: No required external account"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Ruttl: Browser extension capture not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.ruttl.com/"
+                      aria-label="Ruttl: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for Ruttl: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Ruttl: Draw on screenshots not verified">?</span>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://site.dev.ruttl.com/chrome-extension/"
+                      aria-label="Ruttl: Browser extension capture. Confirmed. Read source."
+                      title="Read source for Ruttl: Browser extension capture"
+                      >✓</a
+                    >
+                  </td>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://site.dev.ruttl.com/chrome-extension/"
+                      aria-label="Ruttl: Draw on screenshots. Confirmed. Read source."
+                      title="Read source for Ruttl: Draw on screenshots"
+                      >✓</a
+                    >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://www.ruttl.com/mcp"
-                      aria-label="Ruttl: MCP for agents. Confirmed. Read source."
-                      title="Read source for Ruttl: MCP for agents"
+                      aria-label="Ruttl: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for Ruttl: Feedback via MCP"
                       >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://www.ruttl.com/blog/video-feedback-record-website"
-                      aria-label="Ruttl: Recording or session replay. Confirmed. Read source."
-                      title="Read source for Ruttl: Recording or session replay"
+                      aria-label="Ruttl: Record feedback or replay. Confirmed. Read source."
+                      title="Read source for Ruttl: Record feedback or replay"
                       >✓</a
                     >
                   </td>
@@ -882,51 +1047,76 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/superflow.html">Superflow</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="Superflow: Public server source not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usesuperflow.ai/pricing"
+                      aria-label="Superflow: Public server source. ✕. Read source."
+                      title="Read source for Superflow: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Superflow: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usesuperflow.ai/pricing"
+                      aria-label="Superflow: Whole service self-hosted. ✕. Read source."
+                      title="Read source for Superflow: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Superflow: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usesuperflow.ai/pricing"
+                      aria-label="Superflow: No required external account. ✕. Read source."
+                      title="Read source for Superflow: No required external account"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Superflow: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usesuperflow.ai/pricing"
+                      aria-label="Superflow: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for Superflow: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Superflow: Browser extension capture not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usesuperflow.ai/screenshots"
+                      aria-label="Superflow: Browser extension capture. ✕. Read source."
+                      title="Read source for Superflow: Browser extension capture"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Superflow: Draw on screenshots not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usesuperflow.ai/screenshots"
+                      aria-label="Superflow: Draw on screenshots. ✕. Read source."
+                      title="Read source for Superflow: Draw on screenshots"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Superflow: MCP for agents not verified">?</span>
+                  <td class="matrix-no">
+                    <a
+                      href="https://usesuperflow.ai/tools/mcp"
+                      aria-label="Superflow: Feedback via MCP. ✕. Read source."
+                      title="Read source for Superflow: Feedback via MCP"
+                      >✕</a
+                    >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://usesuperflow.ai/recordings"
-                      aria-label="Superflow: Recording or session replay. Confirmed. Read source."
-                      title="Read source for Superflow: Recording or session replay"
+                      aria-label="Superflow: Record feedback or replay. Confirmed. Read source."
+                      title="Read source for Superflow: Record feedback or replay"
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Superflow: GitHub Issues handoff not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usesuperflow.ai/integrations"
+                      aria-label="Superflow: GitHub Issues handoff. ✕. Read source."
+                      title="Read source for Superflow: GitHub Issues handoff"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-unknown">
@@ -938,29 +1128,44 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/usersnap.html">Usersnap</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="Usersnap: Public server source not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://wf.usersnap.com/pricing"
+                      aria-label="Usersnap: Public server source. ✕. Read source."
+                      title="Read source for Usersnap: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Usersnap: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://wf.usersnap.com/pricing"
+                      aria-label="Usersnap: Whole service self-hosted. ✕. Read source."
+                      title="Read source for Usersnap: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Usersnap: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://wf.usersnap.com/pricing"
+                      aria-label="Usersnap: No required external account. ✕. Read source."
+                      title="Read source for Usersnap: No required external account"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Usersnap: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://wf.usersnap.com/pricing"
+                      aria-label="Usersnap: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for Usersnap: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Usersnap: Browser extension capture not verified"
-                      >?</span
+                  <td class="matrix-yes">
+                    <a
+                      href="https://help.usersnap.com/docs/track-browser-extensions"
+                      aria-label="Usersnap: Browser extension capture. Confirmed. Read source."
+                      title="Read source for Usersnap: Browser extension capture"
+                      >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -974,22 +1179,25 @@
                   <td class="matrix-yes">
                     <a
                       href="https://usersnap.com/integrations/mcp"
-                      aria-label="Usersnap: MCP for agents. Confirmed. Read source."
-                      title="Read source for Usersnap: MCP for agents"
+                      aria-label="Usersnap: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for Usersnap: Feedback via MCP"
                       >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://help.usersnap.com/docs/feedback-with-a-screen-recording"
-                      aria-label="Usersnap: Recording or session replay. Confirmed. Read source."
-                      title="Read source for Usersnap: Recording or session replay"
+                      aria-label="Usersnap: Record feedback or replay. Confirmed. Read source."
+                      title="Read source for Usersnap: Record feedback or replay"
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Usersnap: GitHub Issues handoff not verified"
-                      >?</span
+                  <td class="matrix-yes">
+                    <a
+                      href="https://help.usersnap.com/docs/github"
+                      aria-label="Usersnap: GitHub Issues handoff. Confirmed. Read source."
+                      title="Read source for Usersnap: GitHub Issues handoff"
+                      >✓</a
                     >
                   </td>
                   <td class="matrix-unknown">
@@ -1001,24 +1209,36 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/userback.html">Userback</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="Userback: Public server source not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://userback.io/pricing/"
+                      aria-label="Userback: Public server source. ✕. Read source."
+                      title="Read source for Userback: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Userback: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://userback.io/pricing/"
+                      aria-label="Userback: Whole service self-hosted. ✕. Read source."
+                      title="Read source for Userback: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Userback: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://userback.io/pricing/"
+                      aria-label="Userback: No required external account. ✕. Read source."
+                      title="Read source for Userback: No required external account"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Userback: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://userback.io/pricing/"
+                      aria-label="Userback: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for Userback: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -1040,22 +1260,25 @@
                   <td class="matrix-yes">
                     <a
                       href="https://docs.userback.io/docs/welcome"
-                      aria-label="Userback: MCP for agents. Confirmed. Read source."
-                      title="Read source for Userback: MCP for agents"
+                      aria-label="Userback: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for Userback: Feedback via MCP"
                       >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://support.userback.io/en/articles/15268500-video-feedback"
-                      aria-label="Userback: Recording or session replay. Confirmed. Read source."
-                      title="Read source for Userback: Recording or session replay"
+                      aria-label="Userback: Record feedback or replay. Confirmed. Read source."
+                      title="Read source for Userback: Record feedback or replay"
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Userback: GitHub Issues handoff not verified"
-                      >?</span
+                  <td class="matrix-yes">
+                    <a
+                      href="https://userback.io/integration/github/"
+                      aria-label="Userback: GitHub Issues handoff. Confirmed. Read source."
+                      title="Read source for Userback: GitHub Issues handoff"
+                      >✓</a
                     >
                   </td>
                   <td class="matrix-unknown">
@@ -1067,22 +1290,36 @@
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/atarim.html">Atarim</a></th>
-                  <td class="matrix-unknown">
-                    <span aria-label="Atarim: Public server source not verified">?</span>
-                  </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Atarim: Whole service self-hosted not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://atarim.io/pricing/"
+                      aria-label="Atarim: Public server source. ✕. Read source."
+                      title="Read source for Atarim: Public server source"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Atarim: No required external account not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://atarim.io/pricing/"
+                      aria-label="Atarim: Whole service self-hosted. ✕. Read source."
+                      title="Read source for Atarim: Whole service self-hosted"
+                      >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span aria-label="Atarim: S3 in no-fee self-hosting not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://atarim.io/pricing/"
+                      aria-label="Atarim: No required external account. ✕. Read source."
+                      title="Read source for Atarim: No required external account"
+                      >✕</a
+                    >
+                  </td>
+                  <td class="matrix-no">
+                    <a
+                      href="https://atarim.io/pricing/"
+                      aria-label="Atarim: S3 in no-fee self-hosting. ✕. Read source."
+                      title="Read source for Atarim: S3 in no-fee self-hosting"
+                      >✕</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -1104,13 +1341,13 @@
                   <td class="matrix-yes">
                     <a
                       href="https://atarim.io/mcp/"
-                      aria-label="Atarim: MCP for agents. Confirmed. Read source."
-                      title="Read source for Atarim: MCP for agents"
+                      aria-label="Atarim: Feedback via MCP. Confirmed. Read source."
+                      title="Read source for Atarim: Feedback via MCP"
                       >✓</a
                     >
                   </td>
                   <td class="matrix-unknown">
-                    <span aria-label="Atarim: Recording or session replay not verified"
+                    <span aria-label="Atarim: Record feedback or replay not verified"
                       >?</span
                     >
                   </td>
@@ -1128,18 +1365,19 @@
             </table>
           </div>
           <p class="matrix-key">
-            <strong>✓</strong> Confirmed in linked documentation <span>·</span>
-            <strong>?</strong> Not verified, not a claim that the feature is absent
-            <span>·</span> <strong>Parts</strong> Self-hosted components that you assemble
-            <span>·</span> <strong>External</strong> External accounts required
-            <span>·</span> <strong>Paid</strong> Paid edition <span>·</span>
-            <strong>Manual</strong> Your own workflow <span>·</span>
-            <strong>No</strong> Not in Feedbacks today
+            <strong>✓</strong> Confirmed <span>·</span> <strong>✕</strong> Not in the
+            linked public product or edition <span>·</span> <strong>?</strong> Evidence
+            insufficient <span>·</span> <strong>Parts</strong> Components to assemble
+            <span>·</span> <strong>External</strong> Required account <span>·</span>
+            <strong>Paid</strong> Paid edition <span>·</span>
+            <strong>Manual</strong> Manual handoff
           </p>
           <p class="matrix-date">
-            Documentation checked 23 September 2026. Plan availability can change. This
-            table compares the specific capabilities named in each column; a tick in one
-            row does not imply the products work in the same way.
+            Documentation and available public source checked 23 September 2026. A cross
+            describes the documented product or edition, not every private offer or future
+            release. Features and plans can change. Recording means creating a feedback
+            video or session replay, not reviewing an uploaded video. A tick does not
+            imply identical workflows.
           </p>
         </section>
         <section class="compare-facts" aria-labelledby="compare-facts-heading">

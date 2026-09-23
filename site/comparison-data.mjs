@@ -80,8 +80,9 @@ export const comparisons = [
     theirHosting:
       "Spot is available with OpenReplay's open-source, self-hosted platform.",
     theirAI:
-      "The cited Spot guide centers on recording and sharing technical bug context.",
-    theirHandoff: "Recordings are shared with a team for reproduction and investigation.",
+      "OpenReplay has an MCP server for agents connected to its self-hosted or cloud instance.",
+    theirHandoff:
+      "Recordings can be shared for investigation, and OpenReplay documents direct GitHub Issue creation from a recording.",
     bestFor:
       "Choose OpenReplay + Spot when reproducing a sequence of user actions is the main job.",
     feedbacksBest:
@@ -89,6 +90,11 @@ export const comparisons = [
     sources: [
       ["OpenReplay source", "https://github.com/openreplay/openreplay"],
       ["Spot documentation", "https://docs.openreplay.com/en/spot/"],
+      ["OpenReplay MCP", "https://docs.openreplay.com/en/mcp/setup/"],
+      [
+        "OpenReplay GitHub integration",
+        "https://docs.openreplay.com/en/integrations/github/",
+      ],
     ],
   },
   {
@@ -251,7 +257,8 @@ export const comparisons = [
       "An on-site review layer supports area and text comments plus audio and video notes.",
     theirHosting:
       "Its workflow uses a hosted Superflow project and a site-installed review layer.",
-    theirAI: "Its published materials describe AI categorization and copy assistance.",
+    theirAI:
+      "Its AI agents review sites and leave findings. Its public MCP endpoint exposes standalone website tools, not documented feedback-thread access.",
     theirHandoff: "Comments can be assigned, prioritized and managed on a board.",
     bestFor:
       "Choose Superflow for live on-site reviews, recordings and team task management.",
@@ -259,6 +266,8 @@ export const comparisons = [
       "Choose Feedbacks for browser extension capture across sites, an Apache-2.0 server and MCP access to the complete discussion.",
     sources: [
       ["Superflow demo", "https://demo.usesuperflow.com/"],
+      ["Superflow AI review", "https://usesuperflow.ai/screenshots"],
+      ["Superflow public MCP tools", "https://usesuperflow.ai/tools/mcp"],
       [
         "Superflow annotation guide",
         "https://usesuperflow.com/blog/how-to-annotate-a-website-in-5-simple-steps",
