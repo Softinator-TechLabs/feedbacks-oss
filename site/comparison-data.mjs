@@ -1,6 +1,6 @@
 // Evidence-backed copy for the public comparison pages. Keep claims tied to the
 // linked vendor documentation and update the reviewed date when rechecking it.
-export const reviewed = "22 September 2026";
+export const reviewed = "23 September 2026";
 
 export const comparisons = [
   {

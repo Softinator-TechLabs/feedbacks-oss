@@ -2,6 +2,11 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import prettier from "prettier";
 import { comparisons, reviewed } from "../site/comparison-data.mjs";
+import {
+  matrixFeatures,
+  matrixReviewed,
+  matrixRows,
+} from "../site/comparison-matrix.mjs";
 
 const site = resolve(import.meta.dirname, "../site");
 const out = resolve(site, "compare");
@@ -64,6 +69,50 @@ const ours = {
     "Clarify quick requests in the thread. Create and link GitHub Issues through your existing workflow when the work is agreed.",
 };
 
+const statusLabels = {
+  yes: "✓",
+  no: "No",
+  paid: "Paid",
+  required: "External",
+  components: "Parts",
+  manual: "Manual",
+};
+
+function matrix(activeSlug) {
+  const entries = [{ slug: "feedbacks", name: "Feedbacks" }, ...comparisons];
+  const header = matrixFeatures
+    .map(([, label]) => `<th scope="col">${escape(label)}</th>`)
+    .join("");
+  const rows = entries
+    .map((entry) => {
+      const cells = matrixFeatures
+        .map(([key, label]) => {
+          const evidence = matrixRows[entry.slug]?.[key];
+          if (!evidence) {
+            return `<td class="matrix-unknown"><span aria-label="${escape(entry.name)}: ${escape(label)} not verified">?</span></td>`;
+          }
+          const symbol = statusLabels[evidence.status];
+          const value = evidence.status === "yes" ? "Confirmed" : symbol;
+          return `<td class="matrix-${evidence.status}"><a href="${escape(evidence.url)}" aria-label="${escape(entry.name)}: ${escape(label)}. ${escape(value)}. Read source." title="Read source for ${escape(entry.name)}: ${escape(label)}">${escape(symbol)}</a></td>`;
+        })
+        .join("");
+      const name =
+        entry.slug === "feedbacks"
+          ? `<a href="/">Feedbacks</a>`
+          : `<a href="/compare/${entry.slug}.html">${escape(entry.name)}</a>`;
+      return `<tr${entry.slug === activeSlug ? ' class="matrix-active"' : ""}><th scope="row">${name}</th>${cells}</tr>`;
+    })
+    .join("");
+  return `<section class="compare-matrix" aria-labelledby="matrix-heading">
+    <div class="matrix-intro"><h2 id="matrix-heading">The whole field, at a glance.</h2><p>Verified features only. Scroll across for every column. Open a tick to see the source.</p></div>
+    <div class="matrix-scroll" role="region" aria-label="Feature comparison table" tabindex="0">
+      <table><caption>Feedbacks and 15 website feedback tools, compared by documented capability</caption><thead><tr><th scope="col">Tool</th>${header}</tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    <p class="matrix-key"><strong>✓</strong> Confirmed in linked documentation <span>·</span> <strong>?</strong> Not verified, not a claim that the feature is absent <span>·</span> <strong>Parts</strong> Self-hosted components that you assemble <span>·</span> <strong>External</strong> External accounts required <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Manual</strong> Your own workflow <span>·</span> <strong>No</strong> Not in Feedbacks today</p>
+    <p class="matrix-date">Documentation checked ${matrixReviewed}. Plan availability can change. This table compares the specific capabilities named in each column; a tick in one row does not imply the products work in the same way.</p>
+  </section>`;
+}
+
 function detail(entry, index) {
   const row = (name, us, them) => `<div class="compare-row">
     <h3>${name}</h3>
@@ -89,6 +138,7 @@ function detail(entry, index) {
         <p><strong>${escape(entry.name)}</strong>${escape(entry.bestFor)}</p>
         <p><strong>Feedbacks</strong>${escape(entry.feedbacksBest)}</p>
       </div>
+      ${matrix(entry.slug)}
       <section class="compare-facts" aria-labelledby="compare-facts-heading">
         <h2 id="compare-facts-heading">How the work moves.</h2>
         ${row("Capture", ours.capture, entry.theirCapture)}
@@ -129,6 +179,7 @@ function indexPage() {
       <h1>Choose where your feedback lives.</h1>
       <p class="compare-index-intro">Some tools start with a widget. Some start with a recording or a canvas. Feedbacks starts with a screenshot, a pencil mark and a discussion your team and agent can follow on your own server.</p>
       <p class="compare-index-note">Several tools here also offer MCP, self-hosting or both. Each page links to the vendor's own description, and makes the tradeoffs clear.</p>
+      ${matrix()}
       ${groups
         .map(
           (group) =>
@@ -164,6 +215,23 @@ if (new Set(comparisons.map((entry) => entry.slug)).size !== comparisons.length)
 for (const entry of comparisons) {
   if (!/^[a-z0-9-]+$/.test(entry.slug) || entry.sources.length === 0) {
     throw new Error(`Invalid comparison entry: ${entry.slug}`);
+  }
+}
+if (
+  Object.keys(matrixRows).length !== comparisons.length + 1 ||
+  comparisons.some((entry) => !matrixRows[entry.slug])
+) {
+  throw new Error("Comparison matrix rows do not match comparison pages");
+}
+for (const [slug, row] of Object.entries(matrixRows)) {
+  for (const [key, evidence] of Object.entries(row)) {
+    if (
+      !matrixFeatures.some(([feature]) => feature === key) ||
+      !statusLabels[evidence.status] ||
+      !/^https:\/\//.test(evidence.url)
+    ) {
+      throw new Error(`Invalid matrix evidence: ${slug}.${key}`);
+    }
   }
 }
 await mkdir(out, { recursive: true });
