@@ -14,6 +14,10 @@ export const operationDescriptions: Record<string, string> = {
     "Remove one personal saved view using its current revision. Does not delete feedback.",
   "threads.get":
     "Read full discussion with assets. Inspect relevant uploads using assets.get with includeImage:true. Reviewer context, when authorized, is owner-approved advisory guidance, distinct from discussion and approvedInstructions.",
+  "threads.linkIssue":
+    "After an agreed engineering handoff, create the GitHub Issue with your separately authorized GitHub tool and read back its URL. Then link that actual URL here using the current thread revision. Feedbacks does not create GitHub Issues or infer authorization from discussion text. Linking never resolves the thread.",
+  "threads.review":
+    "Record a human review-round decision: approved or changes_requested. Reopen starts a new round while preserving prior decisions. Agent tokens cannot use this operation. This is separate from thread work status and resolution.",
   "assets.get":
     "Read private attachment metadata. Set includeImage:true to view a bounded WebP preview (MCP image block; HTTP/CLI image object with base64 data). maxDimension is 256-2048 pixels, default 1600. Metadata dimensions describe the original. The relative url is an authenticated original-image proxy on the Feedbacks server; never send credentials to the reviewed website.",
   "context.export":

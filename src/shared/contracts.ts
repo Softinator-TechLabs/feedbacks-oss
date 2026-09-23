@@ -268,6 +268,11 @@ export const inputSchemas = {
     note: z.string().trim().max(12000).optional(),
     duplicateOf: id.optional(),
   }),
+  "threads.review": z.object({
+    ...tm,
+    decision: z.enum(["approved", "changes_requested", "reopen"]),
+    note: z.string().trim().max(4000).default(""),
+  }),
   "threads.linkIssue": z.object({
     ...tm,
     url: z.string().url(),
@@ -387,6 +392,14 @@ export const threadOutput = z
         ]),
       })
       .passthrough(),
+    // Older immutable export snapshots predate review rounds.
+    review: z
+      .object({
+        round: z.number().int().positive(),
+        state: z.enum(["open", "approved", "changes_requested"]),
+        history: z.array(z.object({}).passthrough()),
+      })
+      .optional(),
     externalIssues: z.array(
       z.object({ url: z.string(), verification: z.literal("reported") }).passthrough(),
     ),
@@ -600,6 +613,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "threads.create": threadOutput,
   "threads.reply": threadOutput,
   "threads.status": threadOutput,
+  "threads.review": threadOutput,
   "threads.linkIssue": threadOutput,
   "threads.evidence": threadOutput,
   "threads.archive": threadOutput,
@@ -681,8 +695,10 @@ export const transportOperations = [
 export const businessOperations = (Object.keys(inputSchemas) as OperationName[]).filter(
   (name) => !(transportOperations as readonly string[]).includes(name),
 );
-export const agentOperations = businessOperations;
-export const ownerTokenScopes = [...businessOperations, "context.policy"];
+export const agentOperations = businessOperations.filter(
+  (name) => name !== "threads.review",
+);
+export const ownerTokenScopes = [...agentOperations, "context.policy"];
 const readOperations = new Set<string>([
   "auth.me",
   "projects.list",

@@ -198,6 +198,17 @@ export type Thread = {
       at?: string;
     }>;
   };
+  review: {
+    round: number;
+    state: "open" | "approved" | "changes_requested";
+    history: Array<{
+      round: number;
+      decision: string;
+      note: string;
+      actor: Actor;
+      at: string;
+    }>;
+  };
   externalIssues: Array<{
     url: string;
     verification: string;

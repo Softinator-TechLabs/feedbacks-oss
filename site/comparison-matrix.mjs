@@ -1,6 +1,6 @@
 // Each verdict links to the vendor's documentation or public source.
-// A cross means the named capability is not in the documented product/edition
-// reviewed here. It is not a claim about every private or future offering.
+// A cross means the named capability is not documented in the linked public
+// product/edition. It is not a claim about every private or future offering.
 // An omitted cell means the evidence is insufficient for either verdict.
 export const matrixReviewed = "23 September 2026";
 
@@ -14,7 +14,7 @@ export const matrixFeatures = [
   ["mcp", "Feedback via MCP"],
   ["video", "Record feedback or replay"],
   ["github", "GitHub Issues handoff"],
-  ["expertise", "Approved reviewer expertise for agents"],
+  ["expertise", "Owner-approved weighted reviewer guidance in MCP"],
 ];
 
 const feedbacks =
@@ -43,7 +43,7 @@ export const matrixRows = {
     drawing: yes(feedbacks),
     mcp: yes(agent),
     video: note("no", feedbacks),
-    github: note("manual", feedbacks),
+    github: note("agent", feedbacks),
     expertise: yes(feedbacks),
   },
   bugpin: {
@@ -56,6 +56,7 @@ export const matrixRows = {
     extension: no("https://github.com/aranticlabs/bugpin/tree/main/src/widget"),
     mcp: no("https://github.com/aranticlabs/bugpin/tree/main/src"),
     video: no("https://bugpin.io/editions/"),
+    expertise: no("https://github.com/aranticlabs/bugpin"),
   },
   fasterfixes: {
     source: yes("https://github.com/manucoffin/faster-fixes"),
@@ -67,6 +68,7 @@ export const matrixRows = {
     extension: no("https://www.faster-fixes.com/docs/concepts/how-it-works"),
     drawing: no("https://www.faster-fixes.com/docs/getting-started/quickstart"),
     video: no("https://www.faster-fixes.com/docs/concepts/how-it-works"),
+    expertise: no("https://www.faster-fixes.com/docs/mcp/setup"),
   },
   siteping: {
     source: yes("https://github.com/NeosiaNexus/SitePing"),
@@ -88,6 +90,7 @@ export const matrixRows = {
     mcp: no("https://github.com/NeosiaNexus/SitePing/tree/main/packages"),
     video: no("https://github.com/NeosiaNexus/SitePing/tree/main/packages"),
     github: no("https://github.com/NeosiaNexus/SitePing/tree/main/packages"),
+    expertise: no("https://github.com/NeosiaNexus/SitePing/tree/main/packages"),
   },
   openreplay: {
     source: yes("https://github.com/openreplay/openreplay"),
@@ -99,6 +102,7 @@ export const matrixRows = {
     video: yes("https://docs.openreplay.com/en/spot/"),
     drawing: no("https://docs.openreplay.com/en/spot/"),
     github: yes("https://docs.openreplay.com/en/integrations/github/"),
+    expertise: no("https://docs.openreplay.com/en/mcp/setup/"),
   },
   bugherd: {
     ...hosted("https://bugherd.com/pricing"),
@@ -111,6 +115,7 @@ export const matrixRows = {
       "https://support.bugherd.com/en/articles/11430519-bugherd-and-github-integration",
     ),
     drawing: yes("https://bugherd.com/website-annotation-tool"),
+    expertise: no("https://bugherd.com/feature/mcp"),
   },
   "marker-io": {
     ...hosted("https://marker.io/website-annotation-tool"),
@@ -125,18 +130,23 @@ export const matrixRows = {
     github: yes(
       "https://help.marker.io/en/articles/5546520-how-to-integrate-marker-io-into-your-web-app",
     ),
+    expertise: no(
+      "https://help.marker.io/en/articles/14034657-mcp-integration-model-context-protocol",
+    ),
   },
   "markup-io": {
     ...hosted("https://www.markup.io/"),
     extension: yes("https://www.markup.io/blog/how-to-annotate-on-google-chrome/"),
     drawing: yes("https://www.markup.io/"),
     video: no("https://www.markup.io/"),
+    expertise: no("https://www.markup.io/"),
   },
   "markup-hero": {
     ...hosted("https://markuphero.com/"),
     extension: yes("https://markuphero.com/integrations/chrome-extension.html"),
     drawing: yes("https://markuphero.com/integrations/chrome-extension.html"),
     video: no("https://markuphero.com/"),
+    expertise: no("https://markuphero.com/"),
   },
   "redpen-ai": {
     ...hosted("https://www.redpen.ai/getting-started"),
@@ -144,6 +154,7 @@ export const matrixRows = {
     drawing: yes("https://www.redpen.ai/getting-started"),
     video: yes("https://www.redpen.ai/getting-started"),
     github: yes("https://www.redpen.ai/getting-started"),
+    expertise: no("https://www.redpen.ai/getting-started"),
   },
   pastel: {
     ...hosted(
@@ -157,6 +168,9 @@ export const matrixRows = {
     mcp: yes(
       "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
     ),
+    expertise: no(
+      "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
+    ),
   },
   ruttl: {
     ...hosted("https://www.ruttl.com/"),
@@ -164,6 +178,7 @@ export const matrixRows = {
     drawing: yes("https://site.dev.ruttl.com/chrome-extension/"),
     mcp: yes("https://www.ruttl.com/mcp"),
     video: yes("https://www.ruttl.com/blog/video-feedback-record-website"),
+    expertise: no("https://www.ruttl.com/mcp"),
   },
   superflow: {
     ...hosted("https://usesuperflow.ai/pricing"),
@@ -172,6 +187,7 @@ export const matrixRows = {
     mcp: no("https://usesuperflow.ai/tools/mcp"),
     video: yes("https://usesuperflow.ai/recordings"),
     github: no("https://usesuperflow.ai/integrations"),
+    expertise: no("https://usesuperflow.ai/tools/mcp"),
   },
   usersnap: {
     ...hosted("https://wf.usersnap.com/pricing"),
@@ -180,6 +196,7 @@ export const matrixRows = {
     mcp: yes("https://usersnap.com/integrations/mcp"),
     video: yes("https://help.usersnap.com/docs/feedback-with-a-screen-recording"),
     github: yes("https://help.usersnap.com/docs/github"),
+    expertise: no("https://usersnap.com/integrations/mcp"),
   },
   userback: {
     ...hosted("https://userback.io/pricing/"),
@@ -190,6 +207,7 @@ export const matrixRows = {
     mcp: yes("https://docs.userback.io/docs/welcome"),
     video: yes("https://support.userback.io/en/articles/15268500-video-feedback"),
     github: yes("https://userback.io/integration/github/"),
+    expertise: no("https://docs.userback.io/docs/welcome"),
   },
   atarim: {
     ...hosted("https://atarim.io/pricing/"),
@@ -200,5 +218,6 @@ export const matrixRows = {
       "https://atarim.io/help/visual-collaboration/how-to-use-the-annotation-tools-for-feedback-in-atarim/",
     ),
     mcp: yes("https://atarim.io/mcp/"),
+    expertise: no("https://atarim.io/mcp/"),
   },
 };

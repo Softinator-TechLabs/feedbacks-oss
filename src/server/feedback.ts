@@ -82,6 +82,7 @@ export async function fullThread(db: Database, a: Actor, row: any) {
   }
   return {
     ...data,
+    review: data.review ?? { round: 1, state: "open", history: [] },
     tags: data.tags ?? [],
     id: row.id,
     projectId: row.project_id,
@@ -223,6 +224,7 @@ export async function feedback(db: Database, a: Actor, op: string, i: any): Prom
         lastResponse: null,
       },
       work: { state: "open", history: [] },
+      review: { round: 1, state: "open", history: [] },
       externalIssues: [],
       fixEvidence: [],
       importance: {
@@ -307,6 +309,27 @@ export async function feedback(db: Database, a: Actor, op: string, i: any): Prom
       at,
       duplicateOf: i.duplicateOf ?? null,
     });
+  } else if (op === "threads.review") {
+    if (a.kind !== "human")
+      fail("FORBIDDEN", "A signed-in human reviewer must record a review decision", 403);
+    const review = data.review ?? { round: 1, state: "open", history: [] };
+    if (i.decision === "reopen") {
+      if (review.state === "open") fail("VALIDATION", "Review round is already open");
+      review.round += 1;
+      review.state = "open";
+    } else {
+      if (review.state !== "open")
+        fail("VALIDATION", "Reopen the review round before a new decision");
+      review.state = i.decision;
+    }
+    review.history.push({
+      round: review.round,
+      decision: i.decision,
+      note: i.note,
+      actor,
+      at,
+    });
+    data.review = review;
   } else if (op === "threads.linkIssue") {
     const u = new URL(i.url),
       match = u.pathname.match(/^\/([^/]+)\/([^/]+)\/issues\/([1-9]\d*)\/?$/);

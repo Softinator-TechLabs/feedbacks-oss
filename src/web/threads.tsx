@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ThreadStatus } from "./thread-status.js";
+import { ThreadReview } from "./thread-review.js";
 import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
 import { usePageLocation, navigate, useUnsavedChanges } from "./navigation.js";
@@ -590,6 +591,12 @@ export function ThreadDetail({
           onSaved={setThread}
         />
       )}
+      <ThreadReview
+        key={`review:${t.id}`}
+        thread={t}
+        canWrite={!!project?.permissions.canWrite}
+        onSaved={setThread}
+      />
       <ThreadNavigation key={threadId} threadId={threadId} />
       <div className="detail-grid">
         <div className="evidence-pane">

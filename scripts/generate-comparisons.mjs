@@ -40,6 +40,7 @@ function shell({ title, description, canonical, content }) {
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/comparison.css" />
+    <script src="/comparison.js" defer></script>
     <title>${escape(title)}</title>
   </head>
   <body>
@@ -66,7 +67,7 @@ const ours = {
   agents:
     "Scoped MCP access to the thread, replies, screenshot and owner-approved reviewer guidance. Expertise weights are advisory.",
   handoff:
-    "Clarify quick requests in the thread. Create and link GitHub Issues through your existing workflow when the work is agreed.",
+    "Clarify quick requests in the thread. A coding agent with separate GitHub access can create an agreed Issue and link its URL through Feedbacks MCP.",
 };
 
 const statusLabels = {
@@ -76,6 +77,7 @@ const statusLabels = {
   required: "External",
   components: "Parts",
   manual: "Manual",
+  agent: "Agent",
 };
 
 function matrix(activeSlug) {
@@ -104,11 +106,12 @@ function matrix(activeSlug) {
     })
     .join("");
   return `<section class="compare-matrix" aria-labelledby="matrix-heading">
-    <div class="matrix-intro"><h2 id="matrix-heading">The whole field, at a glance.</h2><p>Scroll across for every column. Open any mark to see the evidence.</p></div>
+    <div class="matrix-intro"><h2 id="matrix-heading">The whole field, at a glance.</h2><p>Open any mark to see the evidence.</p></div>
+    <div class="matrix-controls" aria-label="Comparison table navigation"><p>Swipe or use the arrows to see every feature.</p><div><button type="button" class="matrix-prev" aria-label="Previous comparison columns" disabled>←</button><span class="matrix-position" aria-live="polite">Feature 1 of ${matrixFeatures.length}</span><button type="button" class="matrix-next" aria-label="Next comparison columns">→</button></div></div>
     <div class="matrix-scroll" role="region" aria-label="Feature comparison table" tabindex="0">
       <table><caption>Feedbacks and 15 website feedback tools, compared by documented capability</caption><thead><tr><th scope="col">Tool</th>${header}</tr></thead><tbody>${rows}</tbody></table>
     </div>
-    <p class="matrix-key"><strong>✓</strong> Confirmed <span>·</span> <strong>✕</strong> Not in the linked public product or edition <span>·</span> <strong>?</strong> Evidence insufficient <span>·</span> <strong>Parts</strong> Components to assemble <span>·</span> <strong>External</strong> Required account <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Manual</strong> Manual handoff</p>
+    <p class="matrix-key"><strong>✓</strong> Confirmed <span>·</span> <strong>✕</strong> Not documented in the linked public product or edition <span>·</span> <strong>?</strong> Evidence insufficient <span>·</span> <strong>Parts</strong> Components to assemble <span>·</span> <strong>External</strong> Required account <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Agent</strong> Agent handoff with separate GitHub access</p>
     <p class="matrix-date">Documentation and available public source checked ${matrixReviewed}. A cross describes the documented product or edition, not every private offer or future release. Features and plans can change. Recording means creating a feedback video or session replay, not reviewing an uploaded video. A tick does not imply identical workflows.</p>
   </section>`;
 }
@@ -148,7 +151,7 @@ function detail(entry, index) {
       </section>
       <aside class="compare-limits">
         <h2>What Feedbacks does today.</h2>
-        <p>Feedbacks is an early 0.x product. GitHub Issues and Projects are a manual handoff, not an automatic sync. It does not include video replay, surveys or an AI model subscription. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
+        <p>Feedbacks is an early 0.x product. An agent can create an Issue using its separate GitHub access and link it here through MCP after the team agrees. Feedbacks does not automatically create or synchronize Issues. It does not include video replay, surveys or an AI model subscription. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
         <p>Reviewer expertise belongs in owner-approved guidance. A private member note or profile field is not automatically shared with an ordinary agent. Guidance helps interpretation but never grants permissions or guarantees how a model will decide.</p>
       </aside>
       <div class="compare-actions"><a class="button primary" href="${store}">Get the Chrome extension</a><a href="${source}/blob/HEAD/docs/self-hosting.md">Self-host Feedbacks</a></div>

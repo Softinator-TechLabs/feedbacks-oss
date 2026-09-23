@@ -59,6 +59,9 @@ export async function sourceFiles(root) {
       throw new Error(`Source export refuses symlinks: ${relative}`);
     if (info.isDirectory()) {
       for (const entry of await readdir(join(root, relative))) {
+        // Finder creates this ignored metadata file when a directory is browsed.
+        // It is never part of a source export.
+        if (entry === ".DS_Store") continue;
         if (
           !/^[A-Za-z0-9_.-]+$/.test(entry) ||
           (entry.startsWith(".") &&

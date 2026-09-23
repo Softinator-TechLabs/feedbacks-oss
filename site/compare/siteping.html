@@ -25,6 +25,7 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/comparison.css" />
+    <script src="/comparison.js" defer></script>
     <title>Feedbacks vs SitePing | Website feedback comparison</title>
   </head>
   <body>
@@ -72,7 +73,27 @@
         <section class="compare-matrix" aria-labelledby="matrix-heading">
           <div class="matrix-intro">
             <h2 id="matrix-heading">The whole field, at a glance.</h2>
-            <p>Scroll across for every column. Open any mark to see the evidence.</p>
+            <p>Open any mark to see the evidence.</p>
+          </div>
+          <div class="matrix-controls" aria-label="Comparison table navigation">
+            <p>Swipe or use the arrows to see every feature.</p>
+            <div>
+              <button
+                type="button"
+                class="matrix-prev"
+                aria-label="Previous comparison columns"
+                disabled
+              >
+                ←</button
+              ><span class="matrix-position" aria-live="polite">Feature 1 of 10</span
+              ><button
+                type="button"
+                class="matrix-next"
+                aria-label="Next comparison columns"
+              >
+                →
+              </button>
+            </div>
           </div>
           <div
             class="matrix-scroll"
@@ -96,7 +117,7 @@
                   <th scope="col">Feedback via MCP</th>
                   <th scope="col">Record feedback or replay</th>
                   <th scope="col">GitHub Issues handoff</th>
-                  <th scope="col">Approved reviewer expertise for agents</th>
+                  <th scope="col">Owner-approved weighted reviewer guidance in MCP</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,19 +187,19 @@
                       >✕</a
                     >
                   </td>
-                  <td class="matrix-manual">
+                  <td class="matrix-agent">
                     <a
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md"
-                      aria-label="Feedbacks: GitHub Issues handoff. Manual. Read source."
+                      aria-label="Feedbacks: GitHub Issues handoff. Agent. Read source."
                       title="Read source for Feedbacks: GitHub Issues handoff"
-                      >Manual</a
+                      >Agent</a
                     >
                   </td>
                   <td class="matrix-yes">
                     <a
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md"
-                      aria-label="Feedbacks: Approved reviewer expertise for agents. Confirmed. Read source."
-                      title="Read source for Feedbacks: Approved reviewer expertise for agents"
+                      aria-label="Feedbacks: Owner-approved weighted reviewer guidance in MCP. Confirmed. Read source."
+                      title="Read source for Feedbacks: Owner-approved weighted reviewer guidance in MCP"
                       >✓</a
                     >
                   </td>
@@ -257,10 +278,12 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="BugPin: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://github.com/aranticlabs/bugpin"
+                      aria-label="BugPin: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for BugPin: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -338,10 +361,12 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="FasterFixes: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.faster-fixes.com/docs/mcp/setup"
+                      aria-label="FasterFixes: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for FasterFixes: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -419,10 +444,12 @@
                       >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="SitePing: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://github.com/NeosiaNexus/SitePing/tree/main/packages"
+                      aria-label="SitePing: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for SitePing: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -502,10 +529,12 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="OpenReplay + Spot: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://docs.openreplay.com/en/mcp/setup/"
+                      aria-label="OpenReplay + Spot: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for OpenReplay + Spot: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -583,10 +612,12 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="BugHerd: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://bugherd.com/feature/mcp"
+                      aria-label="BugHerd: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for BugHerd: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -664,10 +695,12 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Marker.io: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://help.marker.io/en/articles/14034657-mcp-integration-model-context-protocol"
+                      aria-label="Marker.io: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for Marker.io: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -737,10 +770,12 @@
                       >?</span
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="MarkUp.io: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.markup.io/"
+                      aria-label="MarkUp.io: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for MarkUp.io: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -810,10 +845,12 @@
                       >?</span
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Markup Hero: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://markuphero.com/"
+                      aria-label="Markup Hero: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for Markup Hero: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -886,10 +923,12 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Redpen.ai: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.redpen.ai/getting-started"
+                      aria-label="Redpen.ai: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for Redpen.ai: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -962,10 +1001,12 @@
                   <td class="matrix-unknown">
                     <span aria-label="Pastel: GitHub Issues handoff not verified">?</span>
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Pastel: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server"
+                      aria-label="Pastel: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for Pastel: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -1038,10 +1079,12 @@
                   <td class="matrix-unknown">
                     <span aria-label="Ruttl: GitHub Issues handoff not verified">?</span>
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Ruttl: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://www.ruttl.com/mcp"
+                      aria-label="Ruttl: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for Ruttl: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -1119,10 +1162,12 @@
                       >✕</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Superflow: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usesuperflow.ai/tools/mcp"
+                      aria-label="Superflow: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for Superflow: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -1200,10 +1245,12 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Usersnap: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://usersnap.com/integrations/mcp"
+                      aria-label="Usersnap: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for Usersnap: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -1281,10 +1328,12 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Userback: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://docs.userback.io/docs/welcome"
+                      aria-label="Userback: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for Userback: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -1354,10 +1403,12 @@
                   <td class="matrix-unknown">
                     <span aria-label="Atarim: GitHub Issues handoff not verified">?</span>
                   </td>
-                  <td class="matrix-unknown">
-                    <span
-                      aria-label="Atarim: Approved reviewer expertise for agents not verified"
-                      >?</span
+                  <td class="matrix-no">
+                    <a
+                      href="https://atarim.io/mcp/"
+                      aria-label="Atarim: Owner-approved weighted reviewer guidance in MCP. ✕. Read source."
+                      title="Read source for Atarim: Owner-approved weighted reviewer guidance in MCP"
+                      >✕</a
                     >
                   </td>
                 </tr>
@@ -1365,12 +1416,13 @@
             </table>
           </div>
           <p class="matrix-key">
-            <strong>✓</strong> Confirmed <span>·</span> <strong>✕</strong> Not in the
-            linked public product or edition <span>·</span> <strong>?</strong> Evidence
-            insufficient <span>·</span> <strong>Parts</strong> Components to assemble
-            <span>·</span> <strong>External</strong> Required account <span>·</span>
-            <strong>Paid</strong> Paid edition <span>·</span>
-            <strong>Manual</strong> Manual handoff
+            <strong>✓</strong> Confirmed <span>·</span> <strong>✕</strong> Not documented
+            in the linked public product or edition <span>·</span>
+            <strong>?</strong> Evidence insufficient <span>·</span>
+            <strong>Parts</strong> Components to assemble <span>·</span>
+            <strong>External</strong> Required account <span>·</span>
+            <strong>Paid</strong> Paid edition <span>·</span> <strong>Agent</strong> Agent
+            handoff with separate GitHub access
           </p>
           <p class="matrix-date">
             Documentation and available public source checked 23 September 2026. A cross
@@ -1419,8 +1471,9 @@
           <div class="compare-row">
             <h3>Next step</h3>
             <p>
-              <strong>Feedbacks</strong>Clarify quick requests in the thread. Create and
-              link GitHub Issues through your existing workflow when the work is agreed.
+              <strong>Feedbacks</strong>Clarify quick requests in the thread. A coding
+              agent with separate GitHub access can create an agreed Issue and link its
+              URL through Feedbacks MCP.
             </p>
             <p>
               <strong>SitePing</strong>The dashboard and adapter keep triage close to the
@@ -1431,10 +1484,12 @@
         <aside class="compare-limits">
           <h2>What Feedbacks does today.</h2>
           <p>
-            Feedbacks is an early 0.x product. GitHub Issues and Projects are a manual
-            handoff, not an automatic sync. It does not include video replay, surveys or
-            an AI model subscription. Self-hosting has no Feedbacks license fee; you still
-            pay for your server, database, storage and operations.
+            Feedbacks is an early 0.x product. An agent can create an Issue using its
+            separate GitHub access and link it here through MCP after the team agrees.
+            Feedbacks does not automatically create or synchronize Issues. It does not
+            include video replay, surveys or an AI model subscription. Self-hosting has no
+            Feedbacks license fee; you still pay for your server, database, storage and
+            operations.
           </p>
           <p>
             Reviewer expertise belongs in owner-approved guidance. A private member note
