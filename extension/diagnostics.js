@@ -30,7 +30,7 @@ export function diagnosticCollector(action, reviewId) {
   const safeUrl = (value) => {
     try {
       const url = new URL(value);
-      return /^https?:$/.test(url.protocol) ? url.origin + url.pathname : null;
+      return /^https?:$/.test(url.protocol) ? url.origin : null;
     } catch {
       return null;
     }
@@ -145,7 +145,7 @@ export function cleanDiagnostics(value) {
   const safeUrl = (s) => {
     try {
       const u = new URL(String(s).slice(0, 4096));
-      return /^https?:$/.test(u.protocol) ? u.origin + u.pathname : null;
+      return /^https?:$/.test(u.protocol) ? u.origin : null;
     } catch {
       return null;
     }

@@ -24,7 +24,7 @@ For a separate internal distribution, set `FEEDBACKS_EXTENSION_DEFAULT_SERVER=ht
 
 Captured pixels, selected element context and comments are sent to the chosen server when you submit. Review screenshots before sending; masking is not a guarantee that all sensitive information was detected. Tokens and pending drafts are stored locally. Server access is scoped to your project grants.
 
-Restricted browser pages cannot be captured. Cross-origin frames, moving content and responsive layouts may affect element targeting; verify the submitted screenshot and context. The extension loads no remote executable code.
+The screenshot covers the visible browser area, not the full page. Restricted browser pages cannot be captured. Cross-origin frames, moving content and responsive layouts may affect element targeting; verify the submitted screenshot and context. The extension loads no remote executable code.
 
 ## Release and updates
 
@@ -36,9 +36,9 @@ Before a release, check pairing, capture, redaction, submit/retry, project routi
 
 Collection is off by default. In the popup's **Console & network** section, choose **Start collection**, reproduce the issue, then capture. Stop and discard is available before capture. The recorder ends on capture, navigation, review-session change or after five minutes. It uses the existing `activeTab`/scripting capability; this feature adds no Chrome permission.
 
-Only the top-level page is observed. Up to 25 console warning/error messages and 50 resource timing entries are retained. Console arguments other than the first string are not serialized. Network entries contain the URL origin/path, resource type, timing and HTTP status when the browser exposes it. Headers, bodies, cookies, storage contents and prior browsing history are not collected. Requests or console events that occur before collection starts are absent.
+Only the top-level page is observed. Up to 25 console warning/error messages and 50 resource timing entries are retained. Console arguments other than the first string are not serialized. Network entries contain the URL origin, resource type, timing and HTTP status when the browser exposes it. Headers, bodies, cookies, storage contents and prior browsing history are not collected. Requests or console events that occur before collection starts are absent.
 
-URL credentials, query strings and fragments are stripped; common secrets and email patterns are redacted from messages. Redaction is best effort: URL paths and unusual console text can still contain private information. In the editor, inspect each entry, uncheck anything unsuitable and explicitly select **Share selected diagnostics with this feedback**. Sharing starts unchecked. Unshared entries stay in the local draft and are discarded with it. Submitted entries are part of the thread and follow that instance's retention and access policy.
+URL credentials, paths, query strings and fragments are stripped; common secrets and email patterns are redacted from messages. Redaction is best effort: unusual console text and even a hostname can still contain private information. In the editor, inspect each entry, uncheck anything unsuitable and explicitly select **Share selected diagnostics with this feedback**. Sharing starts unchecked. Unshared entries stay in the local draft and are discarded with it. Submitted entries are part of the thread and follow that instance's retention and access policy.
 
 The target page can influence or fabricate its own console and performance data. The server validates and bounds the packet and labels it untrusted. A missing status does not mean a request succeeded. Cross-origin requests and browser restrictions can limit what is available; this is not a complete network trace or a session recording.
 

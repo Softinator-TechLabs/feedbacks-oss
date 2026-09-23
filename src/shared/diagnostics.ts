@@ -4,7 +4,7 @@ export function diagnosticText(value: string) {
     .replace(/https?:\/\/[^\s<>"']+/gi, (match) => {
       try {
         const url = new URL(match);
-        return url.origin + url.pathname;
+        return url.origin;
       } catch {
         return "[url]";
       }
@@ -25,7 +25,7 @@ const url = z
   .refine((s) => /^https?:/.test(s), "HTTP(S) resource required")
   .transform((s) => {
     const u = new URL(s);
-    return u.origin + u.pathname;
+    return u.origin;
   });
 const ms = z.number().finite().min(0).max(3600000);
 export const diagnosticsSchema = z
