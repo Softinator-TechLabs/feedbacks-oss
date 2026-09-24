@@ -12,6 +12,10 @@ Neighbors stay fixed while you edit the current thread, so posting a reply or re
 
 The status selector at the top of a thread saves as soon as you choose a state. **Resolve** closes the thread in one click for members with resolution permission; **Reopen** opens it again. Notes are optional. Use **Add a note or duplicate link** when there is extra context to record.
 
+The status stays above the feedback. On a narrow screen the screenshot appears before the review round, queue navigation and discussion. On desktop those controls sit beside the evidence. Open **Review** when a human sign-off is needed. The top actions open category and tags, a guest link, or linked issues in Details; the discussion remains the default pane. Icon actions have labels on hover and keyboard focus.
+
+Project lists also show a status selector on each row. Changing it saves immediately, with resolution options only for members who can resolve threads. Dates throughout the app display in 12-hour IST format.
+
 The saved status remains visible while a request is pending or fails. Failed updates retain their selection and details for retry. A conflicting revision must be loaded before retrying; the app does not silently overwrite another member's changes. Status history still records the actor and time. Resolving a thread does not claim delivery evidence or change its response obligation.
 
 ## Record a review decision
@@ -40,7 +44,7 @@ Widget links use the same expiry, submission limit and revocation controls as gu
 
 Category defaults to General. Tags are optional, case-insensitive and shared with the thread. Use up to 12 tags, each 32 characters; letters, numbers, spaces, hyphens, underscores and slashes are accepted. The app and extension both allow tags when creating feedback. Project writers can update them afterward. Changes use the thread revision, so concurrent edits cannot silently overwrite each other.
 
-Use **Saved views** to name and reuse the currently applied filters. Views belong to you within a project, including for read-only project members. Other members cannot see or alter them. Each person can save up to 30 views per project. To revise a saved view, apply it, change filters, save a replacement and remove the old view.
+Use **Saved views** to apply a named filter. Open **Save or remove a view** for less frequent maintenance. Views belong to you within a project, including for read-only project members. Other members cannot see or alter them. Each person can save up to 30 views per project. To revise a saved view, apply it, change filters, save a replacement and remove the old view.
 
 ## Compare attachments
 

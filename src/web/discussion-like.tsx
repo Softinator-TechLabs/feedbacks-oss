@@ -53,8 +53,8 @@ export function DiscussionLike({
         disabled={!canWrite || busy}
         onClick={() => void save()}
       >
-        {busy ? "Saving…" : error ? "Retry like" : likes.liked ? "Liked" : "Like"} ·{" "}
-        {likes.uniqueLikes}
+        {busy ? "Saving…" : error ? "Retry like" : likes.liked ? "Liked" : "Like"}
+        {likes.uniqueLikes > 0 && ` ${likes.uniqueLikes}`}
       </button>
       <ErrorNotice error={error} />
     </div>

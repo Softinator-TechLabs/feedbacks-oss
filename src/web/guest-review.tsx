@@ -28,7 +28,7 @@ export function GuestLinks({ threadId }: { threadId: string }) {
   );
   const action = useAction();
   return (
-    <details className="section compact-details">
+    <details className="section compact-details" id="thread-guest-links">
       <summary>Guest discussion links</summary>
       <p className="muted">
         Each link lets someone read this feedback and add a reply without an account. It

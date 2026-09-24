@@ -56,6 +56,7 @@ export function ThreadStatus({
         <Field label="Status">
           <select
             name="state"
+            aria-label="Status"
             disabled={a.busy || changed}
             value={current.state}
             onChange={(e) =>
@@ -100,9 +101,11 @@ export function ThreadStatus({
             Reopen
           </button>
         )}
-        <span className="muted" role="status">
-          {a.busy ? "Saving…" : `Saved status: ${labels[thread.work.state]}`}
-        </span>
+        {a.busy && (
+          <span className="muted" role="status">
+            Saving…
+          </span>
+        )}
       </div>
       <ErrorNotice error={a.error} />
       {draft && !changed && !a.busy && !a.error.includes("CONFLICT") && (
@@ -133,7 +136,12 @@ export function ThreadStatus({
         </Notice>
       )}
       <details className="status-options">
-        <summary>Add a note or duplicate link</summary>
+        <summary
+          aria-label="Add a status note or duplicate link"
+          data-tooltip="Add a status note or duplicate link"
+        >
+          More
+        </summary>
         <Field label="Outcome note (optional)">
           <textarea
             name="note"

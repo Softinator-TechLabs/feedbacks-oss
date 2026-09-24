@@ -15,6 +15,13 @@ import {
 const PASSWORD_LENGTH = 10;
 const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
+export function memberWelcomeMessage(
+  member: { name: string; email: string; password: string },
+  origin: string,
+) {
+  return `Hey ${member.name}, Feedbacks par join karein: ${origin}\nEmail: ${member.email}\nPassword: ${member.password}\nChrome extension aur Codex, Claude Code, Antigravity agent setup: ${origin}/help\nPlease sign in karke password change kar dein.`;
+}
+
 function generatePassword() {
   const cryptoApi = globalThis.crypto;
   if (!cryptoApi?.getRandomValues)
@@ -115,7 +122,7 @@ function PasswordInput({
               );
           }}
         >
-          Copy
+          Copy password
         </button>
       </div>
       <small id={statusId} role="status" aria-live="polite">
@@ -247,6 +254,11 @@ export function PasswordReplacement({
 export function CreateMember({ onSaved }: { project?: Project; onSaved: () => void }) {
   const a = useAction(),
     [password, setPassword] = useState(""),
+    [created, setCreated] = useState<{
+      name: string;
+      email: string;
+      password: string;
+    } | null>(null),
     { data, error } = useLoad(() => api<{ items: Project[] }>("projects.list", {}), []);
   return (
     <details className="section">
@@ -257,10 +269,13 @@ export function CreateMember({ onSaved }: { project?: Project; onSaved: () => vo
           const form = e.currentTarget,
             f = new FormData(form);
           void a.run(async () => {
-            await api("members.create", {
+            const details = {
               name: String(f.get("name")),
               email: String(f.get("email")),
               password: String(f.get("password")),
+            };
+            await api("members.create", {
+              ...details,
               grants: f
                 .getAll("projectIds")
                 .map(String)
@@ -274,6 +289,7 @@ export function CreateMember({ onSaved }: { project?: Project; onSaved: () => vo
             });
             form.reset();
             setPassword("");
+            setCreated(details);
             onSaved();
           }, "User created. Deliver the password privately; it can be used immediately.");
         }}
@@ -311,6 +327,28 @@ export function CreateMember({ onSaved }: { project?: Project; onSaved: () => vo
         </button>
         <ActionState action={a} />
       </form>
+      {created && (
+        <div className="created-member-actions">
+          <p>Created {created.name}. Send access in a private message.</p>
+          <button
+            type="button"
+            onClick={() =>
+              void a.run(
+                () =>
+                  navigator.clipboard.writeText(
+                    memberWelcomeMessage(created, location.origin),
+                  ),
+                "Welcome message copied. Send it privately.",
+              )
+            }
+          >
+            Copy credentials and setup message
+          </button>
+          <button type="button" onClick={() => setCreated(null)}>
+            Clear message
+          </button>
+        </div>
+      )}
     </details>
   );
 }

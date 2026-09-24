@@ -219,7 +219,11 @@ export const inputSchemas = {
   "webhooks.rotate": z.object({ projectId: id }),
   "webhooks.disable": z.object({ projectId: id }),
   "webhooks.deliveries": z.object({ projectId: id }),
-  "members.list": z.object({ projectId: id.optional() }),
+  "members.list": z.object({
+    projectId: id.optional(),
+    includeRemoved: z.boolean().optional(),
+  }),
+  "members.archive": z.object({ userId: id, archived: z.boolean() }),
   "members.invite": z.object({
     email: z.string().email(),
     projectId: id,
@@ -618,6 +622,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     expiresAt: z.string().optional(),
   }),
   "members.owner": z.object({ updated: z.boolean() }),
+  "members.archive": z.object({ updated: z.boolean() }),
   "members.notes.get": z.object({ body: z.string(), revision: z.number() }),
   "members.notes.save": z.object({ body: z.string(), revision: z.number() }),
   "members.guidance.get": z.object({ body: z.string(), revision: z.number() }),
@@ -713,6 +718,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
         id,
         name: z.string(),
         active: z.boolean(),
+        removedAt: z.string().nullable().optional(),
         owner: z.boolean(),
         primaryOwner: z.boolean().optional(),
         username: z.string().nullable().optional(),
@@ -745,6 +751,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
         scopes: z.array(z.string()),
         canResolve: z.boolean(),
         ownerAdmin: z.boolean().optional(),
+        secretSuffix: z.string().nullable().optional(),
         expiresAt: z.string(),
         revokedAt: z.string().nullable(),
       }),
@@ -958,6 +965,7 @@ export const businessOperations = (Object.keys(inputSchemas) as OperationName[])
 );
 export const agentOperations = businessOperations.filter(
   (name) =>
+    name !== "members.archive" &&
     name !== "threads.review" &&
     !name.startsWith("webhooks.") &&
     name !== "documents.upload" &&

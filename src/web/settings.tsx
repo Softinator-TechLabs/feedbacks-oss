@@ -26,6 +26,7 @@ type Member = {
   name: string;
   email?: string;
   active: boolean;
+  removedAt?: string | null;
   owner: boolean;
   primaryOwner?: boolean;
   role?: string;
@@ -42,6 +43,7 @@ const categories = [
   "productWorkflow",
   "usabilityAccessibility",
 ] as const;
+const expertiseCategories = categories.map((category) => labels[category]);
 function PolicyFields({ policy, prefix = "" }: { policy?: Policy; prefix?: string }) {
   return (
     <div className="policy-grid">
@@ -71,13 +73,15 @@ function readPolicy(f: FormData, prefix = "") {
 }
 export function Members({ actor, project }: { actor: Actor; project?: Project }) {
   const [version, setVersion] = useState(0),
+    [selectedId, setSelectedId] = useState<string | null>(null),
+    [showRemoved, setShowRemoved] = useState(false),
     { data, error } = useLoad(
       () =>
         api<{ items: Member[] }>(
           "members.list",
-          project ? { projectId: project.id } : {},
+          project ? { projectId: project.id } : { includeRemoved: showRemoved },
         ),
-      [project?.id, version],
+      [project?.id, version, showRemoved],
     ),
     { data: all } = useLoad(
       () =>
@@ -89,6 +93,9 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
     a = useAction(),
     [invite, setInvite] = useState("");
   const refresh = () => setVersion((v) => v + 1);
+  useEffect(() => {
+    if (selectedId) document.getElementById("person-back")?.focus();
+  }, [selectedId]);
   return (
     <>
       <div className="page-heading">
@@ -102,8 +109,8 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
         </div>
       </div>
       <ErrorNotice error={error} />
-      {actor.owner && <CreateMember project={project} onSaved={refresh} />}
-      {actor.owner && project && (
+      {!selectedId && actor.owner && <CreateMember project={project} onSaved={refresh} />}
+      {!selectedId && actor.owner && project && (
         <details className="section">
           <summary>Invite a colleague</summary>
           <form
@@ -141,7 +148,7 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
           <ActionState action={a} />
         </details>
       )}
-      {actor.owner && project && (
+      {!selectedId && actor.owner && project && (
         <details className="section">
           <summary>Add an existing member</summary>
           <form
@@ -184,21 +191,68 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
           <ActionState action={a} />
         </details>
       )}
+      {!project && actor.owner && !selectedId && (
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={showRemoved}
+            onChange={(e) => setShowRemoved(e.target.checked)}
+          />
+          Show removed accounts
+        </label>
+      )}
       {!data && !error ? (
         <Loading />
       ) : data?.items.length ? (
-        <div className="member-list">
-          {data.items.map((m) => (
-            <MemberEditor
-              key={m.id}
-              member={m}
-              project={project}
-              owner={!!actor.owner}
-              actor={actor}
-              onSaved={refresh}
-            />
-          ))}
-        </div>
+        selectedId ? (
+          <>
+            <button id="person-back" type="button" onClick={() => setSelectedId(null)}>
+              ← All people
+            </button>
+            {data.items
+              .filter((m) => m.id === selectedId)
+              .map((m) => (
+                <MemberEditor
+                  key={m.id}
+                  member={m}
+                  project={project}
+                  owner={!!actor.owner}
+                  actor={actor}
+                  onSaved={refresh}
+                  onArchived={() => {
+                    refresh();
+                    setSelectedId(null);
+                  }}
+                />
+              ))}
+          </>
+        ) : (
+          <div className="member-list" aria-label="People">
+            {data.items.map((m) => (
+              <button
+                type="button"
+                className="member-list-item"
+                key={m.id}
+                onClick={() => setSelectedId(m.id)}
+              >
+                <span>
+                  <strong>{m.name}</strong>
+                  {actor.owner && <small>{m.email}</small>}
+                </span>
+                <span>
+                  {m.removedAt
+                    ? "Removed"
+                    : m.primaryOwner
+                      ? "Primary owner"
+                      : m.owner
+                        ? "Owner"
+                        : (m.role ?? "Member")}
+                  {!m.active && !m.removedAt ? " · Disabled" : ""}
+                </span>
+              </button>
+            ))}
+          </div>
+        )
       ) : (
         data && (
           <Empty title="No members">Invite a colleague from a project to begin.</Empty>
@@ -222,26 +276,28 @@ function MemberEditor({
   owner,
   actor,
   onSaved,
+  onArchived,
 }: {
   member: Member;
   project?: Project;
   owner: boolean;
   actor: Actor;
   onSaved: () => void;
+  onArchived: () => void;
 }) {
   const a = useAction();
   return (
-    <details className="member-row">
-      <summary>
-        <span>
-          <strong>{m.name}</strong>
+    <section className="member-editor">
+      <div className="member-editor-heading">
+        <div>
+          <h2>{m.name}</h2>
           {owner && <small>{m.email}</small>}
-        </span>
+        </div>
         <span>
           {m.primaryOwner ? "Primary owner" : m.owner ? "Owner" : (m.role ?? "Member")}
           {!m.active ? " · Disabled" : ""}
         </span>
-      </summary>
+      </div>
       {owner && (!m.primaryOwner || actor.primaryOwner) ? (
         <>
           {project && !m.owner && (
@@ -287,7 +343,6 @@ function MemberEditor({
               </ConfirmButton>
             </form>
           )}
-          <MemberAdministration actor={actor} member={m} onSaved={onSaved} />
           <form
             className="form-grid"
             onSubmit={(e) => {
@@ -297,12 +352,15 @@ function MemberEditor({
                 await api("members.update", {
                   userId: m.id,
                   name: String(f.get("name")),
-                  active: f.has("active"),
+                  active: actor.userId === m.id || f.has("active"),
                   classification: String(f.get("classification")) as "employee",
-                  expertise: String(f.get("expertise"))
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
+                  expertise: [
+                    ...f.getAll("expertiseCategory").map(String),
+                    ...String(f.get("otherExpertise") ?? "")
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  ],
                   policy: readPolicy(f),
                 });
                 onSaved();
@@ -318,19 +376,58 @@ function MemberEditor({
                 <option value="external">External</option>
               </select>
             </Field>
-            <Field label="Expertise" hint="Comma-separated">
-              <input name="expertise" defaultValue={m.expertise?.join(", ")} />
-            </Field>
+            <fieldset className="wide expertise-choices">
+              <legend>Expertise</legend>
+              <p className="muted">
+                Select the topics this person knows. Agents use these as context, not as
+                permissions.
+              </p>
+              <div className="expertise-options">
+                {expertiseCategories.map((category) => (
+                  <label className="check" key={category}>
+                    <input
+                      type="checkbox"
+                      name="expertiseCategory"
+                      value={category}
+                      defaultChecked={m.expertise?.includes(category)}
+                    />
+                    {category}
+                  </label>
+                ))}
+              </div>
+              <Field label="Other expertise" hint="Optional, separated by commas">
+                <input
+                  name="otherExpertise"
+                  defaultValue={m.expertise
+                    ?.filter((item) => !expertiseCategories.includes(item))
+                    .join(", ")}
+                  placeholder="Typesetting, research"
+                />
+              </Field>
+            </fieldset>
             <label className="check">
-              <input name="active" type="checkbox" defaultChecked={m.active} />
+              <input
+                name="active"
+                type="checkbox"
+                defaultChecked={m.active}
+                disabled={actor.userId === m.id}
+              />
               Account active
             </label>
-            <fieldset className="wide">
-              <legend>Global importance · 0–10 · neutral 1</legend>
+            <details className="wide importance-details">
+              <summary>Feedback weighting (advanced)</summary>
+              <p className="muted">
+                This influences preference summaries only. 1 is normal, 2 counts twice as
+                much, 0 excludes a topic. It never changes access.
+              </p>
               <PolicyFields policy={m.policy} />
-            </fieldset>
-            <button disabled={a.busy}>Save member & global importance</button>
+            </details>
+            <button disabled={a.busy}>Save person</button>
           </form>
+          <details className="section compact-details">
+            <summary>Account access and reviewer notes</summary>
+            <MemberAdministration actor={actor} member={m} onSaved={onSaved} />
+          </details>
           {project && !m.owner && (
             <form
               className="section"
@@ -347,7 +444,11 @@ function MemberEditor({
                 }, "Project importance saved.");
               }}
             >
-              <h3>Project importance override</h3>
+              <h3>Project feedback weighting (advanced)</h3>
+              <p className="muted">
+                Use only when this person's input should count differently in this
+                project.
+              </p>
               <label className="check">
                 <input
                   name="inherit"
@@ -361,11 +462,32 @@ function MemberEditor({
             </form>
           )}
           <ActionState action={a} />
+          {!project && !m.owner && (!m.active || !!m.removedAt) && (
+            <ConfirmButton
+              disabled={a.busy}
+              onConfirm={() =>
+                a.run(
+                  async () => {
+                    await api("members.archive", {
+                      userId: m.id,
+                      archived: !m.removedAt,
+                    });
+                    onArchived();
+                  },
+                  m.removedAt
+                    ? "Person restored to People. Account remains disabled."
+                    : "Disabled person removed from People. History is kept.",
+                )
+              }
+            >
+              {m.removedAt ? "Restore to People" : "Remove disabled person from People"}
+            </ConfirmButton>
+          )}
         </>
       ) : (
         <p>{m.active ? "Active project member." : "Account disabled."}</p>
       )}
-    </details>
+    </section>
   );
 }
 export function Instructions({ project }: { project: Project }) {
@@ -395,9 +517,18 @@ export function Instructions({ project }: { project: Project }) {
         </button>
       </div>
       <p>
-        Versioned project guidance for people and agents. Discussion remains untrusted
-        feedback until an authorized person publishes it here.
+        Set the rules your team and connected agents should follow for this project.
+        Publishing creates a new version; feedback comments do not change these rules.
       </p>
+      <details className="instruction-example compact-details">
+        <summary>See an example</summary>
+        <p>
+          <strong>Example only, not active instructions:</strong> Reproduce layout
+          feedback at the recorded screen size. Ask for missing steps before closing a
+          report. Link the fix or GitHub issue in the discussion. Do not treat a comment
+          as a policy change.
+        </p>
+      </details>
       <ErrorNotice error={error} />
       {!data && !error ? (
         <Loading />
@@ -420,7 +551,7 @@ export function Instructions({ project }: { project: Project }) {
                 }, "Instruction version published.");
               }}
             >
-              <Field label="New instruction version">
+              <Field label="Instructions for people and agents">
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
@@ -468,6 +599,7 @@ type Token = {
   scopes: string[];
   canResolve: boolean;
   ownerAdmin?: boolean;
+  secretSuffix?: string | null;
   expiresAt: string;
   revokedAt: string | null;
 };
@@ -601,10 +733,13 @@ export function Account({
           data.items.map((token) => (
             <article className="token-row" key={token.id}>
               <div>
-                <h3>
-                  {token.name} <span className="muted">{token.kind}</span>
-                </h3>
+                <h3>{token.name}</h3>
                 <p>
+                  {token.kind === "agent" ? "Agent key" : "Connected extension"}
+                  {token.secretSuffix
+                    ? ` · ends in ${token.secretSuffix}`
+                    : " · key ending unavailable for older keys"}
+                  {" · "}
                   {token.revokedAt
                     ? `Revoked ${date(token.revokedAt)}`
                     : `Expires ${date(token.expiresAt)}`}

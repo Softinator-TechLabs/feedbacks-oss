@@ -58,7 +58,11 @@ export function ThreadList({ project }: { project: Project }) {
   } = filters;
   const [creating, setCreating] = useState(false),
     [version, setVersion] = useState(0);
-  const { data: loaded, error } = useLoad(
+  const {
+    data: loaded,
+    setData: setLoaded,
+    error,
+  } = useLoad(
     async () => ({
       query,
       projectId: project.id,
@@ -223,45 +227,72 @@ export function ThreadList({ project }: { project: Project }) {
         <>
           <div className="thread-list">
             {data.items.map((t) => (
-              <a
-                className="thread-row"
-                key={t.id}
-                href={`/threads/${t.id}${filterQuery(filters, offset)}`}
-              >
-                <div className="thread-summary">
-                  <h2>{t.body}</h2>
-                  {!!t.tags?.length && (
-                    <div className="tag-list">
-                      {t.tags.map((tag) => (
-                        <span className="tag" key={tag}>
-                          {tag}
-                        </span>
-                      ))}
+              <div className="thread-row" key={t.id}>
+                <a
+                  className="thread-row-main"
+                  href={`/threads/${t.id}${filterQuery(filters, offset)}`}
+                >
+                  <div className="thread-summary">
+                    <h2>{t.body}</h2>
+                    {!!t.tags?.length && (
+                      <div className="tag-list">
+                        {t.tags.map((tag) => (
+                          <span className="tag" key={tag}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="meta">
+                      <span>{t.author?.name ?? "Member"}</span>
+                      <span>
+                        {t.context.deviceClass} · {t.context.viewport.width} ×{" "}
+                        {t.context.viewport.height}
+                      </span>
+                      <span>{t.context.url}</span>
                     </div>
-                  )}
-                  <div className="meta">
-                    <span>{t.author?.name ?? "Member"}</span>
-                    <span>
-                      {t.context.deviceClass} · {t.context.viewport.width} ×{" "}
-                      {t.context.viewport.height}
-                    </span>
-                    <span>{t.context.url}</span>
                   </div>
+                  <div className="thread-stats">
+                    <span>
+                      {t.view?.uniqueLikes ?? 0}{" "}
+                      {t.view?.uniqueLikes === 1 ? "view like" : "view likes"} ·{" "}
+                      {t.replies?.length ?? 0}{" "}
+                      {t.replies?.length === 1 ? "reply" : "replies"}
+                    </span>
+                    <time dateTime={t.updatedAt}>{date(t.updatedAt)}</time>
+                  </div>
+                </a>
+                <div className="thread-row-actions">
+                  <ThreadQuickStatus
+                    thread={t}
+                    canWrite={project.permissions.canWrite}
+                    canResolve={project.permissions.canResolve}
+                    onSaved={(updated) =>
+                      setLoaded((current) => {
+                        if (!current || current.query !== query) return current;
+                        const leavesView =
+                          !showResolved &&
+                          ["resolved", "declined"].includes(updated.work.state);
+                        return {
+                          ...current,
+                          result: {
+                            ...current.result,
+                            items: leavesView
+                              ? current.result.items.filter(
+                                  (item) => item.id !== updated.id,
+                                )
+                              : current.result.items.map((item) =>
+                                  item.id === updated.id ? updated : item,
+                                ),
+                            total: current.result.total - (leavesView ? 1 : 0),
+                          },
+                        };
+                      })
+                    }
+                  />
+                  <span className="muted">{labels[t.response.state]}</span>
                 </div>
-                <div className="thread-states">
-                  <span className={`badge ${t.work.state}`}>{labels[t.work.state]}</span>
-                  <span>{labels[t.response.state]}</span>
-                </div>
-                <div className="thread-stats">
-                  <span>
-                    {t.view?.uniqueLikes ?? 0}{" "}
-                    {t.view?.uniqueLikes === 1 ? "view like" : "view likes"} ·{" "}
-                    {t.replies?.length ?? 0}{" "}
-                    {t.replies?.length === 1 ? "reply" : "replies"}
-                  </span>
-                  <time>{date(t.updatedAt)}</time>
-                </div>
-              </a>
+              </div>
             ))}
           </div>
           <div className="pagination">
@@ -298,6 +329,64 @@ export function ThreadList({ project }: { project: Project }) {
           </Empty>
         )
       )}
+    </>
+  );
+}
+function ThreadQuickStatus({
+  thread,
+  canWrite,
+  canResolve,
+  onSaved,
+}: {
+  thread: Thread;
+  canWrite: boolean;
+  canResolve: boolean;
+  onSaved: (thread: Thread) => void;
+}) {
+  const action = useAction();
+  if (!canWrite)
+    return (
+      <span className={`badge ${thread.work.state}`}>{labels[thread.work.state]}</span>
+    );
+  const states: Array<Thread["work"]["state"]> = [
+    "open",
+    "in_progress",
+    "ready_for_review",
+  ];
+  if (canResolve) states.push("resolved", "declined");
+  else if (["resolved", "declined"].includes(thread.work.state))
+    states.push(thread.work.state);
+  return (
+    <>
+      <select
+        aria-label={`Status for ${thread.body.slice(0, 80)}`}
+        value={thread.work.state}
+        disabled={action.busy}
+        onChange={(event) => {
+          const state = event.target.value as
+            | "open"
+            | "in_progress"
+            | "ready_for_review"
+            | "resolved"
+            | "declined";
+          void action.run(async () => {
+            onSaved(
+              await api<Thread>("threads.status", {
+                threadId: thread.id,
+                revision: thread.revision,
+                state,
+              }),
+            );
+          });
+        }}
+      >
+        {states.map((state) => (
+          <option key={state} value={state}>
+            {labels[state]}
+          </option>
+        ))}
+      </select>
+      <ActionState action={action} />
     </>
   );
 }
@@ -488,6 +577,16 @@ export function ThreadDetail({
       "Saved.",
     );
   }
+  function openDetail(id: string) {
+    setPanel("details");
+    requestAnimationFrame(() => {
+      const section = document.getElementById(id) as HTMLDetailsElement | null;
+      if (!section) return;
+      section.open = true;
+      section.scrollIntoView({ block: "nearest" });
+      section.querySelector("summary")?.focus({ preventScroll: true });
+    });
+  }
   if (!t)
     return (
       <>
@@ -516,7 +615,7 @@ export function ThreadDetail({
           <ExternalLink href={t.context.url}>
             <span
               className="icon-action"
-              title={t.context.document ? "Open document" : "Open original page"}
+              data-tooltip={t.context.document ? "Open document" : "Open original page"}
             >
               <Icon name="external" />
               <span className="sr-only">
@@ -529,7 +628,7 @@ export function ThreadDetail({
               type="button"
               className="icon-action"
               aria-label="Attach screenshot"
-              title="Attach screenshot"
+              data-tooltip="Attach screenshot"
               onClick={() => {
                 const upload = document.getElementById(
                   "thread-upload",
@@ -548,29 +647,17 @@ export function ThreadDetail({
           )}
           <button
             type="button"
-            className="icon-action"
+            className="icon-action history-action"
             aria-label="Activity history"
-            title="Activity history"
-            onClick={() => {
-              setPanel("details");
-              requestAnimationFrame(() => {
-                const history = document.getElementById(
-                  "thread-history",
-                ) as HTMLDetailsElement | null;
-                if (history) {
-                  history.open = true;
-                  history.scrollIntoView({ block: "center" });
-                  history.querySelector("summary")?.focus({ preventScroll: true });
-                }
-              });
-            }}
+            data-tooltip="Activity history"
+            onClick={() => openDetail("thread-history")}
           >
             <Icon name="history" />
           </button>
           <button
             className="icon-action"
             aria-label="Copy link"
-            title="Copy link"
+            data-tooltip="Copy link"
             onClick={() =>
               a.run(
                 () => navigator.clipboard.writeText(`${location.origin}/threads/${t.id}`),
@@ -579,6 +666,34 @@ export function ThreadDetail({
             }
           >
             <Icon name="link" />
+          </button>
+          {project?.permissions.canWrite && (
+            <button
+              type="button"
+              className="thread-tool-button"
+              data-tooltip="Edit category and tags"
+              onClick={() => openDetail("thread-organize")}
+            >
+              Organize
+            </button>
+          )}
+          {project?.permissions.canMaintain && (
+            <button
+              type="button"
+              className="thread-tool-button"
+              data-tooltip="Create a guest discussion link"
+              onClick={() => openDetail("thread-guest-links")}
+            >
+              Share
+            </button>
+          )}
+          <button
+            type="button"
+            className="thread-tool-button"
+            data-tooltip="View or link GitHub issues"
+            onClick={() => openDetail("thread-issues")}
+          >
+            Issues
           </button>
         </div>
       </div>
@@ -606,479 +721,494 @@ export function ThreadDetail({
           </button>
         </Notice>
       )}
-      {project?.permissions.canWrite && (
-        <ThreadStatus
-          key={`status:${t.id}`}
-          thread={t}
-          canResolve={project.permissions.canResolve}
-          onSaved={setThread}
-        />
-      )}
-      <ThreadReview
-        key={`review:${t.id}`}
-        thread={t}
-        canWrite={!!project?.permissions.canWrite}
-        onSaved={setThread}
-      />
-      <ThreadNavigation key={threadId} threadId={threadId} />
-      <div className="detail-grid">
-        <div className="evidence-pane">
-          <article className="first-comment">
-            {t.category !== "general" && (
-              <div className="meta">
-                <span>{labels[t.category] ?? t.category}</span>
-              </div>
-            )}
-            <p className="message">{t.body}</p>
-            {!!t.tags?.length && (
-              <div className="tag-list">
-                {t.tags.map((tag) => (
-                  <span className="tag" key={tag}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </article>
-          <div className="state-line">
-            <span className={`badge ${t.work.state}`}>{labels[t.work.state]}</span>
-            <span>{labels[t.response.state]}</span>
-            {t.archived && <span>Archived</span>}
-            <DiscussionLike
-              key={t.id}
-              threadId={t.id}
-              target="original feedback"
-              likes={t.likes}
-              canWrite={!!project?.permissions.canWrite}
-              onSaved={(likes) =>
-                setThread((current) => current && { ...current, likes })
-              }
-            />
-          </div>
-          {t.assets?.filter((asset) => asset.contentType !== "video/webm").length > 1 && (
-            <ScreenshotComparison
-              assets={t.assets.filter((asset) => asset.contentType !== "video/webm")}
-            />
-          )}
-          {t.assets?.length > 0 && (
-            <section className="attachments">
-              <h2 className="sr-only">Attachments</h2>
-              {t.assets.map((asset, index) => (
-                <figure key={asset.id}>
-                  {asset.contentType === "video/webm" ? (
-                    <video
-                      controls
-                      preload="metadata"
-                      src={asset.url}
-                      aria-label="Tab video feedback"
-                    />
-                  ) : (
-                    <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={asset.url}
-                        alt={`${asset.rendition} attached to feedback`}
-                        width={asset.width}
-                        height={asset.height}
-                        loading={index === 0 ? "eager" : "lazy"}
-                      />
-                    </a>
-                  )}
-                  <figcaption>
-                    {asset.contentType === "video/webm"
-                      ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
-                      : `${asset.width} × ${asset.height} · Open full image`}
-                  </figcaption>
-                </figure>
-              ))}
-            </section>
-          )}
+      <div className="thread-content">
+        <div className="thread-workflow">
           {project?.permissions.canWrite && (
-            <details className="section" id="thread-upload">
-              <summary>Attach screenshot</summary>
-              <p>Choose a screenshot to share with your project.</p>
-              <Field label="PNG, JPEG or WebP (up to 10 MiB)">
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (file.size > 10 * 1024 * 1024) {
-                      a.setError("Choose an image no larger than 10 MiB.");
-                      return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      setImage(String(reader.result));
-                      setApprovedImage(false);
-                    };
-                    reader.readAsDataURL(file);
-                  }}
-                />
-              </Field>
-              {image && (
-                <>
-                  <img
-                    className="upload-preview"
-                    src={image}
-                    alt="Screenshot awaiting your approval"
-                  />
-                  <label className="check">
-                    <input
-                      type="checkbox"
-                      checked={approvedImage}
-                      onChange={(e) => setApprovedImage(e.target.checked)}
-                    />
-                    Share this image with the project.
-                  </label>
-                  <button
-                    disabled={a.busy || !approvedImage}
-                    onClick={() => {
-                      if (uploadRetry.current?.image !== image)
-                        uploadRetry.current = {
-                          image,
-                          revision: t.revision,
-                          key: uid(),
-                        };
-                      const pending = uploadRetry.current;
-                      void a.run(async () => {
-                        const result = await api<{ thread: Thread }>("assets.upload", {
-                          threadId,
-                          revision: pending.revision,
-                          imageBase64: pending.image,
-                          idempotencyKey: pending.key,
-                        });
-                        setThread(result.thread);
-                        setImage((current) => (current === pending.image ? "" : current));
-                        uploadRetry.current = undefined;
-                      }, "Screenshot attached.");
-                    }}
-                  >
-                    Upload screenshot
-                  </button>
-                </>
-              )}
-            </details>
-          )}
-        </div>
-        <div className="thread-pane">
-          <nav className="thread-tabs" aria-label="Thread sections">
-            <button
-              type="button"
-              aria-pressed={panel === "discussion"}
-              aria-controls="thread-discussion"
-              onClick={() => setPanel("discussion")}
-            >
-              Discussion <span>{t.replies?.length ?? 0}</span>
-            </button>
-            <button
-              type="button"
-              aria-pressed={panel === "details"}
-              aria-controls="thread-details"
-              onClick={() => setPanel("details")}
-            >
-              Details
-            </button>
-          </nav>
-          <div id="thread-discussion" hidden={panel !== "discussion"}>
-            <section className="replies">
-              <h2>
-                Discussion <span className="muted">{t.replies?.length ?? 0}</span>
-              </h2>
-              {t.replies?.length ? (
-                t.replies.map((r) => (
-                  <article className="reply" key={r.id}>
-                    <div className="meta">
-                      <strong>{r.author.name}</strong>
-                      <span>{r.author.kind === "agent" ? "Agent" : "Team member"}</span>
-                      <span>
-                        {(r.intent ??
-                          (r.author.kind === "agent" ? "response" : "request")) ===
-                        "request"
-                          ? "Requests follow-up"
-                          : "Response"}
-                      </span>
-                      <time>{date(r.createdAt)}</time>
-                    </div>
-                    <p className="message">{r.body}</p>
-                    <DiscussionLike
-                      threadId={t.id}
-                      replyId={r.id}
-                      target={`reply by ${r.author.name} from ${date(r.createdAt)}`}
-                      likes={r.likes}
-                      canWrite={!!project?.permissions.canWrite}
-                      onSaved={(likes) =>
-                        setThread(
-                          (current) =>
-                            current && {
-                              ...current,
-                              replies: current.replies.map((item) =>
-                                item.id === r.id ? { ...item, likes } : item,
-                              ),
-                            },
-                        )
-                      }
-                    />
-                  </article>
-                ))
-              ) : (
-                <p className="muted">No replies yet.</p>
-              )}
-              {project?.permissions.canWrite && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (
-                      replyRetry.current?.body !== reply ||
-                      replyRetry.current?.intent !== replyIntent ||
-                      JSON.stringify(replyRetry.current?.mentions) !==
-                        JSON.stringify(mentionIds(mentions))
-                    )
-                      replyRetry.current = {
-                        body: reply,
-                        intent: replyIntent,
-                        revision: t.revision,
-                        key: uid(),
-                        mentions: mentionIds(mentions),
-                      };
-                    const pending = replyRetry.current;
-                    const submittedEdit = replyEditVersion.current;
-                    void a.run(async () => {
-                      setThread(
-                        await api<Thread>("threads.reply", {
-                          threadId,
-                          revision: pending.revision,
-                          body: pending.body,
-                          intent: pending.intent,
-                          idempotencyKey: pending.key,
-                          mentions: pending.mentions,
-                        }),
-                      );
-                      if (replyEditVersion.current === submittedEdit) {
-                        setReply("");
-                        setMentions([]);
-                      }
-                      replyRetry.current = undefined;
-                    }, "Reply posted.");
-                  }}
-                >
-                  <MentionInput
-                    value={reply}
-                    members={members?.items ?? []}
-                    onChange={(value, edit) => {
-                      replyEditVersion.current++;
-                      setMentions((ranges) =>
-                        reconcileMentionRanges(reply, value, ranges, edit),
-                      );
-                      setReply(value);
-                    }}
-                    onMention={(mention) => setMentions((ranges) => [...ranges, mention])}
-                  />
-                  {memberError && (
-                    <>
-                      <ErrorNotice
-                        error={`Mentionable members could not load: ${memberError}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setMemberVersion((v) => v + 1)}
-                      >
-                        Retry project members
-                      </button>
-                    </>
-                  )}
-                  <div className="reply-actions">
-                    <details className="reply-options">
-                      <summary>Options</summary>
-                      <Field label="This reply">
-                        <select
-                          value={replyIntent}
-                          onChange={(e) => {
-                            replyEditVersion.current++;
-                            setReplyIntent(e.target.value as "request" | "response");
-                          }}
-                        >
-                          <option value="request">Requests follow-up</option>
-                          <option value="response">Answers the request</option>
-                        </select>
-                      </Field>
-                    </details>
-                    <button className="primary" disabled={a.busy || !reply.trim()}>
-                      {a.busy ? "Saving…" : "Post reply"}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </section>
-          </div>
-          <aside
-            className="context-panel"
-            id="thread-details"
-            hidden={panel !== "details"}
-          >
-            {project?.permissions.canMaintain && <GuestLinks threadId={t.id} />}
-            <ThreadOrganization
+            <ThreadStatus
+              key={`status:${t.id}`}
               thread={t}
-              canWrite={!!project?.permissions.canWrite}
+              canResolve={project.permissions.canResolve}
               onSaved={setThread}
             />
-            <ContextPanel context={t.context} />
-            {t.diagnostics && <ThreadDiagnostics diagnostics={t.diagnostics} />}
-            <details className="section compact-details">
-              <summary>View preferences</summary>
-              <p>
-                {t.view?.uniqueLikes ?? 0} {t.view?.uniqueLikes === 1 ? "like" : "likes"}{" "}
-                · {t.view?.discussionCount ?? 0}{" "}
-                {t.view?.discussionCount === 1 ? "discussion" : "discussions"}
-              </p>
-              {t.view?.weightedPreference !== undefined && (
-                <details className="preference-details">
-                  <summary>Preference details</summary>
-                  <p>
-                    Weighted preference: {t.view.weightedPreference}. Separate from unique
-                    likes.
-                  </p>
-                </details>
-              )}
-              {project?.permissions.canWrite && (
-                <button
-                  aria-pressed={t.view?.liked}
-                  disabled={a.busy}
-                  onClick={() =>
-                    a.run(async () => {
-                      const view = await api("views.like", {
-                        projectId: t.projectId,
-                        context: t.context as never,
-                        liked: !t.view?.liked,
-                      });
-                      setThread({ ...t, view });
-                    })
-                  }
-                >
-                  {t.view?.liked ? "Unlike this view" : "Like this view"}
-                </button>
-              )}
-            </details>
-            <details className="section compact-details">
-              <summary>Linked issues</summary>
-              {t.externalIssues?.length ? (
-                t.externalIssues.map((issue) => (
-                  <p key={issue.url}>
-                    <ExternalLink href={issue.url}>{issue.url}</ExternalLink>
-                    <small>
-                      {issue.verification === "github_verified"
-                        ? "Verified by GitHub"
-                        : "Reported · not remotely verified"}
-                      {issue.state ? ` · ${issue.state}` : ""}
-                      {issue.linkedBy ? ` · ${issue.linkedBy.name}` : ""}
-                    </small>
-                  </p>
-                ))
-              ) : (
-                <p className="muted">No Issue registered.</p>
-              )}
-              {project?.permissions.canWrite && (
-                <>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const f = new FormData(e.currentTarget);
-                      void mutate("threads.linkIssue", { url: f.get("url") });
-                    }}
-                  >
-                    <Field label="GitHub Issue URL">
-                      <input
-                        name="url"
-                        type="url"
-                        required
-                        placeholder="https://github.com/org/repo/issues/123"
-                      />
-                    </Field>
-                    <button disabled={a.busy}>Register Issue</button>
-                  </form>
-                </>
-              )}
-              {project && (
-                <GithubIssue thread={t} project={project} onSaved={setThread} />
-              )}
-            </details>
-            <details className="section compact-details">
-              <summary>Delivery evidence</summary>
-              {t.fixEvidence?.length ? (
-                t.fixEvidence.map((item, n) => (
-                  <div key={n}>
-                    <ExternalLink href={item.url}>
-                      {item.kind.replaceAll("_", " ")}
-                    </ExternalLink>
-                    <p className="message">{item.note}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="muted">No delivery evidence recorded.</p>
-              )}
-              {project?.permissions.canWrite && (
-                <>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const f = new FormData(e.currentTarget);
-                      void mutate("threads.evidence", {
-                        url: f.get("url"),
-                        note: f.get("note"),
-                        kind: f.get("kind"),
-                      });
-                    }}
-                  >
-                    <Field label="Evidence type">
-                      <select name="kind">
-                        {["commit", "pull_request", "variant", "incorporated_in"].map(
-                          (k) => (
-                            <option key={k} value={k}>
-                              {k.replaceAll("_", " ")}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </Field>
-                    <Field label="Evidence URL">
-                      <input name="url" type="url" required />
-                    </Field>
-                    <Field label="What does this demonstrate?">
-                      <textarea name="note" required maxLength={12000} />
-                    </Field>
-                    <button disabled={a.busy}>Add evidence</button>
-                  </form>
-                </>
-              )}
-            </details>
-            <details className="section" id="thread-history">
-              <summary>Activity history</summary>
-              <p>
-                Last activity: {t.lastActor?.name} ({t.lastActor?.kind}) ·{" "}
-                {date(t.updatedAt)}
-              </p>
-              {t.work.history?.map((h, n) => (
-                <div key={n}>
-                  <strong>{labels[h.state ?? ""] ?? h.state}</strong>
-                  <p className="message">{h.note}</p>
-                  <small>
-                    {h.actor?.name}
-                    {h.at ? ` · ${date(h.at)}` : ""}
-                  </small>
+          )}
+        </div>
+        <div className="detail-grid">
+          <div className="evidence-pane">
+            <article className="first-comment">
+              {t.category !== "general" && (
+                <div className="meta">
+                  <span>{labels[t.category] ?? t.category}</span>
                 </div>
-              ))}
-            </details>
-            {project?.permissions.canMaintain && (
-              <ConfirmButton
-                disabled={a.busy}
-                onConfirm={() =>
-                  void mutate("threads.archive", { archived: !t.archived })
+              )}
+              <p className="message">{t.body}</p>
+              {!!t.tags?.length && (
+                <div className="tag-list">
+                  {t.tags.map((tag) => (
+                    <span className="tag" key={tag}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </article>
+            <div className="state-line">
+              <span>Response: {labels[t.response.state]}</span>
+              {t.archived && <span>Archived</span>}
+              <DiscussionLike
+                key={t.id}
+                threadId={t.id}
+                target="original feedback"
+                likes={t.likes}
+                canWrite={!!project?.permissions.canWrite}
+                onSaved={(likes) =>
+                  setThread((current) => current && { ...current, likes })
                 }
-              >
-                {t.archived ? "Unarchive thread" : "Archive thread"}
-              </ConfirmButton>
+              />
+            </div>
+            {t.assets?.filter((asset) => asset.contentType !== "video/webm").length >
+              1 && (
+              <ScreenshotComparison
+                assets={t.assets.filter((asset) => asset.contentType !== "video/webm")}
+              />
             )}
-          </aside>
+            {t.assets?.length > 0 && (
+              <section className="attachments">
+                <h2 className="sr-only">Attachments</h2>
+                {t.assets.map((asset, index) => (
+                  <figure key={asset.id}>
+                    {asset.contentType === "video/webm" ? (
+                      <video
+                        controls
+                        preload="metadata"
+                        src={asset.url}
+                        aria-label="Tab video feedback"
+                      />
+                    ) : (
+                      <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={asset.url}
+                          alt={`${asset.rendition} attached to feedback`}
+                          width={asset.width}
+                          height={asset.height}
+                          loading={index === 0 ? "eager" : "lazy"}
+                        />
+                      </a>
+                    )}
+                    <figcaption>
+                      {asset.contentType === "video/webm"
+                        ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
+                        : `${asset.width} × ${asset.height} · Open full image`}
+                    </figcaption>
+                  </figure>
+                ))}
+              </section>
+            )}
+            {project?.permissions.canWrite && (
+              <details className="section" id="thread-upload">
+                <summary>Attach screenshot</summary>
+                <p>Choose a screenshot to share with your project.</p>
+                <Field label="PNG, JPEG or WebP (up to 10 MiB)">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 10 * 1024 * 1024) {
+                        a.setError("Choose an image no larger than 10 MiB.");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        setImage(String(reader.result));
+                        setApprovedImage(false);
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </Field>
+                {image && (
+                  <>
+                    <img
+                      className="upload-preview"
+                      src={image}
+                      alt="Screenshot awaiting your approval"
+                    />
+                    <label className="check">
+                      <input
+                        type="checkbox"
+                        checked={approvedImage}
+                        onChange={(e) => setApprovedImage(e.target.checked)}
+                      />
+                      Share this image with the project.
+                    </label>
+                    <button
+                      disabled={a.busy || !approvedImage}
+                      onClick={() => {
+                        if (uploadRetry.current?.image !== image)
+                          uploadRetry.current = {
+                            image,
+                            revision: t.revision,
+                            key: uid(),
+                          };
+                        const pending = uploadRetry.current;
+                        void a.run(async () => {
+                          const result = await api<{ thread: Thread }>("assets.upload", {
+                            threadId,
+                            revision: pending.revision,
+                            imageBase64: pending.image,
+                            idempotencyKey: pending.key,
+                          });
+                          setThread(result.thread);
+                          setImage((current) =>
+                            current === pending.image ? "" : current,
+                          );
+                          uploadRetry.current = undefined;
+                        }, "Screenshot attached.");
+                      }}
+                    >
+                      Upload screenshot
+                    </button>
+                  </>
+                )}
+              </details>
+            )}
+          </div>
+          <div className="thread-side">
+            <div className="thread-side-controls">
+              <ThreadReview
+                key={`review:${t.id}`}
+                thread={t}
+                canWrite={!!project?.permissions.canWrite}
+                onSaved={setThread}
+              />
+              <ThreadNavigation key={threadId} threadId={threadId} />
+            </div>
+            <div className="thread-pane">
+              <nav className="thread-tabs" aria-label="Thread sections">
+                <button
+                  type="button"
+                  aria-pressed={panel === "discussion"}
+                  aria-controls="thread-discussion"
+                  onClick={() => setPanel("discussion")}
+                >
+                  Discussion <span>{t.replies?.length ?? 0}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={panel === "details"}
+                  aria-controls="thread-details"
+                  onClick={() => setPanel("details")}
+                >
+                  Details
+                </button>
+              </nav>
+              <div id="thread-discussion" hidden={panel !== "discussion"}>
+                <section className="replies">
+                  <h2>
+                    Discussion <span className="muted">{t.replies?.length ?? 0}</span>
+                  </h2>
+                  {t.replies?.length ? (
+                    t.replies.map((r) => (
+                      <article className="reply" key={r.id}>
+                        <div className="meta">
+                          <strong>{r.author.name}</strong>
+                          <span>
+                            {r.author.kind === "agent" ? "Agent" : "Team member"}
+                          </span>
+                          <span>
+                            {(r.intent ??
+                              (r.author.kind === "agent" ? "response" : "request")) ===
+                            "request"
+                              ? "Requests follow-up"
+                              : "Response"}
+                          </span>
+                          <time>{date(r.createdAt)}</time>
+                        </div>
+                        <p className="message">{r.body}</p>
+                        <DiscussionLike
+                          threadId={t.id}
+                          replyId={r.id}
+                          target={`reply by ${r.author.name} from ${date(r.createdAt)}`}
+                          likes={r.likes}
+                          canWrite={!!project?.permissions.canWrite}
+                          onSaved={(likes) =>
+                            setThread(
+                              (current) =>
+                                current && {
+                                  ...current,
+                                  replies: current.replies.map((item) =>
+                                    item.id === r.id ? { ...item, likes } : item,
+                                  ),
+                                },
+                            )
+                          }
+                        />
+                      </article>
+                    ))
+                  ) : (
+                    <p className="muted">No replies yet.</p>
+                  )}
+                  {project?.permissions.canWrite && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (
+                          replyRetry.current?.body !== reply ||
+                          replyRetry.current?.intent !== replyIntent ||
+                          JSON.stringify(replyRetry.current?.mentions) !==
+                            JSON.stringify(mentionIds(mentions))
+                        )
+                          replyRetry.current = {
+                            body: reply,
+                            intent: replyIntent,
+                            revision: t.revision,
+                            key: uid(),
+                            mentions: mentionIds(mentions),
+                          };
+                        const pending = replyRetry.current;
+                        const submittedEdit = replyEditVersion.current;
+                        void a.run(async () => {
+                          setThread(
+                            await api<Thread>("threads.reply", {
+                              threadId,
+                              revision: pending.revision,
+                              body: pending.body,
+                              intent: pending.intent,
+                              idempotencyKey: pending.key,
+                              mentions: pending.mentions,
+                            }),
+                          );
+                          if (replyEditVersion.current === submittedEdit) {
+                            setReply("");
+                            setMentions([]);
+                          }
+                          replyRetry.current = undefined;
+                        }, "Reply posted.");
+                      }}
+                    >
+                      <MentionInput
+                        value={reply}
+                        members={members?.items ?? []}
+                        onChange={(value, edit) => {
+                          replyEditVersion.current++;
+                          setMentions((ranges) =>
+                            reconcileMentionRanges(reply, value, ranges, edit),
+                          );
+                          setReply(value);
+                        }}
+                        onMention={(mention) =>
+                          setMentions((ranges) => [...ranges, mention])
+                        }
+                      />
+                      {memberError && (
+                        <>
+                          <ErrorNotice
+                            error={`Mentionable members could not load: ${memberError}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setMemberVersion((v) => v + 1)}
+                          >
+                            Retry project members
+                          </button>
+                        </>
+                      )}
+                      <div className="reply-actions">
+                        <details className="reply-options">
+                          <summary>Options</summary>
+                          <Field label="This reply">
+                            <select
+                              value={replyIntent}
+                              onChange={(e) => {
+                                replyEditVersion.current++;
+                                setReplyIntent(e.target.value as "request" | "response");
+                              }}
+                            >
+                              <option value="request">Requests follow-up</option>
+                              <option value="response">Answers the request</option>
+                            </select>
+                          </Field>
+                        </details>
+                        <button className="primary" disabled={a.busy || !reply.trim()}>
+                          {a.busy ? "Saving…" : "Post reply"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </section>
+              </div>
+              <aside
+                className="context-panel"
+                id="thread-details"
+                hidden={panel !== "details"}
+              >
+                {project?.permissions.canMaintain && <GuestLinks threadId={t.id} />}
+                <ThreadOrganization
+                  thread={t}
+                  canWrite={!!project?.permissions.canWrite}
+                  onSaved={setThread}
+                />
+                <ContextPanel context={t.context} />
+                {t.diagnostics && <ThreadDiagnostics diagnostics={t.diagnostics} />}
+                <details className="section compact-details">
+                  <summary>View preferences</summary>
+                  <p>
+                    {t.view?.uniqueLikes ?? 0}{" "}
+                    {t.view?.uniqueLikes === 1 ? "like" : "likes"} ·{" "}
+                    {t.view?.discussionCount ?? 0}{" "}
+                    {t.view?.discussionCount === 1 ? "discussion" : "discussions"}
+                  </p>
+                  {t.view?.weightedPreference !== undefined && (
+                    <details className="preference-details">
+                      <summary>Preference details</summary>
+                      <p>
+                        Weighted preference: {t.view.weightedPreference}. Separate from
+                        unique likes.
+                      </p>
+                    </details>
+                  )}
+                  {project?.permissions.canWrite && (
+                    <button
+                      aria-pressed={t.view?.liked}
+                      disabled={a.busy}
+                      onClick={() =>
+                        a.run(async () => {
+                          const view = await api("views.like", {
+                            projectId: t.projectId,
+                            context: t.context as never,
+                            liked: !t.view?.liked,
+                          });
+                          setThread({ ...t, view });
+                        })
+                      }
+                    >
+                      {t.view?.liked ? "Unlike this view" : "Like this view"}
+                    </button>
+                  )}
+                </details>
+                <details className="section compact-details" id="thread-issues">
+                  <summary>Linked issues</summary>
+                  {t.externalIssues?.length ? (
+                    t.externalIssues.map((issue) => (
+                      <p key={issue.url}>
+                        <ExternalLink href={issue.url}>{issue.url}</ExternalLink>
+                        <small>
+                          {issue.verification === "github_verified"
+                            ? "Verified by GitHub"
+                            : "Reported · not remotely verified"}
+                          {issue.state ? ` · ${issue.state}` : ""}
+                          {issue.linkedBy ? ` · ${issue.linkedBy.name}` : ""}
+                        </small>
+                      </p>
+                    ))
+                  ) : (
+                    <p className="muted">No Issue registered.</p>
+                  )}
+                  {project?.permissions.canWrite && (
+                    <>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const f = new FormData(e.currentTarget);
+                          void mutate("threads.linkIssue", { url: f.get("url") });
+                        }}
+                      >
+                        <Field label="GitHub Issue URL">
+                          <input
+                            name="url"
+                            type="url"
+                            required
+                            placeholder="https://github.com/org/repo/issues/123"
+                          />
+                        </Field>
+                        <button disabled={a.busy}>Register Issue</button>
+                      </form>
+                    </>
+                  )}
+                  {project && (
+                    <GithubIssue thread={t} project={project} onSaved={setThread} />
+                  )}
+                </details>
+                <details className="section compact-details">
+                  <summary>Delivery evidence</summary>
+                  {t.fixEvidence?.length ? (
+                    t.fixEvidence.map((item, n) => (
+                      <div key={n}>
+                        <ExternalLink href={item.url}>
+                          {item.kind.replaceAll("_", " ")}
+                        </ExternalLink>
+                        <p className="message">{item.note}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="muted">No delivery evidence recorded.</p>
+                  )}
+                  {project?.permissions.canWrite && (
+                    <>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const f = new FormData(e.currentTarget);
+                          void mutate("threads.evidence", {
+                            url: f.get("url"),
+                            note: f.get("note"),
+                            kind: f.get("kind"),
+                          });
+                        }}
+                      >
+                        <Field label="Evidence type">
+                          <select name="kind">
+                            {["commit", "pull_request", "variant", "incorporated_in"].map(
+                              (k) => (
+                                <option key={k} value={k}>
+                                  {k.replaceAll("_", " ")}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        </Field>
+                        <Field label="Evidence URL">
+                          <input name="url" type="url" required />
+                        </Field>
+                        <Field label="What does this demonstrate?">
+                          <textarea name="note" required maxLength={12000} />
+                        </Field>
+                        <button disabled={a.busy}>Add evidence</button>
+                      </form>
+                    </>
+                  )}
+                </details>
+                <details className="section" id="thread-history">
+                  <summary>Activity history</summary>
+                  <p>
+                    Last activity: {t.lastActor?.name} ({t.lastActor?.kind}) ·{" "}
+                    {date(t.updatedAt)}
+                  </p>
+                  {t.work.history?.map((h, n) => (
+                    <div key={n}>
+                      <strong>{labels[h.state ?? ""] ?? h.state}</strong>
+                      <p className="message">{h.note}</p>
+                      <small>
+                        {h.actor?.name}
+                        {h.at ? ` · ${date(h.at)}` : ""}
+                      </small>
+                    </div>
+                  ))}
+                </details>
+                {project?.permissions.canMaintain && (
+                  <ConfirmButton
+                    disabled={a.busy}
+                    onConfirm={() =>
+                      void mutate("threads.archive", { archived: !t.archived })
+                    }
+                  >
+                    {t.archived ? "Unarchive thread" : "Archive thread"}
+                  </ConfirmButton>
+                )}
+              </aside>
+            </div>
+          </div>
         </div>
       </div>
     </>
