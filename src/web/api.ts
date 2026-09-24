@@ -239,9 +239,11 @@ export type Thread = {
   assets: Array<{
     id: string;
     url: string;
-    width: number;
-    height: number;
+    width?: number;
+    height?: number;
     rendition: string;
+    contentType: "image/webp" | "video/webm";
+    durationMs?: number;
   }>;
   view: {
     uniqueLikes: number;

@@ -5,6 +5,13 @@ import { createPairingCoordinator } from "./pairing.js";
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 import { formatPageQa } from "./page-qa.js";
+import {
+  videoTarget,
+  videoCreateInput,
+  videoFingerprint,
+  replayableVideoCreate,
+  clearVideoCreateForTab,
+} from "./video-target.js";
 const U = globalThis.FeedbacksUtil;
 import { DEFAULT_SERVER as DEFAULT } from "./config.js";
 const ready = chrome.storage.local.setAccessLevel({
@@ -826,6 +833,7 @@ async function route(message, sender) {
   const trusted =
     (!sender.tab && sender.url?.startsWith(chrome.runtime.getURL(""))) ||
     sender.url?.startsWith(chrome.runtime.getURL("editor.html")) ||
+    sender.url?.startsWith(chrome.runtime.getURL("video.html")) ||
     sender.url?.startsWith(chrome.runtime.getURL("popup.html"));
   if (!trusted) {
     if (sender.tab && sender.frameId === 0 && message.type === "instantStatus") {
@@ -932,6 +940,61 @@ async function route(message, sender) {
       };
     case "projects":
       return authenticated("projects.list");
+    case "videoContext": {
+      const tab = await chrome.tabs.get(message.sourceTabId);
+      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+      const projects = await authenticated("projects.list");
+      const target = await videoTarget(tab, session, U.safeUrl);
+      return {
+        project: projects.items.find((project) => project.id === session.projectId),
+        ...target,
+      };
+    }
+    case "videoCreate": {
+      if (
+        !sender.tab?.id ||
+        !sender.url?.startsWith(chrome.runtime.getURL("video.html?"))
+      )
+        throw Error("Open this page from the Feedbacks recorder.");
+      if (message.server !== server)
+        throw Error("The connection changed. Open Feedbacks again.");
+      if (typeof message.body !== "string" || !message.body.trim())
+        throw Error("Write a comment before sharing the video.");
+      const account = state.accounts?.[message.server];
+      if (!account?.token) throw Error("Connect your Feedbacks account first.");
+      return replayableVideoCreate(
+        message,
+        chrome.storage.session,
+        await videoFingerprint(account.token),
+        async () => {
+          const tab = await chrome.tabs.get(message.sourceTabId);
+          const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+          if (
+            message.server !== session.server ||
+            message.target?.server !== session.server
+          )
+            throw Error("The connection changed. Open Feedbacks again.");
+          return videoCreateInput(
+            message.target,
+            tab,
+            session,
+            U.safeUrl,
+            message.body,
+            message.idempotencyKey,
+          );
+        },
+        (input) => authenticated("threads.create", input, message.server),
+        sender.tab.id,
+      );
+    }
+    case "videoUpload":
+      if (message.server !== server)
+        throw Error("The connection changed. Open Feedbacks again.");
+      return authenticated("assets.uploadVideo", message.input, message.server);
+    case "videoThread":
+      if (message.server !== server)
+        throw Error("The connection changed. Open Feedbacks again.");
+      return authenticated("threads.get", { threadId: message.threadId }, message.server);
     case "draftProjects":
       if (!state.draft) throw Error("No draft.");
       return authenticated("projects.list", {}, state.draft.server);
@@ -1103,8 +1166,16 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   return true;
 });
 chrome.tabs.onRemoved.addListener(async (id) => {
+  await clearVideoCreateForTab(chrome.storage.session, id);
   const state = await get();
   const sessions = { ...state.sessions };
   delete sessions[id];
   await set({ sessions });
+});
+chrome.tabs.onUpdated.addListener((id, change) => {
+  if (
+    change.status === "loading" ||
+    (change.url && !change.url.startsWith(chrome.runtime.getURL("video.html")))
+  )
+    clearVideoCreateForTab(chrome.storage.session, id).catch(() => {});
 });

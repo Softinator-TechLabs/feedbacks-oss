@@ -22,7 +22,11 @@ import {
   threadRow,
 } from "./feedback.js";
 export interface AssetStore {
-  put(key: string, bytes: Buffer): Promise<void>;
+  put(
+    key: string,
+    bytes: Buffer,
+    contentType?: "image/webp" | "video/webm",
+  ): Promise<void>;
   get(key: string): Promise<Buffer>;
   remove(key: string): Promise<void>;
 }
@@ -56,7 +60,7 @@ export async function assetPreview(
 }
 export class LocalAssets implements AssetStore {
   constructor(private directory: string) {}
-  async put(key: string, bytes: Buffer) {
+  async put(key: string, bytes: Buffer, _contentType?: "image/webp" | "video/webm") {
     const target = path.join(this.directory, key);
     await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
     await writeFile(target, bytes, { mode: 0o600 });
@@ -81,13 +85,17 @@ export class S3Assets implements AssetStore {
       },
     });
   }
-  async put(key: string, bytes: Buffer) {
+  async put(
+    key: string,
+    bytes: Buffer,
+    contentType: "image/webp" | "video/webm" = "image/webp",
+  ) {
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.config.s3Bucket,
         Key: key,
         Body: bytes,
-        ContentType: "image/webp",
+        ContentType: contentType,
       }),
       { abortSignal: AbortSignal.timeout(15000) },
     );
@@ -135,7 +143,12 @@ export async function assets(db: Database, a: Actor, i: any): Promise<any> {
 
 export async function assetUploadPreflight(db: Database, a: Actor, i: any) {
   const row = await threadRow(db, a, i.threadId, "write");
-  const prior = await retry(db, a, "assets.upload", i);
+  const prior = await retry(
+    db,
+    a,
+    i.videoBase64 === undefined ? "assets.upload" : "assets.uploadVideo",
+    i,
+  );
   if (prior)
     return {
       projectId: row.project_id as string,
@@ -185,20 +198,108 @@ export async function prepareAssetUpload(i: any, config: Config, projectId: stri
     width: metadata.width,
     height: metadata.height,
     bytes: output.length,
-    contentType: "image/webp",
+    contentType: "image/webp" as const,
     createdAt: new Date().toISOString(),
   };
   return { id, key, data, output, projectId };
+}
+
+function webmElements(bytes: Buffer, start: number, end: number) {
+  const elements: { id: number; start: number; end: number }[] = [];
+  let offset = start;
+  while (offset < end) {
+    const first = bytes[offset];
+    let idWidth = 1;
+    while (idWidth <= 4 && !(first & (0x80 >> (idWidth - 1)))) idWidth++;
+    if (idWidth > 4 || offset + idWidth >= end) return null;
+    let id = 0;
+    for (let n = 0; n < idWidth; n++) id = id * 256 + bytes[offset++];
+    const sizeFirst = bytes[offset];
+    let sizeWidth = 1;
+    while (sizeWidth <= 8 && !(sizeFirst & (0x80 >> (sizeWidth - 1)))) sizeWidth++;
+    if (sizeWidth > 8 || offset + sizeWidth > end) return null;
+    let size = sizeFirst & ((0x80 >> (sizeWidth - 1)) - 1);
+    for (let n = 1; n < sizeWidth; n++) size = size * 256 + bytes[offset + n];
+    const unknownSize = size === 2 ** (7 * sizeWidth) - 1;
+    offset += sizeWidth;
+    if (unknownSize && id !== 0x18538067 && id !== 0x1f43b675) return null;
+    const elementEnd = unknownSize ? end : offset + size;
+    if (elementEnd > end || elementEnd < offset) return null;
+    elements.push({ id, start: offset, end: elementEnd });
+    offset = elementEnd;
+  }
+  return elements;
+}
+
+function isWebmRecording(bytes: Buffer) {
+  const roots = webmElements(bytes, 0, bytes.length);
+  if (!roots || roots.length < 2 || roots[0].id !== 0x1a45dfa3) return false;
+  const header = webmElements(bytes, roots[0].start, roots[0].end);
+  if (
+    !header?.some(
+      (item) =>
+        item.id === 0x4282 &&
+        bytes.subarray(item.start, item.end).equals(Buffer.from("webm")),
+    )
+  )
+    return false;
+  const segment = roots.find((item) => item.id === 0x18538067);
+  if (!segment) return false;
+  const children = webmElements(bytes, segment.start, segment.end);
+  if (!children) return false;
+  const tracks = children.find((item) => item.id === 0x1654ae6b);
+  const cluster = children.find((item) => item.id === 0x1f43b675);
+  if (!tracks || !cluster || cluster.end === cluster.start) return false;
+  const blocks = webmElements(bytes, cluster.start, cluster.end);
+  if (!blocks?.some((item) => item.id === 0xa3 && item.end > item.start)) return false;
+  const trackEntries = webmElements(bytes, tracks.start, tracks.end);
+  return !!trackEntries?.some((entry) => {
+    if (entry.id !== 0xae) return false;
+    const fields = webmElements(bytes, entry.start, entry.end);
+    return fields?.some(
+      (field) =>
+        field.id === 0x83 && field.end - field.start === 1 && bytes[field.start] === 1,
+    );
+  });
+}
+
+export async function prepareVideoUpload(i: any, config: Config, projectId: string) {
+  const raw = i.videoBase64.replace(/^data:video\/webm;base64,/, "");
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(raw))
+    fail("INVALID_VIDEO", "Expected base64 WebM video");
+  const output = Buffer.from(raw, "base64");
+  if (output.length < 16 || output.length > 8 * 1024 * 1024)
+    fail("INVALID_VIDEO", "Video must be 16 bytes to 8 MiB", 413);
+  // Require a WebM EBML header, a video track, and media in the segment.
+  if (!isWebmRecording(output)) fail("INVALID_VIDEO", "Expected a WebM recording");
+  const id = randomUUID(),
+    captureId = randomUUID();
+  const key = `feedbacks/${config.production ? "production" : "development"}/organizations/${config.organizationId}/projects/${projectId}/feedback/${i.threadId}/captures/${captureId}/tab-video.webm`;
+  return {
+    id,
+    key,
+    output,
+    projectId,
+    data: {
+      captureId,
+      rendition: "tabVideo" as const,
+      bytes: output.length,
+      contentType: "video/webm" as const,
+      durationMs: i.durationMs,
+      createdAt: new Date().toISOString(),
+    },
+  };
 }
 
 export async function commitAssetUpload(
   db: Database,
   a: Actor,
   i: any,
-  prepared: Awaited<ReturnType<typeof prepareAssetUpload>>,
+  prepared: Awaited<ReturnType<typeof prepareAssetUpload | typeof prepareVideoUpload>>,
 ) {
   const row = await threadRow(db, a, i.threadId, "write", true);
-  const prior = await retry(db, a, "assets.upload", i);
+  const operation = i.videoBase64 === undefined ? "assets.upload" : "assets.uploadVideo";
+  const prior = await retry(db, a, operation, i);
   if (prior)
     return {
       committed: false,
@@ -214,7 +315,7 @@ export async function commitAssetUpload(
     "INSERT INTO assets(id,project_id,thread_id,object_key,data,status) VALUES($1,$2,$3,$4,$5,'validated')",
     [prepared.id, row.project_id, row.id, prepared.key, JSON.stringify(prepared.data)],
   );
-  await remember(db, a, "assets.upload", i, prepared.id);
+  await remember(db, a, operation, i, prepared.id);
   await event(db, a, row.project_id, prepared.id, "asset.validated", {
     threadId: row.id,
   });
