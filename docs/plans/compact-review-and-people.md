@@ -1,6 +1,6 @@
 # Compact review and people controls
 
-Status: in progress. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: complete. Owner: Feedbacks maintainers. Date: 2026-09-24.
 
 ## Outcome and scope
 
@@ -16,7 +16,7 @@ The supplied browser comments identify tall status, review and navigation sectio
 - [x] Implement compact controls and one-person editing with focused backend coverage.
 - [x] Verify desktop and narrow-screen layout with synthetic data, including an uploaded image and a saved list-row status change.
 - [x] Verify keyboard activation of the mobile menu and native status and view controls.
-- [ ] Run repository checks, review diff and integrate through CI.
+- [x] Run repository checks, review diff and integrate through CI.
 
 ## Compatibility and recovery
 
@@ -29,8 +29,8 @@ Migration 14 adds nullable key suffix and removed-account timestamp columns. Exi
 
 ## Completion receipt
 
-Source revision: `codex/usability-polish`, pending merge.
-Checks and results: `npm run check` passed with 66 tests passed and one intentional skip; `npm run test:postgres` passed. Synthetic desktop and mobile renders checked in light and dark themes.
+Source revision: `b2ec85c` (PR [#40](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/40)), merged to `main`.
+Checks and results: `npm run check` passed with 66 tests passed and one intentional skip; `npm run test:postgres` passed. Synthetic desktop and mobile renders checked in light and dark themes. The PR's four required CI jobs passed.
 Artifacts: local sandbox screenshots and test output, kept outside tracked source.
-Deployment and live verification: pending.
-Remaining risks or follow-up: required CI and live authenticated readback pending.
+Deployment and live verification: complete. The public readiness endpoint returned healthy, the merged web bundle was served, and an authenticated readback confirmed list status controls and the 12-hour IST date format. Detailed production evidence stays outside tracked source.
+Remaining risks or follow-up: existing agent keys cannot display a suffix because their original secret is not recoverable. Newly issued keys show their final four characters.
