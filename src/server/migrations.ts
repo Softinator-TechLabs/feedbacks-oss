@@ -115,5 +115,14 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       for (const statement of sql.split(";").filter((s) => s.trim()))
         await tx.query(statement);
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=11"))) {
+      const sql = `CREATE TABLE webhook_configs(project_id uuid PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,url text NOT NULL,secret text NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+ CREATE TABLE webhook_deliveries(id uuid PRIMARY KEY,project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,payload jsonb NOT NULL,status text NOT NULL CHECK(status IN ('pending','delivered','failed')),attempts integer NOT NULL DEFAULT 0,next_at timestamptz NOT NULL DEFAULT now(),lease_until timestamptz,last_status integer,created_at timestamptz NOT NULL DEFAULT now(),delivered_at timestamptz);
+ CREATE INDEX webhook_deliveries_due ON webhook_deliveries(next_at) WHERE status='pending';
+ CREATE INDEX webhook_deliveries_project ON webhook_deliveries(project_id,created_at DESC);
+ INSERT INTO migrations(version) VALUES(11);`;
+      for (const statement of sql.split(";").filter((s) => s.trim()))
+        await tx.query(statement);
+    }
   });
 }
