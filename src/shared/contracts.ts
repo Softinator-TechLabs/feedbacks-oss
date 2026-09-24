@@ -186,7 +186,11 @@ export const inputSchemas = {
   }),
   "documents.list": z.object({ projectId: id }),
   "documents.get": z.object({ documentId: id }),
-  "documents.threads": z.object({ documentId: id }),
+  "documents.threads": z.object({
+    documentId: id,
+    page: z.number().int().min(1).max(25),
+    cursor: id.optional(),
+  }),
   "github.connection": z.object({ projectId: id }),
   "github.issueState": z.object({ threadId: id }),
   "github.connect": z.object({ projectId: id, revision }),
@@ -609,6 +613,8 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "documents.list": z.object({ items: z.array(documentOutput) }),
   "documents.get": documentOutput,
   "documents.threads": z.object({
+    page: z.number().int().positive(),
+    cursor: id.nullable(),
     items: z.array(
       z.object({
         threadId: id,
@@ -619,6 +625,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
         state: z.string(),
       }),
     ),
+    nextCursor: id.nullable(),
   }),
   "auth.login": z.object({
     actor: actorOutput,

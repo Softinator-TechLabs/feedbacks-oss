@@ -136,7 +136,7 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
         "CREATE INDEX documents_project ON documents(project_id,created_at DESC)",
       );
       await tx.query(
-        "CREATE INDEX threads_document ON threads(project_id,((data->'context'->'document'->>'id'))) WHERE data->'context'->'document' IS NOT NULL",
+        "CREATE INDEX threads_document ON threads(project_id,((data->'context'->'document'->>'id')),(((data->'context'->'document'->>'page')::integer)),created_at DESC,id DESC) WHERE data->'context'->'document' IS NOT NULL",
       );
       await tx.query("INSERT INTO migrations(version) VALUES(12)");
     }

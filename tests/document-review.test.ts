@@ -156,12 +156,57 @@ test("private project images become page-positioned discussions with current gra
     assert.equal(thread.response.state, "unanswered");
     const discussions = await ops.executeOperation(owner, "documents.threads", {
       documentId: document.id,
+      page: 1,
     });
     assert.deepEqual(
       discussions.items.map((item: any) => item.threadId),
       [thread.id],
     );
     assert.equal(discussions.items[0].x, 0.25);
+    assert.equal(discussions.nextCursor, null);
+    const original = await db.one("SELECT data FROM threads WHERE id=$1", [thread.id]);
+    await db.query(
+      `INSERT INTO threads(id,project_id,data,created_at)
+       SELECT ('00000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,$1,
+         jsonb_set($2::jsonb,'{body}',to_jsonb('Synthetic point '||n::text)),
+         now() - interval '1 day' + n * interval '1 second'
+       FROM generate_series(1,510) AS n`,
+      [project.id, JSON.stringify(original.data)],
+    );
+    const seen = new Set<string>();
+    let cursor: string | null = null;
+    let batches = 0;
+    do {
+      const batch = await ops.executeOperation(owner, "documents.threads", {
+        documentId: document.id,
+        page: 1,
+        ...(cursor ? { cursor } : {}),
+      });
+      batches++;
+      for (const marker of batch.items) {
+        assert.equal(seen.has(marker.threadId), false);
+        seen.add(marker.threadId);
+      }
+      if (batches === 1) assert.equal(batch.items[0].threadId, thread.id);
+      cursor = batch.nextCursor;
+    } while (cursor);
+    assert.equal(batches, 6);
+    assert.equal(seen.size, 511);
+    await assert.rejects(
+      ops.executeOperation(owner, "documents.threads", {
+        documentId: document.id,
+        page: 2,
+      }),
+      { code: "VALIDATION" },
+    );
+    await assert.rejects(
+      ops.executeOperation(owner, "documents.threads", {
+        documentId: document.id,
+        page: 1,
+        cursor: other.id,
+      }),
+      { code: "VALIDATION" },
+    );
     assert.equal((await documentRow(db, viewer, document.id)).id, document.id);
     await assert.rejects(
       documentRow(db, { ...viewer, projects: [other.id] }, document.id),

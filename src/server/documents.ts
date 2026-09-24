@@ -50,12 +50,31 @@ export async function documents(
   const row = await documentRow(db, actor, input.documentId);
   if (operation === "documents.get") return metadata(row);
   if (operation === "documents.threads") {
+    if (input.page > row.data.pageCount)
+      fail("VALIDATION", "Page is outside this document");
+    let before: { created_at: string | Date; id: string } | undefined;
+    if (input.cursor) {
+      before = await db.one(
+        "SELECT id,created_at FROM threads WHERE id=$1 AND project_id=$2 AND data->'context'->'document'->>'id'=$3 AND (data->'context'->'document'->>'page')::integer=$4",
+        [input.cursor, row.project_id, row.id, input.page],
+      );
+      if (!before) fail("VALIDATION", "Marker cursor is not on this page");
+    }
     const rows = await db.query(
-      "SELECT id,data FROM threads WHERE project_id=$1 AND data->'context'->'document'->>'id'=$2 ORDER BY created_at,id LIMIT 500",
-      [row.project_id, row.id],
+      "SELECT id,data FROM threads WHERE project_id=$1 AND data->'context'->'document'->>'id'=$2 AND (data->'context'->'document'->>'page')::integer=$3 AND ($4::timestamptz IS NULL OR (created_at,id)<($4::timestamptz,$5::uuid)) ORDER BY created_at DESC,id DESC LIMIT 101",
+      [
+        row.project_id,
+        row.id,
+        input.page,
+        before?.created_at ?? null,
+        before?.id ?? null,
+      ],
     );
+    const pageRows = rows.slice(0, 100);
     return {
-      items: rows.map((thread) => ({
+      page: input.page,
+      cursor: input.cursor ?? null,
+      items: pageRows.map((thread) => ({
         threadId: thread.id,
         body: thread.data.body,
         page: thread.data.context.document.page,
@@ -63,6 +82,7 @@ export async function documents(
         y: thread.data.context.document.y,
         state: thread.data.work.state,
       })),
+      nextCursor: rows.length > 100 ? pageRows.at(-1)!.id : null,
     };
   }
   fail("NOT_FOUND", "Unknown document operation", 404);

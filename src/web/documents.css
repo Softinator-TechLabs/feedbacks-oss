@@ -141,6 +141,18 @@
   color: var(--muted);
   text-transform: capitalize;
 }
+.document-marker-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+.document-marker-pages span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
 @media (max-width: 850px) {
   .document-layout {
     grid-template-columns: 1fr;

@@ -234,15 +234,29 @@ export function DocumentViewer({
   const [point, setPoint] = useState<{ x: number; y: number }>();
   const [xPercent, setXPercent] = useState("");
   const [yPercent, setYPercent] = useState("");
+  const [markerCursors, setMarkerCursors] = useState<string[]>([]);
   const [version, setVersion] = useState(0);
+  useEffect(() => setMarkerCursors([]), [documentId]);
   const retry = useRef<{ signature: string; key: string } | undefined>(undefined);
   const { data: document, error } = useLoad(
     () => api<ReviewDocument>("documents.get", { documentId }),
     [documentId],
   );
+  const currentPage = Math.min(Math.max(1, page), document?.pageCount ?? 1);
+  const markerCursor = markerCursors.at(-1);
   const { data: threads, error: threadsError } = useLoad(
-    () => api<{ items: Marker[] }>("documents.threads", { documentId }),
-    [documentId, version],
+    () =>
+      api<{
+        page: number;
+        cursor: string | null;
+        items: Marker[];
+        nextCursor: string | null;
+      }>("documents.threads", {
+        documentId,
+        page: currentPage,
+        ...(markerCursor ? { cursor: markerCursor } : {}),
+      }),
+    [documentId, currentPage, markerCursor, version],
   );
   const action = useAction();
   const select = (next: { x: number; y: number }) => {
@@ -252,8 +266,11 @@ export function DocumentViewer({
   };
   if (error) return <ErrorNotice error={error} />;
   if (!document) return <Loading />;
-  const currentPage = Math.min(Math.max(1, page), document.pageCount);
-  const markers = threads?.items.filter((item) => item.page === currentPage) ?? [];
+  const currentMarkers =
+    threads?.page === currentPage && threads.cursor === (markerCursor ?? null)
+      ? threads
+      : undefined;
+  const markers = currentMarkers?.items ?? [];
   return (
     <section className="document-review">
       <a href={`/projects/${project.id}/documents`}>← All documents</a>
@@ -279,6 +296,7 @@ export function DocumentViewer({
             onClick={() => {
               setPage(currentPage - 1);
               setPoint(undefined);
+              setMarkerCursors([]);
             }}
           >
             Previous page
@@ -292,6 +310,7 @@ export function DocumentViewer({
             onClick={() => {
               setPage(currentPage + 1);
               setPoint(undefined);
+              setMarkerCursors([]);
             }}
           >
             Next page
@@ -434,9 +453,10 @@ export function DocumentViewer({
           <div className="document-discussions">
             <h2>Discussion on this page</h2>
             <ErrorNotice error={threadsError} />
-            {markers.length === 0 && !threadsError && (
+            {markers.length === 0 && !threadsError && currentMarkers && (
               <p className="muted">No points on this page yet.</p>
             )}
+            {!currentMarkers && !threadsError && <p className="muted">Loading points…</p>}
             <ol>
               {markers.map((marker) => (
                 <li key={marker.threadId}>
@@ -445,6 +465,28 @@ export function DocumentViewer({
                 </li>
               ))}
             </ol>
+            {currentMarkers &&
+              (markerCursors.length > 0 || currentMarkers.nextCursor) && (
+                <nav className="document-marker-pages" aria-label="Discussion pages">
+                  <button
+                    type="button"
+                    disabled={markerCursors.length === 0}
+                    onClick={() => setMarkerCursors((items) => items.slice(0, -1))}
+                  >
+                    Newer points
+                  </button>
+                  <span>Batch {markerCursors.length + 1}</span>
+                  <button
+                    type="button"
+                    disabled={!currentMarkers.nextCursor}
+                    onClick={() =>
+                      setMarkerCursors((items) => [...items, currentMarkers.nextCursor!])
+                    }
+                  >
+                    Older points
+                  </button>
+                </nav>
+              )}
           </div>
         </aside>
       </div>
