@@ -7,12 +7,18 @@ import { configFromEnv } from "../src/server/config.js";
 
 test("S3 adapter uses the configured provider, private bucket path and authenticated PUT/GET", async () => {
   const objects = new Map<string, Buffer>();
-  const requests: { method: string; url: string; signed: boolean }[] = [];
+  const requests: {
+    method: string;
+    url: string;
+    signed: boolean;
+    contentType?: string;
+  }[] = [];
   const server = createServer(async (request, response) => {
     requests.push({
       method: request.method!,
       url: request.url!,
       signed: request.headers.authorization?.startsWith("AWS4-HMAC-SHA256 ") === true,
+      contentType: request.headers["content-type"],
     });
     if (request.method === "PUT") {
       const chunks = [];
@@ -48,16 +54,18 @@ test("S3 adapter uses the configured provider, private bucket path and authentic
   try {
     const bytes = Buffer.from("synthetic-object-bytes");
     await store.put("organizations/fixture/annotated.webp", bytes);
+    await store.put("organizations/fixture/tab-video.webm", bytes, "video/webm");
     assert.deepEqual(await store.get("organizations/fixture/annotated.webp"), bytes);
+    assert.equal(requests[1].contentType, "video/webm");
     assert.deepEqual(
       requests.map((request) => request.method),
-      ["PUT", "GET"],
+      ["PUT", "PUT", "GET"],
     );
     assert.ok(
       requests.every(
         (request) =>
           request.signed &&
-          request.url.startsWith("/private-fixture/organizations/fixture/annotated.webp"),
+          request.url.startsWith("/private-fixture/organizations/fixture/"),
       ),
     );
     await assert.rejects(store.get("missing.webp"), { name: "NoSuchKey" });

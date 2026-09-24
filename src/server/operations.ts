@@ -18,6 +18,7 @@ import {
   assetPreview,
   assetUploadPreflight,
   prepareAssetUpload,
+  prepareVideoUpload,
   commitAssetUpload,
   type AssetStore,
 } from "./assets.js";
@@ -49,7 +50,8 @@ export class Operations {
         "VALIDATION",
         parsed.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(";"),
       );
-    if (name === "assets.upload") return this.uploadAsset(actor, parsed.data);
+    if (name === "assets.upload" || name === "assets.uploadVideo")
+      return this.uploadAsset(actor, parsed.data);
     if (name.startsWith("github."))
       return githubOperation(this.db, actor, name, parsed.data, this.config, this.github);
     if (name === "context.export" && !(parsed.data as any).snapshotId)
@@ -107,6 +109,8 @@ export class Operations {
           const result = await assets(db, a, i);
           if (name === "assets.get" && i.includeImage) {
             const row = await assetRow(db, a, i.assetId);
+            if (row.data.contentType !== "image/webp")
+              fail("VALIDATION", "Video has no image preview");
             preview = { objectKey: row.object_key, maxDimension: i.maxDimension };
           }
           return result;
@@ -190,8 +194,11 @@ export class Operations {
 
   private async currentForOperation(db: Database, actor: Actor, name: string) {
     const a = await new Auth(db).current(actor);
-    if (a.scopes && !a.scopes.includes(name))
-      fail("FORBIDDEN", "Operation outside token scope", 403);
+    // Existing paired extensions already hold the asset-upload grant.
+    const hasScope =
+      a.scopes?.includes(name) ||
+      (name === "assets.uploadVideo" && a.scopes?.includes("assets.upload"));
+    if (a.scopes && !hasScope) fail("FORBIDDEN", "Operation outside token scope", 403);
     if (
       a.mustChangePassword &&
       !["auth.me", "auth.changePassword", "auth.logout"].includes(name)
@@ -209,21 +216,28 @@ export class Operations {
     // Image decoding and private object storage can take seconds.
     const preflight = await this.db.transaction(async (db) => {
       await accountLock(db);
-      const a = await this.currentForOperation(db, actor, "assets.upload");
+      const a = await this.currentForOperation(
+        db,
+        actor,
+        i.videoBase64 === undefined ? "assets.upload" : "assets.uploadVideo",
+      );
       return assetUploadPreflight(db, a, i);
     });
     if (preflight.prior) return JSON.parse(JSON.stringify(preflight.prior));
 
-    const prepared = await prepareAssetUpload(i, this.config, preflight.projectId);
+    const prepared =
+      i.videoBase64 === undefined
+        ? await prepareAssetUpload(i, this.config, preflight.projectId)
+        : await prepareVideoUpload(i, this.config, preflight.projectId);
     let committed = false;
     let cleanupAllowed = true;
     try {
       try {
-        await this.store.put(prepared.key, prepared.output);
+        await this.store.put(prepared.key, prepared.output, prepared.data.contentType);
       } catch {
         fail(
           "UPLOAD_FAILED",
-          "Private image storage is unavailable; your draft can be retried",
+          "Private asset storage is unavailable; your draft can be retried",
           503,
         );
       }
@@ -234,7 +248,11 @@ export class Operations {
       try {
         settled = await this.db.transaction(async (db) => {
           await accountLock(db);
-          const a = await this.currentForOperation(db, actor, "assets.upload");
+          const a = await this.currentForOperation(
+            db,
+            actor,
+            i.videoBase64 === undefined ? "assets.upload" : "assets.uploadVideo",
+          );
           return commitAssetUpload(db, a, i, prepared);
         });
       } catch (error) {

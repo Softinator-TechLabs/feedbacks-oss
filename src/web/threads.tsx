@@ -650,23 +650,38 @@ export function ThreadDetail({
               }
             />
           </div>
-          {t.assets?.length > 1 && <ScreenshotComparison assets={t.assets} />}
+          {t.assets?.filter((asset) => asset.contentType !== "video/webm").length > 1 && (
+            <ScreenshotComparison
+              assets={t.assets.filter((asset) => asset.contentType !== "video/webm")}
+            />
+          )}
           {t.assets?.length > 0 && (
             <section className="attachments">
-              <h2 className="sr-only">Screenshot</h2>
+              <h2 className="sr-only">Attachments</h2>
               {t.assets.map((asset, index) => (
                 <figure key={asset.id}>
-                  <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                    <img
+                  {asset.contentType === "video/webm" ? (
+                    <video
+                      controls
+                      preload="metadata"
                       src={asset.url}
-                      alt={`${asset.rendition} attached to feedback`}
-                      width={asset.width}
-                      height={asset.height}
-                      loading={index === 0 ? "eager" : "lazy"}
+                      aria-label="Tab video feedback"
                     />
-                  </a>
+                  ) : (
+                    <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={asset.url}
+                        alt={`${asset.rendition} attached to feedback`}
+                        width={asset.width}
+                        height={asset.height}
+                        loading={index === 0 ? "eager" : "lazy"}
+                      />
+                    </a>
+                  )}
                   <figcaption>
-                    {asset.width} × {asset.height} · Open full image
+                    {asset.contentType === "video/webm"
+                      ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
+                      : `${asset.width} × ${asset.height} · Open full image`}
                   </figcaption>
                 </figure>
               ))}

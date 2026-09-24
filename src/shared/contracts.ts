@@ -358,6 +358,12 @@ export const inputSchemas = {
     rendition: z.enum(["screenshot", "annotated", "thumbnail"]).default("annotated"),
     idempotencyKey: z.string().min(8).max(200),
   }),
+  "assets.uploadVideo": z.object({
+    ...tm,
+    videoBase64: z.string().max(11184835),
+    durationMs: z.number().int().positive().max(30000),
+    idempotencyKey: z.string().min(8).max(200),
+  }),
   "assets.get": z.object({
     assetId: id,
     includeImage: z.boolean().default(false),
@@ -403,11 +409,12 @@ const discussionLikesOutput = z.object({
 const assetMetadataOutput = z.object({
   id,
   captureId: id,
-  rendition: z.enum(["screenshot", "annotated", "thumbnail"]),
-  width: z.number(),
-  height: z.number(),
+  rendition: z.enum(["screenshot", "annotated", "thumbnail", "tabVideo"]),
+  width: z.number().optional(),
+  height: z.number().optional(),
   bytes: z.number(),
-  contentType: z.literal("image/webp"),
+  contentType: z.enum(["image/webp", "video/webm"]),
+  durationMs: z.number().int().positive().max(30000).optional(),
   createdAt: z.string(),
   url: z.string(),
   projectId: id.optional(),
@@ -794,6 +801,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "views.like": viewOutput,
   "assets.get": assetOutput,
   "assets.upload": z.object({ asset: assetOutput, thread: threadOutput }),
+  "assets.uploadVideo": z.object({ asset: assetOutput, thread: threadOutput }),
   "instructions.get": instructionsOutput,
   "instructions.publish": instructionsOutput,
   "context.export": z.object({

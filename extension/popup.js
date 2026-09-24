@@ -245,6 +245,14 @@ action("draft", async () => {
   await send({ type: "resume" });
   window.close();
 });
+action("record-video", async () => {
+  if (!tab?.id || !/^https?:/.test(tab.url || ""))
+    throw Error("Open a website before recording a tab video.");
+  await chrome.tabs.create({
+    url: chrome.runtime.getURL(`video.html?sourceTabId=${tab.id}`),
+  });
+  window.close();
+});
 action("disconnect", async () => {
   await send({ type: "disconnect" });
   await refresh();

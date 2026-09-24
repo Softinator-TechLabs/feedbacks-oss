@@ -22,7 +22,11 @@ import {
   threadRow,
 } from "./feedback.js";
 export interface AssetStore {
-  put(key: string, bytes: Buffer): Promise<void>;
+  put(
+    key: string,
+    bytes: Buffer,
+    contentType?: "image/webp" | "video/webm",
+  ): Promise<void>;
   get(key: string): Promise<Buffer>;
   remove(key: string): Promise<void>;
 }
@@ -56,7 +60,7 @@ export async function assetPreview(
 }
 export class LocalAssets implements AssetStore {
   constructor(private directory: string) {}
-  async put(key: string, bytes: Buffer) {
+  async put(key: string, bytes: Buffer, _contentType?: "image/webp" | "video/webm") {
     const target = path.join(this.directory, key);
     await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
     await writeFile(target, bytes, { mode: 0o600 });
@@ -81,13 +85,17 @@ export class S3Assets implements AssetStore {
       },
     });
   }
-  async put(key: string, bytes: Buffer) {
+  async put(
+    key: string,
+    bytes: Buffer,
+    contentType: "image/webp" | "video/webm" = "image/webp",
+  ) {
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.config.s3Bucket,
         Key: key,
         Body: bytes,
-        ContentType: "image/webp",
+        ContentType: contentType,
       }),
       { abortSignal: AbortSignal.timeout(15000) },
     );
@@ -135,7 +143,12 @@ export async function assets(db: Database, a: Actor, i: any): Promise<any> {
 
 export async function assetUploadPreflight(db: Database, a: Actor, i: any) {
   const row = await threadRow(db, a, i.threadId, "write");
-  const prior = await retry(db, a, "assets.upload", i);
+  const prior = await retry(
+    db,
+    a,
+    i.videoBase64 === undefined ? "assets.upload" : "assets.uploadVideo",
+    i,
+  );
   if (prior)
     return {
       projectId: row.project_id as string,
@@ -185,20 +198,53 @@ export async function prepareAssetUpload(i: any, config: Config, projectId: stri
     width: metadata.width,
     height: metadata.height,
     bytes: output.length,
-    contentType: "image/webp",
+    contentType: "image/webp" as const,
     createdAt: new Date().toISOString(),
   };
   return { id, key, data, output, projectId };
+}
+
+export async function prepareVideoUpload(i: any, config: Config, projectId: string) {
+  const raw = i.videoBase64.replace(/^data:video\/webm;base64,/, "");
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(raw))
+    fail("INVALID_VIDEO", "Expected base64 WebM video");
+  const output = Buffer.from(raw, "base64");
+  if (output.length < 16 || output.length > 8 * 1024 * 1024)
+    fail("INVALID_VIDEO", "Video must be 16 bytes to 8 MiB", 413);
+  // WebM is an EBML container. Reject arbitrary bytes before private storage.
+  if (
+    output.subarray(0, 4).toString("hex") !== "1a45dfa3" ||
+    !output.subarray(4, 128).includes(Buffer.from("webm"))
+  )
+    fail("INVALID_VIDEO", "Expected a WebM recording");
+  const id = randomUUID(),
+    captureId = randomUUID();
+  const key = `feedbacks/${config.production ? "production" : "development"}/organizations/${config.organizationId}/projects/${projectId}/feedback/${i.threadId}/captures/${captureId}/tab-video.webm`;
+  return {
+    id,
+    key,
+    output,
+    projectId,
+    data: {
+      captureId,
+      rendition: "tabVideo" as const,
+      bytes: output.length,
+      contentType: "video/webm" as const,
+      durationMs: i.durationMs,
+      createdAt: new Date().toISOString(),
+    },
+  };
 }
 
 export async function commitAssetUpload(
   db: Database,
   a: Actor,
   i: any,
-  prepared: Awaited<ReturnType<typeof prepareAssetUpload>>,
+  prepared: Awaited<ReturnType<typeof prepareAssetUpload | typeof prepareVideoUpload>>,
 ) {
   const row = await threadRow(db, a, i.threadId, "write", true);
-  const prior = await retry(db, a, "assets.upload", i);
+  const operation = i.videoBase64 === undefined ? "assets.upload" : "assets.uploadVideo";
+  const prior = await retry(db, a, operation, i);
   if (prior)
     return {
       committed: false,
@@ -214,7 +260,7 @@ export async function commitAssetUpload(
     "INSERT INTO assets(id,project_id,thread_id,object_key,data,status) VALUES($1,$2,$3,$4,$5,'validated')",
     [prepared.id, row.project_id, row.id, prepared.key, JSON.stringify(prepared.data)],
   );
-  await remember(db, a, "assets.upload", i, prepared.id);
+  await remember(db, a, operation, i, prepared.id);
   await event(db, a, row.project_id, prepared.id, "asset.validated", {
     threadId: row.id,
   });

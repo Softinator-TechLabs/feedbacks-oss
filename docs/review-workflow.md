@@ -40,6 +40,8 @@ Use **Saved views** to name and reuse the currently applied filters. Views belon
 
 A thread with two or more screenshots offers **Compare screenshots**. Pick any two attachments and use side-by-side comparison. Equal-sized images also support an overlay slider. Different dimensions stay side by side without stretching. These are attachment comparisons, not automated image diffs; equal dimensions do not establish that two captures show the same page position.
 
+An explicitly recorded tab video appears in the thread's attachments with playback controls. Video is excluded from screenshot comparison. Teammates need current access to the project to load it.
+
 ## Share diagnostics deliberately
 
 In the extension popup, open **Console & network**, start collection, reproduce the problem and take a screenshot. Collection covers the top-level page from that moment until capture, stop, navigation or five minutes. Review the entries in the editor and explicitly enable sharing. See [extension privacy and limits](extension.md#optional-console-and-network-context).

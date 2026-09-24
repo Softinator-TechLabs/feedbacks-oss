@@ -826,6 +826,7 @@ async function route(message, sender) {
   const trusted =
     (!sender.tab && sender.url?.startsWith(chrome.runtime.getURL(""))) ||
     sender.url?.startsWith(chrome.runtime.getURL("editor.html")) ||
+    sender.url?.startsWith(chrome.runtime.getURL("video.html")) ||
     sender.url?.startsWith(chrome.runtime.getURL("popup.html"));
   if (!trusted) {
     if (sender.tab && sender.frameId === 0 && message.type === "instantStatus") {
@@ -932,6 +933,41 @@ async function route(message, sender) {
       };
     case "projects":
       return authenticated("projects.list");
+    case "videoContext": {
+      const tab = await chrome.tabs.get(message.sourceTabId);
+      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+      const projects = await authenticated("projects.list");
+      return {
+        project: projects.items.find((project) => project.id === session.projectId),
+        url: U.safeUrl(tab.url),
+        server: session.server,
+      };
+    }
+    case "videoCreate": {
+      const tab = await chrome.tabs.get(message.sourceTabId);
+      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+      if (message.server !== session.server)
+        throw Error("The connection changed. Open Feedbacks again.");
+      if (typeof message.body !== "string" || !message.body.trim())
+        throw Error("Write a comment before sharing the video.");
+      return authenticated("threads.create", {
+        projectId: session.projectId,
+        body: message.body,
+        context: {
+          url: U.safeUrl(tab.url),
+          viewport: { width: tab.width || 1280, height: tab.height || 720 },
+        },
+        idempotencyKey: message.idempotencyKey,
+      });
+    }
+    case "videoUpload":
+      if (message.server !== server)
+        throw Error("The connection changed. Open Feedbacks again.");
+      return authenticated("assets.uploadVideo", message.input, message.server);
+    case "videoThread":
+      if (message.server !== server)
+        throw Error("The connection changed. Open Feedbacks again.");
+      return authenticated("threads.get", { threadId: message.threadId }, message.server);
     case "draftProjects":
       if (!state.draft) throw Error("No draft.");
       return authenticated("projects.list", {}, state.draft.server);

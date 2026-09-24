@@ -320,11 +320,16 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         if (current.scopes && !current.scopes.includes("assets.get"))
           fail("FORBIDDEN", "Asset scope required", 403);
         const row = await assetRow(db, current, String(req.params.id));
-        return row.object_key as string;
+        return {
+          key: row.object_key as string,
+          contentType: row.data.contentType as string,
+        };
       });
       // Revocation governs new requests; an authorized in-flight read may finish.
       // Do not hold the organization transaction lock during remote storage I/O.
-      res.type("image/webp").send(await assets.get(objectKey));
+      if (!["image/webp", "video/webm"].includes(objectKey.contentType))
+        fail("VALIDATION", "Unsupported asset type");
+      res.type(objectKey.contentType).send(await assets.get(objectKey.key));
     } catch (e) {
       next(e);
     }
