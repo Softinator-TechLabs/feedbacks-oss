@@ -5,7 +5,12 @@ import { createPairingCoordinator } from "./pairing.js";
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 import { formatPageQa } from "./page-qa.js";
-import { videoTarget, videoCreateInput } from "./video-target.js";
+import {
+  videoTarget,
+  videoCreateInput,
+  videoFingerprint,
+  replayableVideoCreate,
+} from "./video-target.js";
 const U = globalThis.FeedbacksUtil;
 import { DEFAULT_SERVER as DEFAULT } from "./config.js";
 const ready = chrome.storage.local.setAccessLevel({
@@ -171,6 +176,8 @@ async function pollPair() {
 }
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === "pair") pollPair();
+  if (a.name.startsWith("videoCreate:"))
+    chrome.storage.session.remove(a.name).catch(() => {});
 });
 setInterval(pollPair, 3000);
 async function sessionFor(sender) {
@@ -945,21 +952,36 @@ async function route(message, sender) {
       };
     }
     case "videoCreate": {
-      const tab = await chrome.tabs.get(message.sourceTabId);
-      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
-      if (message.server !== session.server || message.target?.server !== session.server)
+      if (message.server !== server)
         throw Error("The connection changed. Open Feedbacks again.");
       if (typeof message.body !== "string" || !message.body.trim())
         throw Error("Write a comment before sharing the video.");
-      const input = await videoCreateInput(
-        message.target,
-        tab,
-        session,
-        U.safeUrl,
-        message.body,
-        message.idempotencyKey,
+      const account = state.accounts?.[message.server];
+      if (!account?.token) throw Error("Connect your Feedbacks account first.");
+      return replayableVideoCreate(
+        message,
+        chrome.storage.session,
+        await videoFingerprint(account.token),
+        async () => {
+          const tab = await chrome.tabs.get(message.sourceTabId);
+          const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+          if (
+            message.server !== session.server ||
+            message.target?.server !== session.server
+          )
+            throw Error("The connection changed. Open Feedbacks again.");
+          return videoCreateInput(
+            message.target,
+            tab,
+            session,
+            U.safeUrl,
+            message.body,
+            message.idempotencyKey,
+          );
+        },
+        (input) => authenticated("threads.create", input, message.server),
+        (key, expiresAt) => chrome.alarms.create(key, { when: expiresAt }),
       );
-      return authenticated("threads.create", input, message.target.server);
     }
     case "videoUpload":
       if (message.server !== server)
