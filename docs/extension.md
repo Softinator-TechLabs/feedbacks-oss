@@ -43,3 +43,9 @@ URL credentials, paths, query strings and fragments are stripped; common secrets
 The target page can influence or fabricate its own console and performance data. The server validates and bounds the packet and labels it untrusted. A missing status does not mean a request succeeded. Cross-origin requests and browser restrictions can limit what is available; this is not a complete network trace or a session recording.
 
 Category and comma-separated tags are optional in the capture editor. See [review workflow](review-workflow.md) for navigation, saved filters and screenshot comparisons.
+
+## Optional page QA scan
+
+While reviewing a project, choose **Scan page for QA findings** in the extension popup. This is a one-time scan of the current page, not a background monitor. It lists up to ten images without an `alt` attribute and checks up to twelve distinct same-origin links with HTTP HEAD requests, three at a time. Only 404 and 410 responses are reported as broken. Unsupported HEAD responses, timeouts, redirects and cross-origin links are unknown, not passing results. The requests use the current site's credentials and do not contact Feedbacks until you choose Send.
+
+When findings exist, the extension opens an ordinary screenshot draft with a prefilled report. Inspect the report, image and any private URL paths before sending; edit or discard the draft as needed. No issue or feedback thread is created automatically. The scan runs only on the active page and selected project after an explicit button press.

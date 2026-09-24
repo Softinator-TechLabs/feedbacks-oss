@@ -812,6 +812,7 @@
         "captureCheck",
         "fullPageMetrics",
         "fullPageScroll",
+        "qaScan",
         "restore",
         "discardPoint",
         "popupControls",
@@ -906,6 +907,59 @@
         if (!active) throw Error("Review is not active.");
         assertPoint(message.pointToken);
         return context();
+      }
+      if (message.type === "qaScan") {
+        if (!active || captureActive)
+          throw Error("Start review before scanning the page.");
+        const started = signature();
+        const missingAlt = [...document.querySelectorAll("img:not([alt])")]
+          .slice(0, 10)
+          .map((image) =>
+            Math.max(0, Math.round(image.getBoundingClientRect().top + scrollY)),
+          );
+        const links = [];
+        for (const anchor of document.querySelectorAll("a[href]:not([download])")) {
+          if (links.length >= 12) break;
+          try {
+            const url = new URL(anchor.href);
+            if (
+              url.origin === location.origin &&
+              /^https?:$/.test(url.protocol) &&
+              !links.includes(url.href)
+            )
+              links.push(url.href);
+          } catch {}
+        }
+        const brokenLinks = [];
+        for (let i = 0; i < links.length; i += 3) {
+          await Promise.all(
+            links.slice(i, i + 3).map(async (url) => {
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 3000);
+              try {
+                const response = await fetch(url, {
+                  method: "HEAD",
+                  credentials: "same-origin",
+                  signal: controller.signal,
+                  cache: "no-store",
+                  redirect: "manual",
+                });
+                if ([404, 410].includes(response.status))
+                  brokenLinks.push({
+                    url: new URL(url).origin + new URL(url).pathname,
+                    status: response.status,
+                  });
+              } catch {
+                // Network and unsupported HEAD outcomes are unknown, not broken.
+              } finally {
+                clearTimeout(timeout);
+              }
+            }),
+          );
+        }
+        if (signature() !== started)
+          throw Error("The page moved during the scan. Try again once it is still.");
+        return { missingAlt, brokenLinks, checkedLinks: links.length };
       }
       if (message.type === "prepareCapture") {
         if (!active) throw Error("Review is not active.");
