@@ -311,6 +311,20 @@ small {
   margin-top: 28px;
   margin-bottom: 28px;
 }
+.saved-views.section {
+  border-top: 0;
+  padding-top: 0;
+  margin: 0 0 14px;
+}
+.saved-views > summary {
+  min-height: 44px;
+  display: list-item;
+  list-style-position: inside;
+  padding: 9px 2px;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
 .thread-list {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -1054,6 +1068,30 @@ legend {
   }
   .filters .check {
     order: 3;
+  }
+  .thread-filters > .field,
+  .thread-filters > .field:first-child,
+  .thread-filters > .field:nth-child(2),
+  .thread-filters > button,
+  .thread-filters > .advanced-filters {
+    order: 0;
+  }
+  .thread-filters > .field:first-child {
+    flex: 1 0 100%;
+  }
+  .thread-filters > .field:nth-child(2),
+  .thread-filters > .field:nth-child(3) {
+    flex: 1 1 calc(50% - 12px);
+    min-width: 0;
+  }
+  .thread-filters > .thread-filter-apply {
+    flex: 1 1 90px;
+  }
+  .thread-filters > .advanced-filters {
+    flex: 0 0 auto;
+  }
+  .thread-filters > .advanced-filters[open] {
+    flex-basis: 100%;
   }
   .thread-row {
     grid-template-columns: 1fr;

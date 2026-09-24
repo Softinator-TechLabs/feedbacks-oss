@@ -114,6 +114,70 @@ textarea::placeholder {
   flex-basis: 100%;
   min-height: 24px;
 }
+.thread-filters {
+  align-items: end;
+  gap: 10px 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.thread-filters > .field {
+  flex: 0 1 170px;
+  min-width: 140px;
+  margin: 0;
+}
+.thread-filters > .field:first-child {
+  flex: 1 1 260px;
+}
+.thread-filter-clear {
+  border-color: transparent;
+  background: transparent;
+}
+.thread-filters .advanced-filters {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.thread-filters .advanced-filters[open] {
+  flex-basis: 100%;
+}
+.thread-filters .advanced-filters summary {
+  width: fit-content;
+  min-height: 44px;
+  line-height: 36px;
+  padding: 4px 2px;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+.advanced-filter-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.advanced-filter-fields .field {
+  margin: 0;
+}
+@media (max-width: 680px) {
+  .thread-filters > .field:first-child {
+    flex-basis: 100%;
+  }
+  .thread-filters > .field {
+    flex: 1 1 130px;
+  }
+  .thread-filters > .thread-filter-apply {
+    flex: 1 1 130px;
+  }
+  .thread-filters > .thread-filter-clear {
+    flex: 0 1 auto;
+  }
+  .thread-filters .advanced-filters {
+    flex-basis: auto;
+  }
+  .advanced-filter-fields {
+    grid-template-columns: 1fr;
+  }
+}
 .field input[type="file"] {
   padding: 6px;
 }

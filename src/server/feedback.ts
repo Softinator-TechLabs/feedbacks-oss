@@ -45,17 +45,121 @@ export async function threadRow(
   await access(db, a, row.project_id, mode);
   return row;
 }
-export async function fullThread(db: Database, a: Actor, row: any) {
-  const likes = await discussionLikes(db, a, row.id);
-  const data = structuredClone(row.data),
-    replies = await db.query(
-      "SELECT id,data,created_at FROM replies WHERE thread_id=$1 ORDER BY created_at,id",
-      [row.id],
+type ListData = {
+  likes: Map<string, Map<string, { uniqueLikes: number; liked: boolean }>>;
+  replies: Map<string, any[]>;
+  assets: Map<string, any[]>;
+  views: Map<string, any>;
+  reviewers?: { trust: "owner_approved_advisory_reviewer_context"; items: any[] };
+  policies?: Map<string, any>;
+};
+function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const id = key(row);
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id)!.push(row);
+  }
+  return groups;
+}
+async function listData(db: Database, a: Actor, rows: any[]): Promise<ListData> {
+  const ids = rows.map((row) => row.id);
+  const fingerprints = [...new Set(rows.map((row) => row.data.context.fingerprint))];
+  const [replyRows, assetRows, likeRows, viewRows, countRows] = await Promise.all([
+    db.query(
+      "SELECT id,thread_id,data,created_at FROM replies WHERE thread_id=ANY($1::uuid[]) ORDER BY created_at,id",
+      [ids],
+    ),
+    db.query(
+      "SELECT id,thread_id,data FROM assets WHERE thread_id=ANY($1::uuid[]) AND status='validated' ORDER BY data->>'createdAt',id",
+      [ids],
+    ),
+    db.query(
+      'SELECT thread_id,COALESCE(reply_id,thread_id) AS id,count(*)::integer AS "uniqueLikes",bool_or(user_id=$2) AS liked FROM discussion_likes WHERE thread_id=ANY($1::uuid[]) GROUP BY thread_id,COALESCE(reply_id,thread_id)',
+      [ids, a.userId],
+    ),
+    db.query(
+      "SELECT fingerprint,count(*)::integer AS count,bool_or(user_id=$3) AS liked FROM view_likes WHERE project_id=$1 AND fingerprint=ANY($2::text[]) GROUP BY fingerprint",
+      [rows[0].project_id, fingerprints, a.userId],
+    ),
+    db.query(
+      "SELECT t.data->'context'->>'fingerprint' AS fingerprint,count(DISTINCT t.id)::integer AS threads,count(r.id)::integer AS replies FROM threads t LEFT JOIN replies r ON r.thread_id=t.id WHERE t.project_id=$1 AND t.data->'context'->>'fingerprint'=ANY($2::text[]) GROUP BY fingerprint",
+      [rows[0].project_id, fingerprints],
+    ),
+  ]);
+  const likes = new Map<string, Map<string, { uniqueLikes: number; liked: boolean }>>();
+  for (const row of likeRows) {
+    if (!likes.has(row.thread_id)) likes.set(row.thread_id, new Map());
+    likes.get(row.thread_id)!.set(row.id, {
+      uniqueLikes: row.uniqueLikes,
+      liked: a.kind === "human" && !!row.liked,
+    });
+  }
+  const views = new Map<string, any>();
+  const counts = new Map(countRows.map((row) => [row.fingerprint, row]));
+  const votes = new Map(viewRows.map((row) => [row.fingerprint, row]));
+  let reviewers: ListData["reviewers"];
+  let policies: ListData["policies"];
+  let weights = new Map<string, number>();
+  if (canReadPolicy(a)) {
+    reviewers = await reviewerContext(db, a, rows[0].project_id);
+    const authorIds = [...new Set(rows.map((row) => row.data.author.userId))];
+    policies = new Map(
+      (
+        await db.query(
+          "SELECT u.id,u.policy,u.policy_version,g.policy AS override FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1 WHERE u.id=ANY($2::uuid[])",
+          [rows[0].project_id, authorIds],
+        )
+      ).map((row) => [row.id, row]),
     );
-  const assets = await db.query(
-    "SELECT id,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',id",
-    [row.id],
-  );
+    const weightedRows = await db.query(
+      "SELECT v.fingerprint,u.policy,g.policy AS override FROM view_likes v JOIN users u ON u.id=v.user_id LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=v.project_id WHERE v.project_id=$1 AND v.fingerprint=ANY($2::text[])",
+      [rows[0].project_id, fingerprints],
+    );
+    weights = new Map();
+    for (const row of weightedRows)
+      weights.set(
+        row.fingerprint,
+        (weights.get(row.fingerprint) ?? 0) +
+          (row.override?.general ?? row.policy.general ?? 1),
+      );
+  }
+  for (const fingerprint of fingerprints) {
+    const vote = votes.get(fingerprint),
+      count = counts.get(fingerprint);
+    views.set(fingerprint, {
+      fingerprint,
+      uniqueLikes: vote?.count ?? 0,
+      liked: !!vote?.liked,
+      discussionCount: (count?.threads ?? 0) + (count?.replies ?? 0),
+      ...(canReadPolicy(a) ? { weightedPreference: weights.get(fingerprint) ?? 0 } : {}),
+    });
+  }
+  return {
+    likes,
+    replies: groupBy(replyRows, (row) => row.thread_id),
+    assets: groupBy(assetRows, (row) => row.thread_id),
+    views,
+    reviewers,
+    policies,
+  };
+}
+export async function fullThread(db: Database, a: Actor, row: any, list?: ListData) {
+  const likes =
+    list?.likes.get(row.id) ?? (list ? new Map() : await discussionLikes(db, a, row.id));
+  const data = structuredClone(row.data),
+    replies = list
+      ? (list.replies.get(row.id) ?? [])
+      : await db.query(
+          "SELECT id,data,created_at FROM replies WHERE thread_id=$1 ORDER BY created_at,id",
+          [row.id],
+        );
+  const assets = list
+    ? (list.assets.get(row.id) ?? [])
+    : await db.query(
+        "SELECT id,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',id",
+        [row.id],
+      );
   data.response = discussionResponse(
     data.author,
     new Date(row.created_at).toISOString(),
@@ -66,14 +170,19 @@ export async function fullThread(db: Database, a: Actor, row: any) {
   );
   if (!canReadPolicy(a)) delete data.importance;
   else {
-    data.reviewerContext = await reviewerContext(db, a, row.project_id, [
-      data.author.userId,
-      ...replies.map((r) => r.data.author.userId),
-    ]);
-    const u = await db.one(
-      "SELECT u.policy,u.policy_version,g.policy AS override FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1 WHERE u.id=$2",
-      [row.project_id, data.author.userId],
-    );
+    const userIds = [data.author.userId, ...replies.map((r) => r.data.author.userId)];
+    data.reviewerContext = list?.reviewers
+      ? {
+          ...list.reviewers,
+          items: list.reviewers.items.filter((item) => userIds.includes(item.userId)),
+        }
+      : await reviewerContext(db, a, row.project_id, userIds);
+    const u = list
+      ? list.policies?.get(data.author.userId)
+      : await db.one(
+          "SELECT u.policy,u.policy_version,g.policy AS override FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1 WHERE u.id=$2",
+          [row.project_id, data.author.userId],
+        );
     data.importance = {
       ...data.importance,
       current: u
@@ -104,7 +213,9 @@ export async function fullThread(db: Database, a: Actor, row: any) {
       defaultVisible:
         !data.archived && !["resolved", "declined"].includes(data.work.state),
     },
-    view: await viewStats(db, a, row.project_id, data.context.fingerprint),
+    view: list
+      ? list.views.get(data.context.fingerprint)
+      : await viewStats(db, a, row.project_id, data.context.fingerprint),
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
   };
@@ -189,8 +300,9 @@ export async function feedback(db: Database, a: Actor, op: string, i: any): Prom
       "SELECT DISTINCT data->'context'->>'domain' AS domain,data->'context'->>'hostname' AS hostname FROM threads WHERE project_id=$1 AND COALESCE((data->>'archived')::boolean,false)=false",
       [i.projectId],
     );
+    const data = rows.length ? await listData(db, a, rows) : undefined;
     return {
-      items: await Promise.all(rows.map((r) => fullThread(db, a, r))),
+      items: data ? await Promise.all(rows.map((r) => fullThread(db, a, r, data))) : [],
       total: count.total,
       nextOffset: i.offset + rows.length < count.total ? i.offset + rows.length : null,
       websiteFilters: {
