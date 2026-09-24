@@ -90,7 +90,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
             },
             config.data?.configured
               ? "Destination saved. The signing secret is unchanged."
-              : "Webhook saved. Copy the signing secret now.",
+              : "Webhook saved.",
           );
         }}
       >
@@ -148,7 +148,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
                   });
                   setSecret(result.secret);
                   setVersion((current) => current + 1);
-                }, "Secret rotated. Copy the new secret and update your receiver.")
+                }, "Signing secret rotated.")
               }
             >
               Rotate secret
