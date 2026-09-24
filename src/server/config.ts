@@ -15,6 +15,8 @@ export interface Config {
   organizationId: string;
   trustProxyHops: number;
   databasePoolMax: number;
+  turnstileSiteKey?: string;
+  turnstileSecretKey?: string;
 }
 
 const integer = (value: string | undefined, fallback: number, max: number, min = 1) =>
@@ -65,6 +67,20 @@ export function configFromEnv(env = process.env): Config {
   }
   if (production && !env.ORGANIZATION_ID)
     throw new Error("Set a unique ORGANIZATION_ID for this deployment");
+  const turnstileSiteKey = env.TURNSTILE_SITE_KEY?.trim() || undefined;
+  const turnstileSecretKey = env.TURNSTILE_SECRET_KEY?.trim() || undefined;
+  if (Boolean(turnstileSiteKey) !== Boolean(turnstileSecretKey))
+    throw new Error("Set both TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY");
+  if (
+    production &&
+    (turnstileSiteKey?.startsWith("1x00000000000000000000") ||
+      turnstileSiteKey?.startsWith("2x00000000000000000000") ||
+      turnstileSiteKey?.startsWith("3x00000000000000000000") ||
+      turnstileSecretKey?.startsWith("1x0000000000000000000000000000000") ||
+      turnstileSecretKey?.startsWith("2x0000000000000000000000000000000") ||
+      turnstileSecretKey?.startsWith("3x0000000000000000000000000000000"))
+  )
+    throw new Error("Production must use real Turnstile keys");
   return {
     appOrigin,
     production,
@@ -82,5 +98,7 @@ export function configFromEnv(env = process.env): Config {
       .parse(env.ORGANIZATION_ID ?? "00000000-0000-4000-8000-000000000001"),
     trustProxyHops: integer(env.TRUST_PROXY_HOPS, 0, 10, 0),
     databasePoolMax: integer(env.DATABASE_POOL_MAX, 10, 100),
+    turnstileSiteKey,
+    turnstileSecretKey,
   };
 }

@@ -31,6 +31,8 @@ const publicOperations = new Set([
   "auth.resetPassword",
   "auth.consumeLoginLink",
   "auth.me",
+  "guest.inspect",
+  "guest.reply",
 ]);
 async function request<T>(operation: OperationName, input: unknown): Promise<T> {
   let response: Response;

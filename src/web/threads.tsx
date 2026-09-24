@@ -25,6 +25,7 @@ import {
   type MentionRange,
 } from "./mention-ranges.js";
 import { Icon } from "./icons.js";
+import { GuestLinks } from "./guest-review.js";
 import { api, uid, date, labels, type Project, type Thread } from "./api.js";
 import {
   ActionState,
@@ -878,6 +879,7 @@ export function ThreadDetail({
             id="thread-details"
             hidden={panel !== "details"}
           >
+            {project?.permissions.canMaintain && <GuestLinks threadId={t.id} />}
             <ThreadOrganization
               thread={t}
               canWrite={!!project?.permissions.canWrite}

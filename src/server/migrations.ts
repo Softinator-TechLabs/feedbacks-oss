@@ -86,5 +86,12 @@ INSERT INTO migrations(version) VALUES(5);`;
       await tx.query("CREATE INDEX pairing_expiry ON pairing(expires_at)");
       await tx.query("INSERT INTO migrations(version) VALUES(7)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=8"))) {
+      const sql = `CREATE TABLE guest_links(id uuid PRIMARY KEY,hash text UNIQUE NOT NULL,thread_id uuid NOT NULL REFERENCES threads(id) ON DELETE CASCADE,project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,label text NOT NULL,created_by uuid NOT NULL REFERENCES users(id),expires_at timestamptz NOT NULL,revoked_at timestamptz,replies integer NOT NULL DEFAULT 0 CHECK(replies BETWEEN 0 AND 50),created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX guest_links_thread ON guest_links(thread_id,created_at DESC);
+INSERT INTO migrations(version) VALUES(8);`;
+      for (const statement of sql.split(";").filter((s) => s.trim()))
+        await tx.query(statement);
+    }
   });
 }

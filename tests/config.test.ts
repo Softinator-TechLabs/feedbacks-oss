@@ -41,6 +41,14 @@ test("production requires explicit organization, HTTPS, complete S3 and bounded 
     configFromEnv({ DATABASE_URL: "postgres://localhost/fixture" }).assetDriver,
     "local",
   );
+  assert.throws(() => configFromEnv({ ...production, TURNSTILE_SITE_KEY: "site-only" }));
+  assert.throws(() =>
+    configFromEnv({
+      ...production,
+      TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+      TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+    }),
+  );
 });
 
 test("CLI requires an explicit server and rejects non-local HTTP before sending a credential", () => {

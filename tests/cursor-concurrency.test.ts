@@ -62,7 +62,7 @@ test(
         (await db.query("SELECT version FROM migrations ORDER BY version")).map(
           (r) => r.version,
         ),
-        [1, 2, 3, 4, 5, 6, 7],
+        [1, 2, 3, 4, 5, 6, 7, 8],
       );
       const owner = await ops.auth.bootstrap(
         "owner@example.test",

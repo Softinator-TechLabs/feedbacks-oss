@@ -15,6 +15,7 @@ import "./theme.css";
 import { ThemeSwitch } from "./theme.js";
 import { usePageLocation } from "./navigation.js";
 import { officialWebsiteUrl } from "../shared/product-links.js";
+import { GuestReview } from "./guest-review.js";
 function App() {
   const pageLocation = usePageLocation();
   const path = pageLocation.split("?")[0];
@@ -39,13 +40,22 @@ function App() {
     history.replaceState(null, "", "/owner-login");
     return token;
   });
+  const [guestToken] = useState(() => {
+    if (location.pathname !== "/guest") return "";
+    const token = new URLSearchParams(location.hash.slice(1)).get("token") ?? "";
+    history.replaceState(null, "", "/guest");
+    return token;
+  });
   const [version, setVersion] = useState(0),
     [threadProject, setThreadProject] = useState<{
       threadId: string;
       project: Project;
     }>(),
     session = useLoad(
-      () => api<{ actor: Actor; projects: Project[] }>("auth.me", {}),
+      () =>
+        path === "/guest"
+          ? Promise.resolve(undefined)
+          : api<{ actor: Actor; projects: Project[] }>("auth.me", {}),
       [version, path],
     ),
     a = useAction();
@@ -99,6 +109,7 @@ function App() {
         onAuthenticated={() => setVersion((v) => v + 1)}
       />
     );
+  if (path === "/guest") return <GuestReview token={guestToken} />;
   if (session.data?.actor.mustChangePassword && !publicPage)
     return <PasswordReplacement onChanged={signOut} />;
   if (path === "/invite")

@@ -463,6 +463,53 @@ small {
   font-size: 0.85rem;
   margin-top: 38px;
 }
+.guest-review {
+  min-height: 100vh;
+  padding: 28px clamp(20px, 5vw, 64px) 72px;
+}
+.guest-review-content {
+  max-width: 680px;
+  margin: clamp(36px, 7vh, 88px) auto 0;
+}
+.guest-review h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  margin: 8px 0 24px;
+}
+.guest-review .eyebrow {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.guest-review .section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+}
+.guest-review .section h2 {
+  margin-top: 0;
+}
+.guest-review textarea {
+  width: 100%;
+}
+.guest-review .form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.guest-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  padding: 14px 0;
+}
+.guest-link-row p {
+  margin: 2px 0 0;
+}
 .site-footer {
   border-top: 1px solid var(--border);
   display: flex;
