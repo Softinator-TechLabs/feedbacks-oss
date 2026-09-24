@@ -156,34 +156,43 @@ export async function manageWebhooks(db: Database, actor: Actor, op: string, inp
     await event(db, actor, input.projectId, input.projectId, "webhook.disabled", {});
     return { disabled: true };
   }
+  if (op === "webhooks.save") {
+    const url = validateWebhookDestination(input.url);
+    const existing = await db.one(
+      "SELECT project_id FROM webhook_configs WHERE project_id=$1 FOR UPDATE",
+      [input.projectId],
+    );
+    if (existing) {
+      await db.query(
+        "UPDATE webhook_configs SET url=$2,updated_at=now() WHERE project_id=$1",
+        [input.projectId, url],
+      );
+      await event(db, actor, input.projectId, input.projectId, "webhook.configured", {});
+      return { configured: true, url };
+    }
+    const secret = randomBytes(32).toString("hex");
+    await db.query(
+      "INSERT INTO webhook_configs(project_id,url,secret) VALUES($1,$2,$3)",
+      [input.projectId, url, secret],
+    );
+    await event(db, actor, input.projectId, input.projectId, "webhook.configured", {});
+    return { configured: true, url, secret };
+  }
   if (
-    op === "webhooks.rotate" &&
     !(await db.one("SELECT project_id FROM webhook_configs WHERE project_id=$1", [
       input.projectId,
     ]))
   )
     fail("NOT_FOUND", "Webhook not configured", 404);
-  const url =
-    op === "webhooks.save"
-      ? validateWebhookDestination(input.url)
-      : (
-          await db.one("SELECT url FROM webhook_configs WHERE project_id=$1", [
-            input.projectId,
-          ])
-        ).url;
+  const url = (
+    await db.one("SELECT url FROM webhook_configs WHERE project_id=$1", [input.projectId])
+  ).url;
   const secret = randomBytes(32).toString("hex");
   await db.query(
-    "INSERT INTO webhook_configs(project_id,url,secret) VALUES($1,$2,$3) ON CONFLICT(project_id) DO UPDATE SET url=excluded.url,secret=excluded.secret,updated_at=now()",
-    [input.projectId, url, secret],
+    "UPDATE webhook_configs SET secret=$2,updated_at=now() WHERE project_id=$1",
+    [input.projectId, secret],
   );
-  await event(
-    db,
-    actor,
-    input.projectId,
-    input.projectId,
-    op === "webhooks.save" ? "webhook.configured" : "webhook.rotated",
-    {},
-  );
+  await event(db, actor, input.projectId, input.projectId, "webhook.rotated", {});
   return { configured: true, url, secret };
 }
 

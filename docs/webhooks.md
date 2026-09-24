@@ -1,14 +1,14 @@
 # Signed project webhooks
 
-One project maintainer can configure one outbound destination per project through the authenticated [operation API](api.md). The feature is off until `webhooks.save` succeeds. The endpoint must be a public HTTPS URL on port 443 with no credentials, query or fragment. The worker resolves DNS for each attempt, rejects private addresses, pins the checked address for TLS, and does not follow redirects. A receiver must expose a public endpoint. The server needs outbound HTTPS and DNS access.
+One project maintainer can configure one outbound destination per project from **Project settings → Webhooks** or through the authenticated [operation API](api.md). The feature is off until `webhooks.save` succeeds. The settings page shows the signing secret only after the initial save or rotation; copy it before leaving. The endpoint must be a public HTTPS URL on port 443 with no credentials, query or fragment. The worker resolves DNS for each attempt, rejects private addresses, pins the checked address for TLS, and does not follow redirects. A receiver must expose a public endpoint. The server needs outbound HTTPS and DNS access.
 
-| Operation             | Input             | Result                                                                             |
-| --------------------- | ----------------- | ---------------------------------------------------------------------------------- |
-| `webhooks.save`       | `{projectId,url}` | `{configured:true,url,secret}`; creates or replaces the 32-byte hexadecimal secret |
-| `webhooks.get`        | `{projectId}`     | Configuration metadata, never the secret                                           |
-| `webhooks.rotate`     | `{projectId}`     | New secret shown once; pending attempts use it                                     |
-| `webhooks.disable`    | `{projectId}`     | Disables delivery and removes pending jobs                                         |
-| `webhooks.deliveries` | `{projectId}`     | Latest 50 IDs, status, attempts, HTTP status and timestamps                        |
+| Operation             | Input             | Result                                                                 |
+| --------------------- | ----------------- | ---------------------------------------------------------------------- |
+| `webhooks.save`       | `{projectId,url}` | `{configured:true,url,secret?}`; secret appears only on first creation |
+| `webhooks.get`        | `{projectId}`     | Configuration metadata, never the secret                               |
+| `webhooks.rotate`     | `{projectId}`     | New secret shown once; pending attempts use it                         |
+| `webhooks.disable`    | `{projectId}`     | Disables delivery and removes pending jobs                             |
+| `webhooks.deliveries` | `{projectId}`     | Latest 50 IDs, status, attempts, HTTP status and timestamps            |
 
 Only current project maintainers may call these operations. Secret-returning responses should be stored securely by the caller. No secret is logged or included in project lists, exports, events, or delivery status. The service stores the active secret in its database so it can sign queued requests; protect and back up that database accordingly.
 

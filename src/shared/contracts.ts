@@ -609,7 +609,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "webhooks.save": z.object({
     configured: z.literal(true),
     url: z.string(),
-    secret: z.string(),
+    secret: z.string().optional(),
   }),
   "webhooks.rotate": z.object({
     configured: z.literal(true),

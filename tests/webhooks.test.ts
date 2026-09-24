@@ -192,6 +192,20 @@ test("reviewers cannot configure webhooks and failed delivery stays visible with
       projectId: project.id,
       url: "https://hooks.example.com/feedback",
     });
+    const updated = await ops.executeOperation(owner, "webhooks.save", {
+      projectId: project.id,
+      url: "https://events.example.com/feedback",
+    });
+    assert.equal(updated.secret, undefined);
+    assert.equal(updated.url, "https://events.example.com/feedback");
+    assert.equal(
+      (
+        await db.one("SELECT secret FROM webhook_configs WHERE project_id=$1", [
+          project.id,
+        ])
+      ).secret,
+      created.secret,
+    );
     await ops.executeOperation(owner, "threads.create", {
       projectId: project.id,
       body: "Public body",

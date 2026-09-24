@@ -726,6 +726,24 @@ legend {
   margin: 12px 0;
   overflow-wrap: anywhere;
 }
+.webhook-deliveries {
+  list-style: none;
+  padding: 0;
+  max-width: 900px;
+}
+.webhook-deliveries li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.webhook-deliveries code {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
 .narrow {
   max-width: 520px;
 }
