@@ -19,9 +19,10 @@ export async function projects(db: Database, a: Actor, op: string, i: any) {
     };
   }
   if (op === "projects.get") return access(db, a, i.projectId);
+  let current: Awaited<ReturnType<typeof access>> | undefined;
   if (op === "projects.create") ownerOnly(a);
   else {
-    const current = await access(db, a, i.projectId, "maintain");
+    current = await access(db, a, i.projectId, "maintain");
     if ((i.captureMode ?? "origins") !== (current.captureMode ?? "origins")) ownerOnly(a);
   }
   const origins = [
@@ -47,6 +48,10 @@ export async function projects(db: Database, a: Actor, op: string, i: any) {
     origins,
     ...(i.captureMode === "any" ? { captureMode: "any" } : {}),
     repositoryUrl: i.repositoryUrl ?? null,
+    githubConnected:
+      op !== "projects.create" &&
+      current?.githubConnected === true &&
+      (i.repositoryUrl ?? null) === current.repositoryUrl,
   };
   let id = i.projectId;
   if (op === "projects.create") {

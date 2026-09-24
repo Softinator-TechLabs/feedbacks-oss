@@ -26,6 +26,7 @@ import {
 } from "./mention-ranges.js";
 import { Icon } from "./icons.js";
 import { GuestLinks } from "./guest-review.js";
+import { GithubIssue } from "./github-issue.js";
 import { api, uid, date, labels, type Project, type Thread } from "./api.js";
 import {
   ActionState,
@@ -929,7 +930,10 @@ export function ThreadDetail({
                   <p key={issue.url}>
                     <ExternalLink href={issue.url}>{issue.url}</ExternalLink>
                     <small>
-                      Reported · not remotely verified
+                      {issue.verification === "github_verified"
+                        ? "Verified by GitHub"
+                        : "Reported · not remotely verified"}
+                      {issue.state ? ` · ${issue.state}` : ""}
                       {issue.linkedBy ? ` · ${issue.linkedBy.name}` : ""}
                     </small>
                   </p>
@@ -957,6 +961,9 @@ export function ThreadDetail({
                     <button disabled={a.busy}>Register Issue</button>
                   </form>
                 </>
+              )}
+              {project && (
+                <GithubIssue thread={t} project={project} onSaved={setThread} />
               )}
             </details>
             <details className="section compact-details">

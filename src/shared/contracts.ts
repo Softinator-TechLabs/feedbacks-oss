@@ -178,6 +178,29 @@ export const inputSchemas = {
   "projects.create": projectInput,
   "projects.get": z.object({ projectId: id }),
   "projects.update": projectInput.extend({ projectId: id, revision }),
+  "github.connection": z.object({ projectId: id }),
+  "github.issueState": z.object({ threadId: id }),
+  "github.connect": z.object({ projectId: id, revision }),
+  "github.disconnect": z.object({ projectId: id, revision }),
+  "github.issueCreate": z.object({
+    threadId: id,
+    revision,
+    reviewed: z.literal(true),
+    title: z.string().trim().min(1).max(120),
+    body: z.string().trim().min(1).max(8000),
+    idempotencyKey: z.string().min(8).max(200),
+  }),
+  "github.issueReconcile": z.object({
+    threadId: id,
+    revision,
+    issueUrl: z.string().url(),
+  }),
+  "github.issueAbandon": z.object({
+    threadId: id,
+    revision,
+    confirmedAbsent: z.literal(true),
+  }),
+  "github.issueRefresh": z.object({ threadId: id, revision, issueUrl: z.string().url() }),
   "members.list": z.object({ projectId: id.optional() }),
   "members.invite": z.object({
     email: z.string().email(),
@@ -416,7 +439,12 @@ export const threadOutput = z
       })
       .optional(),
     externalIssues: z.array(
-      z.object({ url: z.string(), verification: z.literal("reported") }).passthrough(),
+      z
+        .object({
+          url: z.string(),
+          verification: z.enum(["reported", "github_verified"]),
+        })
+        .passthrough(),
     ),
     fixEvidence: z.array(z.object({}).passthrough()),
     pins: z.object({ defaultVisible: z.boolean() }),
@@ -441,6 +469,7 @@ const projectOutput = z.object({
   origins: z.array(z.string()),
   captureMode: captureMode.optional(),
   repositoryUrl: z.string().nullable(),
+  githubConnected: z.boolean().optional(),
   revision,
   permissions: z.object({
     role: z.enum(["maintainer", "reviewer", "viewer"]),
@@ -533,6 +562,23 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "projects.get": projectOutput,
   "projects.create": projectOutput,
   "projects.update": projectOutput,
+  "github.connection": z.object({
+    configured: z.boolean(),
+    connected: z.boolean(),
+    repositoryUrl: z.string().nullable(),
+    installUrl: z.string().nullable(),
+  }),
+  "github.issueState": z.object({
+    status: z.enum(["none", "pending", "linked"]),
+    issueUrl: z.string().nullable(),
+    canAbandon: z.boolean(),
+  }),
+  "github.connect": projectOutput,
+  "github.disconnect": projectOutput,
+  "github.issueCreate": threadOutput,
+  "github.issueReconcile": threadOutput,
+  "github.issueAbandon": z.object({ abandoned: z.boolean() }),
+  "github.issueRefresh": threadOutput,
   "members.list": z.object({
     items: z.array(
       z.object({
@@ -725,6 +771,7 @@ export const agentTokenScopes = [
   "context.policy",
   "threads.neighbors",
   "threads.issueDraft",
+  "github.issueCreate",
   "threads.organize",
   "reviewViews.list",
   "reviewViews.save",
@@ -749,13 +796,22 @@ export const businessOperations = (Object.keys(inputSchemas) as OperationName[])
   (name) => !(transportOperations as readonly string[]).includes(name),
 );
 export const agentOperations = businessOperations.filter(
-  (name) => name !== "threads.review",
+  (name) =>
+    name !== "threads.review" &&
+    (name === "github.issueCreate" || !name.startsWith("github.")),
 );
-export const ownerTokenScopes = [...agentOperations, "context.policy"];
+// The one-click owner setup must not silently grant external GitHub writes.
+// Issue creation is available only through a separately issued scoped key.
+export const ownerTokenScopes = [
+  ...agentOperations.filter((name) => name !== "github.issueCreate"),
+  "context.policy",
+];
 const readOperations = new Set<string>([
   "auth.me",
   "projects.list",
   "projects.get",
+  "github.connection",
+  "github.issueState",
   "members.list",
   "members.notes.get",
   "members.guidance.get",

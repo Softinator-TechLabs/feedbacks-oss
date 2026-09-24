@@ -16,6 +16,14 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `context.changes`       | Yes                  | Yes                            |
 | `context.export`        | Yes                  | Yes                            |
 | `context.reviewers`     | Yes                  | Yes                            |
+| `github.connect`        | No                   | No                             |
+| `github.connection`     | Yes                  | No                             |
+| `github.disconnect`     | No                   | No                             |
+| `github.issueAbandon`   | No                   | No                             |
+| `github.issueCreate`    | No                   | Yes                            |
+| `github.issueReconcile` | No                   | No                             |
+| `github.issueRefresh`   | No                   | No                             |
+| `github.issueState`     | Yes                  | No                             |
 | `guest.inspect`         | No                   | No                             |
 | `guest.reply`           | No                   | No                             |
 | `guestLinks.create`     | No                   | No                             |

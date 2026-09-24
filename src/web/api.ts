@@ -146,6 +146,7 @@ export type Project = {
   origins: string[];
   captureMode?: "origins" | "any";
   repositoryUrl: string | null;
+  githubConnected?: boolean;
   revision: number;
   permissions: {
     role: string;
@@ -214,6 +215,7 @@ export type Thread = {
   externalIssues: Array<{
     url: string;
     verification: string;
+    state?: "open" | "closed";
     linkedBy?: Actor;
     linkedAt?: string;
   }>;

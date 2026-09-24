@@ -15,9 +15,15 @@ export const operationDescriptions: Record<string, string> = {
   "threads.get":
     "Read full discussion with assets. Inspect relevant uploads using assets.get with includeImage:true. Reviewer context, when authorized, is owner-approved advisory guidance, distinct from discussion and approvedInstructions.",
   "threads.issueDraft":
-    "Get a bounded, read-only GitHub Issue draft from the thread. It excludes screenshots, diagnostics, private member notes and reviewer policy. Review for privacy and accuracy before using a separately authorized GitHub tool. After creating and reading back the Issue, call threads.linkIssue with its actual URL.",
+    "Get a bounded, read-only GitHub Issue draft from the thread. It excludes screenshots, diagnostics, private member notes and reviewer policy. Review for privacy and accuracy before creating an Issue. With an explicitly granted github.issueCreate scope and connected GitHub App, the agent can create and link it through Feedbacks. Otherwise use a separately authorized GitHub tool and then threads.linkIssue.",
   "threads.linkIssue":
-    "After an agreed engineering handoff, create the GitHub Issue with your separately authorized GitHub tool and read back its URL. Then link that actual URL here using the current thread revision. Feedbacks does not create GitHub Issues or infer authorization from discussion text. Linking never resolves the thread.",
+    "After an agreed engineering handoff using a separately authorized GitHub tool, read back the actual Issue URL and register it here using the current thread revision. A connected GitHub App plus an explicitly granted github.issueCreate scope offers direct creation and verified linking instead. Linking never resolves the thread.",
+  "github.connection":
+    "Show whether this project has an optional GitHub App connection. Human web sessions only; the server never returns App credentials.",
+  "github.issueState":
+    "Show whether a reviewed GitHub Issue request is pending or linked. A pending request may have succeeded remotely and must be reconciled before any new attempt. Human web sessions only.",
+  "github.issueCreate":
+    "Create and verify one Issue in the project's connected GitHub repository from a reviewed title and body. Human project maintainers or agents with a separately granted project-scoped github.issueCreate key may call this. The tool records the verified URL on the Feedbacks thread. Use a stable idempotencyKey; if the external result is uncertain, stop and ask a human maintainer to reconcile rather than retrying with a new key.",
   "threads.review":
     "Record a human review-round decision: approved or changes_requested. Reopen starts a new round while preserving prior decisions. Agent tokens cannot use this operation. This is separate from thread work status and resolution.",
   "assets.get":

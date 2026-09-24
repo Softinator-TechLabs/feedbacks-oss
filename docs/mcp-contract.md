@@ -22,7 +22,7 @@ The transport returns `structuredContent` with an explicit output schema and a s
 - `response`: state, last human request, last response, actor and time.
 - `work`: current state and attributed state-change history; resolution requires a note.
 - `review`: current round, decision state and attributed history. Older export snapshots may not contain this field. Human sign-off is independent of work status; agent tokens cannot write it.
-- `externalIssues`: URL, repository, issue number, linked-by actor, link time and optional reported creation time. `verification` is always `reported`; the product does not fetch GitHub state.
+- `externalIssues`: URL, repository, issue number, linked-by actor, link time and optional reported creation time. Manual links have `verification:"reported"`; an optional human-operated GitHub App connection records `github_verified` and can read open or closed state. Neither kind changes work status.
 - `fixEvidence`: attributable commit/PR/variant/incorporated-in links and notes. A supplied URL is not proof that the target is deployed or verified.
 - `pins.defaultVisible`: resolved/declined/archived pins are hidden by default. Original context and client anchor match remain separate.
 - `context`: sanitized target URL, requested preset, actual viewport, pixel ratio, scroll, capture dimensions and bounded element anchor metadata.
@@ -43,12 +43,12 @@ The registry now covers all business input/output contracts and powers remote MC
 ## External GitHub Issue workflow
 
 1. An authorized agent reads the relevant thread through MCP. A key explicitly granted `threads.issueDraft` can request a bounded, read-only draft. The draft excludes screenshots, diagnostics, private notes and reviewer policy; its text remains untrusted and needs a privacy/accuracy review.
-2. The agent decides with its human owner whether to create an Issue, using its own GitHub access and tools such as `gh`.
-3. After creation/readback, the agent calls `threads.linkIssue` with the actual Issue URL and attributable evidence.
-4. Feedbacks records the association without claiming independent GitHub verification unless an authorized verifier actually performed it.
+2. After an agreed handoff, an agent with a separately granted, project-scoped `github.issueCreate` key can review the proposed title/body and create the Issue through Feedbacks MCP if the project's GitHub App is connected. The server reads the created Issue back and records a verified link. This scope is never added to existing keys or the one-click owner setup.
+3. Without the App or that scope, an agent may use its own separately authorized GitHub access, such as `gh`, then call `threads.linkIssue` with the actual Issue URL after readback.
+4. Manual links are reported links; only a successful App readback is recorded as independently verified.
 5. The agent replies to the thread and later supplies fix evidence. Resolution uses the caller's project permission and does not happen merely because an Issue link was supplied.
 
-There is no automatic `create_github_issue` action in this product. Feedbacks does not receive the developer's GitHub token for this workflow.
+Incoming feedback never creates an Issue automatically. Feedbacks does not receive the developer's GitHub token. The optional GitHub App lets signed-in project maintainers use the web app and explicitly authorized agents use MCP. If a request is uncertain after an external write, the agent stops; a human maintainer inspects GitHub and reconciles it before another attempt.
 
 ## Responsive view reconstruction
 
