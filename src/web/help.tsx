@@ -258,6 +258,11 @@ export function Privacy() {
           its paired device credential in trusted extension storage and sends it only to
           the selected Feedbacks service.
         </p>
+        <p>
+          A guest feedback link lets someone submit a name, page URL and comment to one
+          project after a Turnstile check. The link does not reveal existing feedback or
+          private member information. The project team can see submitted guest feedback.
+        </p>
       </section>
       <section>
         <h2>Capture is explicit</h2>
