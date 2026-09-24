@@ -73,3 +73,8 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `tokens.revoke`            | No                   | No                             |
 | `views.get`                | Yes                  | Yes                            |
 | `views.like`               | No                   | No                             |
+| `webhooks.deliveries`      | Yes                  | No                             |
+| `webhooks.disable`         | No                   | No                             |
+| `webhooks.get`             | Yes                  | No                             |
+| `webhooks.rotate`          | No                   | No                             |
+| `webhooks.save`            | No                   | No                             |

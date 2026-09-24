@@ -201,6 +201,11 @@ export const inputSchemas = {
     confirmedAbsent: z.literal(true),
   }),
   "github.issueRefresh": z.object({ threadId: id, revision, issueUrl: z.string().url() }),
+  "webhooks.get": z.object({ projectId: id }),
+  "webhooks.save": z.object({ projectId: id, url: z.string().url().max(2048) }),
+  "webhooks.rotate": z.object({ projectId: id }),
+  "webhooks.disable": z.object({ projectId: id }),
+  "webhooks.deliveries": z.object({ projectId: id }),
   "members.list": z.object({ projectId: id.optional() }),
   "members.invite": z.object({
     email: z.string().email(),
@@ -595,6 +600,35 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "github.issueReconcile": threadOutput,
   "github.issueAbandon": z.object({ abandoned: z.boolean() }),
   "github.issueRefresh": threadOutput,
+  "webhooks.get": z.object({
+    configured: z.boolean(),
+    url: z.string().nullable(),
+    createdAt: z.string().nullable(),
+    updatedAt: z.string().nullable(),
+  }),
+  "webhooks.save": z.object({
+    configured: z.literal(true),
+    url: z.string(),
+    secret: z.string().optional(),
+  }),
+  "webhooks.rotate": z.object({
+    configured: z.literal(true),
+    url: z.string(),
+    secret: z.string(),
+  }),
+  "webhooks.disable": z.object({ disabled: z.boolean() }),
+  "webhooks.deliveries": z.object({
+    items: z.array(
+      z.object({
+        id,
+        status: z.enum(["pending", "delivered", "failed"]),
+        attempts: z.number().int(),
+        lastStatus: z.number().nullable(),
+        createdAt: z.string(),
+        deliveredAt: z.string().nullable(),
+      }),
+    ),
+  }),
   "members.list": z.object({
     items: z.array(
       z.object({
@@ -839,6 +873,7 @@ export const businessOperations = (Object.keys(inputSchemas) as OperationName[])
 export const agentOperations = businessOperations.filter(
   (name) =>
     name !== "threads.review" &&
+    !name.startsWith("webhooks.") &&
     (name === "github.issueCreate" || !name.startsWith("github.")),
 );
 // The one-click owner setup must not silently grant external GitHub writes.
@@ -853,6 +888,8 @@ const readOperations = new Set<string>([
   "projects.get",
   "github.connection",
   "github.issueState",
+  "webhooks.get",
+  "webhooks.deliveries",
   "members.list",
   "members.notes.get",
   "members.guidance.get",

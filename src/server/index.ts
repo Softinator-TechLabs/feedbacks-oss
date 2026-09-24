@@ -6,6 +6,7 @@ import { createApp } from "./app.js";
 import type { Pool } from "pg";
 import { purgeExpiredExports } from "./export-limits.js";
 import { purgeExpiredPairings } from "./auth.js";
+import { deliverWebhooks } from "./webhooks.js";
 
 try {
   const config = configFromEnv();
@@ -22,7 +23,11 @@ try {
   const maintenance = setInterval(() => {
     if (maintenanceRunning) return;
     maintenanceRunning = true;
-    void Promise.allSettled([purgeExpiredExports(db), purgeExpiredPairings(db)])
+    void Promise.allSettled([
+      purgeExpiredExports(db),
+      purgeExpiredPairings(db),
+      deliverWebhooks(db),
+    ])
       .then((results) => {
         if (results.some((result) => result.status === "rejected"))
           console.error("Expiry cleanup failed.");

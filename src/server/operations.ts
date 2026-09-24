@@ -30,6 +30,7 @@ import { manageGuestLinks } from "./guest-links.js";
 import { GithubApp } from "./github-app.js";
 import { githubOperation } from "./github-operations.js";
 import { manageGuestProjectLinks } from "./guest-project-links.js";
+import { manageWebhooks } from "./webhooks.js";
 export class Operations {
   readonly auth: Auth;
   constructor(
@@ -93,6 +94,7 @@ export class Operations {
         }
         if (name === "context.reviewers") return reviewerContext(db, a, i.projectId);
         if (name.startsWith("projects.")) return projects(db, a, name, i);
+        if (name.startsWith("webhooks.")) return manageWebhooks(db, a, name, i);
         if (name.startsWith("guestLinks."))
           return manageGuestLinks(db, a, name, i, this.config);
         if (name.startsWith("guestProjectLinks."))

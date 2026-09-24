@@ -2,6 +2,7 @@ import type { Database } from "./db.js";
 import type { Actor } from "../shared/contracts.js";
 import { fail } from "./errors.js";
 import { publicActor } from "./auth.js";
+import { enqueueWebhook } from "./webhooks.js";
 export function ownerOnly(actor: Actor) {
   if (
     !actor.owner ||
@@ -80,4 +81,12 @@ export async function event(
     "INSERT INTO events(project_id,entity_id,kind,actor,data) VALUES($1,$2,$3,$4,$5)",
     [projectId, entityId, kind, JSON.stringify(publicActor(a)), JSON.stringify(data)],
   );
+  if (
+    projectId &&
+    (kind === "thread.created" ||
+      kind.startsWith("threads.") ||
+      kind === "guest.reply") &&
+    typeof data?.revision === "number"
+  )
+    await enqueueWebhook(db, projectId, entityId, kind, data.revision);
 }
