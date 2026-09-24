@@ -73,6 +73,47 @@ test("review navigation crosses pages with identical filters; tags and personal 
     assert.equal(first.total, 34);
     assert.equal(first.items.length, 30);
     assert.equal(second.items.length, 4);
+    let listQueries = 0;
+    const query = Database.prototype.query;
+    Database.prototype.query = async function (...args: Parameters<Database["query"]>) {
+      listQueries++;
+      return query.apply(this, args);
+    };
+    let batched;
+    try {
+      batched = await ops.executeOperation(reviewer, "threads.list", filters);
+    } finally {
+      Database.prototype.query = query;
+    }
+    assert.deepEqual(batched.items, first.items);
+    assert.ok(
+      listQueries <= 20,
+      `30 list rows should use bounded queries, got ${listQueries}`,
+    );
+    await ops.executeOperation(owner, "threads.reply", {
+      threadId: created[1].id,
+      revision: 1,
+      body: "Adjusted the mobile spacing",
+      intent: "response",
+      idempotencyKey: "batched-reply-one",
+    });
+    await ops.executeOperation(reviewer, "views.like", {
+      projectId: project.id,
+      context: {
+        url: "https://example.test/checkout",
+        viewport: { width: 390, height: 844 },
+      },
+      liked: true,
+    });
+    const ownerList = await ops.executeOperation(owner, "threads.list", {
+      projectId: project.id,
+    });
+    assert.deepEqual(
+      ownerList.items.find((item: { id: string }) => item.id === created[1].id),
+      await ops.executeOperation(owner, "threads.get", {
+        threadId: created[1].id,
+      }),
+    );
     const edge = await ops.executeOperation(reviewer, "threads.neighbors", {
       ...filters,
       threadId: first.items[29].id,
