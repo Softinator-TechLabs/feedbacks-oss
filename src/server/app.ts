@@ -11,6 +11,8 @@ import { Auth, accountLock, hash, secret } from "./auth.js";
 import { remoteMcp } from "./mcp.js";
 import { helpHtml } from "./help.js";
 import { readExtensionRelease } from "./extension-release.js";
+import { guestInspect, guestReply } from "./guest-links.js";
+import { verifyGuestTurnstile } from "./turnstile.js";
 export function createApp(config: Config, database: Database, assets: AssetStore) {
   const app = express(),
     ops = new Operations(database, assets, config),
@@ -49,7 +51,9 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       "X-Frame-Options": "DENY",
       "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
       "Content-Security-Policy":
-        "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        req.path === "/guest"
+          ? "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+          : "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
     });
     if (config.production)
       res.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
@@ -147,12 +151,16 @@ export function createApp(config: Config, database: Database, assets: AssetStore
           "auth.resetPassword",
           "pairing.request",
           "pairing.poll",
+          "guest.inspect",
+          "guest.reply",
         ].includes(name)
       ) {
         const ip = req.ip ?? "unknown";
         // Unverified polls get a bounded IP ingress budget, never a caller-chosen
         // device bucket. Account attempts and device creation have separate limits.
         if (name === "pairing.poll") rate(`poll-ingress:${ip}`, 600, res);
+        else if (name.startsWith("guest."))
+          rate(`${name}:${ip}`, name === "guest.reply" ? 10 : 30, res);
         else
           rate(
             `${name === "pairing.request" ? "pairing-request" : "account"}:${ip}`,
@@ -162,6 +170,21 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         const parsed = inputSchemas[name as OperationName].safeParse(req.body);
         if (!parsed.success) fail("VALIDATION", "Invalid request fields");
         const i: any = parsed.data;
+        if (name === "guest.inspect" || name === "guest.reply") {
+          requireOrigin(req);
+          const data =
+            name === "guest.inspect"
+              ? await guestInspect(database, i.token, config)
+              : await (async () => {
+                  await verifyGuestTurnstile(config, i.turnstileToken, req.ip);
+                  return database.transaction(async (db) => {
+                    await accountLock(db);
+                    return guestReply(db, i);
+                  });
+                })();
+          res.json({ ok: true, data });
+          return;
+        }
         if (name === "auth.login") {
           requireOrigin(req);
           const result = await ops.auth.login(i.email, i.password);

@@ -242,6 +242,20 @@ export const inputSchemas = {
   "reviewViews.delete": z.object({ projectId: id, viewId: id, revision }),
   "threads.get": z.object({ threadId: id }),
   "threads.issueDraft": z.object({ threadId: id }),
+  "guestLinks.create": z.object({
+    threadId: id,
+    label: z.string().trim().min(1).max(80),
+    expiresInDays: z.number().int().min(1).max(30).default(7),
+  }),
+  "guestLinks.list": z.object({ threadId: id }),
+  "guestLinks.revoke": z.object({ linkId: id }),
+  "guest.inspect": z.object({ token: z.string().min(20).max(200) }),
+  "guest.reply": z.object({
+    token: z.string().min(20).max(200),
+    name,
+    body: text,
+    turnstileToken: z.string().min(1).max(2048),
+  }),
   "threads.like": z.object({
     threadId: id,
     replyId: id.optional(),
@@ -326,7 +340,7 @@ export type OperationName = keyof typeof inputSchemas;
 export interface Actor {
   id: string;
   userId: string;
-  kind: "human" | "agent" | "extension";
+  kind: "human" | "agent" | "extension" | "guest";
   name: string;
   owner: boolean;
   primaryOwner?: boolean;
@@ -415,7 +429,7 @@ const actorOutput = z.object({
   id,
   userId: id,
   name: z.string(),
-  kind: z.enum(["human", "agent", "extension"]),
+  kind: z.enum(["human", "agent", "extension", "guest"]),
   owner: z.boolean().optional(),
   primaryOwner: z.boolean().optional(),
   mustChangePassword: z.boolean().optional(),
@@ -609,6 +623,31 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     requiresReview: z.literal(true),
     warnings: z.array(z.string()),
   }),
+  "guestLinks.create": z.object({
+    id,
+    token: z.string(),
+    expiresAt: z.string(),
+    path: z.string(),
+  }),
+  "guestLinks.list": z.object({
+    items: z.array(
+      z.object({
+        id,
+        label: z.string(),
+        expiresAt: z.string(),
+        revokedAt: z.string().nullable(),
+        replies: z.number().int(),
+      }),
+    ),
+  }),
+  "guestLinks.revoke": z.object({ revoked: z.boolean() }),
+  "guest.inspect": z.object({
+    projectName: z.string(),
+    threadBody: z.string(),
+    expiresAt: z.string(),
+    turnstileSiteKey: z.string(),
+  }),
+  "guest.reply": z.object({ posted: z.boolean() }),
   "threads.neighbors": z.object({
     previous: id.nullable(),
     next: id.nullable(),

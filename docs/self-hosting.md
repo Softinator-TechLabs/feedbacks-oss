@@ -33,6 +33,12 @@ Keep the bucket private and require transport encryption. Grant the application 
 
 After bootstrap, upload a synthetic screenshot and verify an authorized read, rejection for an unrelated project member, and persistence after restarting the application. Endpoint configuration alone does not prove provider compatibility or a recoverable backup.
 
+## Guest replies and Turnstile
+
+Guest discussion links are disabled until both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are configured. Create a [Cloudflare Turnstile widget](https://developers.cloudflare.com/turnstile/get-started/) for the exact application hostname, then supply the site key and secret through your deployment's private configuration. Keep the secret out of Git. Production rejects Cloudflare's documented test keys.
+
+The guest page loads Cloudflare's widget and the server verifies each reply token through [Siteverify](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/). This optional feature therefore makes a request to Cloudflare; the core signed-in review workflow does not need Turnstile. The app also applies a per-IP ingress limit and caps each link's replies. Configure a shared ingress limit before running multiple application replicas.
+
 ## Create the first owner
 
 The production image includes `dist/cli/bootstrap.js`. Bootstrap runs once and refuses to replace an existing owner. Supply the password through standard input, not a command-line argument or an image layer:

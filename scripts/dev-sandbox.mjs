@@ -50,6 +50,8 @@ try {
     organizationId: randomUUID(),
     trustProxyHops: 0,
     databasePoolMax: 1,
+    turnstileSiteKey: "1x00000000000000000000AA",
+    turnstileSecretKey: "1x0000000000000000000000000000000AA",
   };
   const app = createApp(config, db, new LocalAssets(config.assetDirectory));
   server = app.listen(0, "127.0.0.1");
