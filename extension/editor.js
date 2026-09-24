@@ -353,7 +353,7 @@ $("discard").onclick = async () => {
 };
 function lock(value) {
   for (const el of document.querySelectorAll(
-    "input,select,textarea,[data-tool],#undo,#reset",
+    "input,select,textarea,[data-tool],[data-diagnostic-mask],#undo,#reset",
   ))
     el.disabled = value;
   $("no-image").disabled = value || !base;
@@ -456,10 +456,49 @@ function renderDiagnostics() {
       input.onchange = schedule;
       text.textContent =
         kind === "console"
-          ? `${entry.level} · ${entry.atMs} ms · ${entry.message}`
+          ? `${entry.level} · ${entry.atMs} ms`
           : `${entry.type} · ${entry.status ?? "status unavailable"} · ${entry.durationMs} ms · ${entry.url}`;
       label.append(input, text);
       entries.append(label);
+      if (kind === "console") {
+        const message = document.createElement("textarea"),
+          mask = document.createElement("button");
+        message.className = "diagnostic-message";
+        message.value = entry.message;
+        message.readOnly = true;
+        message.rows = 2;
+        message.setAttribute("aria-label", `Console message ${index + 1}`);
+        mask.type = "button";
+        mask.dataset.diagnosticMask = "";
+        mask.textContent = "Mask selected text";
+        mask.disabled = !!draft.frozen;
+        mask.onclick = async () => {
+          if (!draft || draft.frozen || loadingBase) return;
+          const start = message.selectionStart,
+            end = message.selectionEnd;
+          if (end <= start) {
+            status("Select the private text in the message first.", "error");
+            return;
+          }
+          mask.disabled = true;
+          try {
+            await persist();
+            draft = await send({
+              type: "redactDiagnostic",
+              id: draft.id,
+              index,
+              start,
+              end,
+            });
+            renderDiagnostics();
+            status("Selected text masked in the local draft.");
+          } catch (error) {
+            status(error.message, "error");
+            mask.disabled = false;
+          }
+        };
+        entries.append(message, mask);
+      }
     }
   }
 }
