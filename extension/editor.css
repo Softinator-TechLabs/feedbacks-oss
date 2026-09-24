@@ -227,3 +227,14 @@ aside .hint {
   font-size: 13px;
   margin: 12px 0;
 }
+.diagnostic-message {
+  display: block;
+  width: 100%;
+  min-height: 54px;
+  margin-block: 4px 8px;
+  resize: vertical;
+  font: inherit;
+}
+#diagnostics-entries [data-diagnostic-mask] {
+  margin-bottom: 12px;
+}

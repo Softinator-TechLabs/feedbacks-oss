@@ -3,6 +3,45 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import { diagnosticsSchema } from "../src/shared/diagnostics.js";
+// @ts-expect-error The extension ships native JavaScript.
+import {
+  maskDraftDiagnostic,
+  redactDiagnosticSelection,
+} from "../extension/diagnostic-redaction.js";
+
+test("console diagnostics can mask selected text without adding new content", () => {
+  const original = "failed for customer reference 12345";
+  const start = original.indexOf("customer");
+  const result = redactDiagnosticSelection(original, start, original.length);
+  assert.equal(result, "failed for [redacted]");
+  assert.doesNotMatch(result, /12345/);
+  assert.throws(() => redactDiagnosticSelection(original, -1, 5), /Select/);
+  assert.throws(() => redactDiagnosticSelection(original, 5, 5), /Select/);
+  assert.throws(() => redactDiagnosticSelection(original, 0, 401), /Select/);
+  const draft = {
+    id: "draft-1",
+    diagnostics: {
+      console: [{ level: "error", message: original, atMs: 2 }],
+      network: [],
+    },
+  };
+  const masked = maskDraftDiagnostic(draft, {
+    id: "draft-1",
+    index: 0,
+    start,
+    end: original.length,
+  });
+  assert.equal(masked.diagnostics.console[0].message, result);
+  assert.equal(draft.diagnostics.console[0].message, original);
+  assert.throws(
+    () =>
+      maskDraftDiagnostic(
+        { ...draft, frozen: true },
+        { id: "draft-1", index: 0, start, end: 10 },
+      ),
+    /no longer editable/,
+  );
+});
 
 test("diagnostics need consent, reject extra payloads, strip URL credentials and bound entries", () => {
   const input = {

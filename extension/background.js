@@ -3,6 +3,7 @@ import "./utils.js";
 import { createReviewController } from "./review-session.js";
 import { createPairingCoordinator } from "./pairing.js";
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
+import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 const U = globalThis.FeedbacksUtil;
 import { DEFAULT_SERVER as DEFAULT } from "./config.js";
 const ready = chrome.storage.local.setAccessLevel({
@@ -703,6 +704,12 @@ async function redactDraft(message) {
     canvas.width = canvas.height = 0;
   }
 }
+async function redactDiagnostic(message) {
+  const { draft } = await get();
+  const updated = maskDraftDiagnostic(draft, message);
+  await set({ draft: updated });
+  return updated;
+}
 async function submit(message) {
   if (sending) throw Error("Submission is already in progress.");
   sending = true;
@@ -1055,6 +1062,8 @@ async function route(message, sender) {
       });
     case "redactDraft":
       return writeDraft(() => redactDraft(message));
+    case "redactDiagnostic":
+      return writeDraft(() => redactDiagnostic(message));
     case "discard":
       if (sending) throw Error("Wait for submission to finish.");
       return writeDraft(async () => {
