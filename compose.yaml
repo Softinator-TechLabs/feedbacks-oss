@@ -22,6 +22,8 @@ services:
       S3_BUCKET: ${S3_BUCKET:?required}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?required}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?required}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
     expose: ["3000"]
     depends_on:
       postgres:
