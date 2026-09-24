@@ -1,6 +1,6 @@
 # Plan: project document review
 
-Status: in progress. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: implemented on a feature branch. Owner: Feedbacks maintainers. Date: 2026-09-24.
 
 ## Outcome and scope
 
@@ -13,10 +13,10 @@ Current threads require website context and current assets belong to threads. Do
 ## Steps and progress
 
 - [x] Read existing asset, thread, grant and UI paths; establish baseline suite (44 pass, 1 native PostgreSQL skip).
-- [ ] Add validated private project document storage and page-aware thread creation with regression coverage.
-- [ ] Add an unobtrusive Documents view with upload, viewer and coordinate comment form.
-- [ ] Update API, workflow and security docs; regenerate operation catalog.
-- [ ] Run Node 24 checks, native PostgreSQL migration check and synthetic desktop/mobile browser proof.
+- [x] Add validated private project document storage and page-aware thread creation with regression coverage.
+- [x] Add a Documents view with upload, viewer and coordinate comment form.
+- [x] Update API and workflow docs; regenerate operation catalog.
+- [x] Run Node 24 checks, native PostgreSQL migration check and synthetic desktop/mobile browser proof.
 
 ## Compatibility and recovery
 
@@ -29,8 +29,8 @@ Migration 12 is additive and creates a document metadata table. Existing threads
 
 ## Completion receipt
 
-Source revision: pending.
-Checks and results: pending.
-Artifacts: pending.
-Deployment and live verification: not in scope for this branch.
-Remaining risks or follow-up: pending.
+Source revisions: `d452aad` adds document review; `eb39563` pages markers so later comments remain reachable.
+Checks and results: Node 24 `npm run check` passed with 55 tests passed and one native PostgreSQL test skipped in that suite; `npm run test:postgres` passed separately. A 511-marker regression traversed all six batches without duplicates. A synthetic PDF uploaded, rendered and created a normal feedback thread at a page coordinate in a local sandbox. Desktop and mobile views were inspected at 1440 × 900 and 390 × 844.
+Artifacts: [desktop document review](../screenshots/document-review/desktop.png) and [mobile document review](../screenshots/document-review/mobile.png), both using a generated sample PDF and sandbox identity.
+Deployment and live verification: not performed for this branch.
+Remaining limit: PDFs are capped at 25 pages and files at 8 MiB. Document annotations are page points; freehand markup is not included.

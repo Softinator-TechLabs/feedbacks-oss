@@ -48,6 +48,14 @@ Open a project's **Documents** tab. A signed-in maintainer can upload a PDF, PNG
 
 Choose a PDF page, then click the page or image to select a point. Keyboard users can enter across/down percentages instead. Post a comment to create a normal feedback thread with the document, page and normalized position in its context. The document viewer shows numbered points and links to the full discussion. Replies, status, tags, human review and agent context use the same thread workflow as website feedback. Documents are not exposed to guest links. A document point does not claim to identify an HTML element or a webpage URL.
 
+![Document review on desktop with a synthetic PDF](screenshots/document-review/desktop.png)
+
+_Desktop viewer with a generated sample PDF. No customer file or discussion is shown._
+
+![Document review on mobile with a synthetic PDF](screenshots/document-review/mobile.png)
+
+_Mobile viewer showing the same generated PDF at a narrow viewport._
+
 ## Share diagnostics deliberately
 
 In the extension popup, open **Console & network**, start collection, reproduce the problem and take a screenshot. Collection covers the top-level page from that moment until capture, stop, navigation or five minutes. Review the entries in the editor and explicitly enable sharing. See [extension privacy and limits](extension.md#optional-console-and-network-context).
