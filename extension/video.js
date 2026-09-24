@@ -14,6 +14,8 @@ let stream,
 let thread,
   uploadKey,
   serverOrigin,
+  target,
+  createAttempt,
   createKey = crypto.randomUUID();
 
 async function send(message) {
@@ -141,13 +143,18 @@ $("send").onclick = async () => {
   $("send").disabled = true;
   try {
     if (!thread) {
-      thread = await send({
-        type: "videoCreate",
-        sourceTabId,
-        server: serverOrigin,
-        body: $("comment").value,
-        idempotencyKey: createKey,
-      });
+      if (!createAttempt) {
+        createAttempt = Object.freeze({
+          type: "videoCreate",
+          sourceTabId,
+          server: serverOrigin,
+          target,
+          body: $("comment").value,
+          idempotencyKey: createKey,
+        });
+        $("comment").readOnly = true;
+      }
+      thread = await send(createAttempt);
       $("comment").readOnly = true;
       $("start").hidden = true;
       $("discard").hidden = true;
@@ -205,8 +212,18 @@ if (!Number.isInteger(sourceTabId) || sourceTabId <= 0)
   status("Open this page from the Feedbacks popup.");
 else
   send({ type: "videoContext", sourceTabId })
-    .then(({ project, url, server }) => {
+    .then((result) => {
+      const { project, url, server } = result;
       if (!project) throw Error("Project access is no longer available.");
+      target = Object.freeze({
+        sourceTabId: result.sourceTabId,
+        projectId: result.projectId,
+        reviewId: result.reviewId,
+        server,
+        url,
+        viewport: Object.freeze({ ...result.viewport }),
+        routeFingerprint: result.routeFingerprint,
+      });
       serverOrigin = server;
       $("target").textContent = `${project.name} · ${url}`;
       $("start").disabled = false;

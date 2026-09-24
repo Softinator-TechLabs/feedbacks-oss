@@ -5,6 +5,7 @@ import { createPairingCoordinator } from "./pairing.js";
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 import { formatPageQa } from "./page-qa.js";
+import { videoTarget, videoCreateInput } from "./video-target.js";
 const U = globalThis.FeedbacksUtil;
 import { DEFAULT_SERVER as DEFAULT } from "./config.js";
 const ready = chrome.storage.local.setAccessLevel({
@@ -937,28 +938,28 @@ async function route(message, sender) {
       const tab = await chrome.tabs.get(message.sourceTabId);
       const session = await sessionFor({ tab, frameId: 0, url: tab.url });
       const projects = await authenticated("projects.list");
+      const target = await videoTarget(tab, session, U.safeUrl);
       return {
         project: projects.items.find((project) => project.id === session.projectId),
-        url: U.safeUrl(tab.url),
-        server: session.server,
+        ...target,
       };
     }
     case "videoCreate": {
       const tab = await chrome.tabs.get(message.sourceTabId);
       const session = await sessionFor({ tab, frameId: 0, url: tab.url });
-      if (message.server !== session.server)
+      if (message.server !== session.server || message.target?.server !== session.server)
         throw Error("The connection changed. Open Feedbacks again.");
       if (typeof message.body !== "string" || !message.body.trim())
         throw Error("Write a comment before sharing the video.");
-      return authenticated("threads.create", {
-        projectId: session.projectId,
-        body: message.body,
-        context: {
-          url: U.safeUrl(tab.url),
-          viewport: { width: tab.width || 1280, height: tab.height || 720 },
-        },
-        idempotencyKey: message.idempotencyKey,
-      });
+      const input = await videoCreateInput(
+        message.target,
+        tab,
+        session,
+        U.safeUrl,
+        message.body,
+        message.idempotencyKey,
+      );
+      return authenticated("threads.create", input, message.target.server);
     }
     case "videoUpload":
       if (message.server !== server)

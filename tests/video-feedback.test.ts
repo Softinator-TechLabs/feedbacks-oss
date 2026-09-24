@@ -65,6 +65,19 @@ test("video feedback stays in the authorized project and rejects invalid media",
       }),
       { code: "INVALID_VIDEO" },
     );
+    await assert.rejects(
+      ops.executeOperation(owner, "assets.uploadVideo", {
+        threadId: thread.id,
+        revision: thread.revision,
+        videoBase64: Buffer.from(
+          "1a45dfa3000000007765626d0000000018538067",
+          "hex",
+        ).toString("base64"),
+        durationMs: 1000,
+        idempotencyKey: "forged-video",
+      }),
+      { code: "INVALID_VIDEO" },
+    );
     const pairing = await ops.auth.requestPairing("Browser");
     await ops.executeOperation(owner, "pairing.approve", {
       pairingId: pairing.pairingId,
