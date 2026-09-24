@@ -524,6 +524,19 @@ small {
 .guest-link-row p {
   margin: 2px 0 0;
 }
+.widget-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  grid-column: 1 / -1;
+  min-height: 44px;
+  font-weight: 600;
+}
+.widget-option input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
 .site-footer {
   border-top: 1px solid var(--border);
   display: flex;

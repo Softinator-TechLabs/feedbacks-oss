@@ -302,6 +302,7 @@ export const inputSchemas = {
     label: z.string().trim().min(1).max(80),
     expiresInDays: z.number().int().min(1).max(30).default(7),
     maxSubmissions: z.number().int().min(1).max(50).default(10),
+    widget: z.boolean().default(false),
   }),
   "guestProjectLinks.list": z.object({ projectId: id }),
   "guestProjectLinks.revoke": z.object({ linkId: id }),
@@ -312,6 +313,23 @@ export const inputSchemas = {
     body: text,
     url: z.string().url().max(4096),
     turnstileToken: z.string().min(1).max(2048),
+  }),
+  "widget.inspect": z.object({ linkId: id, token: z.string().min(20).max(200) }),
+  "widget.submit": z.object({
+    linkId: id,
+    token: z.string().min(20).max(200),
+    name,
+    body: text,
+    url: z.string().url().max(4096),
+    viewport: z.object({
+      width: z.number().int().min(1).max(10000),
+      height: z.number().int().min(1).max(10000),
+    }),
+    turnstileToken: z.string().min(1).max(2048),
+    screenshot: z
+      .string()
+      .max(3 * 1024 * 1024)
+      .optional(),
   }),
   "threads.like": z.object({
     threadId: id,
@@ -813,6 +831,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     token: z.string(),
     expiresAt: z.string(),
     path: z.string(),
+    widgetSnippet: z.string().optional(),
   }),
   "guestProjectLinks.list": z.object({
     items: z.array(
@@ -823,6 +842,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
         revokedAt: z.string().nullable(),
         submissions: z.number().int(),
         maxSubmissions: z.number().int(),
+        widget: z.boolean(),
       }),
     ),
   }),
@@ -833,6 +853,8 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     turnstileSiteKey: z.string(),
   }),
   "guestProject.submit": z.object({ posted: z.boolean() }),
+  "widget.inspect": z.object({ projectName: z.string(), turnstileSiteKey: z.string() }),
+  "widget.submit": z.object({ posted: z.boolean() }),
   "threads.neighbors": z.object({
     previous: id.nullable(),
     next: id.nullable(),

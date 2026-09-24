@@ -14,6 +14,7 @@ export async function verifyGuestTurnstile(
   remoteIp?: string,
   fetcher: typeof fetch = fetch,
   action = "guest_reply",
+  expectedHostname = new URL(config.appOrigin).hostname,
 ) {
   const { secretKey } = requireTurnstile(config);
   const body = new URLSearchParams({ secret: secretKey, response: token });
@@ -36,8 +37,7 @@ export async function verifyGuestTurnstile(
   if (result.success !== true)
     fail("VERIFICATION_FAILED", "Verification expired or failed. Try again.", 403);
   if (config.production) {
-    const hostname = new URL(config.appOrigin).hostname;
-    if (result.hostname !== hostname || result.action !== action)
+    if (result.hostname !== expectedHostname || result.action !== action)
       fail("VERIFICATION_FAILED", "Verification did not match this form", 403);
   }
 }

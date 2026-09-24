@@ -31,10 +31,10 @@ export async function manageGuestProjectLinks(
     await event(db, actor, link.project_id, link.id, "guest_project_link.revoked", {});
     return { revoked: true };
   }
-  await access(db, actor, input.projectId, "maintain");
+  const project = await access(db, actor, input.projectId, "maintain");
   if (op === "guestProjectLinks.list") {
     const rows = await db.query(
-      "SELECT id,label,expires_at,revoked_at,submissions,max_submissions FROM guest_project_links WHERE project_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100",
+      "SELECT id,label,expires_at,revoked_at,submissions,max_submissions,widget_enabled FROM guest_project_links WHERE project_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100",
       [input.projectId],
     );
     return {
@@ -45,10 +45,13 @@ export async function manageGuestProjectLinks(
         revokedAt: row.revoked_at ? new Date(row.revoked_at).toISOString() : null,
         submissions: row.submissions,
         maxSubmissions: row.max_submissions,
+        widget: row.widget_enabled,
       })),
     };
   }
   requireTurnstile(config);
+  if (input.widget && (!project.origins?.length || project.captureMode === "any"))
+    fail("VALIDATION", "Widgets require at least one exact approved origin");
   const active = await db.one(
     "SELECT count(*)::integer AS count FROM guest_project_links WHERE project_id=$1 AND revoked_at IS NULL AND expires_at>now() AND submissions<max_submissions",
     [input.projectId],
@@ -59,7 +62,7 @@ export async function manageGuestProjectLinks(
     id = randomUUID();
   const expiresAt = new Date(Date.now() + input.expiresInDays * 86400000).toISOString();
   await db.query(
-    "INSERT INTO guest_project_links(id,hash,project_id,label,created_by,expires_at,max_submissions) VALUES($1,$2,$3,$4,$5,$6,$7)",
+    "INSERT INTO guest_project_links(id,hash,project_id,label,created_by,expires_at,max_submissions,widget_enabled) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
     [
       id,
       hash(token),
@@ -68,23 +71,34 @@ export async function manageGuestProjectLinks(
       actor.userId,
       expiresAt,
       input.maxSubmissions,
+      input.widget,
     ],
   );
   await event(db, actor, input.projectId, id, "guest_project_link.created", {
     expiresAt,
     maxSubmissions: input.maxSubmissions,
   });
-  return { id, token, expiresAt, path: `/guest-project#token=${token}` };
+  return {
+    id,
+    token,
+    expiresAt,
+    path: input.widget ? "" : `/guest-project#token=${token}`,
+    ...(input.widget
+      ? {
+          widgetSnippet: `<script async src="${config.appOrigin}/widget.js" data-link="${id}" data-token="${token}"></script>`,
+        }
+      : {}),
+  };
 }
 
-async function validLink(db: Database, token: string, lock = false) {
+async function validLink(db: Database, token: string, lock = false, widget = false) {
   const link = await db.one(
     `SELECT g.*,p.data AS project FROM guest_project_links g
      JOIN projects p ON p.id=g.project_id
-     WHERE g.hash=$1 AND g.revoked_at IS NULL AND g.expires_at>now()
+     WHERE g.hash=$1 AND g.widget_enabled=$2 AND g.revoked_at IS NULL AND g.expires_at>now()
        AND g.submissions<g.max_submissions
      ${lock ? "FOR UPDATE OF g" : ""}`,
-    [hash(token)],
+    [hash(token), widget],
   );
   if (!link)
     fail(
@@ -107,16 +121,38 @@ export async function guestProjectInspect(db: Database, token: string, config: C
 
 export async function guestProjectSubmit(
   db: Database,
-  input: { token: string; name: string; body: string; url: string },
+  input: {
+    token: string;
+    name: string;
+    body: string;
+    url: string;
+    widget?: {
+      linkId: string;
+      origin: string;
+      viewport: { width: number; height: number };
+      threadId: string;
+    };
+  },
 ) {
-  const link = await validLink(db, input.token, true);
+  const link = await validLink(db, input.token, true, !!input.widget);
+  if (input.widget) {
+    if (
+      link.id !== input.widget.linkId ||
+      !link.project.origins.includes(input.widget.origin) ||
+      new URL(input.url).origin !== input.widget.origin
+    )
+      fail("ORIGIN_NOT_ALLOWED", "The reviewed page must match this website", 403);
+  }
   const context = {
     ...viewContext(
-      { url: input.url, viewport: { width: 1280, height: 800 } },
+      {
+        url: input.url,
+        viewport: input.widget?.viewport ?? { width: 1280, height: 800 },
+      },
       link.project,
     ),
-    source: "guest_project_link",
-    viewportKnown: false,
+    source: input.widget ? "widget" : "guest_project_link",
+    viewportKnown: !!input.widget,
   };
   const author: Actor = {
     id: link.id,
@@ -127,7 +163,7 @@ export async function guestProjectSubmit(
   };
   const actor = publicActor(author),
     at = new Date().toISOString(),
-    id = randomUUID();
+    id = input.widget?.threadId ?? randomUUID();
   const data = {
     body: input.body,
     category: "general",

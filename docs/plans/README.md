@@ -15,3 +15,4 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 - [Optional GitHub Issues connection](github-issues-app.md)
 - [Signed project webhooks](signed-project-webhooks.md)
 - [Project document review](attachment-review.md)
+- [Embeddable website feedback widget](embeddable-widget.md)
