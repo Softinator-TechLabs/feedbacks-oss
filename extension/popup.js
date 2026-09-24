@@ -117,6 +117,7 @@ async function refresh() {
     $("draft").hidden = !state.hasDraft;
     $("capture").hidden = state.hasDraft;
     $("capture-full").hidden = state.hasDraft;
+    $("qa-scan").hidden = state.hasDraft;
     $("choose").hidden = state.hasDraft;
     if (state.captureError) $("message").textContent = state.captureError;
     $("project-choice").hidden = true;
@@ -205,6 +206,7 @@ action("retry", () => start());
 for (const id of [
   "capture",
   "capture-full",
+  "qa-scan",
   "choose",
   "pins",
   "resolved",
@@ -216,6 +218,14 @@ for (const id of [
   "stop",
 ])
   action(id, async () => {
+    if (id === "qa-scan") {
+      const result = await send({ type: "popupAction", tabId: tab.id, action: id });
+      if (result.noFindings)
+        $("message").textContent =
+          `No findings in the checked images and ${result.checkedLinks} same-origin links.`;
+      else window.close();
+      return;
+    }
     if (id === "capture" || id === "capture-full") {
       // Close the browser popup before native capture; background work continues.
       void send({ type: "popupAction", tabId: tab.id, action: id }).catch(() => {});

@@ -69,7 +69,15 @@ async function popup({ server = "https://saved.example.test", managed = false } 
             state.server = message.server;
             state.pending = true;
           }
-          return { ok: true, data: message.type === "settings" ? state : {} };
+          return {
+            ok: true,
+            data:
+              message.type === "settings"
+                ? state
+                : message.type === "popupAction" && message.action === "qa-scan"
+                  ? { noFindings: true, checkedLinks: 4 }
+                  : {},
+          };
         },
       },
     },
@@ -176,6 +184,17 @@ test("full-page capture remains a separate user action", async () => {
   assert.ok(
     sent.some(
       (message) => message.type === "popupAction" && message.action === "capture-full",
+    ),
+  );
+});
+
+test("QA scan keeps an empty result in the popup without creating feedback", async () => {
+  const { nodes, sent } = await popup();
+  await nodes["qa-scan"].onclick();
+  assert.match(nodes.message.textContent, /No findings/);
+  assert.ok(
+    sent.some(
+      (message) => message.type === "popupAction" && message.action === "qa-scan",
     ),
   );
 });

@@ -4,6 +4,7 @@ import { createReviewController } from "./review-session.js";
 import { createPairingCoordinator } from "./pairing.js";
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
+import { formatPageQa } from "./page-qa.js";
 const U = globalThis.FeedbacksUtil;
 import { DEFAULT_SERVER as DEFAULT } from "./config.js";
 const ready = chrome.storage.local.setAccessLevel({
@@ -324,7 +325,7 @@ function watchCapture(tabId, windowId) {
     },
   };
 }
-async function capture(sender, retryId, pointToken = null, scope = "visible") {
+async function capture(sender, retryId, pointToken = null, scope = "visible", body = "") {
   if (capturing) throw Error("A capture is already in progress.");
   capturing = true;
   const guard = watchCapture(sender.tab.id, sender.tab.windowId);
@@ -383,7 +384,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible") {
           ),
       image: null,
       approvedImage: null,
-      body: state.draft?.body || "",
+      body: state.draft?.body || body,
       toolState: [],
       imageRevision: (state.draft?.imageRevision || 0) + 1,
       noImage: true,
@@ -1001,6 +1002,17 @@ async function route(message, sender) {
       const tab = await chrome.tabs.get(message.tabId);
       if (!tab.active) throw Error("Select the website tab first.");
       const sender = { tab, frameId: 0, url: tab.url };
+      if (message.action === "qa-scan") {
+        if (state.draft) return openDraft();
+        await review.activate(tab.id);
+        return writeDraft(async () => {
+          const scan = await chrome.tabs.sendMessage(tab.id, { type: "qaScan" });
+          if (scan.error) throw Error(scan.error);
+          const body = formatPageQa(scan, tab.url);
+          if (!body) return { noFindings: true, checkedLinks: scan.checkedLinks };
+          return capture(sender, undefined, null, "visible", body);
+        });
+      }
       if (["capture", "capture-full"].includes(message.action)) {
         if (state.draft) return openDraft();
         await set({ captureError: "" });

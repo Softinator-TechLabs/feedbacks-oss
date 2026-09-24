@@ -10,3 +10,4 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 
 - [Optional full-page website capture](optional-full-page-capture.md)
 - [Local diagnostic message masking](diagnostic-message-redaction.md)
+- [Optional page QA scan](optional-page-qa.md)
