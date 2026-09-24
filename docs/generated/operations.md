@@ -83,3 +83,5 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `webhooks.get`             | Yes                  | No                             |
 | `webhooks.rotate`          | No                   | No                             |
 | `webhooks.save`            | No                   | No                             |
+| `widget.inspect`           | No                   | No                             |
+| `widget.submit`            | No                   | No                             |

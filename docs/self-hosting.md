@@ -41,6 +41,8 @@ The provided Compose file forwards both optional variables from the deployment e
 
 The guest pages load Cloudflare's widget and the server verifies each submission token through [Siteverify](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/), including the action and application hostname in production. This optional feature therefore makes a request to Cloudflare; the core signed-in review workflow does not need Turnstile. The app also applies a per-IP ingress limit and caps each link's replies or new feedback submissions. Configure a shared ingress limit before running multiple application replicas.
 
+For an embeddable website widget, configure the Cloudflare Turnstile site key for every exact approved website hostname as well as the Feedbacks hostname. The widget verifies the host hostname and `widget_submit` action on the server. The host site's Content Security Policy must permit the Feedbacks server for scripts, styles and cross-origin `fetch`, and permit `https://challenges.cloudflare.com` for scripts and frames. The widget sends text feedback, page URL and viewport context; use the Chrome extension for private screenshot capture. Test the actual host site and browser before sharing the snippet; a local sandbox only proves the synthetic flow.
+
 ## Create the first owner
 
 The production image includes `dist/cli/bootstrap.js`. Bootstrap runs once and refuses to replace an existing owner. Supply the password through standard input, not a command-line argument or an image layer:

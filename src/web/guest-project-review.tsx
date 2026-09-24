@@ -18,11 +18,13 @@ type ProjectLink = {
   revokedAt: string | null;
   submissions: number;
   maxSubmissions: number;
+  widget: boolean;
 };
 
 export function GuestProjectLinks({ projectId }: { projectId: string }) {
   const [version, setVersion] = useState(0);
   const [newLink, setNewLink] = useState("");
+  const [newLinkLabel, setNewLinkLabel] = useState("");
   const links = useLoad(
     () => api<{ items: ProjectLink[] }>("guestProjectLinks.list", { projectId }),
     [projectId, version],
@@ -34,7 +36,8 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
       <p className="muted">
         Invite someone to send new feedback to this project without an account. A link
         cannot show existing feedback, screenshots, member notes or reviewer guidance.
-        Each submission needs a page URL and a Turnstile check.
+        Each submission needs a page URL and a Turnstile check. A website widget can add
+        page and viewport context. For private screenshots, use the extension.
       </p>
       <form
         className="form-grid"
@@ -43,13 +46,25 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
           const form = event.currentTarget;
           const data = new FormData(form);
           void action.run(async () => {
-            const result = await api<{ path: string }>("guestProjectLinks.create", {
-              projectId,
-              label: String(data.get("label")),
-              expiresInDays: Number(data.get("days")),
-              maxSubmissions: Number(data.get("maxSubmissions")),
-            });
-            setNewLink(`${location.origin}${result.path}`);
+            const widget = data.get("widget") === "on";
+            const result = await api<{ path: string; widgetSnippet?: string }>(
+              "guestProjectLinks.create",
+              {
+                projectId,
+                label: String(data.get("label")),
+                expiresInDays: Number(data.get("days")),
+                maxSubmissions: Number(data.get("maxSubmissions")),
+                widget,
+              },
+            );
+            setNewLink(
+              widget ? (result.widgetSnippet ?? "") : `${location.origin}${result.path}`,
+            );
+            setNewLinkLabel(
+              widget
+                ? "Copy this script into an approved website. It is shown only once."
+                : "Copy this private link now. It is shown only once.",
+            );
             form.reset();
             setVersion((value) => value + 1);
           });
@@ -75,15 +90,17 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
             required
           />
         </Field>
+        <label className="widget-option">
+          <input name="widget" type="checkbox" />
+          <span>
+            Website widget: create a launcher script for the project's exact approved
+            origins
+          </span>
+        </label>
         <button disabled={action.busy}>Create guest feedback link</button>
       </form>
       <ActionState action={action} />
-      {newLink && (
-        <Secret
-          value={newLink}
-          label="Copy this private link now. It is shown only once."
-        />
-      )}
+      {newLink && <Secret value={newLink} label={newLinkLabel} />}
       <ErrorNotice error={links.error} />
       {!links.data && !links.error && <Loading />}
       {links.data?.items.length === 0 && (
@@ -93,6 +110,7 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
         <div className="guest-link-row" key={link.id}>
           <div>
             <strong>{link.label}</strong>
+            {link.widget && <span className="muted"> · Website widget</span>}
             <p className="muted">
               {link.revokedAt
                 ? "Revoked"

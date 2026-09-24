@@ -9,11 +9,15 @@ export const operationDescriptions: Record<string, string> = {
   "documents.threads":
     "List bounded page/coordinate feedback points for one private document. Use threads.get for full discussion. Requires current project access.",
   "guestProjectLinks.create":
-    "Issue a private, expiring project feedback link as a signed-in project maintainer. The token is returned once; share it only with intended guests. The link allows new submissions only and does not expose existing feedback.",
+    "Issue a private, expiring project feedback link as a signed-in project maintainer. Set widget:true to receive a one-time launcher script for exact approved origins. Both modes permit new submissions only and do not expose existing feedback.",
   "guestProjectLinks.list":
     "List project guest feedback links with expiry, revocation and submission counts. Token values are never returned.",
   "guestProjectLinks.revoke":
     "Revoke a project guest feedback link immediately. New submissions and inspections stop.",
+  "widget.inspect":
+    "Public widget bootstrap. Requires a live widget-enabled link, its one-time token and an approved website Origin; returns only the project name and Turnstile site key.",
+  "widget.submit":
+    "Public website feedback submission. Requires an approved Origin, page URL matching it, Turnstile verification and remaining link capacity. Accepts optional explicit screenshot data; never reads existing feedback.",
   "threads.list":
     "List feedback summaries; follow pagination and sort by activity to find recent replies/uploads. Use threads.get for full discussion, attachment metadata and available reviewer context.",
   "threads.neighbors":

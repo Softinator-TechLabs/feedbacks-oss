@@ -140,5 +140,11 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       );
       await tx.query("INSERT INTO migrations(version) VALUES(12)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=13"))) {
+      await tx.query(
+        "ALTER TABLE guest_project_links ADD COLUMN widget_enabled boolean NOT NULL DEFAULT false",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(13)");
+    }
   });
 }

@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { Operations } from "./operations.js";
 import type { Database } from "./db.js";
@@ -15,6 +16,7 @@ import { readExtensionRelease } from "./extension-release.js";
 import { guestInspect, guestReply } from "./guest-links.js";
 import { guestProjectInspect, guestProjectSubmit } from "./guest-project-links.js";
 import { verifyGuestTurnstile } from "./turnstile.js";
+import { widgetInspect, widgetLink } from "./widget.js";
 export function createApp(config: Config, database: Database, assets: AssetStore) {
   const app = express(),
     ops = new Operations(database, assets, config),
@@ -46,48 +48,70 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       fail("RATE_LIMITED", "Too many attempts; try again shortly", 429);
     }
   }
-  app.use((req, res, next) => {
-    res.set({
-      "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": "no-referrer",
-      "X-Frame-Options": "DENY",
-      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-      "Content-Security-Policy":
-        req.path === "/guest" || req.path === "/guest-project"
-          ? "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
-          : "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
-    });
-    if (config.production)
-      res.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-    if (
-      req.path.startsWith("/api") ||
-      req.path === "/mcp" ||
-      ["/help", "/reset", "/owner-login", "/invite", "/sign-in"].includes(
-        req.path.replace(/\/$/, ""),
-      )
-    )
-      res.set("Cache-Control", "no-store");
-    const origin = req.get("Origin");
-    if (
-      origin &&
-      origin !== config.appOrigin &&
-      !/^chrome-extension:\/\/[a-p]{32}$/.test(origin)
-    )
-      return next(new DomainError("ORIGIN_DENIED", "Request origin is not allowed", 403));
-    if (origin && origin !== config.appOrigin) {
+  app.use(async (req, res, next) => {
+    try {
       res.set({
-        "Access-Control-Allow-Origin": origin,
-        Vary: "Origin",
-        "Access-Control-Allow-Headers":
-          "Authorization, Content-Type, Accept, MCP-Protocol-Version",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "X-Frame-Options": "DENY",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Content-Security-Policy":
+          req.path === "/guest" || req.path === "/guest-project"
+            ? "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+            : "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       });
+      if (config.production)
+        res.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+      if (
+        req.path.startsWith("/api") ||
+        req.path === "/mcp" ||
+        ["/help", "/reset", "/owner-login", "/invite", "/sign-in"].includes(
+          req.path.replace(/\/$/, ""),
+        )
+      )
+        res.set("Cache-Control", "no-store");
+      const origin = req.get("Origin");
+      const widgetRequest = ["widget.inspect", "widget.submit"].includes(
+        req.path.slice("/api/".length),
+      );
+      if (widgetRequest) {
+        if (!origin || typeof req.query.linkId !== "string")
+          fail("ORIGIN_DENIED", "A widget link and website origin are required", 403);
+        // Count preflights and POSTs before a public link can trigger a database read.
+        rate(`widget-ingress:${req.ip ?? "unknown"}`, 120, res);
+        await widgetLink(database, req.query.linkId, origin);
+        res.set({
+          "Access-Control-Allow-Origin": origin,
+          Vary: "Origin",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+        });
+        if (req.method === "OPTIONS") return res.sendStatus(204);
+      } else if (
+        origin &&
+        origin !== config.appOrigin &&
+        !/^chrome-extension:\/\/[a-p]{32}$/.test(origin)
+      )
+        return next(
+          new DomainError("ORIGIN_DENIED", "Request origin is not allowed", 403),
+        );
+      if (!widgetRequest && origin && origin !== config.appOrigin) {
+        res.set({
+          "Access-Control-Allow-Origin": origin,
+          Vary: "Origin",
+          "Access-Control-Allow-Headers":
+            "Authorization, Content-Type, Accept, MCP-Protocol-Version",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        });
+      }
+      if (req.method === "OPTIONS") {
+        res.sendStatus(204);
+        return;
+      }
+      next();
+    } catch (error) {
+      next(error);
     }
-    if (req.method === "OPTIONS") {
-      res.sendStatus(204);
-      return;
-    }
-    next();
   });
   app.use(express.json({ limit: "14mb", strict: true }));
   const bearer = (req: Request) =>
@@ -157,13 +181,19 @@ export function createApp(config: Config, database: Database, assets: AssetStore
           "guest.reply",
           "guestProject.inspect",
           "guestProject.submit",
+          "widget.inspect",
+          "widget.submit",
         ].includes(name)
       ) {
         const ip = req.ip ?? "unknown";
         // Unverified polls get a bounded IP ingress budget, never a caller-chosen
         // device bucket. Account attempts and device creation have separate limits.
         if (name === "pairing.poll") rate(`poll-ingress:${ip}`, 600, res);
-        else if (name.startsWith("guest.") || name.startsWith("guestProject."))
+        else if (
+          name.startsWith("guest.") ||
+          name.startsWith("guestProject.") ||
+          name.startsWith("widget.")
+        )
           rate(
             `${name}:${ip}`,
             name.endsWith(".submit") || name === "guest.reply" ? 10 : 30,
@@ -178,6 +208,37 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         const parsed = inputSchemas[name as OperationName].safeParse(req.body);
         if (!parsed.success) fail("VALIDATION", "Invalid request fields");
         const i: any = parsed.data;
+        if (name.startsWith("widget.")) {
+          if (req.query.linkId !== i.linkId)
+            fail("ORIGIN_DENIED", "Widget link does not match request", 403);
+          if (name === "widget.inspect") {
+            res.json({
+              ok: true,
+              data: await widgetInspect(database, i, req.get("Origin")!, config),
+            });
+            return;
+          }
+          const origin = req.get("Origin")!;
+          await widgetLink(database, i.linkId, origin, i.token);
+          const threadId = randomUUID();
+          await verifyGuestTurnstile(
+            config,
+            i.turnstileToken,
+            req.ip,
+            fetch,
+            "widget_submit",
+            new URL(origin).hostname,
+          );
+          const data = await database.transaction(async (db) => {
+            await accountLock(db);
+            return guestProjectSubmit(db, {
+              ...i,
+              widget: { linkId: i.linkId, origin, viewport: i.viewport, threadId },
+            });
+          });
+          res.json({ ok: true, data });
+          return;
+        }
         if (
           [
             "guest.inspect",
