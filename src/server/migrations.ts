@@ -93,5 +93,20 @@ INSERT INTO migrations(version) VALUES(8);`;
       for (const statement of sql.split(";").filter((s) => s.trim()))
         await tx.query(statement);
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=9"))) {
+      await tx.query(`CREATE TABLE github_issue_requests(
+        id uuid PRIMARY KEY,
+        thread_id uuid NOT NULL UNIQUE REFERENCES threads(id),
+        project_id uuid NOT NULL REFERENCES projects(id),
+        request_key text NOT NULL,
+        input_hash text NOT NULL,
+        repository text NOT NULL,
+        status text NOT NULL CHECK(status IN ('pending','linked')),
+        issue_url text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query("INSERT INTO migrations(version) VALUES(9)");
+    }
   });
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createPrivateKey } from "node:crypto";
 
 export interface Config {
   appOrigin: string;
@@ -17,6 +18,9 @@ export interface Config {
   databasePoolMax: number;
   turnstileSiteKey?: string;
   turnstileSecretKey?: string;
+  githubAppId?: string;
+  githubAppSlug?: string;
+  githubAppPrivateKey?: string;
 }
 
 const integer = (value: string | undefined, fallback: number, max: number, min = 1) =>
@@ -81,6 +85,25 @@ export function configFromEnv(env = process.env): Config {
       turnstileSecretKey?.startsWith("3x0000000000000000000000000000000"))
   )
     throw new Error("Production must use real Turnstile keys");
+  const githubFields = [
+    env.GITHUB_APP_ID?.trim(),
+    env.GITHUB_APP_SLUG?.trim(),
+    env.GITHUB_APP_PRIVATE_KEY_BASE64?.trim(),
+  ];
+  if (githubFields.some(Boolean) && !githubFields.every(Boolean))
+    throw new Error(
+      "Set GITHUB_APP_ID, GITHUB_APP_SLUG and GITHUB_APP_PRIVATE_KEY_BASE64 together",
+    );
+  let githubAppPrivateKey: string | undefined;
+  if (githubFields.every(Boolean)) {
+    z.string().regex(/^\d+$/).parse(githubFields[0]);
+    z.string()
+      .regex(/^[a-z0-9-]+$/)
+      .parse(githubFields[1]);
+    githubAppPrivateKey = Buffer.from(githubFields[2]!, "base64").toString("utf8");
+    if (createPrivateKey(githubAppPrivateKey).asymmetricKeyType !== "rsa")
+      throw new Error("GITHUB_APP_PRIVATE_KEY_BASE64 must contain an RSA private key");
+  }
   return {
     appOrigin,
     production,
@@ -100,5 +123,8 @@ export function configFromEnv(env = process.env): Config {
     databasePoolMax: integer(env.DATABASE_POOL_MAX, 10, 100),
     turnstileSiteKey,
     turnstileSecretKey,
+    githubAppId: githubFields[0],
+    githubAppSlug: githubFields[1],
+    githubAppPrivateKey,
   };
 }

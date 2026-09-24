@@ -27,12 +27,15 @@ import { views } from "./views.js";
 import { DomainError, fail } from "./errors.js";
 import { reserveExportRequest } from "./export-limits.js";
 import { manageGuestLinks } from "./guest-links.js";
+import { GithubApp } from "./github-app.js";
+import { githubOperation } from "./github-operations.js";
 export class Operations {
   readonly auth: Auth;
   constructor(
     public db: Database,
     public store: AssetStore,
     public config: Config,
+    private github: GithubApp = new GithubApp(config),
   ) {
     this.auth = new Auth(db);
   }
@@ -45,6 +48,8 @@ export class Operations {
         parsed.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(";"),
       );
     if (name === "assets.upload") return this.uploadAsset(actor, parsed.data);
+    if (name.startsWith("github."))
+      return githubOperation(this.db, actor, name, parsed.data, this.config, this.github);
     if (name === "context.export" && !(parsed.data as any).snapshotId)
       await reserveExportRequest(this.db, actor, (parsed.data as any).projectId);
     let preview: { objectKey: string; maxDimension: number } | undefined;

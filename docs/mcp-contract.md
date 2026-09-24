@@ -22,7 +22,7 @@ The transport returns `structuredContent` with an explicit output schema and a s
 - `response`: state, last human request, last response, actor and time.
 - `work`: current state and attributed state-change history; resolution requires a note.
 - `review`: current round, decision state and attributed history. Older export snapshots may not contain this field. Human sign-off is independent of work status; agent tokens cannot write it.
-- `externalIssues`: URL, repository, issue number, linked-by actor, link time and optional reported creation time. `verification` is always `reported`; the product does not fetch GitHub state.
+- `externalIssues`: URL, repository, issue number, linked-by actor, link time and optional reported creation time. Manual links have `verification:"reported"`; an optional human-operated GitHub App connection records `github_verified` and can read open or closed state. Neither kind changes work status.
 - `fixEvidence`: attributable commit/PR/variant/incorporated-in links and notes. A supplied URL is not proof that the target is deployed or verified.
 - `pins.defaultVisible`: resolved/declined/archived pins are hidden by default. Original context and client anchor match remain separate.
 - `context`: sanitized target URL, requested preset, actual viewport, pixel ratio, scroll, capture dimensions and bounded element anchor metadata.
@@ -48,7 +48,7 @@ The registry now covers all business input/output contracts and powers remote MC
 4. Feedbacks records the association without claiming independent GitHub verification unless an authorized verifier actually performed it.
 5. The agent replies to the thread and later supplies fix evidence. Resolution uses the caller's project permission and does not happen merely because an Issue link was supplied.
 
-There is no automatic `create_github_issue` action in this product. Feedbacks does not receive the developer's GitHub token for this workflow.
+There is no automatic `create_github_issue` action in this agent workflow. Feedbacks does not receive the developer's GitHub token for it. An optional, separately configured GitHub App lets signed-in project maintainers create a reviewed Issue through the web app; agent tokens cannot use those operations.
 
 ## Responsive view reconstruction
 

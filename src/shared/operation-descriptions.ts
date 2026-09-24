@@ -17,7 +17,11 @@ export const operationDescriptions: Record<string, string> = {
   "threads.issueDraft":
     "Get a bounded, read-only GitHub Issue draft from the thread. It excludes screenshots, diagnostics, private member notes and reviewer policy. Review for privacy and accuracy before using a separately authorized GitHub tool. After creating and reading back the Issue, call threads.linkIssue with its actual URL.",
   "threads.linkIssue":
-    "After an agreed engineering handoff, create the GitHub Issue with your separately authorized GitHub tool and read back its URL. Then link that actual URL here using the current thread revision. Feedbacks does not create GitHub Issues or infer authorization from discussion text. Linking never resolves the thread.",
+    "After an agreed engineering handoff, create the GitHub Issue with your separately authorized GitHub tool and read back its URL. Then link that actual URL here using the current thread revision. Optional human-operated GitHub App integration is separate from this agent flow. Linking never resolves the thread.",
+  "github.connection":
+    "Show whether this project has an optional GitHub App connection. Human web sessions only; the server never returns App credentials.",
+  "github.issueState":
+    "Show whether a human-reviewed GitHub Issue request is pending or linked. A pending request may have succeeded remotely and must be reconciled before any new attempt.",
   "threads.review":
     "Record a human review-round decision: approved or changes_requested. Reopen starts a new round while preserving prior decisions. Agent tokens cannot use this operation. This is separate from thread work status and resolution.",
   "assets.get":
