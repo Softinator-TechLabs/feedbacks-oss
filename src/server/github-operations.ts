@@ -17,6 +17,15 @@ async function human(db: Database, actor: Actor) {
   return current;
 }
 
+async function issueAuthor(db: Database, actor: Actor) {
+  const current = await new Auth(db).current(actor);
+  if (current.mustChangePassword)
+    fail("PASSWORD_CHANGE_REQUIRED", "Change your password first", 403);
+  if (current.kind === "agent" && !current.scopes?.includes("github.issueCreate"))
+    fail("FORBIDDEN", "GitHub Issue creation is outside this agent key's scope", 403);
+  return current;
+}
+
 function requireApp(config: Config) {
   if (!config.githubAppId || !config.githubAppSlug || !config.githubAppPrivateKey)
     fail("GITHUB_UNAVAILABLE", "This server has no GitHub App configured", 503);
@@ -189,7 +198,7 @@ export async function githubOperation(
     requireApp(config);
     const reservation = await db.transaction(async (tx) => {
       await accountLock(tx);
-      const a = await human(tx, actor);
+      const a = await issueAuthor(tx, actor);
       const row = await threadRow(tx, a, i.threadId, "maintain", true);
       const project = await access(tx, a, row.project_id, "maintain");
       const existing = await tx.one(
@@ -247,7 +256,7 @@ export async function githubOperation(
       );
     return db.transaction(async (tx) => {
       await accountLock(tx);
-      const a = await human(tx, actor);
+      const a = await issueAuthor(tx, actor);
       return linkedThread(tx, a, i, reservation.repo, issue, "github.issueCreate");
     });
   }

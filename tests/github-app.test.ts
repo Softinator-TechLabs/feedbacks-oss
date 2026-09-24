@@ -6,8 +6,11 @@ import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
 import { GithubApp, githubRepo } from "../src/server/github-app.js";
+import { agentOperations, ownerTokenScopes } from "../src/shared/contracts.js";
 
 test("GitHub repository parser rejects non-canonical URLs", () => {
+  assert.ok(agentOperations.includes("github.issueCreate"));
+  assert.ok(!ownerTokenScopes.includes("github.issueCreate"));
   assert.deepEqual(githubRepo("https://github.com/acme/site"), {
     owner: "acme",
     repo: "site",
@@ -23,7 +26,7 @@ test("GitHub repository parser rejects non-canonical URLs", () => {
   }
 });
 
-test("GitHub App creates an Issue only after connection and explicit human review", async () => {
+test("GitHub App creates an Issue only after connection and an authorized review", async () => {
   const pg = new PGlite();
   const db = new Database(pg as any);
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -102,9 +105,34 @@ test("GitHub App creates an Issue only after connection and explicit human revie
       revision: project.revision,
     });
     assert.equal(connected.githubConnected, true);
-    const created = await pending();
+    await assert.rejects(
+      ops.executeOperation(agent, "github.issueCreate", {
+        threadId: thread.id,
+        revision: thread.revision,
+        reviewed: true,
+        title: "Checkout breaks",
+        body: "Approved body",
+        idempotencyKey: "agent-denied-1",
+      }),
+      { code: "FORBIDDEN" },
+    );
+    const issueKey = await ops.executeOperation(owner, "tokens.create", {
+      name: "Issue agent",
+      projectIds: [project.id],
+      scopes: ["threads.issueDraft", "github.issueCreate"],
+    });
+    const issueAgent = await ops.auth.authenticate(issueKey.token);
+    const created = await ops.executeOperation(issueAgent, "github.issueCreate", {
+      threadId: thread.id,
+      revision: thread.revision,
+      reviewed: true,
+      title: "Checkout breaks",
+      body: "Approved body",
+      idempotencyKey: "github-create-issue-1",
+    });
     assert.equal(created.externalIssues[0].url, "https://github.com/acme/site/issues/13");
     assert.equal(created.externalIssues[0].verification, "github_verified");
+    assert.equal(created.externalIssues[0].linkedBy.kind, "agent");
     const repeat = await pending();
     assert.equal(repeat.id, thread.id);
     assert.equal(

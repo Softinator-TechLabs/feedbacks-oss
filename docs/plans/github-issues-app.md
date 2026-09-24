@@ -4,7 +4,7 @@ Status: in progress. Owner: Feedbacks maintainers. Date: 2026-09-24.
 
 ## Outcome and scope
 
-A project maintainer can connect one repository already granted to a self-hosted GitHub App, review a bounded Issue draft, explicitly create an Issue, see its verified URL on the thread, and disconnect. Existing MCP-driven GitHub handoff remains available. Issue creation must not occur from incoming feedback or an unreviewed agent instruction.
+A project maintainer can connect one repository already granted to a self-hosted GitHub App, review a bounded Issue draft, explicitly create an Issue, see its verified URL on the thread, and disconnect. A later requirement added direct MCP creation for an agent with a separately issued, project-scoped `github.issueCreate` key; existing keys remain unchanged. Existing MCP-driven handoff using a separate GitHub tool remains available. Issue creation must not occur from incoming feedback or an unreviewed agent instruction.
 
 ## Evidence and approach
 

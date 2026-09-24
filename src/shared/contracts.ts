@@ -771,6 +771,7 @@ export const agentTokenScopes = [
   "context.policy",
   "threads.neighbors",
   "threads.issueDraft",
+  "github.issueCreate",
   "threads.organize",
   "reviewViews.list",
   "reviewViews.save",
@@ -795,9 +796,16 @@ export const businessOperations = (Object.keys(inputSchemas) as OperationName[])
   (name) => !(transportOperations as readonly string[]).includes(name),
 );
 export const agentOperations = businessOperations.filter(
-  (name) => name !== "threads.review" && !name.startsWith("github."),
+  (name) =>
+    name !== "threads.review" &&
+    (name === "github.issueCreate" || !name.startsWith("github.")),
 );
-export const ownerTokenScopes = [...agentOperations, "context.policy"];
+// The one-click owner setup must not silently grant external GitHub writes.
+// Issue creation is available only through a separately issued scoped key.
+export const ownerTokenScopes = [
+  ...agentOperations.filter((name) => name !== "github.issueCreate"),
+  "context.policy",
+];
 const readOperations = new Set<string>([
   "auth.me",
   "projects.list",
