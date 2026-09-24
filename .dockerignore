@@ -18,6 +18,9 @@
 !plugins/**
 !site
 !site/**
+!public
+!public/widget.js
+!public/widget.css
 !LICENSE
 !NOTICE
 !THIRD_PARTY_NOTICES.md
