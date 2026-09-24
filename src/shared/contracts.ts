@@ -326,10 +326,6 @@ export const inputSchemas = {
       height: z.number().int().min(1).max(10000),
     }),
     turnstileToken: z.string().min(1).max(2048),
-    screenshot: z
-      .string()
-      .max(3 * 1024 * 1024)
-      .optional(),
   }),
   "threads.like": z.object({
     threadId: id,

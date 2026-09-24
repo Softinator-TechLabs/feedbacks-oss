@@ -4,17 +4,17 @@ Status: local implementation and checks complete. Owner: Feedbacks contributor. 
 
 ## Outcome and scope
 
-A project maintainer can issue a bounded widget script for exact approved website origins. Visitors can send new feedback from the host page with URL and viewport context. A screenshot is optional and requires an explicit browser tab picker action. The widget cannot read existing project feedback or private notes.
+A project maintainer can issue a bounded widget script for exact approved website origins. Visitors can send new feedback from the host page with URL and viewport context. The host script does not capture screenshots; visitors use the Chrome extension for private screenshot review. The widget cannot read existing project feedback or private notes.
 
 ## Evidence and approach
 
-This builds on [project guest feedback links](../review-workflow.md) and their hashed token, expiry, revocation, submission limit and Turnstile verification. Widget mode is separate from standalone guest links. The host script uses scoped styles for a small launcher and sends only public form inputs to exact-origin CORS endpoints. The service checks the host Origin, URL origin, token, limit and challenge. Chosen screenshot pixels are converted to a private WebP asset.
+This builds on [project guest feedback links](../review-workflow.md) and their hashed token, expiry, revocation, submission limit and Turnstile verification. Widget mode is separate from standalone guest links. The host script uses scoped styles for a small launcher and sends only public form inputs to exact-origin CORS endpoints. The service checks the host Origin, URL origin, token, limit and challenge.
 
 ## Steps and progress
 
 - [x] Establish an opt-in widget link mode with a one-time snippet.
 - [x] Add exact-origin bootstrap and submission endpoints with bounded image processing.
-- [x] Add a host launcher, form, explicit screenshot control and privacy copy.
+- [x] Add a host launcher, form and concise privacy copy without host-page capture.
 - [x] Add focused API tests and update canonical docs.
 - [x] Verify full Node 24 check, native PostgreSQL migration, desktop/mobile and keyboard flow.
 
@@ -33,7 +33,7 @@ Migration 12 adds a default-false widget mode to project guest links, leaving ex
 
 Source revision: this branch's final commit.
 
-Checks and results: Node 24 `npm run check` and `npm run test:postgres` passed. Synthetic host desktop/mobile browser submissions passed with a Cloudflare test key. A simulated browser tab stream produced a preview and stopped its track; its screenshot was stored as a private asset. Keyboard focus and Escape behavior were reviewed.
+Checks and results: Node 24 `npm run check` and `npm run test:postgres` passed. Synthetic host desktop/mobile browser submissions passed with a Cloudflare test key. Keyboard focus and Escape behavior were reviewed. The host widget deliberately does not capture another tab; screenshot review remains in the extension.
 
 Artifacts: host script, stylesheet and project settings snippet.
 

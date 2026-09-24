@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { Operations } from "./operations.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
-import { assetRow, prepareAssetUpload, type AssetStore } from "./assets.js";
+import { assetRow, type AssetStore } from "./assets.js";
 import { documentRow } from "./documents.js";
 import { DomainError, fail } from "./errors.js";
 import { inputSchemas, type OperationName } from "../shared/contracts.js";
@@ -77,6 +77,8 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       if (widgetRequest) {
         if (!origin || typeof req.query.linkId !== "string")
           fail("ORIGIN_DENIED", "A widget link and website origin are required", 403);
+        // Count preflights and POSTs before a public link can trigger a database read.
+        rate(`widget-ingress:${req.ip ?? "unknown"}`, 120, res);
         await widgetLink(database, req.query.linkId, origin);
         res.set({
           "Access-Control-Allow-Origin": origin,
@@ -217,7 +219,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
             return;
           }
           const origin = req.get("Origin")!;
-          const link = await widgetLink(database, i.linkId, origin, i.token);
+          await widgetLink(database, i.linkId, origin, i.token);
           const threadId = randomUUID();
           await verifyGuestTurnstile(
             config,
@@ -227,46 +229,13 @@ export function createApp(config: Config, database: Database, assets: AssetStore
             "widget_submit",
             new URL(origin).hostname,
           );
-          const prepared = i.screenshot
-            ? await prepareAssetUpload(
-                { imageBase64: i.screenshot, threadId, rendition: "screenshot" },
-                config,
-                link.project_id,
-              )
-            : undefined;
-          if (prepared && prepared.output.length > 2 * 1024 * 1024)
-            fail(
-              "IMAGE_TOO_LARGE",
-              "Screenshot must be at most 2 MiB after processing",
-              413,
-            );
-          if (prepared) await assets.put(prepared.key, prepared.output);
-          let data;
-          try {
-            data = await database.transaction(async (db) => {
-              await accountLock(db);
-              const result = await guestProjectSubmit(db, {
-                ...i,
-                widget: { linkId: i.linkId, origin, viewport: i.viewport, threadId },
-              });
-              if (prepared) {
-                await db.query(
-                  "INSERT INTO assets(id,project_id,thread_id,object_key,data,status) VALUES($1,$2,$3,$4,$5,'validated')",
-                  [
-                    prepared.id,
-                    link.project_id,
-                    threadId,
-                    prepared.key,
-                    JSON.stringify(prepared.data),
-                  ],
-                );
-              }
-              return result;
+          const data = await database.transaction(async (db) => {
+            await accountLock(db);
+            return guestProjectSubmit(db, {
+              ...i,
+              widget: { linkId: i.linkId, origin, viewport: i.viewport, threadId },
             });
-          } catch (error) {
-            if (prepared) await assets.remove(prepared.key).catch(() => {});
-            throw error;
-          }
+          });
           res.json({ ok: true, data });
           return;
         }

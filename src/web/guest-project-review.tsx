@@ -37,7 +37,7 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
         Invite someone to send new feedback to this project without an account. A link
         cannot show existing feedback, screenshots, member notes or reviewer guidance.
         Each submission needs a page URL and a Turnstile check. A website widget can add
-        an optional screenshot after its visitor chooses a tab.
+        page and viewport context. For private screenshots, use the extension.
       </p>
       <form
         className="form-grid"

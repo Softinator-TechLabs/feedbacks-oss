@@ -102,7 +102,7 @@
   resize: vertical;
 }
 .feedbacks-widget .context,
-.feedbacks-widget .capture-hint,
+.feedbacks-widget .screenshot-hint,
 .feedbacks-widget .privacy {
   color: #536577;
   font-size: 13px;
@@ -110,29 +110,8 @@
 .feedbacks-widget .context {
   margin: 0 0 14px;
 }
-.feedbacks-widget .capture {
-  border: 1px solid #aebdcc;
-  border-radius: 7px;
-  color: #17324d;
-  background: white;
-  padding: 8px 12px;
-}
-.feedbacks-widget .capture-hint {
+.feedbacks-widget .screenshot-hint {
   margin: 6px 0 14px;
-}
-.feedbacks-widget .preview img {
-  width: 100%;
-  max-height: 180px;
-  object-fit: contain;
-  border: 1px solid #d5dee8;
-  border-radius: 7px;
-}
-.feedbacks-widget .remove {
-  border: 0;
-  background: transparent;
-  color: #17324d;
-  text-decoration: underline;
-  padding: 0;
 }
 .feedbacks-widget .turnstile {
   min-height: 60px;

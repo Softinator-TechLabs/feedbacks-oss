@@ -50,22 +50,17 @@
         <label>Your name<input name="name" maxlength="120" autocomplete="name" required></label>
         <label>Feedback<textarea name="body" maxlength="12000" rows="4" required></textarea></label>
         <p class="context">Your page URL and viewport size will be sent with this feedback.</p>
-        <button type="button" class="capture">Add a screenshot</button>
-        <p class="capture-hint">Optional. Your browser will ask you to choose a tab. Choose this tab to show this page.</p>
-        <div class="preview" hidden><button type="button" class="remove">Remove screenshot</button></div>
+        <p class="screenshot-hint">Need to show a screenshot? Use the Feedbacks Chrome extension for a private capture.</p>
         <div class="turnstile"></div>
         <p class="error" role="alert" hidden></p>
         <button type="submit" class="send">Send feedback</button>
       </form>
       <p class="done" role="status" tabindex="-1" hidden>Feedback sent. You can close this form.</p>
-      <p class="privacy">Your name, feedback, page URL, viewport and any screenshot you choose to add go to this project's team. The widget cannot read existing feedback.</p>`;
+      <p class="privacy">Your name, feedback, page URL and viewport go to this project's team. The widget cannot read existing feedback.</p>`;
         root.append(panel);
         panel.querySelector(".project").textContent = details.projectName;
         const form = panel.querySelector("form");
         const error = panel.querySelector(".error");
-        const capture = panel.querySelector(".capture");
-        const preview = panel.querySelector(".preview");
-        let screenshot;
         let widgetId;
         const showError = (message) => {
           error.textContent = message;
@@ -104,56 +99,6 @@
         document.addEventListener("keydown", (event) => {
           if (event.key === "Escape" && !panel.hidden) setOpen(false);
         });
-        capture.addEventListener("click", async () => {
-          showError("");
-          let stream;
-          try {
-            if (!navigator.mediaDevices?.getDisplayMedia)
-              throw new Error("Tab capture is unavailable in this browser.");
-            stream = await navigator.mediaDevices.getDisplayMedia({
-              video: { displaySurface: "browser" },
-              audio: false,
-            });
-            const track = stream.getVideoTracks()[0];
-            if (track.getSettings().displaySurface !== "browser")
-              throw new Error("Choose a browser tab to capture a screenshot.");
-            const video = document.createElement("video");
-            video.srcObject = stream;
-            video.muted = true;
-            await video.play();
-            if (!video.videoWidth || !video.videoHeight)
-              throw new Error("The selected tab did not provide a frame.");
-            const scale = Math.min(
-              1,
-              1600 / Math.max(video.videoWidth, video.videoHeight),
-            );
-            const canvas = document.createElement("canvas");
-            canvas.width = Math.round(video.videoWidth * scale);
-            canvas.height = Math.round(video.videoHeight * scale);
-            canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-            const image = canvas.toDataURL("image/webp", 0.8);
-            if (image.length > 3 * 1024 * 1024)
-              throw new Error("The screenshot is too large. Try a smaller tab.");
-            screenshot = image;
-            let thumbnail = preview.querySelector("img");
-            if (!thumbnail) {
-              thumbnail = document.createElement("img");
-              thumbnail.alt = "Screenshot preview";
-              preview.prepend(thumbnail);
-            }
-            thumbnail.src = image;
-            preview.hidden = false;
-          } catch (cause) {
-            showError(cause?.message || "Screenshot was not captured.");
-          } finally {
-            stream?.getTracks().forEach((track) => track.stop());
-          }
-        });
-        panel.querySelector(".remove").addEventListener("click", () => {
-          screenshot = undefined;
-          preview.querySelector("img")?.remove();
-          preview.hidden = true;
-        });
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
           showError("");
@@ -169,7 +114,6 @@
               url: location.href.split("#")[0],
               viewport: { width: window.innerWidth, height: window.innerHeight },
               turnstileToken: challenge,
-              ...(screenshot ? { screenshot } : {}),
             });
             form.hidden = true;
             const done = panel.querySelector(".done");
