@@ -166,6 +166,14 @@ try {
   );
   assert.equal(zip.length, metadata.bytes);
   assert.equal(createHash("sha256").update(zip).digest("hex"), metadata.sha256);
+  const widgetScript = await request(`${base}/widget.js`);
+  assert.equal(widgetScript.status, 200);
+  assert.match(widgetScript.headers.get("content-type"), /javascript/);
+  assert.match(await widgetScript.text(), /feedbacks-widget/);
+  const widgetStyles = await request(`${base}/widget.css`);
+  assert.equal(widgetStyles.status, 200);
+  assert.match(widgetStyles.headers.get("content-type"), /text\/css/);
+  assert.match(await widgetStyles.text(), /feedbacks-widget/);
   await start(site, [
     "--network",
     id,
