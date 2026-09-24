@@ -173,6 +173,14 @@ export type Context = {
   captureDimensions?: { width: number; height: number };
   scroll?: { x: number; y: number };
   capturedAt?: string;
+  document?: {
+    id: string;
+    name: string;
+    kind: "pdf" | "image";
+    page: number;
+    x: number;
+    y: number;
+  };
   anchor?: {
     selector?: string;
     confidence?: string;
@@ -180,6 +188,20 @@ export type Context = {
     fingerprint?: string;
     styles?: Record<string, string>;
   };
+};
+export type ReviewDocument = {
+  id: string;
+  projectId: string;
+  name: string;
+  kind: "pdf" | "image";
+  contentType: "application/pdf" | "image/webp";
+  pageCount: number;
+  pages?: Array<{ width: number; height: number }>;
+  width?: number;
+  height?: number;
+  bytes: number;
+  createdAt: string;
+  url: string;
 };
 export type Thread = {
   id: string;

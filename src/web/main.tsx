@@ -17,6 +17,7 @@ import { usePageLocation } from "./navigation.js";
 import { officialWebsiteUrl } from "../shared/product-links.js";
 import { GuestReview } from "./guest-review.js";
 import { GuestProjectReview } from "./guest-project-review.js";
+import { Documents, DocumentViewer } from "./documents.js";
 function App() {
   const pageLocation = usePageLocation();
   const path = pageLocation.split("?")[0];
@@ -213,6 +214,7 @@ function App() {
             <nav aria-label="Project navigation">
               {[
                 ["", "Feedback"],
+                ["documents", "Documents"],
                 ["members", "Members"],
                 ["instructions", "Instructions"],
                 ["settings", "Settings"],
@@ -272,6 +274,13 @@ function App() {
                 project={project}
                 actor={actor}
                 onSaved={() => setVersion((v) => v + 1)}
+              />
+            ) : section === "documents" ? (
+              <Documents project={project} />
+            ) : section.startsWith("documents/") ? (
+              <DocumentViewer
+                project={project}
+                documentId={section.slice("documents/".length)}
               />
             ) : section === "" ? (
               <ThreadList project={project} />

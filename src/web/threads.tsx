@@ -514,9 +514,14 @@ export function ThreadDetail({
         </div>
         <div className="thread-tools" role="group" aria-label="Feedback actions">
           <ExternalLink href={t.context.url}>
-            <span className="icon-action" title="Open original page">
+            <span
+              className="icon-action"
+              title={t.context.document ? "Open document" : "Open original page"}
+            >
               <Icon name="external" />
-              <span className="sr-only">Open original page</span>
+              <span className="sr-only">
+                {t.context.document ? "Open document" : "Open original page"}
+              </span>
             </span>
           </ExternalLink>
           {project?.permissions.canWrite && (

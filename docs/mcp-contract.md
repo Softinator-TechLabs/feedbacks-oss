@@ -26,6 +26,7 @@ The transport returns `structuredContent` with an explicit output schema and a s
 - `fixEvidence`: attributable commit/PR/variant/incorporated-in links and notes. A supplied URL is not proof that the target is deployed or verified.
 - `pins.defaultVisible`: resolved/declined/archived pins are hidden by default. Original context and client anchor match remain separate.
 - `context`: sanitized target URL, requested preset, actual viewport, pixel ratio, scroll, capture dimensions and bounded element anchor metadata.
+- For document feedback, `context.document` identifies the private project document, page and normalized point. The context URL opens the authorized document viewer. Newly issued tokens need explicit `documents.list`, `documents.get` or `documents.threads` scopes to inspect document metadata; the file proxy requires `documents.get` and a current project grant. Existing scoped keys do not gain these scopes.
 - `view`: view fingerprint, raw unique likes, caller preference and discussion count; authorized internal policy data is separate.
 - `likes:{uniqueLikes,liked}` on original feedback and every reply: independent discussion-message aggregates. Agents read counts with `liked:false`, never voter lists. Existing view likes and most-liked-view sorting remain separate.
 - `assets`: opaque asset IDs and authenticated proxy paths. Fetch with the same authorized cookie or bearer token; there is no public object URL.

@@ -8,6 +8,24 @@ export function ContextPanel({ context: c }: { context: Context }) {
     if (location.hash === "#recorded-context")
       document.getElementById("recorded-context")?.scrollIntoView();
   }, [c.url, c.viewport.width, c.viewport.height]);
+  if (c.document)
+    return (
+      <section id="recorded-context" tabIndex={-1}>
+        <h2>Document position</h2>
+        <a href={c.url}>
+          {c.document.name}, page {c.document.page}
+        </a>
+        <dl>
+          <dt>Across</dt>
+          <dd>{Math.round(c.document.x * 100)}%</dd>
+          <dt>Down</dt>
+          <dd>{Math.round(c.document.y * 100)}%</dd>
+        </dl>
+        <p className="muted">
+          Open the document to see this point with the other feedback.
+        </p>
+      </section>
+    );
   return (
     <section id="recorded-context" tabIndex={-1}>
       <h2>Page & device</h2>

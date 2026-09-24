@@ -124,5 +124,21 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       for (const statement of sql.split(";").filter((s) => s.trim()))
         await tx.query(statement);
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=12"))) {
+      await tx.query(`CREATE TABLE documents(
+        id uuid PRIMARY KEY,
+        project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        object_key text NOT NULL UNIQUE,
+        data jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(
+        "CREATE INDEX documents_project ON documents(project_id,created_at DESC)",
+      );
+      await tx.query(
+        "CREATE INDEX threads_document ON threads(project_id,((data->'context'->'document'->>'id'))) WHERE data->'context'->'document' IS NOT NULL",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(12)");
+    }
   });
 }

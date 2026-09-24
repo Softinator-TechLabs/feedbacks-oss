@@ -5,6 +5,7 @@ import { Operations } from "./operations.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
 import { assetRow, type AssetStore } from "./assets.js";
+import { documentRow } from "./documents.js";
 import { DomainError, fail } from "./errors.js";
 import { inputSchemas, type OperationName } from "../shared/contracts.js";
 import { Auth, accountLock, hash, secret } from "./auth.js";
@@ -332,6 +333,27 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       res.type(objectKey.contentType).send(await assets.get(objectKey.key));
     } catch (e) {
       next(e);
+    }
+  });
+  app.get("/api/documents/:id/file", async (req, res, next) => {
+    try {
+      const actor = await ops.auth.authenticate(bearer(req), cookie(req));
+      const document = await database.transaction(async (db) => {
+        await accountLock(db);
+        const current = await new Auth(db).current(actor);
+        if (current.scopes && !current.scopes.includes("documents.get"))
+          fail("FORBIDDEN", "Document read scope required", 403);
+        const row = await documentRow(db, current, String(req.params.id));
+        return { key: row.object_key as string, data: row.data };
+      });
+      const extension = document.data.kind === "pdf" ? "pdf" : "webp";
+      res.set(
+        "Content-Disposition",
+        `attachment; filename="review-document.${extension}"`,
+      );
+      res.type(document.data.contentType).send(await assets.get(document.key));
+    } catch (error) {
+      next(error);
     }
   });
   app.post("/mcp", async (req, res, next) => {
