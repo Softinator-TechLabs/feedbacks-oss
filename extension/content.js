@@ -810,6 +810,8 @@
         "captureContext",
         "prepareCapture",
         "captureCheck",
+        "fullPageMetrics",
+        "fullPageScroll",
         "restore",
         "discardPoint",
         "popupControls",
@@ -925,8 +927,66 @@
         assertPoint(message.pointToken);
         return { signature: signature(), captureEpoch };
       }
+      if (message.type === "fullPageMetrics") {
+        if (!captureActive || message.pointToken)
+          throw Error("Start a full-page capture without a selected point.");
+        return {
+          url: U.safeUrl(location.href),
+          viewportWidth: innerWidth,
+          viewportHeight: innerHeight,
+          documentWidth: Math.max(
+            document.documentElement.scrollWidth,
+            document.body?.scrollWidth || 0,
+          ),
+          documentHeight: Math.max(
+            document.documentElement.scrollHeight,
+            document.body?.scrollHeight || 0,
+          ),
+        };
+      }
+      if (message.type === "fullPageScroll") {
+        if (
+          !captureActive ||
+          message.pointToken ||
+          !Number.isSafeInteger(message.y) ||
+          (message.x !== undefined && !Number.isSafeInteger(message.x))
+        )
+          throw Error("Invalid full-page capture step.");
+        const scrollingElement = document.scrollingElement || document.documentElement;
+        const originalBehavior = scrollingElement.style.scrollBehavior;
+        scrollingElement.style.scrollBehavior = "auto";
+        try {
+          scrollTo(message.x || 0, message.y);
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          );
+          const metrics = {
+            url: U.safeUrl(location.href),
+            viewportWidth: innerWidth,
+            viewportHeight: innerHeight,
+            documentWidth: Math.max(
+              document.documentElement.scrollWidth,
+              document.body?.scrollWidth || 0,
+            ),
+            documentHeight: Math.max(
+              document.documentElement.scrollHeight,
+              document.body?.scrollHeight || 0,
+            ),
+            x: scrollX,
+            y: scrollY,
+            signature: signature(),
+            captureEpoch: 0,
+          };
+          captureEpoch = 0;
+          return metrics;
+        } finally {
+          scrollingElement.style.scrollBehavior = originalBehavior;
+        }
+      }
       if (message.type === "restore") {
         captureActive = false;
+        if (message.scroll && Number.isSafeInteger(message.scroll.y))
+          scrollTo(message.scroll.x || 0, message.scroll.y);
         if (message.captured && message.pointToken) clearChosenPoint(message.pointToken);
         if (host) host.style.removeProperty("display");
         if (message.captured) renderPins();

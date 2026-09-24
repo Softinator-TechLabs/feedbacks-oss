@@ -169,6 +169,17 @@ test("fresh install makes no release request and requires a server before permis
   );
 });
 
+test("full-page capture remains a separate user action", async () => {
+  const { nodes, sent } = await popup();
+  await nodes["capture-full"].onclick();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(
+    sent.some(
+      (message) => message.type === "popupAction" && message.action === "capture-full",
+    ),
+  );
+});
+
 test("Chrome managed installs do not poll the server or offer manual ZIP updates", async () => {
   const { nodes, updateChecks } = await popup({ managed: true });
   assert.equal(nodes["check-updates"].hidden, true);

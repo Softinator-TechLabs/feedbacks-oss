@@ -2,6 +2,7 @@ import { diagnosticCollector, cleanDiagnostics } from "./diagnostics.js";
 import "./utils.js";
 import { createReviewController } from "./review-session.js";
 import { createPairingCoordinator } from "./pairing.js";
+import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 const U = globalThis.FeedbacksUtil;
 import { DEFAULT_SERVER as DEFAULT } from "./config.js";
 const ready = chrome.storage.local.setAccessLevel({
@@ -322,7 +323,7 @@ function watchCapture(tabId, windowId) {
     },
   };
 }
-async function capture(sender, retryId, pointToken = null) {
+async function capture(sender, retryId, pointToken = null, scope = "visible") {
   if (capturing) throw Error("A capture is already in progress.");
   capturing = true;
   const guard = watchCapture(sender.tab.id, sender.tab.windowId);
@@ -331,7 +332,10 @@ async function capture(sender, retryId, pointToken = null) {
   try {
     const session = await sessionFor(sender),
       state = await get();
-    if (retryId) pointToken = state.draft?.pointToken || null;
+    if (retryId) {
+      pointToken = state.draft?.pointToken || null;
+      scope = "visible";
+    }
     if (
       state.draft &&
       (state.draft.id !== retryId || state.draft.frozen || state.draft.image)
@@ -387,6 +391,7 @@ async function capture(sender, retryId, pointToken = null) {
         "Capture did not complete. Retry capture or continue without an image.",
       pointCapture: Boolean(pointToken),
       pointToken,
+      captureScope: scope,
     };
     // Save context before invoking native capture; rejected pixels never enter storage.
     await set({ draft: pending });
@@ -398,37 +403,112 @@ async function capture(sender, retryId, pointToken = null) {
     if (before.captureEpoch !== 0)
       throw Error("The page moved while preparing capture. Try again once it is still.");
     guard.assert();
-    const pixels = await chrome.tabs.captureVisibleTab(tab.windowId, {
-      format: "png",
-    });
-    guard.assert();
-    const after = await chrome.tabs.sendMessage(tab.id, {
-      type: "captureCheck",
-      pointToken,
-    });
-    const current = await chrome.tabs.get(tab.id);
-    if (
-      !current.active ||
-      current.windowId !== tab.windowId ||
-      tab.url !== current.url ||
-      before.signature !== after.signature ||
-      after.captureEpoch !== 0
-    )
-      throw Error("The page changed during capture. Try again once it is still.");
-    guard.assert();
-    const bitmap = await createImageBitmap(await (await fetch(pixels)).blob());
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height),
-      ctx = canvas.getContext("2d");
-    ctx.drawImage(bitmap, 0, 0);
-    const sx = bitmap.width / before.context.viewport.width,
+    let canvas,
+      sx,
+      sy,
+      expectedSignature = before.signature;
+    if (scope === "fullPage") {
+      const metrics = await chrome.tabs.sendMessage(tab.id, {
+        type: "fullPageMetrics",
+      });
+      if (metrics.error || metrics.url !== before.context.url)
+        throw Error(metrics.error || "The page changed before capture.");
+      if (
+        metrics.viewportWidth !== before.context.viewport.width ||
+        metrics.viewportHeight !== before.context.viewport.height
+      )
+        throw Error("The page size changed before capture. Retry the visible area.");
+      const plan = fullPagePlan(metrics);
+      let ctx, tileWidth, tileHeight;
+      for (const y of plan.positions) {
+        guard.assert();
+        const step = await chrome.tabs.sendMessage(tab.id, {
+          type: "fullPageScroll",
+          y,
+        });
+        if (step.error) throw Error(step.error);
+        verifyFullPageStep(metrics, step, y);
+        await new Promise((resolve) => setTimeout(resolve, 550));
+        const pixels = await chrome.tabs.captureVisibleTab(tab.windowId, {
+          format: "png",
+        });
+        guard.assert();
+        const after = await chrome.tabs.sendMessage(tab.id, {
+          type: "captureCheck",
+        });
+        const current = await chrome.tabs.get(tab.id);
+        if (
+          !current.active ||
+          current.windowId !== tab.windowId ||
+          current.url !== tab.url ||
+          after.signature !== step.signature ||
+          after.captureEpoch !== 0
+        )
+          throw Error("The page moved during full-page capture. Retry the visible area.");
+        const bitmap = await createImageBitmap(await (await fetch(pixels)).blob());
+        try {
+          if (!canvas) {
+            tileWidth = bitmap.width;
+            tileHeight = bitmap.height;
+            sx = tileWidth / metrics.viewportWidth;
+            sy = tileHeight / metrics.viewportHeight;
+            const stitchedHeight = Math.round(plan.height * sy);
+            if (Math.abs(sx - sy) > 0.03 || stitchedHeight * tileWidth > 20_000_000)
+              throw Error(
+                "This page is too large for full-page capture. Use the visible area.",
+              );
+            canvas = new OffscreenCanvas(tileWidth, stitchedHeight);
+            ctx = canvas.getContext("2d");
+          }
+          if (bitmap.width !== tileWidth || bitmap.height !== tileHeight)
+            throw Error(
+              "The browser size changed during capture. Retry the visible area.",
+            );
+          ctx.drawImage(bitmap, 0, Math.round(step.y * sy));
+        } finally {
+          bitmap.close();
+        }
+      }
+      const restored = await chrome.tabs.sendMessage(tab.id, {
+        type: "fullPageScroll",
+        x: before.context.scroll.x,
+        y: before.context.scroll.y,
+      });
+      if (restored.error || restored.signature !== before.signature)
+        throw Error("The page changed during full-page capture. Retry the visible area.");
+      expectedSignature = restored.signature;
+    } else {
+      const pixels = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        format: "png",
+      });
+      guard.assert();
+      const after = await chrome.tabs.sendMessage(tab.id, {
+        type: "captureCheck",
+        pointToken,
+      });
+      const current = await chrome.tabs.get(tab.id);
+      if (
+        !current.active ||
+        current.windowId !== tab.windowId ||
+        tab.url !== current.url ||
+        before.signature !== after.signature ||
+        after.captureEpoch !== 0
+      )
+        throw Error("The page changed during capture. Try again once it is still.");
+      guard.assert();
+      const bitmap = await createImageBitmap(await (await fetch(pixels)).blob());
+      canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0);
+      sx = bitmap.width / before.context.viewport.width;
       sy = bitmap.height / before.context.viewport.height;
+      bitmap.close();
+    }
     // Preserve visible page pixels, including forms and embedded previews.
     // Capture remains local until the reviewer explicitly sends the draft.
     before.context.captureDimensions = {
-      width: bitmap.width,
-      height: bitmap.height,
+      width: canvas.width,
+      height: canvas.height,
     };
-    bitmap.close();
     const bytes = new Uint8Array(
       await (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer(),
     );
@@ -468,7 +548,7 @@ async function capture(sender, retryId, pointToken = null) {
       type: "captureCheck",
       pointToken,
     });
-    if (still.signature !== before.signature || still.captureEpoch !== 0)
+    if (still.signature !== expectedSignature || still.captureEpoch !== 0)
       throw Error("The page moved during capture. Try again once it is still.");
     guard.assert();
     await set({ draft });
@@ -476,7 +556,7 @@ async function capture(sender, retryId, pointToken = null) {
       type: "captureCheck",
       pointToken,
     });
-    if (persisted.signature !== before.signature || persisted.captureEpoch !== 0)
+    if (persisted.signature !== expectedSignature || persisted.captureEpoch !== 0)
       throw Error("The page moved during capture. Try again once it is still.");
     guard.assert();
     guard.dispose();
@@ -506,7 +586,14 @@ async function capture(sender, retryId, pointToken = null) {
     guard.dispose();
     capturing = false;
     await chrome.tabs
-      .sendMessage(sender.tab.id, { type: "restore", captured, pointToken })
+      .sendMessage(sender.tab.id, {
+        type: "restore",
+        captured,
+        pointToken,
+        ...(pending?.captureScope === "fullPage"
+          ? { scroll: pending.context.scroll }
+          : {}),
+      })
       .catch(() => {});
   }
 }
@@ -907,12 +994,19 @@ async function route(message, sender) {
       const tab = await chrome.tabs.get(message.tabId);
       if (!tab.active) throw Error("Select the website tab first.");
       const sender = { tab, frameId: 0, url: tab.url };
-      if (message.action === "capture") {
+      if (["capture", "capture-full"].includes(message.action)) {
         if (state.draft) return openDraft();
         await set({ captureError: "" });
         try {
           await review.activate(tab.id);
-          return await writeDraft(() => capture(sender));
+          return await writeDraft(() =>
+            capture(
+              sender,
+              undefined,
+              null,
+              message.action === "capture-full" ? "fullPage" : "visible",
+            ),
+          );
         } catch (error) {
           await set({ captureError: error.message });
           await chrome.action.openPopup().catch(() => {});

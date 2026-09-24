@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Feedbacks: Website Review",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Capture, annotate and discuss website feedback with your team on your chosen Feedbacks server.",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus", "alarms"],
   "optional_host_permissions": ["https://*/*", "http://*/*", "<all_urls>"],
