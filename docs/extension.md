@@ -24,7 +24,7 @@ For a separate internal distribution, set `FEEDBACKS_EXTENSION_DEFAULT_SERVER=ht
 
 Captured pixels, selected element context and comments are sent to the chosen server when you submit. Review screenshots before sending; masking is not a guarantee that all sensitive information was detected. Tokens and pending drafts are stored locally. Server access is scoped to your project grants.
 
-The screenshot covers the visible browser area, not the full page. Restricted browser pages cannot be captured. Cross-origin frames, moving content and responsive layouts may affect element targeting; verify the submitted screenshot and context. The extension loads no remote executable code.
+**Capture this page** takes the visible browser area. **Capture full page** is a separate choice that scrolls and stitches a bounded top-level page, then restores your scroll position. It supports up to eight tiles and a 20-megapixel canvas. If the page is too long, changes while capturing, or the image exceeds the local-draft limit, use the visible-area retry in the editor. The full-page option does not capture a cross-origin frame beyond what the browser renders in each screenshot. Sticky elements may appear more than once, and lazy loading can shift content. Review and redact the image before sending. Restricted browser pages cannot be captured. The extension loads no remote executable code.
 
 ## Release and updates
 

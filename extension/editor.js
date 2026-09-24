@@ -178,6 +178,14 @@ async function loadBase(fresh) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (draft) draft.image = draft.approvedImage = null;
   draft = fresh;
+  $("capture-scope").textContent =
+    fresh?.captureScope === "fullPage"
+      ? "Full-page screenshot. Sticky elements may repeat. Review the whole image before sending."
+      : "The screenshot covers the visible browser area. Review it before sending.";
+  $("retry-capture").textContent =
+    fresh?.captureScope === "fullPage"
+      ? "Retry visible-area capture"
+      : "Retry capture on original tab";
   renderDiagnostics();
   if (!fresh) {
     shapes = [];

@@ -116,6 +116,7 @@ async function refresh() {
     $("disconnect").hidden = !state.connected && !state.pending;
     $("draft").hidden = !state.hasDraft;
     $("capture").hidden = state.hasDraft;
+    $("capture-full").hidden = state.hasDraft;
     $("choose").hidden = state.hasDraft;
     if (state.captureError) $("message").textContent = state.captureError;
     $("project-choice").hidden = true;
@@ -203,6 +204,7 @@ for (const name of ["start", "stop"])
 action("retry", () => start());
 for (const id of [
   "capture",
+  "capture-full",
   "choose",
   "pins",
   "resolved",
@@ -214,7 +216,7 @@ for (const id of [
   "stop",
 ])
   action(id, async () => {
-    if (id === "capture") {
+    if (id === "capture" || id === "capture-full") {
       // Close the browser popup before native capture; background work continues.
       void send({ type: "popupAction", tabId: tab.id, action: id }).catch(() => {});
       window.close();
