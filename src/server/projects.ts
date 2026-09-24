@@ -74,11 +74,12 @@ export async function members(db: Database, a: Actor, op: string, i: any) {
   if (op === "members.list") {
     if (!i.projectId) ownerOnly(a);
     else await access(db, a, i.projectId);
+    if (i.includeRemoved && !a.owner) fail("FORBIDDEN", "Owner required", 403);
     const rows = await db.query(
       i.projectId
-        ? "SELECT u.id,u.name,u.email,u.active,u.owner,u.classification,u.expertise,u.policy,u.policy_version,g.role,g.can_resolve,g.policy AS project_policy FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1 WHERE u.owner=true OR g.user_id IS NOT NULL"
-        : "SELECT id,name,email,active,owner,classification,expertise,policy,policy_version FROM users",
-      i.projectId ? [i.projectId] : [],
+        ? 'SELECT u.id,u.name,u.email,u.active,u.owner,u.removed_at AS "removedAt",u.classification,u.expertise,u.policy,u.policy_version,g.role,g.can_resolve,g.policy AS project_policy FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1 WHERE (u.owner=true OR g.user_id IS NOT NULL) AND (u.removed_at IS NULL OR $2=true)'
+        : 'SELECT id,name,email,active,owner,removed_at AS "removedAt",classification,expertise,policy,policy_version FROM users WHERE removed_at IS NULL OR $1=true',
+      i.projectId ? [i.projectId, !!i.includeRemoved] : [!!i.includeRemoved],
     );
     const primary = await db.one("SELECT primary_owner_id FROM organization_identity");
     const aliases =
@@ -140,6 +141,13 @@ export async function members(db: Database, a: Actor, op: string, i: any) {
       i.userId,
     ]);
   } else if (op === "members.update") {
+    if (
+      i.active &&
+      (await db.one("SELECT id FROM users WHERE id=$1 AND removed_at IS NOT NULL", [
+        i.userId,
+      ]))
+    )
+      fail("VALIDATION", "Restore this person to People before enabling the account");
     if (i.userId === a.userId && !i.active)
       fail("VALIDATION", "Owner cannot disable their own account");
     await db.query(

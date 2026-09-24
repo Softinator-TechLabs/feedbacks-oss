@@ -33,17 +33,14 @@ export function SavedReviewViews({
   return (
     <details className="saved-views section compact-details">
       <summary>Saved views{data?.items.length ? ` (${data.items.length})` : ""}</summary>
-      <p className="muted">
-        Your filters, saved for this project. Only you can see these views.
-      </p>
       <ErrorNotice error={error} />
       {error && (
         <button onClick={() => setVersion((v) => v + 1)}>Retry saved views</button>
       )}
-      <div className="review-controls">
-        <Field label="Your views">
+      <div className="saved-view-picker">
+        <Field label="Saved filter">
           <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-            <option value="">Choose a saved view</option>
+            <option value="">Select a view</option>
             {data?.items.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
@@ -52,49 +49,54 @@ export function SavedReviewViews({
           </select>
         </Field>
         <button disabled={!view || a.busy} onClick={() => view && onApply(view.filters)}>
-          Apply view
-        </button>
-        <button
-          disabled={!view || a.busy}
-          onClick={() =>
-            view &&
-            a.run(async () => {
-              await api("reviewViews.delete", {
-                projectId,
-                viewId: view.id,
-                revision: view.revision,
-              });
-              setSelected("");
-              setVersion((v) => v + 1);
-            }, "Saved view removed.")
-          }
-        >
-          Remove view
+          Apply
         </button>
       </div>
-      <form
-        className="review-controls"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const form = e.currentTarget,
-            name = String(new FormData(form).get("name"));
-          void a.run(async () => {
-            const saved = await api<SavedView>("reviewViews.save", {
-              projectId,
-              name,
-              filters,
-            });
-            setSelected(saved.id);
-            setVersion((v) => v + 1);
-            form.reset();
-          }, "Current filters saved.");
-        }}
-      >
-        <Field label="Save current filters as">
-          <input name="name" required maxLength={80} placeholder="Mobile checkout" />
-        </Field>
-        <button disabled={a.busy}>Save view</button>
-      </form>
+      <details className="saved-view-manage">
+        <summary>Save or remove a view</summary>
+        <form
+          className="saved-view-picker"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.currentTarget,
+              name = String(new FormData(form).get("name"));
+            void a.run(async () => {
+              const saved = await api<SavedView>("reviewViews.save", {
+                projectId,
+                name,
+                filters,
+              });
+              setSelected(saved.id);
+              setVersion((v) => v + 1);
+              form.reset();
+            }, "Current filters saved.");
+          }}
+        >
+          <Field label="Name for current filters">
+            <input name="name" required maxLength={80} placeholder="Mobile checkout" />
+          </Field>
+          <button disabled={a.busy}>Save</button>
+        </form>
+        {view && (
+          <button
+            className="saved-view-remove"
+            disabled={a.busy}
+            onClick={() =>
+              a.run(async () => {
+                await api("reviewViews.delete", {
+                  projectId,
+                  viewId: view.id,
+                  revision: view.revision,
+                });
+                setSelected("");
+                setVersion((v) => v + 1);
+              }, "Saved view removed.")
+            }
+          >
+            Remove {view.name}
+          </button>
+        )}
+      </details>
       <ActionState action={a} />
     </details>
   );
@@ -184,7 +186,6 @@ export function ThreadNavigation({ threadId }: { threadId: string }) {
         >
           Next thread →
         </button>
-        <small className="muted">Use ← / → when you’re not typing.</small>
       </div>
       <ErrorNotice error={error} />
       {error && (
@@ -216,7 +217,7 @@ export function ThreadOrganization({
   };
   useUnsavedChanges(!!draft || a.busy);
   return (
-    <details className="section compact-details">
+    <details className="section compact-details" id="thread-organize">
       <summary>Category &amp; tags</summary>
       {canWrite ? (
         <form

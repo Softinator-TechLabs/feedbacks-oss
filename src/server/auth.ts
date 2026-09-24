@@ -254,7 +254,7 @@ export class Auth {
       id = randomUUID(),
       expiresAt = new Date(Date.now() + input.expiresInDays * 86400000).toISOString();
     await tx.query(
-      "INSERT INTO tokens(id,hash,user_id,kind,name,projects,scopes,can_resolve,expires_at,owner_admin) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+      "INSERT INTO tokens(id,hash,user_id,kind,name,projects,scopes,can_resolve,expires_at,owner_admin,secret_suffix) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
       [
         id,
         hash(token),
@@ -266,6 +266,7 @@ export class Auth {
         ownerAdmin || (input.canResolve ?? false),
         expiresAt,
         ownerAdmin,
+        token.slice(-4),
       ],
     );
     return { id, token, expiresAt, kind, name: input.name, ownerAdmin };

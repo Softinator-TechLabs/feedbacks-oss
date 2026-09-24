@@ -292,8 +292,26 @@ export const labels: Record<string, string> = {
   productWorkflow: "Product workflow",
   usabilityAccessibility: "Usability & accessibility",
 };
-export const date = (s: string) =>
-  new Date(s).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+export const date = (s: string) => {
+  const value = new Date(s);
+  if (Number.isNaN(value.getTime())) return "Invalid date";
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+      .formatToParts(value)
+      .map((part) => [part.type, part.value]),
+  );
+  const day = Number(parts.day);
+  const suffix =
+    day % 100 >= 11 && day % 100 <= 13
+      ? "th"
+      : (["th", "st", "nd", "rd"][day % 10] ?? "th");
+  return `${day}${suffix} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute} ${parts.dayPeriod} IST`;
+};

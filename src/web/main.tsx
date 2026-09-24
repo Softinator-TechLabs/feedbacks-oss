@@ -179,9 +179,6 @@ function App() {
           <a href="/help" aria-current={path === "/help" ? "page" : undefined}>
             Help
           </a>
-          <a className="official-site-link" href={officialWebsiteUrl}>
-            Website <span aria-hidden="true">↗</span>
-          </a>
         </nav>
         <div className="account-nav">
           <ThemeSwitch />
@@ -189,6 +186,7 @@ function App() {
             <>
               <a href="/account">{actor.name}</a>
               <button
+                className="sign-out-button"
                 disabled={a.busy}
                 onClick={() =>
                   a.run(async () => {
@@ -204,8 +202,38 @@ function App() {
             <a href="/">Sign in</a>
           )}
         </div>
+        <details className="mobile-site-menu">
+          <summary>Menu</summary>
+          <nav aria-label="Mobile navigation">
+            <a href="/">Projects</a>
+            {actor?.owner && <a href="/people">People</a>}
+            <a href="/help">Help</a>
+            {actor ? (
+              <>
+                <a href="/account">Account</a>
+                <button
+                  type="button"
+                  disabled={a.busy}
+                  onClick={() =>
+                    a.run(async () => {
+                      await api("auth.logout", {});
+                      signOut();
+                    })
+                  }
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <a href="/">Sign in</a>
+            )}
+          </nav>
+        </details>
       </header>
-      <div className="shell" key={actor?.id ?? "public"}>
+      <div
+        className={`shell${threadMatch ? " thread-shell" : ""}`}
+        key={actor?.id ?? "public"}
+      >
         {project && (
           <div className="project-nav">
             <a href="/">Projects</a>
@@ -304,7 +332,6 @@ function App() {
           )}
         </main>
         <footer className="site-footer">
-          <span>Feedbacks</span>
           <a href={officialWebsiteUrl}>Official website</a>
           <a href="/privacy">Privacy</a>
           <a href="/help">Help</a>

@@ -38,12 +38,11 @@ export function ThreadReview({
   }
 
   return (
-    <section className="thread-review section" aria-label="Review round">
-      <div className="thread-review-heading">
-        <h2>Review round {review.round}</h2>
-        <span>{label}</span>
-      </div>
-      <p className="muted">Sign-off is separate from the thread's work status.</p>
+    <details className="thread-review" aria-label="Review round">
+      <summary>
+        Review {review.round} · {label}
+      </summary>
+      <p className="muted">Approve the review separately from the work status.</p>
       {canWrite && (
         <>
           <label htmlFor="review-note">Decision note (optional)</label>
@@ -99,6 +98,6 @@ export function ThreadReview({
           </ol>
         </details>
       )}
-    </section>
+    </details>
   );
 }

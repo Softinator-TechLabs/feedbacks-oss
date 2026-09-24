@@ -91,7 +91,12 @@ export class Operations {
         if (name === "auth.changePassword")
           return auth.changePassword(a, i.currentPassword, i.password);
         if (
-          ["members.create", "members.resetPassword", "members.owner"].includes(name) ||
+          [
+            "members.create",
+            "members.resetPassword",
+            "members.owner",
+            "members.archive",
+          ].includes(name) ||
           name.startsWith("account.links.") ||
           name.startsWith("members.notes.") ||
           name.startsWith("members.guidance.")
@@ -134,7 +139,7 @@ export class Operations {
           if (a.kind !== "human") ownerOnly(a);
           return {
             items: await db.query(
-              'SELECT id,name,kind,projects,scopes,can_resolve AS "canResolve",owner_admin AS "ownerAdmin",expires_at AS "expiresAt",revoked_at AS "revokedAt" FROM tokens WHERE user_id=$1 ORDER BY expires_at DESC',
+              'SELECT id,name,kind,projects,scopes,can_resolve AS "canResolve",owner_admin AS "ownerAdmin",secret_suffix AS "secretSuffix",expires_at AS "expiresAt",revoked_at AS "revokedAt" FROM tokens WHERE user_id=$1 ORDER BY expires_at DESC',
               [a.userId],
             ),
           };

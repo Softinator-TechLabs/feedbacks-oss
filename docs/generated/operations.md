@@ -41,6 +41,7 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `guestProjectLinks.revoke` | No                   | No                             |
 | `instructions.get`         | Yes                  | Yes                            |
 | `instructions.publish`     | No                   | No                             |
+| `members.archive`          | No                   | No                             |
 | `members.create`           | No                   | No                             |
 | `members.grant`            | No                   | No                             |
 | `members.guidance.get`     | Yes                  | No                             |

@@ -189,6 +189,9 @@ small {
   color: var(--muted);
   padding: 10px 0;
 }
+.mobile-site-menu {
+  display: none;
+}
 .topbar nav a {
   display: inline-flex;
   align-items: center;
@@ -201,14 +204,6 @@ small {
 }
 .topbar nav a[aria-current="page"] {
   border-bottom-color: var(--accent);
-}
-.topbar nav .official-site-link {
-  gap: 5px;
-  margin-left: 8px;
-}
-.official-site-link span {
-  font-size: 1rem;
-  line-height: 1;
 }
 .account-nav {
   margin-left: auto;
@@ -325,6 +320,10 @@ small {
   font-weight: 600;
   cursor: pointer;
 }
+.saved-views[open] {
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--border);
+}
 .thread-list {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -336,17 +335,111 @@ small {
 }
 .thread-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 145px 190px;
-  gap: 26px;
+  grid-template-columns: minmax(0, 1fr) 165px;
+  gap: 12px;
   align-items: start;
-  text-decoration: none;
-  padding: 24px 18px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border);
+}
+.thread-row:hover,
+.thread-row:focus-within {
+  background: #f7f9fa;
+}
+.thread-row-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  gap: 16px;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+.thread-row-main:hover {
   color: inherit;
 }
-.thread-row:hover {
-  background: #f0f4f7;
-  color: inherit;
+.thread-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+.thread-row-actions select {
+  width: 100%;
+  min-height: 36px;
+  padding: 5px 7px;
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+}
+.thread-row-actions select:hover {
+  border-color: var(--control-hover);
+}
+.thread-row-actions [role="alert"] {
+  overflow-wrap: anywhere;
+}
+.thread-row-actions .badge {
+  margin-top: 5px;
+}
+.thread-row .thread-stats time {
+  white-space: nowrap;
+}
+.thread-row .thread-stats {
+  font-size: 0.78rem;
+}
+.thread-row .thread-summary h2 {
+  margin: 0 0 6px;
+}
+.thread-row .thread-summary .meta {
+  gap: 2px 12px;
+}
+.thread-row .thread-summary .meta > span:last-child {
+  margin-top: 3px;
+}
+.thread-row .thread-stats {
+  gap: 5px;
+}
+.thread-row .thread-summary .tag-list {
+  margin: 3px 0;
+}
+.thread-row .thread-summary .tag {
+  font-size: 0.73rem;
+}
+.thread-row-main:focus-visible {
+  outline-offset: 4px;
+}
+.thread-row-actions select:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (max-width: 560px) {
+  .thread-list .thread-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .thread-row-actions {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .thread-row-actions select {
+    width: min(175px, 58%);
+  }
+}
+@media (max-width: 950px) {
+  .thread-row-main {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .thread-row .thread-stats {
+    align-items: flex-start;
+    text-align: left;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
 }
 .thread-summary {
   min-width: 0;
@@ -546,7 +639,7 @@ small {
   padding: 20px 0;
   flex-wrap: wrap;
 }
-.site-footer span {
+.site-footer a:first-child {
   margin-right: auto;
 }
 .back {
@@ -676,32 +769,84 @@ details[open] > summary {
 details form {
   margin-top: 16px;
 }
-.member-row {
-  border-bottom: 1px solid var(--border);
-  padding: 12px 0;
-}
-.member-row > summary {
+.member-list-item {
   display: flex;
+  width: 100%;
+  min-height: 60px;
   justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-}
-.member-row > summary::after {
-  content: "Details";
-  font-size: 0.85rem;
-  color: var(--accent);
-  margin-left: 12px;
-}
-.member-row > summary > span:first-child {
-  margin-right: auto;
-}
-.member-row > summary > span:nth-child(2) {
+  gap: 16px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
   font-weight: 400;
+}
+.member-list-item:hover {
+  background: var(--soft-surface);
+}
+.member-list-item > span:first-child {
+  display: grid;
+}
+.member-list-item small,
+.member-list-item > span:last-child {
   color: var(--muted);
   font-size: 0.85rem;
 }
-.member-row > form {
-  padding: 18px 0;
+.member-editor {
+  margin-top: 16px;
+}
+.member-editor-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.member-editor-heading > div:first-child {
+  display: grid;
+}
+.member-editor-heading h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.member-editor-heading small,
+.member-editor-heading > span:last-child {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.member-editor .form-grid {
+  max-width: 780px;
+}
+.member-editor .form-grid > button {
+  width: fit-content;
+}
+.expertise-choices {
+  margin: 4px 0;
+}
+.expertise-choices p {
+  margin: 4px 0 12px;
+}
+.expertise-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+.importance-details {
+  margin: 4px 0;
+}
+.importance-details[open] {
+  padding: 0 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.importance-details > summary {
+  width: fit-content;
+  color: var(--accent);
+}
+.importance-details p {
+  margin: 0 0 12px;
 }
 .policy-grid,
 .scope-grid {
@@ -973,6 +1118,12 @@ legend {
   }
 }
 @media (max-width: 680px) {
+  .thread-shell .project-nav {
+    display: none;
+  }
+  .thread-shell main {
+    padding-top: 12px;
+  }
   .field input,
   .field textarea,
   .field select,
@@ -990,26 +1141,70 @@ legend {
   .topbar > .brand {
     flex: 1;
   }
-  .topbar nav {
-    order: 3;
-    width: 100%;
-    justify-content: space-between;
-    gap: 12px;
-    border-top: 1px solid var(--border);
-    padding-top: 7px;
+  .topbar > nav {
+    display: none;
   }
-  .topbar nav .official-site-link {
-    margin-left: 0;
+  .mobile-site-menu {
+    display: block;
+    position: relative;
+  }
+  .mobile-site-menu > summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 5px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--accent);
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+  .mobile-site-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+  .topbar .mobile-site-menu nav {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    width: 180px;
+    padding: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 20px #10283e1a;
+  }
+  .topbar .mobile-site-menu nav a,
+  .topbar .mobile-site-menu nav button {
+    display: flex;
+    justify-content: flex-start;
+    min-height: 40px;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 4px;
+    color: var(--accent);
+    background: transparent;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .topbar .mobile-site-menu nav a:hover,
+  .topbar .mobile-site-menu nav button:hover {
+    background: var(--soft-surface);
   }
   .account-nav {
     margin-left: 0;
     gap: 10px;
   }
-  .account-nav > a {
-    max-width: 100px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .account-nav > a,
+  .account-nav > .sign-out-button {
+    display: none;
   }
   .account-nav button {
     padding: 6px 10px;
@@ -1108,13 +1303,9 @@ legend {
     flex-basis: 100%;
   }
   .thread-row {
-    grid-template-columns: 1fr;
-    padding: 20px 12px;
-    gap: 14px;
-  }
-  .thread-states {
-    flex-direction: row;
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr) 150px;
+    padding: 14px 12px;
+    gap: 8px;
   }
   .thread-stats {
     font-size: 0.77rem;
@@ -1135,12 +1326,6 @@ legend {
   .policy-grid,
   .scope-grid {
     grid-template-columns: 1fr;
-  }
-  .member-row > summary {
-    gap: 8px;
-  }
-  .member-row > summary > span:nth-child(2) {
-    max-width: 100px;
   }
   .token-row {
     gap: 12px;

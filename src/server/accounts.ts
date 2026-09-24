@@ -99,6 +99,17 @@ export async function accounts(db: Database, a: Actor, op: string, i: any) {
   }
   const user = await db.one("SELECT id,owner,active FROM users WHERE id=$1", [i.userId]);
   if (!user) fail("NOT_FOUND", "Member not found", 404);
+  if (op === "members.archive") {
+    await protectPrimary(db, a, i.userId);
+    if (user.owner) fail("VALIDATION", "Remove the owner role first");
+    if (i.archived && user.active)
+      fail("VALIDATION", "Disable this account before removing it from People");
+    await db.query("UPDATE users SET removed_at=$1 WHERE id=$2", [
+      i.archived ? new Date().toISOString() : null,
+      i.userId,
+    ]);
+    return { updated: true };
+  }
   if (op.startsWith("members.notes.") || op.startsWith("members.guidance.")) {
     primaryOnly(a);
     const table = op.startsWith("members.notes.")
