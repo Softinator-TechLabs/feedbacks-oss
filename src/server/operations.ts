@@ -32,6 +32,12 @@ import { GithubApp } from "./github-app.js";
 import { githubOperation } from "./github-operations.js";
 import { manageGuestProjectLinks } from "./guest-project-links.js";
 import { manageWebhooks } from "./webhooks.js";
+import {
+  documents,
+  documentUploadPreflight,
+  prepareDocumentUpload,
+  commitDocumentUpload,
+} from "./documents.js";
 export class Operations {
   readonly auth: Auth;
   constructor(
@@ -52,6 +58,7 @@ export class Operations {
       );
     if (name === "assets.upload" || name === "assets.uploadVideo")
       return this.uploadAsset(actor, parsed.data);
+    if (name === "documents.upload") return this.uploadDocument(actor, parsed.data);
     if (name.startsWith("github."))
       return githubOperation(this.db, actor, name, parsed.data, this.config, this.github);
     if (name === "context.export" && !(parsed.data as any).snapshotId)
@@ -97,12 +104,13 @@ export class Operations {
         if (name === "context.reviewers") return reviewerContext(db, a, i.projectId);
         if (name.startsWith("projects.")) return projects(db, a, name, i);
         if (name.startsWith("webhooks.")) return manageWebhooks(db, a, name, i);
+        if (name.startsWith("documents.")) return documents(db, a, name, i);
         if (name.startsWith("guestLinks."))
           return manageGuestLinks(db, a, name, i, this.config);
         if (name.startsWith("guestProjectLinks."))
           return manageGuestProjectLinks(db, a, name, i, this.config);
         if (name.startsWith("members.")) return members(db, a, name, i);
-        if (name.startsWith("threads.")) return feedback(db, a, name, i);
+        if (name.startsWith("threads.")) return feedback(db, a, name, i, this.config);
         if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
         if (name.startsWith("views.")) return views(db, a, name, i);
         if (name.startsWith("assets.")) {
@@ -267,6 +275,53 @@ export class Operations {
         await this.store.remove(prepared.key).catch(() => {
           console.error("Uncommitted image cleanup failed");
         });
+    }
+  }
+
+  private async uploadDocument(actor: Actor, input: any) {
+    const prior = await this.db.transaction(async (db) => {
+      await accountLock(db);
+      const current = await this.currentForOperation(db, actor, "documents.upload");
+      return documentUploadPreflight(db, current, input);
+    });
+    if (prior) return prior;
+    const prepared = await prepareDocumentUpload(input, this.config);
+    let committed = false;
+    let cleanupAllowed = true;
+    try {
+      try {
+        await this.store.put(
+          prepared.key,
+          prepared.output,
+          String(prepared.data.contentType),
+        );
+      } catch {
+        fail(
+          "UPLOAD_FAILED",
+          "Private document storage is unavailable; retry your upload",
+          503,
+        );
+      }
+      cleanupAllowed = false;
+      let settled;
+      try {
+        settled = await this.db.transaction(async (db) => {
+          await accountLock(db);
+          const current = await this.currentForOperation(db, actor, "documents.upload");
+          return commitDocumentUpload(db, current, input, prepared);
+        });
+      } catch (error) {
+        if (error instanceof DomainError) cleanupAllowed = true;
+        throw error;
+      }
+      committed = settled.committed;
+      cleanupAllowed = !committed;
+      return settled.result;
+    } finally {
+      if (!committed && cleanupAllowed)
+        await this.store
+          .remove(prepared.key)
+          .catch(() => console.error("Uncommitted document cleanup failed"));
     }
   }
 }

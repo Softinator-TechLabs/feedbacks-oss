@@ -178,6 +178,19 @@ export const inputSchemas = {
   "projects.create": projectInput,
   "projects.get": z.object({ projectId: id }),
   "projects.update": projectInput.extend({ projectId: id, revision }),
+  "documents.upload": z.object({
+    projectId: id,
+    name: z.string().trim().min(1).max(160),
+    fileBase64: z.string().min(1).max(11184812),
+    idempotencyKey: z.string().min(8).max(200),
+  }),
+  "documents.list": z.object({ projectId: id }),
+  "documents.get": z.object({ documentId: id }),
+  "documents.threads": z.object({
+    documentId: id,
+    page: z.number().int().min(1).max(25),
+    cursor: id.optional(),
+  }),
   "github.connection": z.object({ projectId: id }),
   "github.issueState": z.object({ threadId: id }),
   "github.connect": z.object({ projectId: id, revision }),
@@ -305,15 +318,27 @@ export const inputSchemas = {
     replyId: id.optional(),
     liked: z.boolean(),
   }),
-  "threads.create": z.object({
-    projectId: id,
-    body: text,
-    context: contextSchema,
-    category: categorySchema.default("general"),
-    tags: tagsSchema.default([]),
-    diagnostics: diagnosticsSchema.optional(),
-    idempotencyKey: z.string().min(8).max(200),
-  }),
+  "threads.create": z
+    .object({
+      projectId: id,
+      body: text,
+      context: contextSchema.optional(),
+      document: z
+        .object({
+          documentId: id,
+          page: z.number().int().min(1).max(25),
+          x: z.number().min(0).max(1),
+          y: z.number().min(0).max(1),
+        })
+        .optional(),
+      category: categorySchema.default("general"),
+      tags: tagsSchema.default([]),
+      diagnostics: diagnosticsSchema.optional(),
+      idempotencyKey: z.string().min(8).max(200),
+    })
+    .refine((input) => !!input.context !== !!input.document, {
+      message: "Choose one website context or document position",
+    }),
   "threads.reply": z.object({
     ...tm,
     body: text,
@@ -532,6 +557,20 @@ const reviewViewOutput = z.object({
   name: z.string(),
   filters: reviewFiltersSchema,
 });
+const documentOutput = z.object({
+  id,
+  projectId: id,
+  name: z.string(),
+  kind: z.enum(["pdf", "image"]),
+  contentType: z.enum(["application/pdf", "image/webp"]),
+  pageCount: z.number().int().positive(),
+  pages: z.array(z.object({ width: z.number(), height: z.number() })).optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  bytes: z.number().int().positive(),
+  createdAt: z.string(),
+  url: z.string(),
+});
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "auth.resetPassword": z.object({
     changed: z.boolean(),
@@ -570,6 +609,24 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "members.guidance.get": z.object({ body: z.string(), revision: z.number() }),
   "members.guidance.save": z.object({ body: z.string(), revision: z.number() }),
   "context.reviewers": reviewerContextOutput,
+  "documents.upload": documentOutput,
+  "documents.list": z.object({ items: z.array(documentOutput) }),
+  "documents.get": documentOutput,
+  "documents.threads": z.object({
+    page: z.number().int().positive(),
+    cursor: id.nullable(),
+    items: z.array(
+      z.object({
+        threadId: id,
+        body: z.string(),
+        page: z.number().int().positive(),
+        x: z.number(),
+        y: z.number(),
+        state: z.string(),
+      }),
+    ),
+    nextCursor: id.nullable(),
+  }),
   "auth.login": z.object({
     actor: actorOutput,
     csrf: z.string(),
@@ -851,6 +908,9 @@ export const scopedAgentOperations = [
 
 export const agentTokenScopes = [
   ...scopedAgentOperations,
+  "documents.list",
+  "documents.get",
+  "documents.threads",
   "context.policy",
   "threads.neighbors",
   "threads.issueDraft",
@@ -882,6 +942,7 @@ export const agentOperations = businessOperations.filter(
   (name) =>
     name !== "threads.review" &&
     !name.startsWith("webhooks.") &&
+    name !== "documents.upload" &&
     (name === "github.issueCreate" || !name.startsWith("github.")),
 );
 // The one-click owner setup must not silently grant external GitHub writes.
@@ -894,6 +955,9 @@ const readOperations = new Set<string>([
   "auth.me",
   "projects.list",
   "projects.get",
+  "documents.list",
+  "documents.get",
+  "documents.threads",
   "github.connection",
   "github.issueState",
   "webhooks.get",

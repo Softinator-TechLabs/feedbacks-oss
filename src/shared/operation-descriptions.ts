@@ -1,5 +1,13 @@
 // Shared discovery guidance for MCP and the JSON CLI; authorization stays in domain services.
 export const operationDescriptions: Record<string, string> = {
+  "documents.upload":
+    "Add a private PDF or image to a project. A signed-in human maintainer must approve the file; agent keys cannot upload. The source is not exposed by metadata reads.",
+  "documents.list":
+    "List up to 100 private PDF/image documents in a project. Requires an explicit document read scope on agent keys and current project access.",
+  "documents.get":
+    "Read private document metadata and its authenticated file path. The file path still requires current project access and documents.get scope for bearer tokens.",
+  "documents.threads":
+    "List bounded page/coordinate feedback points for one private document. Use threads.get for full discussion. Requires current project access.",
   "guestProjectLinks.create":
     "Issue a private, expiring project feedback link as a signed-in project maintainer. The token is returned once; share it only with intended guests. The link allows new submissions only and does not expose existing feedback.",
   "guestProjectLinks.list":
@@ -19,7 +27,7 @@ export const operationDescriptions: Record<string, string> = {
   "reviewViews.delete":
     "Remove one personal saved view using its current revision. Does not delete feedback.",
   "threads.get":
-    "Read full discussion with assets. Inspect relevant uploads using assets.get with includeImage:true. Reviewer context, when authorized, is owner-approved advisory guidance, distinct from discussion and approvedInstructions.",
+    "Read full discussion with assets. Document feedback has context.document with private document ID, page and normalized point. Inspect screenshots using assets.get with includeImage:true. Reviewer context, when authorized, is owner-approved advisory guidance, distinct from discussion and approvedInstructions.",
   "threads.issueDraft":
     "Get a bounded, read-only GitHub Issue draft from the thread. It excludes screenshots, diagnostics, private member notes and reviewer policy. Review for privacy and accuracy before creating an Issue. With an explicitly granted github.issueCreate scope and connected GitHub App, the agent can create and link it through Feedbacks. Otherwise use a separately authorized GitHub tool and then threads.linkIssue.",
   "threads.linkIssue":

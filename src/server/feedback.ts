@@ -9,6 +9,8 @@ import { reviewerContext } from "./accounts.js";
 import { threadQuery } from "./review-views.js";
 import { discussionLikes, setDiscussionLike } from "./discussion-likes.js";
 import { issueDraft } from "./issue-draft.js";
+import { documentRow } from "./documents.js";
+import type { Config } from "./config.js";
 // Legacy human messages had no reliable intent. Treat them as requests on read;
 // preserve agent responses and explicit intent without rewriting work history.
 export function discussionResponse(author: any, createdAt: string, replies: any[]) {
@@ -261,7 +263,13 @@ export async function remember(db: Database, a: Actor, op: string, i: any, id: s
       [a.id, op, i.idempotencyKey, hash(JSON.stringify(i)), id],
     );
 }
-export async function feedback(db: Database, a: Actor, op: string, i: any): Promise<any> {
+export async function feedback(
+  db: Database,
+  a: Actor,
+  op: string,
+  i: any,
+  config?: Config,
+): Promise<any> {
   if (op === "threads.get") return fullThread(db, a, await threadRow(db, a, i.threadId));
   if (op === "threads.issueDraft") {
     const thread = await fullThread(db, a, await threadRow(db, a, i.threadId));
@@ -297,7 +305,7 @@ export async function feedback(db: Database, a: Actor, op: string, i: any): Prom
       args,
     );
     const websiteRows = await db.query(
-      "SELECT DISTINCT data->'context'->>'domain' AS domain,data->'context'->>'hostname' AS hostname FROM threads WHERE project_id=$1 AND COALESCE((data->>'archived')::boolean,false)=false",
+      "SELECT DISTINCT data->'context'->>'domain' AS domain,data->'context'->>'hostname' AS hostname FROM threads WHERE project_id=$1 AND data->'context'->'document' IS NULL AND COALESCE((data->>'archived')::boolean,false)=false",
       [i.projectId],
     );
     const data = rows.length ? await listData(db, a, rows) : undefined;
@@ -327,12 +335,45 @@ export async function feedback(db: Database, a: Actor, op: string, i: any): Prom
     const actor = publicActor(a),
       now = new Date().toISOString(),
       id = randomUUID();
+    let context;
+    if (i.document) {
+      if (!config) fail("VALIDATION", "Document context is unavailable");
+      const document = await documentRow(db, a, i.document.documentId);
+      if (document.project_id !== i.projectId)
+        fail("FORBIDDEN", "Document belongs to another project", 403);
+      if (i.document.page > document.data.pageCount)
+        fail("VALIDATION", "Page is outside this document");
+      const pageSize = document.data.pages?.[i.document.page - 1] ?? document.data;
+      context = viewContext(
+        {
+          url: `${config.appOrigin}/projects/${i.projectId}/documents/${document.id}?page=${i.document.page}`,
+          title: document.data.name,
+          viewport: {
+            width: Math.max(100, pageSize.width ?? 100),
+            height: Math.max(100, pageSize.height ?? 100),
+          },
+          anchor: {
+            confidence: "coordinate-only",
+            screenshotPoint: { x: i.document.x, y: i.document.y },
+          },
+          document: {
+            id: document.id,
+            name: document.data.name,
+            kind: document.data.kind,
+            page: i.document.page,
+            x: i.document.x,
+            y: i.document.y,
+          },
+        },
+        { ...p, captureMode: "any" },
+      );
+    } else context = viewContext(i.context, p);
     const data = {
       body: i.body,
       category: i.category,
       tags: i.tags,
       ...(i.diagnostics ? { diagnostics: i.diagnostics } : {}),
-      context: viewContext(i.context, p),
+      context,
       author: actor,
       lastActor: actor,
       archived: false,

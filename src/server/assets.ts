@@ -22,11 +22,7 @@ import {
   threadRow,
 } from "./feedback.js";
 export interface AssetStore {
-  put(
-    key: string,
-    bytes: Buffer,
-    contentType?: "image/webp" | "video/webm",
-  ): Promise<void>;
+  put(key: string, bytes: Buffer, contentType?: string): Promise<void>;
   get(key: string): Promise<Buffer>;
   remove(key: string): Promise<void>;
 }
@@ -60,7 +56,7 @@ export async function assetPreview(
 }
 export class LocalAssets implements AssetStore {
   constructor(private directory: string) {}
-  async put(key: string, bytes: Buffer, _contentType?: "image/webp" | "video/webm") {
+  async put(key: string, bytes: Buffer, _contentType?: string) {
     const target = path.join(this.directory, key);
     await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
     await writeFile(target, bytes, { mode: 0o600 });
@@ -85,11 +81,7 @@ export class S3Assets implements AssetStore {
       },
     });
   }
-  async put(
-    key: string,
-    bytes: Buffer,
-    contentType: "image/webp" | "video/webm" = "image/webp",
-  ) {
+  async put(key: string, bytes: Buffer, contentType = "image/webp") {
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.config.s3Bucket,

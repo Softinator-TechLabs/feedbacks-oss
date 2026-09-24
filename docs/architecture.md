@@ -21,7 +21,7 @@ flowchart LR
 - `config.ts`, `index.ts`, `db.ts`, `migrations.ts`: validated environment, process lifecycle, connection pool and serialized migrations.
 - `auth.ts`, `accounts.ts`, `access.ts`: account lifecycle, credential boundaries and project access.
 - `projects.ts`, `feedback.ts`, `views.ts`, `discussion-likes.ts`: review workflow and optimistic concurrency.
-- `assets.ts`: image validation/normalization, bounded WebM intake, private storage and authorized readback.
+- `assets.ts`, `documents.ts`: image normalization, bounded WebM intake, private storage, project document review and authorized readback.
 - `context.ts`, `export-limits.ts`: versioned instructions, stable bounded exports and change cursors.
 - `operations.ts`: transactional operation dispatch. `app.ts` and `mcp.ts` handle transport concerns.
 - `src/shared/contracts.ts`: discoverable operation input/output schemas and transport registry.
