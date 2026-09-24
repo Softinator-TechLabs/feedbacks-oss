@@ -10,6 +10,7 @@ import {
   videoCreateInput,
   videoFingerprint,
   replayableVideoCreate,
+  clearVideoCreateForTab,
 } from "./video-target.js";
 const U = globalThis.FeedbacksUtil;
 import { DEFAULT_SERVER as DEFAULT } from "./config.js";
@@ -176,8 +177,6 @@ async function pollPair() {
 }
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === "pair") pollPair();
-  if (a.name.startsWith("videoCreate:"))
-    chrome.storage.session.remove(a.name).catch(() => {});
 });
 setInterval(pollPair, 3000);
 async function sessionFor(sender) {
@@ -952,6 +951,11 @@ async function route(message, sender) {
       };
     }
     case "videoCreate": {
+      if (
+        !sender.tab?.id ||
+        !sender.url?.startsWith(chrome.runtime.getURL("video.html?"))
+      )
+        throw Error("Open this page from the Feedbacks recorder.");
       if (message.server !== server)
         throw Error("The connection changed. Open Feedbacks again.");
       if (typeof message.body !== "string" || !message.body.trim())
@@ -980,7 +984,7 @@ async function route(message, sender) {
           );
         },
         (input) => authenticated("threads.create", input, message.server),
-        (key, expiresAt) => chrome.alarms.create(key, { when: expiresAt }),
+        sender.tab.id,
       );
     }
     case "videoUpload":
@@ -1162,8 +1166,16 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   return true;
 });
 chrome.tabs.onRemoved.addListener(async (id) => {
+  await clearVideoCreateForTab(chrome.storage.session, id);
   const state = await get();
   const sessions = { ...state.sessions };
   delete sessions[id];
   await set({ sessions });
+});
+chrome.tabs.onUpdated.addListener((id, change) => {
+  if (
+    change.status === "loading" ||
+    (change.url && !change.url.startsWith(chrome.runtime.getURL("video.html")))
+  )
+    clearVideoCreateForTab(chrome.storage.session, id).catch(() => {});
 });

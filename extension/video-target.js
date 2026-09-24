@@ -31,15 +31,17 @@ export async function replayableVideoCreate(
   accountFingerprint,
   validate,
   create,
-  scheduleExpiry,
+  recorderTabId,
 ) {
   if (
+    !Number.isInteger(recorderTabId) ||
+    recorderTabId <= 0 ||
     !/^[a-f0-9-]{36}$/i.test(message.idempotencyKey) ||
     !message.target ||
     message.server !== message.target.server
   )
     throw Error("Invalid video submission request.");
-  const key = `videoCreate:${message.idempotencyKey}`;
+  const key = `videoCreate:${recorderTabId}`;
   const request = JSON.stringify({
     sourceTabId: message.sourceTabId,
     server: message.server,
@@ -48,29 +50,20 @@ export async function replayableVideoCreate(
     idempotencyKey: message.idempotencyKey,
   });
   const cached = (await storage.get(key))[key];
-  if (cached && cached.expiresAt > Date.now()) {
+  if (cached) {
     if (cached.request !== request) throw Error("Retry the original request only.");
     if (cached.accountFingerprint !== accountFingerprint)
       throw Error("The connected account changed. Reopen Feedbacks.");
     return create(cached.input);
   }
-  if (cached) await storage.remove(key);
   const input = await validate();
-  const expiresAt = Date.now() + 10 * 60 * 1000;
   await storage.set({
     [key]: {
       request,
       accountFingerprint,
       input,
-      expiresAt,
     },
   });
-  try {
-    await scheduleExpiry?.(key, expiresAt);
-  } catch (error) {
-    await storage.remove(key);
-    throw error;
-  }
   try {
     return await create(input);
   } catch (error) {
@@ -78,6 +71,11 @@ export async function replayableVideoCreate(
     if (error.status >= 400 && error.status < 500) await storage.remove(key);
     throw error;
   }
+}
+
+export async function clearVideoCreateForTab(storage, recorderTabId) {
+  if (Number.isInteger(recorderTabId) && recorderTabId > 0)
+    await storage.remove(`videoCreate:${recorderTabId}`);
 }
 
 export async function videoCreateInput(target, tab, session, safeUrl, body, key) {

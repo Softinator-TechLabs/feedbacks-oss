@@ -4,6 +4,7 @@ import {
   videoTarget,
   videoCreateInput,
   replayableVideoCreate,
+  clearVideoCreateForTab,
 } from "../extension/video-target.js";
 
 const tab = {
@@ -105,39 +106,40 @@ test("a validated create replays unchanged after lost acknowledgement and tab cl
     );
   };
   const calls: any[] = [];
-  const expirations: string[] = [];
   const create = async (input: any) => {
     calls.push(structuredClone(input));
     if (calls.length === 1) throw Error("Response lost after commit");
     return { id: "thread-1" };
   };
   await assert.rejects(
-    replayableVideoCreate(
-      message,
-      storage,
-      "account-a",
-      validate,
-      create,
-      async (key: string) => {
-        expirations.push(key);
-      },
-    ),
+    replayableVideoCreate(message, storage, "account-a", validate, create, 31),
     /Response lost/,
   );
   currentTab = { ...tab, url: "https://site.example.test/another-page", width: 960 };
   assert.deepEqual(
-    await replayableVideoCreate(message, storage, "account-a", validate, create),
+    await replayableVideoCreate(message, storage, "account-a", validate, create, 31),
     { id: "thread-1" },
   );
   currentTab = null;
   assert.deepEqual(
-    await replayableVideoCreate(message, storage, "account-a", validate, create),
+    await replayableVideoCreate(message, storage, "account-a", validate, create, 31),
     { id: "thread-1" },
   );
   assert.equal(validations, 1);
-  assert.deepEqual(expirations, [`videoCreate:${message.idempotencyKey}`]);
   assert.deepEqual(calls[1], calls[0]);
   assert.deepEqual(calls[2], calls[0]);
+  assert.equal(saved.has("videoCreate:31"), true);
+  const currentTime = Date.now;
+  Date.now = () => currentTime() + 24 * 60 * 60 * 1000;
+  try {
+    assert.deepEqual(
+      await replayableVideoCreate(message, storage, "account-a", validate, create, 31),
+      { id: "thread-1" },
+    );
+  } finally {
+    Date.now = currentTime;
+  }
+  assert.equal(validations, 1);
   await assert.rejects(
     replayableVideoCreate(
       { ...message, body: "Changed" },
@@ -145,17 +147,19 @@ test("a validated create replays unchanged after lost acknowledgement and tab cl
       "account-a",
       validate,
       create,
+      31,
     ),
     /original request/i,
   );
   await assert.rejects(
-    replayableVideoCreate(message, storage, "account-b", validate, create),
+    replayableVideoCreate(message, storage, "account-b", validate, create, 31),
     /account changed/i,
   );
-  saved.clear();
+  await clearVideoCreateForTab(storage, 31);
+  assert.equal(saved.has("videoCreate:31"), false);
   await assert.rejects(
-    replayableVideoCreate(message, storage, "account-a", validate, create),
+    replayableVideoCreate(message, storage, "account-a", validate, create, 31),
     /Tab closed/,
   );
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 4);
 });
