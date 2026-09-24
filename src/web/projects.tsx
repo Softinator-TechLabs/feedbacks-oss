@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, type Project, type Actor } from "./api.js";
 import { ActionState, Field, Empty, useAction, ExternalLink } from "./ui.js";
+import { GuestProjectLinks } from "./guest-project-review.js";
 export function ProjectEditor({
   project,
   canSetCaptureMode,
@@ -220,6 +221,7 @@ export function ProjectSettings({
           </ul>
         )}
       </section>
+      {project.permissions.canMaintain && <GuestProjectLinks projectId={project.id} />}
     </>
   );
 }

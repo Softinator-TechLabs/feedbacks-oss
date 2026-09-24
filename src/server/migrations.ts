@@ -108,5 +108,12 @@ INSERT INTO migrations(version) VALUES(8);`;
       )`);
       await tx.query("INSERT INTO migrations(version) VALUES(9)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=10"))) {
+      const sql = `CREATE TABLE guest_project_links(id uuid PRIMARY KEY,hash text UNIQUE NOT NULL,project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,label text NOT NULL,created_by uuid NOT NULL REFERENCES users(id),expires_at timestamptz NOT NULL,revoked_at timestamptz,max_submissions integer NOT NULL CHECK(max_submissions BETWEEN 1 AND 50),submissions integer NOT NULL DEFAULT 0 CHECK(submissions>=0 AND submissions<=max_submissions),created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX guest_project_links_project ON guest_project_links(project_id,created_at DESC);
+ INSERT INTO migrations(version) VALUES(10);`;
+      for (const statement of sql.split(";").filter((s) => s.trim()))
+        await tx.query(statement);
+    }
   });
 }

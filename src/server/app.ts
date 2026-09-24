@@ -12,6 +12,7 @@ import { remoteMcp } from "./mcp.js";
 import { helpHtml } from "./help.js";
 import { readExtensionRelease } from "./extension-release.js";
 import { guestInspect, guestReply } from "./guest-links.js";
+import { guestProjectInspect, guestProjectSubmit } from "./guest-project-links.js";
 import { verifyGuestTurnstile } from "./turnstile.js";
 export function createApp(config: Config, database: Database, assets: AssetStore) {
   const app = express(),
@@ -51,7 +52,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       "X-Frame-Options": "DENY",
       "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
       "Content-Security-Policy":
-        req.path === "/guest"
+        req.path === "/guest" || req.path === "/guest-project"
           ? "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
           : "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
     });
@@ -153,14 +154,20 @@ export function createApp(config: Config, database: Database, assets: AssetStore
           "pairing.poll",
           "guest.inspect",
           "guest.reply",
+          "guestProject.inspect",
+          "guestProject.submit",
         ].includes(name)
       ) {
         const ip = req.ip ?? "unknown";
         // Unverified polls get a bounded IP ingress budget, never a caller-chosen
         // device bucket. Account attempts and device creation have separate limits.
         if (name === "pairing.poll") rate(`poll-ingress:${ip}`, 600, res);
-        else if (name.startsWith("guest."))
-          rate(`${name}:${ip}`, name === "guest.reply" ? 10 : 30, res);
+        else if (name.startsWith("guest.") || name.startsWith("guestProject."))
+          rate(
+            `${name}:${ip}`,
+            name.endsWith(".submit") || name === "guest.reply" ? 10 : 30,
+            res,
+          );
         else
           rate(
             `${name === "pairing.request" ? "pairing-request" : "account"}:${ip}`,
@@ -170,18 +177,37 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         const parsed = inputSchemas[name as OperationName].safeParse(req.body);
         if (!parsed.success) fail("VALIDATION", "Invalid request fields");
         const i: any = parsed.data;
-        if (name === "guest.inspect" || name === "guest.reply") {
+        if (
+          [
+            "guest.inspect",
+            "guest.reply",
+            "guestProject.inspect",
+            "guestProject.submit",
+          ].includes(name)
+        ) {
           requireOrigin(req);
           const data =
             name === "guest.inspect"
               ? await guestInspect(database, i.token, config)
-              : await (async () => {
-                  await verifyGuestTurnstile(config, i.turnstileToken, req.ip);
-                  return database.transaction(async (db) => {
-                    await accountLock(db);
-                    return guestReply(db, i);
-                  });
-                })();
+              : name === "guestProject.inspect"
+                ? await guestProjectInspect(database, i.token, config)
+                : await (async () => {
+                    await verifyGuestTurnstile(
+                      config,
+                      i.turnstileToken,
+                      req.ip,
+                      fetch,
+                      name === "guestProject.submit"
+                        ? "guest_project_submit"
+                        : "guest_reply",
+                    );
+                    return database.transaction(async (db) => {
+                      await accountLock(db);
+                      return name === "guestProject.submit"
+                        ? guestProjectSubmit(db, i)
+                        : guestReply(db, i);
+                    });
+                  })();
           res.json({ ok: true, data });
           return;
         }

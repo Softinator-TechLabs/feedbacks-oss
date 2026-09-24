@@ -16,6 +16,7 @@ import { ThemeSwitch } from "./theme.js";
 import { usePageLocation } from "./navigation.js";
 import { officialWebsiteUrl } from "../shared/product-links.js";
 import { GuestReview } from "./guest-review.js";
+import { GuestProjectReview } from "./guest-project-review.js";
 function App() {
   const pageLocation = usePageLocation();
   const path = pageLocation.split("?")[0];
@@ -46,6 +47,12 @@ function App() {
     history.replaceState(null, "", "/guest");
     return token;
   });
+  const [guestProjectToken] = useState(() => {
+    if (location.pathname !== "/guest-project") return "";
+    const token = new URLSearchParams(location.hash.slice(1)).get("token") ?? "";
+    history.replaceState(null, "", "/guest-project");
+    return token;
+  });
   const [version, setVersion] = useState(0),
     [threadProject, setThreadProject] = useState<{
       threadId: string;
@@ -53,7 +60,7 @@ function App() {
     }>(),
     session = useLoad(
       () =>
-        path === "/guest"
+        path === "/guest" || path === "/guest-project"
           ? Promise.resolve(undefined)
           : api<{ actor: Actor; projects: Project[] }>("auth.me", {}),
       [version, path],
@@ -110,6 +117,7 @@ function App() {
       />
     );
   if (path === "/guest") return <GuestReview token={guestToken} />;
+  if (path === "/guest-project") return <GuestProjectReview token={guestProjectToken} />;
   if (session.data?.actor.mustChangePassword && !publicPage)
     return <PasswordReplacement onChanged={signOut} />;
   if (path === "/invite")

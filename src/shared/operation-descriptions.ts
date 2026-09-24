@@ -1,5 +1,11 @@
 // Shared discovery guidance for MCP and the JSON CLI; authorization stays in domain services.
 export const operationDescriptions: Record<string, string> = {
+  "guestProjectLinks.create":
+    "Issue a private, expiring project feedback link as a signed-in project maintainer. The token is returned once; share it only with intended guests. The link allows new submissions only and does not expose existing feedback.",
+  "guestProjectLinks.list":
+    "List project guest feedback links with expiry, revocation and submission counts. Token values are never returned.",
+  "guestProjectLinks.revoke":
+    "Revoke a project guest feedback link immediately. New submissions and inspections stop.",
   "threads.list":
     "List feedback summaries; follow pagination and sort by activity to find recent replies/uploads. Use threads.get for full discussion, attachment metadata and available reviewer context.",
   "threads.neighbors":

@@ -29,6 +29,7 @@ import { reserveExportRequest } from "./export-limits.js";
 import { manageGuestLinks } from "./guest-links.js";
 import { GithubApp } from "./github-app.js";
 import { githubOperation } from "./github-operations.js";
+import { manageGuestProjectLinks } from "./guest-project-links.js";
 export class Operations {
   readonly auth: Auth;
   constructor(
@@ -94,6 +95,8 @@ export class Operations {
         if (name.startsWith("projects.")) return projects(db, a, name, i);
         if (name.startsWith("guestLinks."))
           return manageGuestLinks(db, a, name, i, this.config);
+        if (name.startsWith("guestProjectLinks."))
+          return manageGuestProjectLinks(db, a, name, i, this.config);
         if (name.startsWith("members.")) return members(db, a, name, i);
         if (name.startsWith("threads.")) return feedback(db, a, name, i);
         if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
