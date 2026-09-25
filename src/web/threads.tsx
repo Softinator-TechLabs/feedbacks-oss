@@ -121,11 +121,6 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
         />
       )}
       <section className="thread-filter-panel" aria-label="Feedback filters and views">
-        <SavedReviewViews
-          projectId={project.id}
-          filters={filters}
-          onApply={(next) => apply(next)}
-        />
         <form
           key={`${project.id}:${query}`}
           className="filters thread-filters"
@@ -239,6 +234,11 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
             </div>
           </details>
         </form>
+        <SavedReviewViews
+          projectId={project.id}
+          filters={filters}
+          onApply={(next) => apply(next)}
+        />
       </section>
       <ErrorNotice error={error} />
       {error && <button onClick={() => setVersion((v) => v + 1)}>Retry loading</button>}
