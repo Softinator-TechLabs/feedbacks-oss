@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { api, labels, type Thread } from "./api.js";
 import { ErrorNotice, Field, Notice, useAction } from "./ui.js";
 import { useUnsavedChanges } from "./navigation.js";
+import { Icon } from "./icons.js";
 type StatusDraft = {
   state: "open" | "in_progress" | "ready_for_review" | "resolved" | "declined";
   note: string;
@@ -85,20 +86,25 @@ export function ThreadStatus({
         {canResolve && thread.work.state !== "resolved" && (
           <button
             type="button"
-            className="primary"
+            className="primary thread-icon-button"
+            aria-label="Resolve feedback"
+            data-tooltip="Resolve feedback"
             disabled={a.busy || changed}
             onClick={() => void save({ ...current, state: "resolved" })}
           >
-            Resolve
+            <Icon name="check" />
           </button>
         )}
         {thread.work.state === "resolved" && (
           <button
             type="button"
+            className="thread-icon-button"
+            aria-label="Reopen feedback"
+            data-tooltip="Reopen feedback"
             disabled={a.busy || changed}
             onClick={() => void save({ ...current, state: "open" })}
           >
-            Reopen
+            <Icon name="history" />
           </button>
         )}
         {a.busy && (
@@ -135,12 +141,12 @@ export function ThreadStatus({
           </button>
         </Notice>
       )}
-      <details className="status-options">
+      <details className="status-options thread-header-popover">
         <summary
           aria-label="Add a status note or duplicate link"
           data-tooltip="Add a status note or duplicate link"
         >
-          Note
+          <Icon name="note" />
         </summary>
         <div className="status-options-panel">
           <Field label="Outcome note (optional)">

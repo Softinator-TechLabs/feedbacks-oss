@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { api, type Thread } from "./api.js";
 import { HumanTime } from "./human-time.js";
 import { ErrorNotice, useAction } from "./ui.js";
+import { Icon } from "./icons.js";
 
 export function ThreadReview({
   thread,
@@ -39,9 +40,12 @@ export function ThreadReview({
   }
 
   return (
-    <details className="thread-review" aria-label="Review decision">
-      <summary aria-label={`Review ${review.round}: ${label}`}>
-        Review <span className="thread-review-state">{label}</span>
+    <details className="thread-review thread-header-popover" aria-label="Review decision">
+      <summary
+        aria-label={`Review ${review.round}: ${label}`}
+        data-tooltip={`Review ${review.round}: ${label}`}
+      >
+        <Icon name="review" />
       </summary>
       <div className="thread-review-panel">
         <p className="muted">Round {review.round} · Sign off on the work here.</p>

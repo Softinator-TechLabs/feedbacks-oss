@@ -20,7 +20,9 @@ test("human review sign-off keeps a separate, attributed round history", async (
     const project = await ops.executeOperation(owner, "projects.create", {
       name: "Review",
       origins: ["https://example.test"],
+      reviewEnabled: true,
     });
+    assert.equal(project.reviewEnabled, true);
     const invitation = await ops.executeOperation(owner, "members.invite", {
       email: "client@example.test",
       projectId: project.id,
@@ -93,6 +95,26 @@ test("human review sign-off keeps a separate, attributed round history", async (
       }),
       { code: "FORBIDDEN" },
     );
+    const disabled = await ops.executeOperation(owner, "projects.update", {
+      projectId: project.id,
+      revision: project.revision,
+      name: project.name,
+      origins: project.origins,
+      reviewEnabled: false,
+    });
+    assert.equal(disabled.reviewEnabled, false);
+    await assert.rejects(
+      ops.executeOperation(client, "threads.review", {
+        threadId: thread.id,
+        revision: changes.revision,
+        decision: "reopen",
+      }),
+      { code: "FORBIDDEN" },
+    );
+    const preserved = await ops.executeOperation(owner, "threads.get", {
+      threadId: thread.id,
+    });
+    assert.equal(preserved.review.history.length, 3);
   } finally {
     await pg.close();
   }
