@@ -140,34 +140,36 @@ export function ThreadStatus({
           aria-label="Add a status note or duplicate link"
           data-tooltip="Add a status note or duplicate link"
         >
-          More
+          Note
         </summary>
-        <Field label="Outcome note (optional)">
-          <textarea
-            name="note"
-            rows={2}
-            maxLength={12000}
-            disabled={a.busy}
-            value={current.note}
-            onChange={(e) => update({ note: e.target.value })}
-          />
-        </Field>
-        <Field label="Duplicate of thread ID (optional)">
-          <input
-            name="duplicateOf"
-            placeholder="UUID"
-            disabled={a.busy}
-            value={current.duplicateOf}
-            onChange={(e) => update({ duplicateOf: e.target.value })}
-          />
-        </Field>
-        <button
-          type="button"
-          disabled={a.busy || changed || !draft || !canSave}
-          onClick={() => void save(current)}
-        >
-          Save details
-        </button>
+        <div className="status-options-panel">
+          <Field label="Outcome note (optional)">
+            <textarea
+              name="note"
+              rows={2}
+              maxLength={12000}
+              disabled={a.busy}
+              value={current.note}
+              onChange={(e) => update({ note: e.target.value })}
+            />
+          </Field>
+          <Field label="Duplicate of thread ID (optional)">
+            <input
+              name="duplicateOf"
+              placeholder="UUID"
+              disabled={a.busy}
+              value={current.duplicateOf}
+              onChange={(e) => update({ duplicateOf: e.target.value })}
+            />
+          </Field>
+          <button
+            type="button"
+            disabled={a.busy || changed || !draft || !canSave}
+            onClick={() => void save(current)}
+          >
+            Save details
+          </button>
+        </div>
       </details>
     </section>
   );
