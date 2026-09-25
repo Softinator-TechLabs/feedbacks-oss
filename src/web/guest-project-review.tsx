@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { api, date } from "./api.js";
+import { api } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import {
   ActionState,
   ConfirmButton,
@@ -112,13 +113,17 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
             <strong>{link.label}</strong>
             {link.widget && <span className="muted"> · Website widget</span>}
             <p className="muted">
-              {link.revokedAt
-                ? "Revoked"
-                : new Date(link.expiresAt).getTime() <= Date.now()
-                  ? "Expired"
-                  : link.submissions >= link.maxSubmissions
-                    ? "Limit reached"
-                    : `Expires ${date(link.expiresAt)}`}
+              {link.revokedAt ? (
+                "Revoked"
+              ) : new Date(link.expiresAt).getTime() <= Date.now() ? (
+                "Expired"
+              ) : link.submissions >= link.maxSubmissions ? (
+                "Limit reached"
+              ) : (
+                <>
+                  Expires <HumanTime at={link.expiresAt} />
+                </>
+              )}
               {` · ${link.submissions} of ${link.maxSubmissions} submissions`}
             </p>
           </div>
@@ -178,7 +183,8 @@ export function GuestProjectReview({ token }: { token: string }) {
         {details.data && (
           <>
             <p className="muted">
-              {details.data.projectName} · Link expires {date(details.data.expiresAt)}
+              {details.data.projectName} · Link expires{" "}
+              <HumanTime at={details.data.expiresAt} />
             </p>
             {posted ? (
               <section className="section" role="status">

@@ -35,6 +35,8 @@ const publicOperations = new Set([
   "guest.reply",
   "guestProject.inspect",
   "guestProject.submit",
+  "survey.inspect",
+  "survey.submit",
 ]);
 async function request<T>(operation: OperationName, input: unknown): Promise<T> {
   let response: Response;
@@ -292,26 +294,64 @@ export const labels: Record<string, string> = {
   productWorkflow: "Product workflow",
   usabilityAccessibility: "Usability & accessibility",
 };
+const fullTimeFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Kolkata",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+const shortDateFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Kolkata",
+  day: "numeric",
+  month: "short",
+});
+const ordinal = (day: number) =>
+  day % 100 >= 11 && day % 100 <= 13
+    ? "th"
+    : (["th", "st", "nd", "rd"][day % 10] ?? "th");
+
 export const date = (s: string) => {
   const value = new Date(s);
   if (Number.isNaN(value.getTime())) return "Invalid date";
   const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "Asia/Kolkata",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-      .formatToParts(value)
-      .map((part) => [part.type, part.value]),
+    fullTimeFormat.formatToParts(value).map((part) => [part.type, part.value]),
   );
   const day = Number(parts.day);
-  const suffix =
-    day % 100 >= 11 && day % 100 <= 13
-      ? "th"
-      : (["th", "st", "nd", "rd"][day % 10] ?? "th");
-  return `${day}${suffix} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute} ${parts.dayPeriod} IST`;
+  return `${day}${ordinal(day)} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute} ${parts.dayPeriod} IST`;
+};
+
+export const relativeDate = (s: string, now = Date.now()) => {
+  const value = new Date(s);
+  if (Number.isNaN(value.getTime())) return "Invalid date";
+  const future = value.getTime() > now;
+  const elapsed = Math.abs(value.getTime() - now);
+  if (elapsed < 60_000) return future ? "in a moment" : "just now";
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 60)
+    return future
+      ? `in ${minutes} ${minutes === 1 ? "min" : "mins"}`
+      : `${minutes} ${minutes === 1 ? "min" : "mins"} ago`;
+  const hours = Math.floor(elapsed / 3_600_000);
+  if (hours < 24)
+    return future
+      ? `in ${hours} ${hours === 1 ? "hour" : "hours"}`
+      : `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  const days = Math.floor(elapsed / 86_400_000);
+  if (days < 7)
+    return future
+      ? `in ${days} ${days === 1 ? "day" : "days"}`
+      : `${days} ${days === 1 ? "day" : "days"} ago`;
+  if (days < 365) {
+    const parts = Object.fromEntries(
+      shortDateFormat.formatToParts(value).map((part) => [part.type, part.value]),
+    );
+    const day = Number(parts.day);
+    return `${day}${ordinal(day)} ${parts.month === "Sep" ? "Sept" : parts.month}`;
+  }
+  if (days < 730) return future ? "next year" : "last year";
+  const years = Math.floor(days / 365);
+  return future ? `in ${years} years` : `${years} years ago`;
 };

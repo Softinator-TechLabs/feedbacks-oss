@@ -32,6 +32,6 @@ Migration 15 adds opt-in configuration, run history and baseline references. No 
 
 Source revision: this branch's implementation commit.
 Checks and results: `npm run check` passed under Node 24, including the disposable HTTP smoke and generated catalog. Eight focused QA tests passed, including interrupted-lease retry, active-lease manual-run throttling, HTML attribute parsing and definite HEAD results. Desktop and 390 px mobile browser layouts were inspected using a synthetic project; opt-in save, baseline selection and image comparison completed. The native PostgreSQL migration/concurrency test passed separately with `npm run test:postgres` (it remains skipped in the standard suite).
-Artifacts: typed QA operations, migration 15, project settings, visual baseline controls and this guide.
+Artifacts: typed QA operations, migration 16, project settings, visual baseline controls and this guide.
 Deployment and live verification: out of scope for this branch.
 Remaining risks: browser-rendered state and authenticated pages are outside the server scan. No unattended screenshot capture or scheduled visual comparison runs; those require a separate browser runtime and page-credential model. Public-site network behavior and deployed worker execution remain unverified.

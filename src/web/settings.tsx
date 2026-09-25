@@ -3,7 +3,8 @@ import { agentTokenScopes } from "../shared/contracts.js";
 import { AgentSetupPrompt, type AgentIssuance } from "./agent-setup.js";
 import { CreateMember, MemberAdministration } from "./account-admin.js";
 import { OwnerLinks } from "./owner-links.js";
-import { api, date, labels, type Actor, type Project } from "./api.js";
+import { api, labels, type Actor, type Project } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import {
   ActionState,
   ConfirmButton,
@@ -46,21 +47,36 @@ const categories = [
 const expertiseCategories = categories.map((category) => labels[category]);
 function PolicyFields({ policy, prefix = "" }: { policy?: Policy; prefix?: string }) {
   return (
-    <div className="policy-grid">
-      {categories.map((c) => (
-        <Field key={c} label={labels[c]}>
-          <input
-            type="number"
-            name={`${prefix}${c}`}
-            min={0}
-            max={10}
-            step={0.1}
-            defaultValue={policy?.[c] ?? (c === "general" ? 1 : "")}
-            required={c === "general"}
-            placeholder="Use general"
-          />
-        </Field>
-      ))}
+    <div className="policy-fields">
+      <Field label="Overall importance" hint="1 is normal, 2 counts twice, 0 ignores.">
+        <input
+          type="number"
+          name={`${prefix}general`}
+          min={0}
+          max={10}
+          step={0.1}
+          defaultValue={policy?.general ?? 1}
+          required
+        />
+      </Field>
+      <details className="policy-topics">
+        <summary>Set a different weight for a topic</summary>
+        <div className="policy-grid">
+          {categories.slice(1).map((c) => (
+            <Field key={c} label={labels[c]} hint="Blank uses the overall importance.">
+              <input
+                type="number"
+                name={`${prefix}${c}`}
+                min={0}
+                max={10}
+                step={0.1}
+                defaultValue={policy?.[c] ?? ""}
+                placeholder="Use overall"
+              />
+            </Field>
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
@@ -415,10 +431,9 @@ function MemberEditor({
               Account active
             </label>
             <details className="wide importance-details">
-              <summary>Feedback weighting (advanced)</summary>
+              <summary>Feedback importance (advanced)</summary>
               <p className="muted">
-                This influences preference summaries only. 1 is normal, 2 counts twice as
-                much, 0 excludes a topic. It never changes access.
+                This affects preference summaries, not access or permissions.
               </p>
               <PolicyFields policy={m.policy} />
             </details>
@@ -575,7 +590,7 @@ export function Instructions({ project }: { project: Project }) {
                       {n === 0 ? " · Current" : ""}
                     </h2>
                     <span>
-                      {item.actor.name} · {date(item.createdAt)}
+                      {item.actor.name} · <HumanTime at={item.createdAt} />
                     </span>
                   </div>
                   <p className="message">{item.body}</p>
@@ -740,9 +755,15 @@ export function Account({
                     ? ` · ends in ${token.secretSuffix}`
                     : " · key ending unavailable for older keys"}
                   {" · "}
-                  {token.revokedAt
-                    ? `Revoked ${date(token.revokedAt)}`
-                    : `Expires ${date(token.expiresAt)}`}
+                  {token.revokedAt ? (
+                    <>
+                      Revoked <HumanTime at={token.revokedAt} />
+                    </>
+                  ) : (
+                    <>
+                      Expires <HumanTime at={token.expiresAt} />
+                    </>
+                  )}
                 </p>
                 <details>
                   <summary>Access details</summary>

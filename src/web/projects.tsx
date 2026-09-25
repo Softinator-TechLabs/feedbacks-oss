@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api, date, type Project, type Actor } from "./api.js";
+import { api, type Project, type Actor } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import { GuestProjectLinks } from "./guest-project-review.js";
 import {
   ActionState,
@@ -149,7 +150,7 @@ export function ScheduledQaSettings({ projectId }: { projectId: string }) {
       {config.data?.enabled && (
         <p className="muted">
           Eligible for next scan:{" "}
-          {config.data.nextAt ? date(config.data.nextAt) : "pending"}
+          {config.data.nextAt ? <HumanTime at={config.data.nextAt} /> : "pending"}
         </p>
       )}
       <div className="qa-history">
@@ -158,7 +159,7 @@ export function ScheduledQaSettings({ projectId }: { projectId: string }) {
           runs.data.items.map((run) => (
             <details key={run.id} className="compact-details">
               <summary>
-                {date(run.createdAt)} · {run.pages.length} page
+                <HumanTime at={run.createdAt} /> · {run.pages.length} page
                 {run.pages.length === 1 ? "" : "s"}
               </summary>
               {run.pages.map((page) => (
@@ -365,7 +366,9 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
                       ? "Delivered"
                       : "Failed"}
                 </strong>
-                <span>{date(item.deliveredAt ?? item.createdAt)}</span>
+                <span>
+                  <HumanTime at={item.deliveredAt ?? item.createdAt} />
+                </span>
                 <small>
                   {item.attempts} {item.attempts === 1 ? "attempt" : "attempts"}
                   {item.lastStatus ? ` · HTTP ${item.lastStatus}` : ""}

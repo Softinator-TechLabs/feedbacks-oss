@@ -14,6 +14,18 @@ export const operationDescriptions: Record<string, string> = {
     "Choose a validated private image from the same thread as its visual baseline. Project maintainer access required.",
   "qa.compare":
     "Compare an existing private image with that thread's selected baseline at equal dimensions. Returns the percentage of pixels differing by more than 20 channel values; it does not establish identical page position or a verified regression.",
+  "surveys.create":
+    "Create an opt-in project survey and one-time expiring public link. Human project maintainer only; questions are immutable. NPS uses a 0–10 answer. Requires Turnstile configuration.",
+  "surveys.list":
+    "List up to 100 surveys and response counts for a project. Requires current project maintainer access; link tokens are never returned.",
+  "surveys.results":
+    "Read project-private survey distributions, NPS and up to 100 written answers per question. Requires current project maintainer access.",
+  "surveys.revoke":
+    "Revoke a survey link for new visitors. Existing results remain readable. Human project maintainer only.",
+  "survey.inspect":
+    "Public survey link bootstrap; returns the frozen questions and Turnstile site key, without responses or project-private data.",
+  "survey.submit":
+    "Public anonymous survey submission. Requires an active link, Turnstile proof, exact question answers and remaining capacity; responseKey makes retries idempotent.",
   "documents.upload":
     "Add a private PDF or image to a project. A signed-in human maintainer must approve the file; agent keys cannot upload. The source is not exposed by metadata reads.",
   "documents.list":
