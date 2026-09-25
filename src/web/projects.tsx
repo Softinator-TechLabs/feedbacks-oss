@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api, date, type Project, type Actor } from "./api.js";
+import { api, type Project, type Actor } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import { GuestProjectLinks } from "./guest-project-review.js";
 import {
   ActionState,
@@ -198,7 +199,9 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
                       ? "Delivered"
                       : "Failed"}
                 </strong>
-                <span>{date(item.deliveredAt ?? item.createdAt)}</span>
+                <span>
+                  <HumanTime at={item.deliveredAt ?? item.createdAt} />
+                </span>
                 <small>
                   {item.attempts} {item.attempts === 1 ? "attempt" : "attempts"}
                   {item.lastStatus ? ` · HTTP ${item.lastStatus}` : ""}
