@@ -117,8 +117,11 @@ textarea::placeholder {
 .thread-filters {
   align-items: end;
   gap: 10px 12px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
+  padding: 0 0 11px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
 }
 .thread-filters > .field {
   flex: 0 1 170px;

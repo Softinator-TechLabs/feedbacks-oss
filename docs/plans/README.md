@@ -18,3 +18,4 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 - [Embeddable website feedback widget](embeddable-widget.md)
 - [Compact review and people controls](compact-review-and-people.md)
 - [Opt-in project surveys and NPS](project-surveys.md)
+- [Review interface refinement](review-interface-refinement.md)
