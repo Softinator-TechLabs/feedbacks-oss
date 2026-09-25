@@ -588,7 +588,12 @@ export function ThreadDetail({
     [project?.id, memberVersion],
   );
   async function mutate(
-    op: "threads.status" | "threads.linkIssue" | "threads.evidence" | "threads.archive",
+    op:
+      | "threads.status"
+      | "threads.linkIssue"
+      | "threads.figmaReference"
+      | "threads.evidence"
+      | "threads.archive",
     input: Record<string, unknown>,
   ) {
     if (!t) return;
@@ -1192,6 +1197,65 @@ export function ThreadDetail({
                   )}
                   {project && (
                     <GithubIssue thread={t} project={project} onSaved={setThread} />
+                  )}
+                </details>
+                <details className="section compact-details" id="thread-figma-reference">
+                  <summary>Figma design reference</summary>
+                  {t.figmaReference ? (
+                    <p>
+                      <ExternalLink href={t.figmaReference.url}>
+                        Open Figma file
+                      </ExternalLink>
+                      <small>
+                        Linked by {t.figmaReference.linkedBy.name} ·{" "}
+                        <HumanTime at={t.figmaReference.linkedAt} />
+                      </small>
+                    </p>
+                  ) : (
+                    <p className="muted">No Figma file linked.</p>
+                  )}
+                  {project?.permissions.canMaintain && (
+                    <>
+                      <p className="muted">
+                        Register a Figma file after agreeing on design work. This saves
+                        the file link here; it does not copy feedback or screenshots to
+                        Figma. Check access in Figma before sharing the file.
+                      </p>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const f = new FormData(e.currentTarget);
+                          void mutate("threads.figmaReference", { url: f.get("url") });
+                        }}
+                      >
+                        <Field label="Figma file URL">
+                          <input
+                            key={t.figmaReference?.url ?? "empty"}
+                            name="url"
+                            type="url"
+                            defaultValue={t.figmaReference?.url ?? ""}
+                            required
+                            placeholder="https://www.figma.com/design/..."
+                          />
+                        </Field>
+                        <div className="figma-reference-actions">
+                          <button disabled={a.busy}>
+                            {t.figmaReference ? "Replace reference" : "Link Figma file"}
+                          </button>
+                          {t.figmaReference && (
+                            <button
+                              type="button"
+                              disabled={a.busy}
+                              onClick={() =>
+                                void mutate("threads.figmaReference", { url: null })
+                              }
+                            >
+                              Remove reference
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    </>
                   )}
                 </details>
                 <details className="section compact-details">

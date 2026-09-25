@@ -247,6 +247,11 @@ export type Thread = {
     linkedBy?: Actor;
     linkedAt?: string;
   }>;
+  figmaReference: {
+    url: string;
+    linkedBy: Actor;
+    linkedAt: string;
+  } | null;
   fixEvidence: Array<{
     url: string;
     note: string;

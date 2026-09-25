@@ -10,6 +10,7 @@ import { threadQuery } from "./review-views.js";
 import { discussionLikes, setDiscussionLike } from "./discussion-likes.js";
 import { issueDraft } from "./issue-draft.js";
 import { documentRow } from "./documents.js";
+import { figmaReferenceUrl } from "./figma-reference.js";
 import type { Config } from "./config.js";
 // Legacy human messages had no reliable intent. Treat them as requests on read;
 // preserve agent responses and explicit intent without rewriting work history.
@@ -195,6 +196,7 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
   return {
     ...data,
     review: data.review ?? { round: 1, state: "open", history: [] },
+    figmaReference: data.figmaReference ?? null,
     tags: data.tags ?? [],
     id: row.id,
     projectId: row.project_id,
@@ -385,6 +387,7 @@ export async function feedback(
       work: { state: "open", history: [] },
       review: { round: 1, state: "open", history: [] },
       externalIssues: [],
+      figmaReference: null,
       fixEvidence: [],
       importance: {
         feedbackTime: {
@@ -402,7 +405,13 @@ export async function feedback(
     await event(db, a, i.projectId, id, "thread.created", { revision: 1 });
     return fullThread(db, a, row);
   }
-  const row = await threadRow(db, a, i.threadId, "write", true),
+  const row = await threadRow(
+      db,
+      a,
+      i.threadId,
+      op === "threads.figmaReference" ? "maintain" : "write",
+      true,
+    ),
     data = row.data;
   if (op === "threads.like") return setDiscussionLike(db, a, row, i);
   const prior = await retry(db, a, op, i);
@@ -515,6 +524,12 @@ export async function feedback(
         linkedAt: at,
         reportedCreatedAt: i.createdAt ?? null,
       });
+  } else if (op === "threads.figmaReference") {
+    if (a.kind !== "human")
+      fail("FORBIDDEN", "A signed-in project maintainer must link Figma", 403);
+    data.figmaReference = i.url
+      ? { url: figmaReferenceUrl(i.url), linkedBy: actor, linkedAt: at }
+      : null;
   } else if (op === "threads.evidence") {
     data.fixEvidence.push({
       url: normalizeUrl(i.url),
