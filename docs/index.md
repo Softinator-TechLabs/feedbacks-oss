@@ -6,6 +6,7 @@ This is the entry point for contributors and coding agents. Guides describe curr
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Understand the product            | [Purpose](why-feedbacks.md), [product brief](../PRODUCT.md), [review workflow](review-workflow.md)                                         |
 | Use a team workspace              | [Start here](start-here.md), [extension](extension.md), [project routing](project-routing.md)                                              |
+| Integrate a native app            | [Mobile SDK](mobile-sdk.md), [API](api.md)                                                                                                 |
 | Install and operate               | [Self-hosting](self-hosting.md), [operations and recovery](operations.md), [releases](releasing.md)                                        |
 | Deliver thread activity           | [Signed webhooks](webhooks.md), [API](api.md)                                                                                              |
 | Check public project pages        | [Scheduled QA and visual baselines](scheduled-qa.md), [extension](extension.md)                                                            |
