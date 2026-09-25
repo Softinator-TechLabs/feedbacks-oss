@@ -18,38 +18,65 @@ class FeedbacksCredentialStore(context: Context) {
     private val alias = "org.feedbacks.mobile.device-token"
 
     fun save(serverUrl: String, credential: FeedbacksCredential) {
+        saveValue(account(serverUrl), JSONObject().put("token", credential.token)
+            .put("expiresAt", credential.expiresAt))
+    }
+
+    fun load(serverUrl: String): FeedbacksCredential? = loadValue(account(serverUrl))?.let {
+        FeedbacksCredential(it.getString("token"), it.getString("expiresAt"))
+    }
+
+    fun clear(serverUrl: String) = clearValue(account(serverUrl))
+
+    /** Save before opening the system browser so an approved pairing can be polled after process death. */
+    fun savePending(serverUrl: String, pairing: FeedbacksPairing) {
+        saveValue(pendingAccount(serverUrl), JSONObject()
+            .put("pairingId", pairing.pairingId)
+            .put("deviceSecret", pairing.deviceSecret)
+            .put("expiresAt", pairing.expiresAt)
+            .put("intervalSeconds", pairing.intervalSeconds)
+            .put("approvalUrl", pairing.approvalUrl))
+    }
+
+    fun loadPending(serverUrl: String): FeedbacksPairing? = loadValue(pendingAccount(serverUrl))?.let {
+        FeedbacksPairing(it.getString("pairingId"), it.getString("deviceSecret"),
+            it.getString("expiresAt"), it.getInt("intervalSeconds"), it.getString("approvalUrl"))
+    }
+
+    fun clearPending(serverUrl: String) = clearValue(pendingAccount(serverUrl))
+
+    private fun saveValue(account: String, value: JSONObject) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
-        val plaintext = JSONObject().put("token", credential.token)
-            .put("expiresAt", credential.expiresAt).toString().toByteArray(Charsets.UTF_8)
+        val plaintext = value.toString().toByteArray(Charsets.UTF_8)
         val packed = cipher.iv + cipher.doFinal(plaintext)
-        check(prefs.edit().putString(account(serverUrl), Base64.getEncoder().encodeToString(packed)).commit()) {
+        check(prefs.edit().putString(account, Base64.getEncoder().encodeToString(packed)).commit()) {
             "Could not persist Feedbacks credential"
         }
     }
 
-    fun load(serverUrl: String): FeedbacksCredential? {
-        val packed = prefs.getString(account(serverUrl), null) ?: return null
+    private fun loadValue(account: String): JSONObject? {
+        val packed = prefs.getString(account, null) ?: return null
         return try {
             val bytes = Base64.getDecoder().decode(packed)
             require(bytes.size > 12)
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, bytes.copyOfRange(0, 12)))
-            val value = JSONObject(String(cipher.doFinal(bytes.copyOfRange(12, bytes.size)), Charsets.UTF_8))
-            FeedbacksCredential(value.getString("token"), value.getString("expiresAt"))
+            JSONObject(String(cipher.doFinal(bytes.copyOfRange(12, bytes.size)), Charsets.UTF_8))
         } catch (_: Exception) {
-            clear(serverUrl)
+            clearValue(account)
             null
         }
     }
 
-    fun clear(serverUrl: String) {
-        check(prefs.edit().remove(account(serverUrl)).commit()) {
+    private fun clearValue(account: String) {
+        check(prefs.edit().remove(account).commit()) {
             "Could not clear Feedbacks credential"
         }
     }
 
     private fun account(serverUrl: String): String = URI(serverUrl).normalize().toString()
+    private fun pendingAccount(serverUrl: String): String = account(serverUrl) + ":pending"
 
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }

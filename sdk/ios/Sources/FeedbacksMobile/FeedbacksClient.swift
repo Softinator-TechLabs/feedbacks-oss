@@ -37,7 +37,7 @@ public struct FeedbacksUpload: Sendable {
     public let thread: FeedbacksThread
 }
 
-public struct FeedbacksPairing: Sendable {
+public struct FeedbacksPairing: Codable, Sendable {
     public let pairingId: String
     public let deviceSecret: String
     public let expiresAt: String

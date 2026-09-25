@@ -5,8 +5,8 @@ The [iOS Swift package](../sdk/ios/Package.swift) and [Android Kotlin library mo
 ## Prepare a project and connect a device
 
 1. Create a Feedbacks project whose approved origin matches a canonical HTTPS URL for each app screen, such as `https://app.example.com/screens/cart`. The URL is a review location, preferably a real universal/app link. It is not a request to load that page. A project set to **Any website** also accepts a canonical HTTPS screen URL, but project membership still applies.
-2. Give the reviewer write access to that project. The app calls `startPairing(name:)` / `startPairing(name)` and opens the returned approval URL in the **system browser**. An existing signed-in Feedbacks user approves the device there. Poll no faster than `intervalSeconds` until approved or expired.
-3. Save the one-time device token immediately in the iOS Keychain or Android Keystore. The helpers below store it per server origin. Never ship an owner or agent token in the app bundle, logs, analytics, crash reports or URL. `listProjects` shows the projects currently authorized for the paired user; select only one with `canWrite == true`.
+2. Give the reviewer write access to that project. The app calls `startPairing(name:)` / `startPairing(name)`, saves the returned pairing ID and device secret with `savePending`, then opens the approval URL in the **system browser**. An existing signed-in Feedbacks user approves the device there. On app resume, load the pending pairing and poll no faster than `intervalSeconds` until approved or expired. Clear it on expiry or cancellation.
+3. Save the one-time device token immediately in the iOS Keychain or Android Keystore, then clear the pending pairing. The helpers below store each encrypted value per server origin so process termination during browser approval can be recovered. Never ship an owner or agent token in the app bundle, logs, analytics, crash reports or URL. `listProjects` shows the projects currently authorized for the paired user; select only one with `canWrite == true`.
 
 The server issues the existing revocable 30-day paired-device token with a snapshot of current project IDs. Current account activity and project grants are checked on every request. New project grants need a fresh pairing. A reviewer can revoke the device in **Account**. Both SDKs require HTTPS outside explicit localhost development.
 
@@ -31,9 +31,11 @@ import FeedbacksMobile
 let server = URL(string: "https://feedback.example.com")!
 let client = try FeedbacksClient(serverURL: server)
 let pairing = try await client.startPairing(name: "My iPhone")
-// Open pairing.approvalURL in Safari; poll at pairing.intervalSeconds.
-// On .approved(let credential), save it before any further polling:
+try FeedbacksKeychain.savePending(pairing, for: server)
+// Open pairing.approvalURL in Safari. On app resume, loadPending(for: server)
+// and poll at its intervalSeconds. On .approved(let credential):
 try FeedbacksKeychain.save(credential, for: server)
+try FeedbacksKeychain.clearPending(for: server)
 
 // On an explicit capture action, on the main actor:
 let screenshot = FeedbacksScreenshot.capture(view: view)!
@@ -62,10 +64,14 @@ val executor = Executors.newSingleThreadExecutor()
 val client = FeedbacksClient("https://feedback.example.com")
 executor.execute {
     val pairing = client.startPairing("My Android phone")
-    // Open pairing.approvalUrl in the system browser; poll no faster than intervalSeconds.
+    val credentials = FeedbacksCredentialStore(applicationContext)
+    credentials.savePending("https://feedback.example.com", pairing)
+    // Open pairing.approvalUrl in the system browser. On app resume,
+    // loadPending and poll no faster than intervalSeconds.
     val state = client.pollPairing(pairing)
     if (state is FeedbacksPairingState.Approved) {
-        FeedbacksCredentialStore(applicationContext).save("https://feedback.example.com", state.credential)
+        credentials.save("https://feedback.example.com", state.credential)
+        credentials.clearPending("https://feedback.example.com")
     }
 }
 
@@ -90,4 +96,4 @@ The snippet omits the host's preview UI and draft persistence. Save the exact ke
 
 ## Verification and boundaries
 
-`tests/mobile-sdk-contract.test.ts` exercises pairing, approval, scoped project listing, origin denial, thread and screenshot idempotency, private attachment readback and revocation against a synthetic local server. The Swift package includes a stub-transport executable smoke check for its request envelope and an XCTest target for Xcode builds. Android source needs a host Android build and device test before a public SDK release; this repository does not include a simulator or Android toolchain. This integration does not change the server API or the Chrome Web Store extension.
+`tests/mobile-sdk-contract.test.ts` exercises pairing, approval, scoped project listing, origin denial, thread and screenshot idempotency, private attachment listing and revocation against a synthetic local server. The Swift package includes a stub-transport executable smoke check for its request envelope and an XCTest target for Xcode builds. Android source needs a host Android build and device test before a public SDK release; this repository does not include a simulator or Android toolchain. This integration does not change the server API or the Chrome Web Store extension.
