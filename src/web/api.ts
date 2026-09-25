@@ -35,6 +35,8 @@ const publicOperations = new Set([
   "guest.reply",
   "guestProject.inspect",
   "guestProject.submit",
+  "survey.inspect",
+  "survey.submit",
 ]);
 async function request<T>(operation: OperationName, input: unknown): Promise<T> {
   let response: Response;
