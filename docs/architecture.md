@@ -22,6 +22,7 @@ flowchart LR
 - `auth.ts`, `accounts.ts`, `access.ts`: account lifecycle, credential boundaries and project access.
 - `projects.ts`, `feedback.ts`, `views.ts`, `discussion-likes.ts`: review workflow and optimistic concurrency.
 - `assets.ts`, `documents.ts`: image normalization, bounded WebM intake, private storage, project document review and authorized readback.
+- `scheduled-qa.ts`: opt-in daily public-page checks, bounded private image comparison and reviewable run history.
 - `context.ts`, `export-limits.ts`: versioned instructions, stable bounded exports and change cursors.
 - `operations.ts`: transactional operation dispatch. `app.ts` and `mcp.ts` handle transport concerns.
 - `src/shared/contracts.ts`: discoverable operation input/output schemas and transport registry.

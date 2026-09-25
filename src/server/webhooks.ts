@@ -75,7 +75,7 @@ export function validateWebhookDestination(raw: string) {
   return url!.toString();
 }
 
-async function publicAddress(hostname: string) {
+export async function publicAddress(hostname: string) {
   const addresses = await lookup(hostname, { all: true, verbatim: true });
   if (!addresses.length || addresses.some(({ address }) => !isPublicAddress(address)))
     throw Error("Destination is not public");

@@ -766,9 +766,11 @@ export function ThreadDetail({
               />
             </div>
             {t.assets?.filter((asset) => asset.contentType !== "video/webm").length >
-              1 && (
+              0 && (
               <ScreenshotComparison
                 assets={t.assets.filter((asset) => asset.contentType !== "video/webm")}
+                threadId={t.id}
+                canMaintain={!!project?.permissions.canMaintain}
               />
             )}
             {t.assets?.length > 0 && (

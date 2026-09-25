@@ -151,5 +151,30 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       await tx.query("ALTER TABLE users ADD COLUMN removed_at timestamptz");
       await tx.query("INSERT INTO migrations(version) VALUES(14)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=15"))) {
+      await tx.query(`CREATE TABLE qa_configs(
+        project_id uuid PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        enabled boolean NOT NULL DEFAULT false,
+        urls jsonb NOT NULL DEFAULT '[]',
+        next_at timestamptz NOT NULL DEFAULT now(),
+        lease_until timestamptz,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(`CREATE TABLE qa_runs(
+        id uuid PRIMARY KEY,
+        project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        pages jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(
+        "CREATE INDEX qa_runs_project ON qa_runs(project_id,created_at DESC)",
+      );
+      await tx.query(`CREATE TABLE qa_baselines(
+        thread_id uuid PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
+        asset_id uuid NOT NULL REFERENCES assets(id),
+        set_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query("INSERT INTO migrations(version) VALUES(15)");
+    }
   });
 }
