@@ -61,6 +61,12 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `reviewViews.delete`       | No                   | Yes                            |
 | `reviewViews.list`         | Yes                  | Yes                            |
 | `reviewViews.save`         | No                   | Yes                            |
+| `survey.inspect`           | No                   | No                             |
+| `survey.submit`            | No                   | No                             |
+| `surveys.create`           | No                   | No                             |
+| `surveys.list`             | Yes                  | No                             |
+| `surveys.results`          | Yes                  | No                             |
+| `surveys.revoke`           | No                   | No                             |
 | `threads.archive`          | No                   | No                             |
 | `threads.create`           | No                   | No                             |
 | `threads.evidence`         | No                   | Yes                            |

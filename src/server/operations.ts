@@ -32,6 +32,7 @@ import { GithubApp } from "./github-app.js";
 import { githubOperation } from "./github-operations.js";
 import { manageGuestProjectLinks } from "./guest-project-links.js";
 import { manageWebhooks } from "./webhooks.js";
+import { manageSurveys } from "./surveys.js";
 import {
   documents,
   documentUploadPreflight,
@@ -109,6 +110,8 @@ export class Operations {
         if (name === "context.reviewers") return reviewerContext(db, a, i.projectId);
         if (name.startsWith("projects.")) return projects(db, a, name, i);
         if (name.startsWith("webhooks.")) return manageWebhooks(db, a, name, i);
+        if (name.startsWith("surveys."))
+          return manageSurveys(db, a, name, i, this.config);
         if (name.startsWith("documents.")) return documents(db, a, name, i);
         if (name.startsWith("guestLinks."))
           return manageGuestLinks(db, a, name, i, this.config);

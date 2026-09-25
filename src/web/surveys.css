@@ -1,0 +1,64 @@
+.survey-questions {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 16px;
+}
+.survey-questions h3 {
+  margin: 0;
+}
+.survey-question {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.survey-question legend {
+  font-weight: 700;
+  padding: 0 4px;
+}
+.survey-question label:has(input[type="checkbox"]) {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.survey-question input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+.survey-options {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.survey-list-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+.survey-list-item p {
+  margin: 4px 0 0;
+}
+.survey-results {
+  grid-column: 1 / -1;
+  padding: 16px;
+  background: var(--soft-surface);
+  border-radius: 8px;
+}
+.survey-results h3 {
+  margin-bottom: 4px;
+}
+.survey-results ul {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .survey-options,
+  .survey-list-item {
+    grid-template-columns: 1fr;
+  }
+}
