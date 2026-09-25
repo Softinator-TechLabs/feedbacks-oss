@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { date, type Context } from "./api.js";
+import { type Context } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import { ActionState, ExternalLink, useAction } from "./ui.js";
 
 export function ContextPanel({ context: c }: { context: Context }) {
@@ -43,7 +44,9 @@ export function ContextPanel({ context: c }: { context: Context }) {
         {c.capturedAt && (
           <>
             <dt>Captured</dt>
-            <dd>{date(c.capturedAt)}</dd>
+            <dd>
+              <HumanTime at={c.capturedAt} />
+            </dd>
           </>
         )}
       </dl>

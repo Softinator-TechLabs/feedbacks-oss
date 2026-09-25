@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { api, date, type Thread } from "./api.js";
+import { api, type Thread } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import { ErrorNotice, useAction } from "./ui.js";
 
 export function ThreadReview({
@@ -91,7 +92,7 @@ export function ThreadReview({
             {review.history.map((entry, index) => (
               <li key={`${entry.round}-${index}`}>
                 Round {entry.round}: {entry.decision.replaceAll("_", " ")} by{" "}
-                {entry.actor.name} · {date(entry.at)}
+                {entry.actor.name} · <HumanTime at={entry.at} />
                 {entry.note && <p className="message">{entry.note}</p>}
               </li>
             ))}
