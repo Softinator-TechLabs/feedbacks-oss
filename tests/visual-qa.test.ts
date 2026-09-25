@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import sharp from "sharp";
 // @ts-expect-error Operator script is native JavaScript.
 import {
@@ -52,6 +53,79 @@ test(
       (await compareScreenshots(capture.image, capture.image)).changedPercent,
       0,
     );
+  },
+);
+
+test(
+  "explicit script mode renders an unauthenticated SPA without releasing browser requests",
+  { skip: process.env.FEEDBACKS_VISUAL_BROWSER_SMOKE !== "1" },
+  async () => {
+    const fetched: string[] = [];
+    const capture = await captureScreenshot({
+      url: "https://example.com/app",
+      approvedOrigin: "https://example.com",
+      scripts: true,
+      launchOptions: { channel: "chrome" },
+      fetchResource: async (url: string) => {
+        fetched.push(url);
+        return url.endsWith("/app.js")
+          ? {
+              status: 200,
+              contentType: "text/javascript",
+              body: Buffer.from(
+                'document.body.style.margin="0";document.body.innerHTML="<main style=\\"background:#ff00ff;width:100vw;height:100vh\\">SPA rendered</main>";fetch("https://tracker.example/collect");fetch("/submit",{method:"POST"});if(typeof RTCPeerConnection!=="undefined"||typeof WebTransport!=="undefined")fetch("/peer-transport-exposed");',
+              ),
+            }
+          : {
+              status: 200,
+              contentType: "text/html",
+              body: Buffer.from(
+                '<!doctype html><div id="root"></div><script type="module" src="/app.js"></script>',
+              ),
+            };
+      },
+    });
+    assert.deepEqual(fetched, ["https://example.com/app", "https://example.com/app.js"]);
+    assert.ok(capture.blockedRequests >= 2);
+    const pixel = await sharp(capture.image)
+      .extract({ left: 100, top: 100, width: 1, height: 1 })
+      .raw()
+      .toBuffer();
+    assert.deepEqual([...pixel.subarray(0, 3)], [255, 0, 255]);
+  },
+);
+
+test(
+  "script mode renders the built public Feedbacks privacy route from local assets",
+  { skip: process.env.FEEDBACKS_VISUAL_BROWSER_SMOKE !== "1" },
+  async () => {
+    const fetched: string[] = [];
+    const fetchResource = async (url: string) => {
+      const path = new URL(url).pathname;
+      fetched.push(path);
+      const file = path === "/privacy" ? "/index.html" : path;
+      return {
+        status: 200,
+        contentType: file.endsWith(".js")
+          ? "text/javascript"
+          : file.endsWith(".css")
+            ? "text/css"
+            : "text/html",
+        body: await readFile(new URL(`../dist/web${file}`, import.meta.url)),
+      };
+    };
+    const input = {
+      url: "https://example.com/privacy",
+      approvedOrigin: "https://example.com",
+      launchOptions: { channel: "chrome" },
+      fetchResource,
+    };
+    const blank = await captureScreenshot(input);
+    const rendered = await captureScreenshot({ ...input, scripts: true });
+    assert.ok(
+      fetched.some((path: string) => path.startsWith("/assets/") && path.endsWith(".js")),
+    );
+    assert.ok((await compareScreenshots(blank.image, rendered.image)).changedPercent > 1);
   },
 );
 

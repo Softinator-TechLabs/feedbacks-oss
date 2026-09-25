@@ -90,11 +90,13 @@ async function fetchPinnedResource(url) {
 export async function captureScreenshot({
   url,
   approvedOrigin,
+  scripts = false,
   viewport = { width: 1280, height: 800 },
   fetchResource = fetchPinnedResource,
   launchOptions = {},
 }) {
   const target = validateVisualTarget(url, approvedOrigin);
+  if (typeof scripts !== "boolean") throw Error("Visual QA script mode must be boolean");
   if (
     !Number.isInteger(viewport.width) ||
     !Number.isInteger(viewport.height) ||
@@ -118,12 +120,25 @@ export async function captureScreenshot({
     const context = await browser.newContext({
       viewport,
       serviceWorkers: "block",
-      javaScriptEnabled: false,
+      javaScriptEnabled: scripts,
       acceptDownloads: false,
       permissions: [],
       reducedMotion: "reduce",
       colorScheme: "light",
     });
+    if (scripts)
+      await context.addInitScript(() => {
+        // Browser routing does not govern WebRTC's peer-to-peer transport.
+        for (const name of [
+          "RTCPeerConnection",
+          "webkitRTCPeerConnection",
+          "WebTransport",
+        ])
+          Object.defineProperty(globalThis, name, {
+            value: undefined,
+            configurable: false,
+          });
+      });
     await context.routeWebSocket("**/*", (socket) => socket.close());
     await context.route("**/*", async (route) => {
       const browserRequest = route.request();
@@ -164,6 +179,10 @@ export async function captureScreenshot({
       }
     });
     const page = await context.newPage();
+    context.on("page", (opened) => {
+      if (opened !== page) void opened.close();
+    });
+    page.on("dialog", (dialog) => void dialog.dismiss());
     const response = await page.goto(target, {
       waitUntil: "load",
       timeout: 15_000,
@@ -182,7 +201,12 @@ export async function captureScreenshot({
       timeout: 5000,
     });
     await context.close();
-    return { image, blockedRequests: blocked, resourceCount: requested };
+    return {
+      image,
+      blockedRequests: blocked,
+      resourceCount: requested,
+      scriptsEnabled: scripts,
+    };
   } finally {
     await browser.close();
   }
@@ -238,17 +262,20 @@ async function main() {
           "width",
           "height",
           "max-change",
+          "scripts",
         ].includes(name),
     )
   )
     throw Error("Unknown visual QA option");
   const init = options["init-baseline"] === "true";
+  const scripts = options.scripts === "true";
   if (
     !options.url ||
     !options.origin ||
     !options.baseline ||
     !options.output ||
     (options["init-baseline"] && !init) ||
+    (options.scripts && !scripts) ||
     options.baseline === options.output
   )
     throw Error(
@@ -264,6 +291,7 @@ async function main() {
   const capture = await captureScreenshot({
     url: options.url,
     approvedOrigin: options.origin,
+    scripts,
     viewport,
   });
   await writeFile(options.output, capture.image, { flag: "wx", mode: 0o600 });
@@ -283,6 +311,7 @@ async function main() {
       ...comparison,
       blockedRequests: capture.blockedRequests,
       resourceCount: capture.resourceCount,
+      scriptsEnabled: capture.scriptsEnabled,
     }) + "\n",
   );
   if (comparison.changedPercent > maxChange) process.exitCode = 1;
