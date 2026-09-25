@@ -151,5 +151,23 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       await tx.query("ALTER TABLE users ADD COLUMN removed_at timestamptz");
       await tx.query("INSERT INTO migrations(version) VALUES(14)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=15"))) {
+      await tx.query(`CREATE TABLE github_status_sync(
+        thread_id uuid PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
+        issue_url text NOT NULL,
+        feedbacks_state text,
+        github_state text,
+        status text NOT NULL DEFAULT 'ready' CHECK(status IN ('ready','conflict','uncertain','error')),
+        pending_target text,
+        error_code text,
+        next_at timestamptz NOT NULL DEFAULT now(),
+        lease_until timestamptz,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(
+        "CREATE INDEX github_status_sync_due ON github_status_sync(next_at) WHERE status IN ('ready','error')",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(15)");
+    }
   });
 }

@@ -149,6 +149,7 @@ export type Project = {
   captureMode?: "origins" | "any";
   repositoryUrl: string | null;
   githubConnected?: boolean;
+  githubStatusSync?: boolean;
   revision: number;
   permissions: {
     role: string;

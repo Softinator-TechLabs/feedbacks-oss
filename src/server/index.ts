@@ -7,6 +7,7 @@ import type { Pool } from "pg";
 import { purgeExpiredExports } from "./export-limits.js";
 import { purgeExpiredPairings } from "./auth.js";
 import { deliverWebhooks } from "./webhooks.js";
+import { pollGithubStatusSync } from "./github-status-worker.js";
 
 try {
   const config = configFromEnv();
@@ -27,6 +28,7 @@ try {
       purgeExpiredExports(db),
       purgeExpiredPairings(db),
       deliverWebhooks(db),
+      pollGithubStatusSync(db, config),
     ])
       .then((results) => {
         if (results.some((result) => result.status === "rejected"))
