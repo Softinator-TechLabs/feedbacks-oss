@@ -19,11 +19,10 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px 14px;
-  margin: 0 0 16px;
-  padding: 8px 12px 8px 16px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 .saved-views-label {
   margin-right: auto;
@@ -64,9 +63,9 @@
   align-items: center;
   list-style: none;
   padding: 6px 12px;
-  border: 1px solid var(--control-border);
+  border: 1px solid transparent;
   border-radius: 7px;
-  background: var(--surface);
+  background: transparent;
   font-size: 0.86rem;
   font-weight: 600;
 }
@@ -74,7 +73,6 @@
   display: none;
 }
 .saved-view-manage > summary:hover {
-  border-color: var(--control-hover);
   background: var(--soft-surface);
 }
 .saved-view-manage > summary:focus-visible {

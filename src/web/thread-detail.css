@@ -342,11 +342,21 @@
   height: 44px;
   min-height: 44px;
   padding: 0;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 9px;
-  background: var(--surface);
+  background: transparent;
   color: var(--accent);
   cursor: pointer;
+}
+.thread-header-actions
+  :is(
+    .thread-icon-button:not(.primary),
+    .status-options > summary,
+    .thread-review > summary,
+    .thread-action-menu > summary
+  ):hover,
+.thread-header-actions .thread-header-popover[open] > summary {
+  background: var(--soft-surface);
 }
 .thread-header-actions .status-controls .thread-icon-button {
   padding: 0;
@@ -461,9 +471,9 @@
   height: 44px;
   min-height: 44px;
   padding: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 9px;
-  background: var(--surface);
+  background: transparent;
   color: var(--accent);
 }
 .thread-tool-button {

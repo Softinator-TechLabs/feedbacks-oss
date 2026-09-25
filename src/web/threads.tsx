@@ -97,7 +97,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
         <div className="thread-list-quick-actions">
           {actor.owner && (
             <button
-              className={sort === "priority" ? "primary" : undefined}
+              className="thread-priority-button"
               aria-pressed={sort === "priority"}
               title="Sort active feedback by current reviewer importance and view support"
               onClick={() => apply({ ...filters, sort: "priority", showResolved: false })}
@@ -120,119 +120,126 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           }}
         />
       )}
-      <form
-        key={`${project.id}:${query}`}
-        className="filters thread-filters"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget),
-            p = new URLSearchParams();
-          for (const [key, value] of f) if (String(value)) p.set(key, String(value));
-          apply(readFilters(p.toString()));
-        }}
-      >
-        <Field label="Search feedback">
-          <input
-            name="search"
-            type="search"
-            placeholder="Search discussion"
-            defaultValue={search}
-            maxLength={200}
-          />
-        </Field>
-        <Field label="Status">
-          <select name="showResolved" defaultValue={String(showResolved)}>
-            <option value="false">Active</option>
-            <option value="true">All statuses</option>
-          </select>
-        </Field>
-        <Field label="Sort">
-          <select name="sort" defaultValue={sort}>
-            <option value="activity">Latest activity</option>
-            <option value="newest">Newest</option>
-            <option value="likes">Most liked views</option>
-            {actor.owner && <option value="priority">Top priority</option>}
-          </select>
-        </Field>
-        <button className="thread-filter-apply">Apply</button>
-        <button
-          className="thread-filter-clear"
-          type="button"
-          onClick={() => apply(readFilters(""))}
+      <section className="thread-filter-panel" aria-label="Feedback filters and views">
+        <SavedReviewViews
+          projectId={project.id}
+          filters={filters}
+          onApply={(next) => apply(next)}
+        />
+        <form
+          key={`${project.id}:${query}`}
+          className="filters thread-filters"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget),
+              p = new URLSearchParams();
+            for (const [key, value] of f) if (String(value)) p.set(key, String(value));
+            apply(readFilters(p.toString()));
+          }}
         >
-          Clear
-        </button>
-        <details
-          className="advanced-filters"
-          open={
-            !!(url || domain || hostname || deviceClass || category || tag) || undefined
-          }
-        >
-          <summary>
-            More filters
-            {url || domain || hostname || deviceClass || category || tag
-              ? " · active"
-              : ""}
-          </summary>
-          <div className="advanced-filter-fields">
-            <Field label="Page URL">
-              <input name="url" type="url" placeholder="All pages" defaultValue={url} />
-            </Field>
-            <Field label="Domain">
-              <select name="domain" defaultValue={domain ?? ""}>
-                <option value="">All domains</option>
-                {[
-                  ...new Set([
-                    ...(domain ? [domain] : []),
-                    ...(data?.websiteFilters.domains ?? []),
-                  ]),
-                ].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Hostname">
-              <select name="hostname" defaultValue={hostname ?? ""}>
-                <option value="">All hostnames</option>
-                {[
-                  ...new Set([
-                    ...(hostname ? [hostname] : []),
-                    ...(data?.websiteFilters.hostnames ?? []),
-                  ]),
-                ].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Device">
-              <select name="deviceClass" defaultValue={deviceClass ?? ""}>
-                <option value="">All devices</option>
-                {["mobile", "tablet", "desktop"].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Category">
-              <select name="category" defaultValue={category ?? ""}>
-                <option value="">All categories</option>
-                {categories.map((v) => (
-                  <option key={v} value={v}>
-                    {labels[v]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Tag">
-              <input name="tag" defaultValue={tag} maxLength={32} placeholder="Any tag" />
-            </Field>
-          </div>
-        </details>
-      </form>
-      <SavedReviewViews
-        projectId={project.id}
-        filters={filters}
-        onApply={(next) => apply(next)}
-      />
+          <Field label="Search feedback">
+            <input
+              name="search"
+              type="search"
+              placeholder="Search discussion"
+              defaultValue={search}
+              maxLength={200}
+            />
+          </Field>
+          <Field label="Status">
+            <select name="showResolved" defaultValue={String(showResolved)}>
+              <option value="false">Active</option>
+              <option value="true">All statuses</option>
+            </select>
+          </Field>
+          <Field label="Sort">
+            <select name="sort" defaultValue={sort}>
+              <option value="activity">Latest activity</option>
+              <option value="newest">Newest</option>
+              <option value="likes">Most liked views</option>
+              {actor.owner && <option value="priority">Top priority</option>}
+            </select>
+          </Field>
+          <button className="thread-filter-apply primary">Apply</button>
+          <button
+            className="thread-filter-clear"
+            type="button"
+            onClick={() => apply(readFilters(""))}
+          >
+            Clear
+          </button>
+          <details
+            className="advanced-filters"
+            open={
+              !!(url || domain || hostname || deviceClass || category || tag) || undefined
+            }
+          >
+            <summary>
+              More filters
+              {url || domain || hostname || deviceClass || category || tag
+                ? " · active"
+                : ""}
+            </summary>
+            <div className="advanced-filter-fields">
+              <Field label="Page URL">
+                <input name="url" type="url" placeholder="All pages" defaultValue={url} />
+              </Field>
+              <Field label="Domain">
+                <select name="domain" defaultValue={domain ?? ""}>
+                  <option value="">All domains</option>
+                  {[
+                    ...new Set([
+                      ...(domain ? [domain] : []),
+                      ...(data?.websiteFilters.domains ?? []),
+                    ]),
+                  ].map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Hostname">
+                <select name="hostname" defaultValue={hostname ?? ""}>
+                  <option value="">All hostnames</option>
+                  {[
+                    ...new Set([
+                      ...(hostname ? [hostname] : []),
+                      ...(data?.websiteFilters.hostnames ?? []),
+                    ]),
+                  ].map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Device">
+                <select name="deviceClass" defaultValue={deviceClass ?? ""}>
+                  <option value="">All devices</option>
+                  {["mobile", "tablet", "desktop"].map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Category">
+                <select name="category" defaultValue={category ?? ""}>
+                  <option value="">All categories</option>
+                  {categories.map((v) => (
+                    <option key={v} value={v}>
+                      {labels[v]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Tag">
+                <input
+                  name="tag"
+                  defaultValue={tag}
+                  maxLength={32}
+                  placeholder="Any tag"
+                />
+              </Field>
+            </div>
+          </details>
+        </form>
+      </section>
       <ErrorNotice error={error} />
       {error && <button onClick={() => setVersion((v) => v + 1)}>Retry loading</button>}
       {!data && !error ? (

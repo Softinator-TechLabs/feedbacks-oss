@@ -217,6 +217,13 @@ small {
 .account-nav button {
   font-size: 0.85rem;
 }
+.account-nav :is(.theme-switch, .sign-out-button) {
+  border-color: transparent;
+  background: transparent;
+}
+.account-nav :is(.theme-switch, .sign-out-button):hover {
+  background: var(--soft-surface);
+}
 .shell {
   max-width: 1440px;
   margin: auto;
@@ -248,6 +255,21 @@ small {
 }
 .thread-list-quick-actions button {
   white-space: nowrap;
+}
+.thread-priority-button {
+  border-color: transparent;
+  background: transparent;
+}
+.thread-priority-button[aria-pressed="true"] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+.thread-filter-panel {
+  margin: 8px 0 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--soft-surface);
 }
 .project-nav {
   display: flex;
@@ -1384,8 +1406,11 @@ legend {
     gap: 12px;
   }
   .thread-filters {
-    padding: 14px;
+    padding: 12px 0 0;
     gap: 10px;
+  }
+  .thread-filter-panel {
+    padding: 14px;
   }
   .filters .field,
   .filters .field:first-child {
