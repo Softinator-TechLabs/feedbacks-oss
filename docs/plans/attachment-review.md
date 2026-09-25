@@ -1,6 +1,6 @@
 # Plan: project document review
 
-Status: implemented on a feature branch. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: merged and deployed; production document interaction pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
 
 ## Outcome and scope
 
@@ -29,8 +29,8 @@ Migration 12 is additive and creates a document metadata table. Existing threads
 
 ## Completion receipt
 
-Source revisions: `d452aad` adds document review; `eb39563` pages markers so later comments remain reachable.
+Source revisions: `d452aad` adds document review; `eb39563` pages markers so later comments remain reachable; PR [#37](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/37) merged as `b129cfe`.
 Checks and results: Node 24 `npm run check` passed with 55 tests passed and one native PostgreSQL test skipped in that suite; `npm run test:postgres` passed separately. A 511-marker regression traversed all six batches without duplicates. A synthetic PDF uploaded, rendered and created a normal feedback thread at a page coordinate in a local sandbox. Desktop and mobile views were inspected at 1440 × 900 and 390 × 844.
 Artifacts: [desktop document review](../screenshots/document-review/desktop.png) and [mobile document review](../screenshots/document-review/mobile.png), both using a generated sample PDF and sandbox identity.
-Deployment and live verification: not performed for this branch.
+Deployment and live verification: the merged app was deployed; authenticated production upload and point-to-thread readback are still pending. On 2026-09-25 a new disposable local browser run uploaded a generated two-page PDF and image, created a page-two discussion, and returned to its marker after reload. The 390px image form also created a point-linked thread. This is synthetic acceptance, not production object-storage proof.
 Remaining limit: PDFs are capped at 25 pages and files at 8 MiB. Document annotations are page points; freehand markup is not included.

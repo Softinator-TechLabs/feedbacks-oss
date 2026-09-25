@@ -1,6 +1,6 @@
 # Plan: optional full-page website capture
 
-Status: source complete, Chrome smoke pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: merged; full-page Chrome acceptance and Store publication pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
 
 ## Outcome and scope
 
@@ -29,8 +29,8 @@ Existing drafts and visible captures continue to work. Failed full-page capture 
 
 ## Completion receipt
 
-Source revision: pending.
+Source revision: PR [#28](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/28), merged as `b57c44b`.
 Checks and results: `npm run check` passed on 2026-09-24; focused geometry and popup-action tests passed. Chrome browser smoke remains pending.
-Artifacts: source branch includes extension version 0.1.13; the local build produced a versioned ZIP.
-Deployment and live verification, if in scope: not deployed. Store publication is separate.
+Artifacts: the full-page path is included in extension source version 0.1.15 and its versioned ZIP.
+Deployment and live verification, if in scope: the public Chrome Web Store listing still served 0.1.11 on 2026-09-25. Store publication and a full-page capture on controlled short, long and changing pages remain separate gates.
 Remaining risks or follow-up: sticky or lazy content can repeat or shift. Verify in Chrome before a Store submission.

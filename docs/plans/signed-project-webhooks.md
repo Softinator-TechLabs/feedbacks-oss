@@ -1,6 +1,6 @@
 # Plan: signed project webhooks
 
-Status: implemented and locally verified. Owner: contributor. Date: 2026-09-24.
+Status: merged; live destination acceptance pending. Owner: contributor. Date: 2026-09-25.
 
 ## Outcome and scope
 
@@ -28,8 +28,8 @@ The payload includes only event identity, kind, project/thread IDs, revision and
 
 ## Completion receipt
 
-Source revision: recorded in the implementing commit.
+Source revision: PR #34 merged as `081738f`.
 Checks and results: Node 24 `npm run check` passed with 46 tests passing and one skipped PostgreSQL concurrency test. The focused webhook service and settings render tests passed with seven cases. Node 24 `npm run test:postgres` passed. In the disposable browser app, desktop and mobile settings rendered without overflow; invalid URL feedback kept its draft; create, rotate, reload, URL edit and disable showed the expected secret and status behavior. A new reply appeared in delivery history as pending. Keyboard Tab reached Save webhook with a visible focus outline.
 Artifacts: source, tests and docs.
-Deployment and live verification: outside scope.
+Deployment and live verification: source merged into the deployed app; an external destination delivery has not been verified.
 Remaining risks or follow-up: live destination delivery and worker concurrency remain unverified. See [signed webhook guide](../webhooks.md).

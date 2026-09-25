@@ -1,6 +1,6 @@
 # Plan: native mobile feedback clients
 
-Status: source implemented; Android host/device verification pending. Owner: Feedbacks contributors. Date: 2026-09-25.
+Status: source merged; native host/device verification pending. Owner: Feedbacks contributors. Date: 2026-09-25.
 
 ## Outcome and scope
 
@@ -29,8 +29,8 @@ No server schema, migration, operation or default scope changes. Existing device
 
 ## Completion receipt
 
-Source revision: local branch `codex/mobile-sdk`.
-Checks and results: Node 24 `npm test` 67 passed, 1 intentional native PostgreSQL skip; `npm run check:harness`, `npm run typecheck`, `npm run format:check`, `npm run build`, `npm run check:release` passed. Swift package built with the available macOS 26 SDK and its stub-transport smoke executable passed. SwiftPM's XCTest target did not run because this machine has Command Line Tools without XCTest; no Android SDK/Gradle/Kotlin compiler is installed.
+Source revision: PR #48 merged as `919ff35`.
+Checks and results: Node 24 `npm test` 67 passed, 1 intentional native PostgreSQL skip; `npm run check:harness`, `npm run typecheck`, `npm run format:check`, `npm run build`, `npm run check:release` passed. The Swift stub-transport smoke executable passed again on 2026-09-25. SwiftPM's XCTest target did not run because this machine has Command Line Tools without XCTest; no Android SDK/Gradle/Kotlin compiler is installed.
 Artifacts: iOS Swift package, Android library source, integration guide and synthetic HTTP contract test.
-Deployment and live verification: no production deployment or real-device test performed.
+Deployment and live verification: shared API source is deployed; no real-device client test performed.
 Remaining risks or follow-up: compile the Android module in a host build and test both platforms on real devices, including screenshot review and app-specific canonical screen URLs.

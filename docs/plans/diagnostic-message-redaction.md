@@ -1,6 +1,6 @@
 # Plan: local diagnostic message masking
 
-Status: source complete, Chrome smoke pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: merged; Chrome masking acceptance and Store publication pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
 
 ## Outcome and scope
 
@@ -28,8 +28,8 @@ Existing drafts remain readable. Masking is one-way within the local draft; capt
 
 ## Completion receipt
 
-Source revision: pending merge.
+Source revision: PR [#29](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/29), merged as `1a9c015`.
 Checks and results: `npm run check` passed on 2026-09-24; masking and frozen-draft tests passed. Browser smoke remains pending.
-Artifacts: extension 0.1.14 source and a local versioned ZIP.
-Deployment and live verification: not deployed; Chrome Web Store submission is separate.
+Artifacts: masking is included in extension source version 0.1.15 and its versioned ZIP.
+Deployment and live verification: the public Chrome Web Store listing still served 0.1.11 on 2026-09-25. A real Chrome mask, persistence and submission check is still required for 0.1.15.
 Remaining risks or follow-up: reviewers must still inspect entries and choose sharing explicitly. Masking does not make diagnostics trusted data.

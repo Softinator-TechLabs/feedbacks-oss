@@ -1,6 +1,6 @@
 # Review interface refinement
 
-Status: implementation in progress. Owner: Feedbacks maintainers. Date: 2026-09-25.
+Status: merged; live interface acceptance partially verified. Owner: Feedbacks maintainers. Date: 2026-09-25.
 
 ## Outcome and scope
 
@@ -15,8 +15,8 @@ The supplied mobile annotations show that saved-view management and filter chrom
 - [x] Map annotated surfaces to list, thread, saved-view, and member components.
 - [x] Implement the compact list and reviewer editor changes.
 - [x] Inspect synthetic desktop and 390px screens, including a saved-view save and apply.
-- [ ] Run final repository checks, visual detector, and code review.
-- [ ] Integrate through required CI and verify the deployed interface.
+- [x] Run final repository checks, visual detector, and code review.
+- [x] Integrate through required CI and verify the deployed interface.
 
 ## Compatibility and recovery
 
@@ -29,4 +29,4 @@ No data model or API changes. Saved views retain their existing filters and can 
 
 ## Completion receipt
 
-Pending integration and live verification.
+PR #42 merged as `ef8478d`. The desktop and narrow-screen list were inspected during implementation, and subsequent deployed list changes were verified on 2026-09-25. Keep production acceptance for optional integrations and the Chrome extension separate from this interface change.

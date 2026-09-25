@@ -23,3 +23,4 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 - [Opt-in project surveys and NPS](project-surveys.md)
 - [Review interface refinement](review-interface-refinement.md)
 - [Native mobile feedback clients](native-mobile-clients.md)
+- [Compact saved views and explicit top priority](priority-list-controls.md)

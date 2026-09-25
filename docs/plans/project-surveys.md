@@ -1,6 +1,6 @@
 # Plan: opt-in project surveys and NPS
 
-Status: local implementation and checks complete. Owner: Feedbacks contributor. Date: 2026-09-24.
+Status: merged; production challenge acceptance pending. Owner: Feedbacks contributor. Date: 2026-09-25.
 
 ## Outcome and scope
 
@@ -30,8 +30,8 @@ Migration 15 adds survey and response tables; it does not change existing thread
 
 ## Completion receipt
 
-Source revision: this branch's final commit.
+Source revision: PR #43 merged as `e0ff97f`.
 Checks and results: Node 24 `npm run check` passed (67 tests, one opt-in native PostgreSQL skip). `npm run test:postgres` passed against a disposable local PostgreSQL cluster, including concurrent application of migration 15. Focused survey HTTP/domain test passed after the final behavior change. Synthetic browser inspection verified creation, public form, desktop and 390px mobile layouts; the mobile project navigation remains within the viewport.
 Artifacts: project survey editor/results screen, public response page, additive migration, shared operation contracts and generated operation catalog.
-Deployment and live verification: out of scope.
+Deployment and live verification: source merged into the deployed app; real public Turnstile submission has not been verified.
 Remaining risks or follow-up: production Turnstile hostname/action checks and real customer traffic were not exercised. HTTP tests use a synthetic verifier; the browser pass did not solve a challenge. Multi-replica deployments need the shared ingress throttle described in self-hosting docs.

@@ -1,6 +1,6 @@
 # Plan: optional page QA scan
 
-Status: source complete, Chrome smoke pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: merged; controlled-page Chrome acceptance and Store publication pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
 
 ## Outcome and scope
 
@@ -28,8 +28,8 @@ Existing captures and drafts remain unchanged. Unsupported HEAD requests may lea
 
 ## Completion receipt
 
-Source revision: pending merge.
+Source revision: PR [#30](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/30), merged as `5d29c7c`.
 Checks and results: `npm run check` passed on 2026-09-24, including popup, report, package, sandbox and release checks. Chrome browser smoke is pending.
-Artifacts: extension 0.1.15 source and a local versioned ZIP.
-Deployment and live verification: not deployed; Chrome Web Store publication is separate.
+Artifacts: extension 0.1.15 source and a versioned ZIP.
+Deployment and live verification: the public Chrome Web Store listing still served 0.1.11 on 2026-09-25. A controlled-page Chrome scan and Store-installed check remain open.
 Remaining risks or follow-up: HEAD requests can be unsupported or misleading on a site. The reviewer must confirm and edit every finding before sending.

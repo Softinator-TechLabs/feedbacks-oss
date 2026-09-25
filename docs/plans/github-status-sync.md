@@ -1,6 +1,6 @@
 # Plan: optional GitHub Issue status sync
 
-Status: implemented locally; mobile and live GitHub verification pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: merged; mobile and live GitHub verification pending. Owner: Feedbacks maintainers. Date: 2026-09-25.
 
 ## Outcome and scope
 
@@ -25,8 +25,8 @@ Migration 17 adds a per-thread sync cursor; it does not rewrite existing threads
 
 ## Completion receipt
 
-Source revision: branch commit in the task receipt.
-Checks and results: focused GitHub tests, native PostgreSQL test, build, harness/docs check, typecheck, release check and isolated smoke pass. The escalated full suite had 67 pass, one unrelated HTTP/MCP timeout and one opt-in skip; the HTTP/MCP test passed in isolation. Desktop settings inspection and Impeccable detector passed. Mobile viewport inspection remains pending.
+Source revision: PR #44 merged as `1fc1ee1`.
+Checks and results: focused GitHub status sync tests passed again on 2026-09-25. The original branch ran native PostgreSQL, build, harness/docs, typecheck and release checks; its unrelated HTTP/MCP timeout passed in isolation. Desktop settings inspection passed. Mobile viewport inspection remains pending.
 Artifacts: generated operation catalog and local build outputs.
-Deployment and live verification: not in scope for this branch.
-Remaining risks or follow-up: mobile viewport, live GitHub installation credentials, exact-revision CI and deployment are pending.
+Deployment and live verification: source merged into the deployed app; a real connected GitHub repository has not been exercised.
+Remaining risks or follow-up: inspect mobile controls and verify live polling, conflict and external write recovery against an authorized test repository.

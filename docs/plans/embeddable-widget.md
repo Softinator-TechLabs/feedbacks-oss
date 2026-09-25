@@ -1,6 +1,6 @@
 # Plan: embeddable website feedback widget
 
-Status: local implementation and checks complete. Owner: Feedbacks contributor. Date: 2026-09-24.
+Status: merged; real host acceptance pending. Owner: Feedbacks contributor. Date: 2026-09-25.
 
 ## Outcome and scope
 
@@ -31,12 +31,12 @@ Migration 13 adds a default-false widget mode to project guest links, leaving ex
 
 ## Completion receipt
 
-Source revision: this branch's final commit.
+Source revision: PR #38 merged as `af83ea3`; static asset fix PR #39 merged as `585962d`.
 
 Checks and results: Node 24 `npm run check` and `npm run test:postgres` passed. Synthetic host desktop/mobile browser submissions passed with a Cloudflare test key. Keyboard focus and Escape behavior were reviewed. The host widget deliberately does not capture another tab; screenshot review remains in the extension.
 
 Artifacts: host script, stylesheet, project settings snippet, [synthetic desktop](../screenshots/widget/desktop.png) and [mobile](../screenshots/widget/mobile.png) previews. The previews mock the challenge and do not prove a production Turnstile response.
 
-Deployment and live verification: out of scope.
+Deployment and live verification: source and static assets are deployed; synthetic host submissions do not prove a production host and Turnstile configuration.
 
 Remaining risks or follow-up: test real host CSP and production Turnstile hostname configuration before release.
