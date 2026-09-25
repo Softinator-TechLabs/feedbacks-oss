@@ -43,6 +43,8 @@ test("Issue draft is scoped and excludes private metadata and assets", async () 
     assert.equal(draft.requiresReview, true);
     assert.equal(draft.trust, "untrusted_discussion");
     assert.match(draft.body, /＠all &lt;script&gt;/);
+    assert.match(draft.warnings.join(" "), /issue tracker/i);
+    assert.doesNotMatch(draft.warnings.join(" "), /GitHub tool/i);
     for (const privateField of ["reviewerContext", "importance", "diagnostics", "assets"])
       assert.equal(Object.hasOwn(draft, privateField), false);
     const other = await ops.executeOperation(owner, "projects.create", {

@@ -4,13 +4,13 @@ Exact schemas and callable operation names are in the [API reference](api.md). T
 
 ## Independent status dimensions
 
-| Dimension      | States / data                                                                      | Changes pin visibility?                     |
-| -------------- | ---------------------------------------------------------------------------------- | ------------------------------------------- |
-| Response       | `unanswered`, `responded`, `needs-follow-up`; last request/response actor and time | No                                          |
-| Work           | `open`, `in_progress`, `ready_for_review`, `resolved`, `declined`                  | Resolved and declined hide by default       |
-| Review         | Open round, human approval, or changes requested with attributed history           | No                                          |
-| External issue | No link, or one/more supplied GitHub Issue URLs with provenance                    | No                                          |
-| Fix evidence   | Attributed commit/PR/variant/incorporated-in URL and note                          | Only an authorized resolution hides the pin |
+| Dimension      | States / data                                                                                                   | Changes pin visibility?                     |
+| -------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Response       | `unanswered`, `responded`, `needs-follow-up`; last request/response actor and time                              | No                                          |
+| Work           | `open`, `in_progress`, `ready_for_review`, `resolved`, `declined`                                               | Resolved and declined hide by default       |
+| Review         | Open round, human approval, or changes requested with attributed history                                        | No                                          |
+| External issue | No link, or reported GitHub, Jira Cloud and Linear Issue URLs with provenance; GitHub App links may be verified | No                                          |
+| Fix evidence   | Attributed commit/PR/variant/incorporated-in URL and note                                                       | Only an authorized resolution hides the pin |
 
 An Issue being closed is not proof that a deployed UI is fixed. A reply is not a fix. A failed write never changes either status or pin visibility optimistically without a recoverable pending/error state.
 

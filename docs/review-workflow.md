@@ -80,7 +80,11 @@ _Mobile viewer showing the same generated PDF at a narrow viewport._
 
 In the extension popup, open **Console & network**, start collection, reproduce the problem and take a screenshot. Collection covers the top-level page from that moment until capture, stop, navigation or five minutes. Review the entries in the editor and explicitly enable sharing. See [extension privacy and limits](extension.md#optional-console-and-network-context).
 
-Quick requests and discussion stay here. An agent with separately granted GitHub access can create an Issue after the team agrees and link its actual URL to the thread through MCP. A connected GitHub App also supports an explicit Issue handoff and optional project-level status sync. Incoming feedback never creates Issues automatically.
+## Issue handoff
+
+Quick requests and discussion stay here. After the team agrees, a reviewer can prepare a bounded Issue draft, create an Issue in GitHub, Jira Cloud or Linear, and register its actual URL on the thread. Supported reported links use `https://github.com/ORG/REPO/issues/123`, `https://SITE.atlassian.net/browse/KEY-123` or `https://linear.app/WORKSPACE/issue/KEY-123` (with an optional title slug). Query strings, fragments and lookalike hosts are rejected. These patterns follow [Atlassian's Jira Cloud issue URL](https://support.atlassian.com/jira/kb/known-problems-with-viewing-requests-on-the-customer-portal/) and [Linear's issue URL example](https://linear.app/developers/graphql), checked on 2026-09-25.
+
+Manually registered links are labeled by provider and remain **reported**, not remotely verified. The draft excludes screenshots, diagnostics, private member notes and reviewer policy; inspect its text before copying it to another service. An agent needs separate tracker access and an explicitly granted `threads.issueDraft` scope to use this path. A connected GitHub App also supports explicit, verified GitHub Issue creation and optional project-level status sync. Incoming feedback never creates Issues automatically.
 
 ## Continue agreed design work in Figma
 

@@ -242,6 +242,7 @@ export type Thread = {
   };
   externalIssues: Array<{
     url: string;
+    provider?: "github" | "jira" | "linear";
     verification: string;
     state?: "open" | "closed";
     linkedBy?: Actor;

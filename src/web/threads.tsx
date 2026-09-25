@@ -699,8 +699,8 @@ export function ThreadDetail({
             <button
               type="button"
               className="thread-icon-button"
-              aria-label="View or link GitHub issues"
-              data-tooltip="View or link GitHub issues"
+              aria-label="View or link issues"
+              data-tooltip="View or link issues"
               onClick={() => openDetail("thread-issues")}
             >
               <Icon name="issue" />
@@ -1161,6 +1161,13 @@ export function ThreadDetail({
                   {t.externalIssues?.length ? (
                     t.externalIssues.map((issue) => (
                       <p key={issue.url}>
+                        <strong>
+                          {issue.provider === "jira"
+                            ? "Jira"
+                            : issue.provider === "linear"
+                              ? "Linear"
+                              : "GitHub"}
+                        </strong>{" "}
                         <ExternalLink href={issue.url}>{issue.url}</ExternalLink>
                         <small>
                           {issue.verification === "github_verified"
@@ -1183,12 +1190,12 @@ export function ThreadDetail({
                           void mutate("threads.linkIssue", { url: f.get("url") });
                         }}
                       >
-                        <Field label="GitHub Issue URL">
+                        <Field label="GitHub, Jira Cloud or Linear Issue URL">
                           <input
                             name="url"
                             type="url"
                             required
-                            placeholder="https://github.com/org/repo/issues/123"
+                            placeholder="https://linear.app/team/issue/ENG-123"
                           />
                         </Field>
                         <button disabled={a.busy}>Register Issue</button>
