@@ -51,10 +51,26 @@
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
   border-color: transparent;
 }
+:root[data-theme="dark"] .thread-row-priority-button {
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+}
+:root[data-theme="dark"] .thread-row-priority-button:hover,
+:root[data-theme="dark"] .thread-row-priority-button[aria-pressed="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border-color: transparent;
+}
 :root[data-theme="dark"] :is(button:enabled:hover, .button:hover) {
   background: #293847;
   color: #e3eff9;
   border-color: #7893aa;
+}
+:root[data-theme="dark"] button.thread-row-priority-button:enabled:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border-color: transparent;
 }
 :root[data-theme="dark"] :is(button:enabled:active, .button:active) {
   background: #354b5f;

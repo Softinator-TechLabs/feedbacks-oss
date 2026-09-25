@@ -430,7 +430,7 @@ small {
   min-height: 44px;
   padding: 5px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 50%;
   color: var(--muted);
   background: transparent;
   font: inherit;
