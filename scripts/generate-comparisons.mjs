@@ -62,13 +62,13 @@ function shell({ title, description, canonical, content }) {
 
 const ours = {
   capture:
-    "Chrome extension: screenshot any supported web page, draw with the pencil and discuss in a project thread.",
+    "Chrome extension: screenshot any supported web page, draw with the pencil, or record a short tab video after an explicit start and preview. Discuss the result in a project thread.",
   hosting:
     "Apache-2.0 backend, web app, extension, MCP and CLI. Run them with your PostgreSQL and private S3-compatible storage.",
   agents:
     "Scoped MCP access to the thread, replies, screenshot and owner-approved reviewer guidance. Expertise weights are advisory.",
   handoff:
-    "Clarify quick requests in the thread. A coding agent with separate GitHub access can create an agreed Issue and link its URL through Feedbacks MCP.",
+    "Clarify requests in the thread. An optional GitHub App can create an Issue from a reviewed draft and sync verified open/closed status when a project opts in; a separately authorized agent handoff also remains available.",
 };
 
 const statusLabels = {
@@ -152,7 +152,7 @@ function detail(entry, index) {
       </section>
       <aside class="compare-limits">
         <h2>What Feedbacks does today.</h2>
-        <p>Feedbacks is an early 0.x product. An agent can create an Issue using its separate GitHub access and link it here through MCP after the team agrees. Feedbacks does not automatically create or synchronize Issues. It offers opt-in project surveys and NPS, but does not include video replay or an AI model subscription. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
+        <p>Feedbacks is an early 0.x product. Its optional GitHub App requires separate server configuration and repository installation; it creates an Issue only from a reviewed draft and syncs verified open/closed status only after project opt-in. Incoming feedback never creates Issues automatically. The extension can record a short tab video after an explicit start and preview, but Feedbacks does not provide session replay or an AI model subscription. It also offers opt-in project surveys and NPS. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
         <p>Reviewer expertise belongs in owner-approved guidance. A private member note or profile field is not automatically shared with an ordinary agent. Guidance helps interpretation but never grants permissions or guarantees how a model will decide.</p>
       </aside>
       <div class="compare-actions"><a class="button primary" href="${store}" ${externalLink}>Get the Chrome extension</a><a href="${source}/blob/HEAD/docs/self-hosting.md" ${externalLink}>Self-host Feedbacks</a></div>

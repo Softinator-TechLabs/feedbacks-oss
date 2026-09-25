@@ -197,24 +197,24 @@
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-no">
+                  <td class="matrix-yes">
                     <a
-                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md"
+                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Record feedback or replay. ✕. Read source."
+                      aria-label="Feedbacks: Record feedback or replay. Confirmed. Read source."
                       title="Read source for Feedbacks: Record feedback or replay"
-                      >✕</a
+                      >✓</a
                     >
                   </td>
-                  <td class="matrix-agent">
+                  <td class="matrix-yes">
                     <a
-                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md"
+                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/api.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: GitHub Issues handoff. Agent. Read source."
+                      aria-label="Feedbacks: GitHub Issues handoff. Confirmed. Read source."
                       title="Read source for Feedbacks: GitHub Issues handoff"
-                      >Agent</a
+                      >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -1744,7 +1744,8 @@
             <h3>Capture</h3>
             <p>
               <strong>Feedbacks</strong>Chrome extension: screenshot any supported web
-              page, draw with the pencil and discuss in a project thread.
+              page, draw with the pencil, or record a short tab video after an explicit
+              start and preview. Discuss the result in a project thread.
             </p>
             <p>
               <strong>MarkUp.io</strong>Reviewers can pin comments and annotate websites,
@@ -1777,9 +1778,10 @@
           <div class="compare-row">
             <h3>Next step</h3>
             <p>
-              <strong>Feedbacks</strong>Clarify quick requests in the thread. A coding
-              agent with separate GitHub access can create an agreed Issue and link its
-              URL through Feedbacks MCP.
+              <strong>Feedbacks</strong>Clarify requests in the thread. An optional GitHub
+              App can create an Issue from a reviewed draft and sync verified open/closed
+              status when a project opts in; a separately authorized agent handoff also
+              remains available.
             </p>
             <p>
               <strong>MarkUp.io</strong>Comments and review rounds stay with each MarkUp.
@@ -1789,12 +1791,14 @@
         <aside class="compare-limits">
           <h2>What Feedbacks does today.</h2>
           <p>
-            Feedbacks is an early 0.x product. An agent can create an Issue using its
-            separate GitHub access and link it here through MCP after the team agrees.
-            Feedbacks does not automatically create or synchronize Issues. It offers
-            opt-in project surveys and NPS, but does not include video replay or an AI
-            model subscription. Self-hosting has no Feedbacks license fee; you still pay
-            for your server, database, storage and operations.
+            Feedbacks is an early 0.x product. Its optional GitHub App requires separate
+            server configuration and repository installation; it creates an Issue only
+            from a reviewed draft and syncs verified open/closed status only after project
+            opt-in. Incoming feedback never creates Issues automatically. The extension
+            can record a short tab video after an explicit start and preview, but
+            Feedbacks does not provide session replay or an AI model subscription. It also
+            offers opt-in project surveys and NPS. Self-hosting has no Feedbacks license
+            fee; you still pay for your server, database, storage and operations.
           </p>
           <p>
             Reviewer expertise belongs in owner-approved guidance. A private member note

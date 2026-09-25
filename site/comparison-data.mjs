@@ -17,9 +17,9 @@ export const comparisons = [
       "Exports diagnostics as Markdown, JSON or an AI prompt. The cited product pages focus on reporting and export.",
     theirHandoff: "Community includes direct GitHub issue creation.",
     bestFor:
-      "Choose BugPin if an embedded widget and direct GitHub issue creation suit your review flow.",
+      "Choose BugPin if offline reports and local image storage suit your embedded review flow.",
     feedbacksBest:
-      "Choose Feedbacks if you want a browser extension without adding a widget to each site, MCP discussions and private S3-compatible storage in the Apache-2.0 release.",
+      "Choose Feedbacks if you want extension capture, optional text-only site feedback, MCP discussions and private S3-compatible storage in the Apache-2.0 release.",
     sources: [
       ["BugPin editions", "https://bugpin.io/editions/"],
       ["BugPin source and feature guide", "https://github.com/aranticlabs/bugpin"],
