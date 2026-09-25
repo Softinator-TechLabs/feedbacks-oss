@@ -39,66 +39,68 @@ export function ThreadReview({
   }
 
   return (
-    <details className="thread-review" aria-label="Review round">
-      <summary>
-        Review {review.round} · {label}
+    <details className="thread-review" aria-label="Review decision">
+      <summary aria-label={`Review ${review.round}: ${label}`}>
+        Review <span className="thread-review-state">{label}</span>
       </summary>
-      <p className="muted">Approve the review separately from the work status.</p>
-      {canWrite && (
-        <>
-          <label htmlFor="review-note">Decision note (optional)</label>
-          <textarea
-            id="review-note"
-            value={note}
-            maxLength={4000}
-            rows={2}
-            onChange={(event) => setNote(event.target.value)}
-          />
-          <div className="thread-review-actions">
-            {review.state === "open" ? (
-              <>
+      <div className="thread-review-panel">
+        <p className="muted">Round {review.round} · Sign off on the work here.</p>
+        {canWrite && (
+          <>
+            <label htmlFor="review-note">Decision note (optional)</label>
+            <textarea
+              id="review-note"
+              value={note}
+              maxLength={4000}
+              rows={2}
+              onChange={(event) => setNote(event.target.value)}
+            />
+            <div className="thread-review-actions">
+              {review.state === "open" ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={action.busy}
+                    onClick={() => void decide("approved")}
+                  >
+                    Approve this round
+                  </button>
+                  <button
+                    type="button"
+                    disabled={action.busy}
+                    onClick={() => void decide("changes_requested")}
+                  >
+                    Request changes
+                  </button>
+                </>
+              ) : (
                 <button
                   type="button"
                   disabled={action.busy}
-                  onClick={() => void decide("approved")}
+                  onClick={() => void decide("reopen")}
                 >
-                  Approve this round
+                  Open another round
                 </button>
-                <button
-                  type="button"
-                  disabled={action.busy}
-                  onClick={() => void decide("changes_requested")}
-                >
-                  Request changes
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                disabled={action.busy}
-                onClick={() => void decide("reopen")}
-              >
-                Open another round
-              </button>
-            )}
-          </div>
-        </>
-      )}
-      <ErrorNotice error={action.error} />
-      {!!review.history.length && (
-        <details>
-          <summary>Decision history ({review.history.length})</summary>
-          <ol>
-            {review.history.map((entry, index) => (
-              <li key={`${entry.round}-${index}`}>
-                Round {entry.round}: {entry.decision.replaceAll("_", " ")} by{" "}
-                {entry.actor.name} · <HumanTime at={entry.at} />
-                {entry.note && <p className="message">{entry.note}</p>}
-              </li>
-            ))}
-          </ol>
-        </details>
-      )}
+              )}
+            </div>
+          </>
+        )}
+        <ErrorNotice error={action.error} />
+        {!!review.history.length && (
+          <details>
+            <summary>Decision history ({review.history.length})</summary>
+            <ol>
+              {review.history.map((entry, index) => (
+                <li key={`${entry.round}-${index}`}>
+                  Round {entry.round}: {entry.decision.replaceAll("_", " ")} by{" "}
+                  {entry.actor.name} · <HumanTime at={entry.at} />
+                  {entry.note && <p className="message">{entry.note}</p>}
+                </li>
+              ))}
+            </ol>
+          </details>
+        )}
+      </div>
     </details>
   );
 }
