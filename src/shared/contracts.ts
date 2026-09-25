@@ -261,6 +261,17 @@ export const inputSchemas = {
   "webhooks.rotate": z.object({ projectId: id }),
   "webhooks.disable": z.object({ projectId: id }),
   "webhooks.deliveries": z.object({ projectId: id }),
+  "qa.get": z.object({ projectId: id }),
+  "qa.configure": z.object({
+    projectId: id,
+    enabled: z.boolean(),
+    urls: z.array(z.string().url().max(500)).max(3),
+  }),
+  "qa.runNow": z.object({ projectId: id }),
+  "qa.runs": z.object({ projectId: id }),
+  "qa.baselineGet": z.object({ threadId: id }),
+  "qa.baselineSet": z.object({ threadId: id, assetId: id }),
+  "qa.compare": z.object({ threadId: id, assetId: id }),
   "members.list": z.object({
     projectId: id.optional(),
     includeRemoved: z.boolean().optional(),
@@ -784,6 +795,44 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
       }),
     ),
   }),
+  "qa.get": z.object({
+    enabled: z.boolean(),
+    urls: z.array(z.string()),
+    nextAt: z.string().nullable(),
+  }),
+  "qa.configure": z.object({
+    enabled: z.boolean(),
+    urls: z.array(z.string()),
+    nextAt: z.string().nullable(),
+  }),
+  "qa.runNow": z.object({ queued: z.boolean() }),
+  "qa.runs": z.object({
+    items: z.array(
+      z.object({
+        id,
+        createdAt: z.string(),
+        pages: z.array(
+          z.object({
+            url: z.string(),
+            status: z.number().nullable(),
+            missingAlt: z.number().int(),
+            brokenLinks: z.array(z.object({ path: z.string(), status: z.number() })),
+            checkedLinks: z.number().int(),
+            error: z.string().nullable(),
+          }),
+        ),
+      }),
+    ),
+  }),
+  "qa.baselineGet": z.object({ assetId: id.nullable(), setAt: z.string().nullable() }),
+  "qa.baselineSet": z.object({ assetId: id, setAt: z.string() }),
+  "qa.compare": z.object({
+    baselineAssetId: id,
+    candidateAssetId: id,
+    width: z.number().int(),
+    height: z.number().int(),
+    changedPercent: z.number(),
+  }),
   "members.list": z.object({
     items: z.array(
       z.object({
@@ -1049,6 +1098,10 @@ export const scopedAgentOperations = [
 
 export const agentTokenScopes = [
   ...scopedAgentOperations,
+  "qa.get",
+  "qa.runs",
+  "qa.baselineGet",
+  "qa.compare",
   "documents.list",
   "documents.get",
   "documents.threads",
@@ -1107,6 +1160,10 @@ const readOperations = new Set<string>([
   "github.statusSyncState",
   "webhooks.get",
   "webhooks.deliveries",
+  "qa.get",
+  "qa.runs",
+  "qa.baselineGet",
+  "qa.compare",
   "members.list",
   "members.notes.get",
   "members.guidance.get",

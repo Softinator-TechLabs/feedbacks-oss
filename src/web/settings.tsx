@@ -3,7 +3,8 @@ import { agentTokenScopes } from "../shared/contracts.js";
 import { AgentSetupPrompt, type AgentIssuance } from "./agent-setup.js";
 import { CreateMember, MemberAdministration } from "./account-admin.js";
 import { OwnerLinks } from "./owner-links.js";
-import { api, date, labels, type Actor, type Project } from "./api.js";
+import { api, labels, type Actor, type Project } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import {
   ActionState,
   ConfirmButton,
@@ -589,7 +590,7 @@ export function Instructions({ project }: { project: Project }) {
                       {n === 0 ? " · Current" : ""}
                     </h2>
                     <span>
-                      {item.actor.name} · {date(item.createdAt)}
+                      {item.actor.name} · <HumanTime at={item.createdAt} />
                     </span>
                   </div>
                   <p className="message">{item.body}</p>
@@ -754,9 +755,15 @@ export function Account({
                     ? ` · ends in ${token.secretSuffix}`
                     : " · key ending unavailable for older keys"}
                   {" · "}
-                  {token.revokedAt
-                    ? `Revoked ${date(token.revokedAt)}`
-                    : `Expires ${date(token.expiresAt)}`}
+                  {token.revokedAt ? (
+                    <>
+                      Revoked <HumanTime at={token.revokedAt} />
+                    </>
+                  ) : (
+                    <>
+                      Expires <HumanTime at={token.expiresAt} />
+                    </>
+                  )}
                 </p>
                 <details>
                   <summary>Access details</summary>

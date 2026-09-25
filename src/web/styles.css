@@ -307,6 +307,12 @@ small {
   margin-top: 28px;
   margin-bottom: 28px;
 }
+.qa-history {
+  margin-top: 24px;
+}
+.qa-history details {
+  margin-top: 12px;
+}
 .thread-list {
   border: 1px solid var(--border);
   border-radius: 12px;

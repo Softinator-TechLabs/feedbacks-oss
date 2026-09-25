@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { api, date } from "./api.js";
+import { api } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import {
   ActionState,
   ConfirmButton,
@@ -78,11 +79,15 @@ export function GuestLinks({ threadId }: { threadId: string }) {
           <div>
             <strong>{link.label}</strong>
             <p className="muted">
-              {link.revokedAt
-                ? "Revoked"
-                : new Date(link.expiresAt).getTime() <= Date.now()
-                  ? "Expired"
-                  : `Expires ${date(link.expiresAt)}`}
+              {link.revokedAt ? (
+                "Revoked"
+              ) : new Date(link.expiresAt).getTime() <= Date.now() ? (
+                "Expired"
+              ) : (
+                <>
+                  Expires <HumanTime at={link.expiresAt} />
+                </>
+              )}
               {" · "}
               {link.replies} {link.replies === 1 ? "reply" : "replies"}
             </p>
@@ -147,7 +152,8 @@ export function GuestReview({ token }: { token: string }) {
         {details.data && (
           <>
             <p className="muted">
-              {details.data.projectName} · Link expires {date(details.data.expiresAt)}
+              {details.data.projectName} · Link expires{" "}
+              <HumanTime at={details.data.expiresAt} />
             </p>
             <section className="section">
               <h2>Feedback</h2>

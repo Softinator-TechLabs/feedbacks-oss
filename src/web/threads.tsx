@@ -28,6 +28,7 @@ import { Icon } from "./icons.js";
 import { GuestLinks } from "./guest-review.js";
 import { GithubIssue } from "./github-issue.js";
 import { api, uid, date, labels, type Project, type Thread } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import {
   ActionState,
   Empty,
@@ -259,7 +260,7 @@ export function ThreadList({ project }: { project: Project }) {
                       {t.replies?.length ?? 0}{" "}
                       {t.replies?.length === 1 ? "reply" : "replies"}
                     </span>
-                    <time dateTime={t.updatedAt}>{date(t.updatedAt)}</time>
+                    <HumanTime at={t.updatedAt} />
                   </div>
                 </a>
                 <div className="thread-row-actions">
@@ -608,7 +609,7 @@ export function ThreadDetail({
             </a>
           </h1>
           <p>
-            {t.author?.name} · {date(t.createdAt)}
+            {t.author?.name} · <HumanTime at={t.createdAt} />
           </p>
         </div>
         <div className="thread-tools" role="group" aria-label="Feedback actions">
@@ -766,9 +767,11 @@ export function ThreadDetail({
               />
             </div>
             {t.assets?.filter((asset) => asset.contentType !== "video/webm").length >
-              1 && (
+              0 && (
               <ScreenshotComparison
                 assets={t.assets.filter((asset) => asset.contentType !== "video/webm")}
+                threadId={t.id}
+                canMaintain={!!project?.permissions.canMaintain}
               />
             )}
             {t.assets?.length > 0 && (
@@ -923,7 +926,7 @@ export function ThreadDetail({
                               ? "Requests follow-up"
                               : "Response"}
                           </span>
-                          <time>{date(r.createdAt)}</time>
+                          <HumanTime at={r.createdAt} />
                         </div>
                         <p className="message">{r.body}</p>
                         <DiscussionLike
@@ -1183,7 +1186,7 @@ export function ThreadDetail({
                   <summary>Activity history</summary>
                   <p>
                     Last activity: {t.lastActor?.name} ({t.lastActor?.kind}) ·{" "}
-                    {date(t.updatedAt)}
+                    <HumanTime at={t.updatedAt} />
                   </p>
                   {t.work.history?.map((h, n) => (
                     <div key={n}>
@@ -1191,7 +1194,12 @@ export function ThreadDetail({
                       <p className="message">{h.note}</p>
                       <small>
                         {h.actor?.name}
-                        {h.at ? ` · ${date(h.at)}` : ""}
+                        {h.at && (
+                          <>
+                            {" "}
+                            · <HumanTime at={h.at} />
+                          </>
+                        )}
                       </small>
                     </div>
                   ))}

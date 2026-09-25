@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { api, date, type Actor } from "./api.js";
+import { api, type Actor } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import {
   useAction,
   useLoad,
@@ -105,7 +106,7 @@ export function OwnerLinks() {
         data?.items.map((item) => (
           <div className="token-row" key={item.id}>
             <p>
-              Expires {date(item.expiresAt)} ·{" "}
+              Expires <HumanTime at={item.expiresAt} /> ·{" "}
               {item.revokedAt ? "Revoked" : item.usedAt ? "Used" : "Unused"}
             </p>
             {!item.revokedAt && (

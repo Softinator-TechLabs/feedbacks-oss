@@ -1,5 +1,19 @@
 // Shared discovery guidance for MCP and the JSON CLI; authorization stays in domain services.
 export const operationDescriptions: Record<string, string> = {
+  "qa.get":
+    "Read a project's opt-in daily public-page QA configuration. Requires project maintainer access and an explicit qa.get scope for bearer keys.",
+  "qa.configure":
+    "Enable or disable daily QA for up to three explicit public HTTPS URLs on exact approved project origins. Maintainer access required. This never creates feedback.",
+  "qa.runNow":
+    "Queue one opted-in project QA scan for the next worker tick. Maintainer access required; results appear in qa.runs.",
+  "qa.runs":
+    "Read the latest 20 bounded public-page QA reports for human review. Errors and uncertain HEAD outcomes do not prove a page is healthy.",
+  "qa.baselineGet":
+    "Read the selected baseline image ID for a feedback thread. Requires current project access.",
+  "qa.baselineSet":
+    "Choose a validated private image from the same thread as its visual baseline. Project maintainer access required.",
+  "qa.compare":
+    "Compare an existing private image with that thread's selected baseline at equal dimensions. Returns the percentage of pixels differing by more than 20 channel values; it does not establish identical page position or a verified regression.",
   "surveys.create":
     "Create an opt-in project survey and one-time expiring public link. Human project maintainer only; questions are immutable. NPS uses a 0–10 answer. Requires Turnstile configuration.",
   "surveys.list":

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { api, date, uid, type Project, type ReviewDocument, type Thread } from "./api.js";
+import { api, uid, type Project, type ReviewDocument, type Thread } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import { pointFromClient, percentPoint } from "./document-coordinates.js";
 import {
   ActionState,
@@ -115,7 +116,7 @@ export function Documents({ project }: { project: Project }) {
                 {item.kind === "pdf"
                   ? `${item.pageCount} ${item.pageCount === 1 ? "page" : "pages"}`
                   : "Image"}{" "}
-                · {bytesLabel(item.bytes)} · {date(item.createdAt)}
+                · {bytesLabel(item.bytes)} · <HumanTime at={item.createdAt} />
               </span>
             </li>
           ))}

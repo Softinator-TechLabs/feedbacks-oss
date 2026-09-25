@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import type { z } from "zod";
 import type { surveyQuestionsSchema } from "../shared/contracts.js";
-import { api, date, type Project } from "./api.js";
+import { api, type Project } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import {
   ActionState,
   ConfirmButton,
@@ -268,13 +269,17 @@ export function Surveys({ project }: { project: Project }) {
                 <div>
                   <strong>{survey.title}</strong>
                   <p className="muted">
-                    {survey.revokedAt
-                      ? "Revoked"
-                      : new Date(survey.expiresAt).getTime() <= Date.now()
-                        ? "Expired"
-                        : survey.responses >= survey.maxResponses
-                          ? "Full"
-                          : `Expires ${date(survey.expiresAt)}`}{" "}
+                    {survey.revokedAt ? (
+                      "Revoked"
+                    ) : new Date(survey.expiresAt).getTime() <= Date.now() ? (
+                      "Expired"
+                    ) : survey.responses >= survey.maxResponses ? (
+                      "Full"
+                    ) : (
+                      <>
+                        Expires <HumanTime at={survey.expiresAt} />
+                      </>
+                    )}{" "}
                     · {survey.responses} of {survey.maxResponses} responses
                   </p>
                 </div>
@@ -404,7 +409,8 @@ export function SurveyPublic({ token }: { token: string }) {
           <>
             <h1>{details.data.title}</h1>
             <p className="muted">
-              {details.data.projectName} · Expires {date(details.data.expiresAt)}
+              {details.data.projectName} · Expires{" "}
+              <HumanTime at={details.data.expiresAt} />
             </p>
             {details.data.description && <p>{details.data.description}</p>}
             {posted ? (
