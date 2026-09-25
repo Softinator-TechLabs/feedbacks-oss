@@ -397,3 +397,146 @@ test("policy-authorized priority order is shared by the inbox and MCP navigation
     await pg.close();
   }
 });
+
+test("maintainer priority is revisioned, audited, visible, and outranks weighted score", async () => {
+  const pg = new PGlite();
+  const db = new Database(pg as any);
+  try {
+    await migrate(db);
+    const ops = new Operations(db, {} as any, {} as any);
+    const owner = await ops.auth.bootstrap(
+      "owner@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const project = await ops.executeOperation(owner, "projects.create", {
+      name: "Priority marks",
+      origins: ["https://example.test"],
+    });
+    const invitation = await ops.executeOperation(owner, "members.invite", {
+      email: "reviewer@example.test",
+      projectId: project.id,
+      role: "reviewer",
+    });
+    await ops.auth.acceptInvite(
+      invitation.token,
+      "Reviewer",
+      "Correct-Horse-Battery-123",
+    );
+    const reviewer = (
+      await ops.auth.login("reviewer@example.test", "Correct-Horse-Battery-123")
+    ).actor;
+    const maintainerInvite = await ops.executeOperation(owner, "members.invite", {
+      email: "maintainer@example.test",
+      projectId: project.id,
+      role: "maintainer",
+    });
+    await ops.auth.acceptInvite(
+      maintainerInvite.token,
+      "Maintainer",
+      "Correct-Horse-Battery-123",
+    );
+    const maintainer = (
+      await ops.auth.login("maintainer@example.test", "Correct-Horse-Battery-123")
+    ).actor;
+    await db.query("UPDATE users SET policy=$1 WHERE id=$2", [
+      JSON.stringify({ general: 1, visualDesign: 9 }),
+      owner.userId,
+    ]);
+    const high = await ops.executeOperation(owner, "threads.create", {
+      projectId: project.id,
+      body: "High score",
+      category: "visualDesign",
+      context: {
+        url: "https://example.test/high",
+        viewport: { width: 1200, height: 800 },
+      },
+      idempotencyKey: "manual-priority-high",
+    });
+    const low = await ops.executeOperation(owner, "threads.create", {
+      projectId: project.id,
+      body: "Manual pick",
+      category: "general",
+      context: {
+        url: "https://example.test/low",
+        viewport: { width: 1200, height: 800 },
+      },
+      idempotencyKey: "manual-priority-low",
+    });
+    await assert.rejects(
+      ops.executeOperation(reviewer, "threads.priority", {
+        threadId: low.id,
+        revision: low.revision,
+        topPriority: true,
+      }),
+      { code: "FORBIDDEN" },
+    );
+    const marked = await ops.executeOperation(maintainer, "threads.priority", {
+      threadId: low.id,
+      revision: low.revision,
+      topPriority: true,
+    });
+    assert.equal(marked.topPriority, true);
+    assert.equal(marked.revision, low.revision + 1);
+    assert.equal(
+      (await ops.executeOperation(reviewer, "threads.get", { threadId: low.id }))
+        .topPriority,
+      true,
+    );
+    outputSchemas["threads.priority"].parse(marked);
+    await assert.rejects(
+      ops.executeOperation(owner, "threads.priority", {
+        threadId: low.id,
+        revision: low.revision,
+        topPriority: false,
+      }),
+      { code: "CONFLICT" },
+    );
+    const list = await ops.executeOperation(owner, "threads.list", {
+      projectId: project.id,
+      sort: "priority",
+    });
+    assert.deepEqual(
+      list.items.map((item: any) => [item.id, item.topPriority]),
+      [
+        [low.id, true],
+        [high.id, false],
+      ],
+    );
+    const neighbor = await ops.executeOperation(owner, "threads.neighbors", {
+      threadId: low.id,
+      sort: "priority",
+    });
+    assert.equal(neighbor.next, high.id);
+    const audit = await db.query(
+      "SELECT kind,data FROM events WHERE entity_id=$1 AND kind='threads.priority'",
+      [low.id],
+    );
+    assert.equal(audit.length, 1);
+    assert.equal(audit[0].data.topPriority, true);
+    const unmarked = await ops.executeOperation(owner, "threads.priority", {
+      threadId: low.id,
+      revision: marked.revision,
+      topPriority: false,
+    });
+    assert.equal(unmarked.topPriority, false);
+    const auditAfterUnmark = await db.query(
+      "SELECT data FROM events WHERE entity_id=$1 AND kind='threads.priority' ORDER BY cursor",
+      [low.id],
+    );
+    assert.deepEqual(
+      auditAfterUnmark.map((item) => item.data.topPriority),
+      [true, false],
+    );
+    const restored = await ops.executeOperation(owner, "threads.list", {
+      projectId: project.id,
+      sort: "priority",
+    });
+    assert.deepEqual(
+      restored.items.map((item: any) => item.id),
+      [high.id, low.id],
+    );
+  } finally {
+    await pg.close();
+  }
+});

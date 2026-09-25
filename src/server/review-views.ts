@@ -53,7 +53,7 @@ export function threadQuery(projectId: string, i: ReviewFilters) {
       : i.sort === "likes"
         ? "(SELECT count(*) FROM view_likes v WHERE v.project_id=threads.project_id AND v.fingerprint=threads.data->'context'->>'fingerprint') DESC,updated_at DESC"
         : i.sort === "priority"
-          ? `CASE WHEN threads.data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,${priorityScore} DESC,updated_at DESC`
+          ? `CASE WHEN threads.data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,COALESCE((threads.data->>'topPriority')::boolean,false) DESC,${priorityScore} DESC,updated_at DESC`
           : "updated_at DESC") + ",id";
   return { filter, args, order };
 }

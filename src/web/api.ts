@@ -211,6 +211,7 @@ export type Thread = {
   id: string;
   projectId: string;
   priorityScore?: number;
+  topPriority: boolean;
   body: string;
   likes: { uniqueLikes: number; liked: boolean };
   category: string;

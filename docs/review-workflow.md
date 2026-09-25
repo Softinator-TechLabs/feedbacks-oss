@@ -8,6 +8,8 @@ Filter a project's feedback, then open a thread. Search, status and sort stay ab
 
 Neighbors stay fixed while you edit the current thread, so posting a reply or resolving it does not change the button under your hand. The next thread loads the current queue order. This is a live review list, not a frozen batch; another person's edits can change later positions. A direct link without filters uses the default unresolved activity list. Threads outside those filters show that state rather than guessing a neighbor.
 
+Project maintainers can mark or unmark **Top priority** directly on a feedback row. The selected star is visible on the row, and the mark is included in thread reads for other project members and authorized agents. In the owner's **Top priority** sort, active marked threads come before active unmarked threads; weighted reviewer importance and view support still order threads within each group. Resolved and declined threads remain after active threads when all statuses are shown. Each click uses the thread's current revision, so a concurrent change produces a conflict to reload rather than overwriting it. The mark does not change work status.
+
 ## Update work status
 
 The status selector at the top of a thread saves as soon as you choose a state. **Resolve** closes the thread in one click for members with resolution permission; **Reopen** opens it again. Notes are optional. Use **Add a note or duplicate link** when there is extra context to record.
