@@ -56,7 +56,9 @@ Use **Saved views** to apply a named filter. Open **Save or remove a view** for 
 
 ## Compare attachments
 
-A thread with two or more screenshots offers **Compare screenshots**. Pick any two attachments and use side-by-side comparison. Equal-sized images also support an overlay slider. Different dimensions stay side by side without stretching. These are attachment comparisons, not automated image diffs; equal dimensions do not establish that two captures show the same page position.
+For an existing thread with two private images, a maintainer can choose a baseline and any project member can calculate a pixel-difference percentage against another equal-sized image. Review the side-by-side or overlay image before deciding whether a change matters. See [scheduled page QA and visual baselines](scheduled-qa.md) for the limits of static scans and visual comparisons.
+
+A thread with an image offers **Visual baseline and comparison**. With two or more screenshots, pick any two attachments for side-by-side comparison. Equal-sized images also support an overlay slider. Different dimensions stay side by side without stretching. Equal dimensions do not establish that two captures show the same page position.
 
 An explicitly recorded tab video appears in the thread's attachments with playback controls. Video is excluded from screenshot comparison. Teammates need current access to the project to load it.
 

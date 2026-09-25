@@ -11,6 +11,7 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 - [Optional full-page website capture](optional-full-page-capture.md)
 - [Local diagnostic message masking](diagnostic-message-redaction.md)
 - [Optional page QA scan](optional-page-qa.md)
+- [Scheduled project QA and visual baselines](scheduled-project-qa.md)
 - [Scoped guest review links](guest-review-links.md)
 - [Optional GitHub Issues connection](github-issues-app.md)
 - [Signed project webhooks](signed-project-webhooks.md)

@@ -8,6 +8,7 @@ This is the entry point for contributors and coding agents. Guides describe curr
 | Use a team workspace              | [Start here](start-here.md), [extension](extension.md), [project routing](project-routing.md)                                              |
 | Install and operate               | [Self-hosting](self-hosting.md), [operations and recovery](operations.md), [releases](releasing.md)                                        |
 | Deliver thread activity           | [Signed webhooks](webhooks.md), [API](api.md)                                                                                              |
+| Check public project pages        | [Scheduled QA and visual baselines](scheduled-qa.md), [extension](extension.md)                                                            |
 | Change code                       | [Agent entry point](../AGENTS.md), [contributing](../CONTRIBUTING.md), [development](development.md), [architecture](architecture.md)      |
 | Run agent work                    | [Workflow](agent-workflow.md), [client adapters and skills](agent-tools.md), [verification](verification.md)                               |
 | Connect an assistant to Feedbacks | [Assistant integration](agents.md), [key setup](agent-setup.md), [MCP contract](mcp-contract.md), [API](api.md)                            |
