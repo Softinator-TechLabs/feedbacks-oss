@@ -53,9 +53,10 @@ export async function pollGithubStatusSync(
         [row.id, link.url],
       );
       const sync = await tx.one(
-        `UPDATE github_status_sync SET lease_until=now()+interval '2 minutes'
+        `UPDATE github_status_sync SET lease_until=clock_timestamp()+interval '2 minutes'
         WHERE thread_id=$1 AND issue_url=$2 AND status IN ('ready','error')
-          AND next_at<=now() AND (lease_until IS NULL OR lease_until<now()) RETURNING *`,
+          AND next_at<=now() AND (lease_until IS NULL OR lease_until<now())
+        RETURNING *,lease_until::text AS claim_token`,
         [row.id, link.url],
       );
       return sync ? { row, repo, link, sync } : null;
@@ -66,7 +67,8 @@ export async function pollGithubStatusSync(
       const issue = await client.readIssue(repo, link.number);
       if (issue.url !== link.url) throw new Error("GITHUB_ISSUE_INVALID");
       const fresh = await db.one(
-        `SELECT t.*,p.data AS project,s.feedbacks_state,s.github_state,s.status AS sync_status,s.issue_url AS sync_issue_url
+        `SELECT t.*,p.data AS project,s.feedbacks_state,s.github_state,s.status AS sync_status,s.issue_url AS sync_issue_url,
+          s.lease_until::text AS claim_token
         FROM threads t JOIN projects p ON p.id=t.project_id
         JOIN github_status_sync s ON s.thread_id=t.id WHERE t.id=$1`,
         [claimed.row.id],
@@ -75,6 +77,7 @@ export async function pollGithubStatusSync(
         !fresh?.project.githubConnected ||
         !fresh.project.githubStatusSync ||
         fresh.sync_issue_url !== link.url ||
+        fresh.claim_token !== claimed.sync.claim_token ||
         (fresh.sync_status !== "ready" && fresh.sync_status !== "error") ||
         githubRepo(fresh.project.repositoryUrl).fullName.toLowerCase() !==
           repo.fullName.toLowerCase()
@@ -89,32 +92,56 @@ export async function pollGithubStatusSync(
         !local ||
         (baseline && localBaseline && issue.state !== baseline && local !== localBaseline)
       ) {
-        await setOutcome(db, row.id, "conflict", null, null);
+        await setOutcome(db, row.id, claimed.sync.claim_token, "conflict", null, null);
         continue;
       }
       if (!baseline) {
         if (local !== issue.state) {
-          await setOutcome(db, row.id, "conflict", null, null);
+          await setOutcome(db, row.id, claimed.sync.claim_token, "conflict", null, null);
           continue;
         }
-        await applyOutcome(db, row.id, issue.state, null, issue.url, row.revision);
+        await applyOutcome(
+          db,
+          row.id,
+          issue.state,
+          null,
+          issue.url,
+          row.revision,
+          claimed.sync.claim_token,
+        );
         continue;
       }
       if (issue.state !== baseline && local === localBaseline) {
-        await applyOutcome(db, row.id, issue.state, "github", issue.url, row.revision);
+        await applyOutcome(
+          db,
+          row.id,
+          issue.state,
+          "github",
+          issue.url,
+          row.revision,
+          claimed.sync.claim_token,
+        );
         continue;
       }
       if (local !== localBaseline && issue.state === baseline) {
         const reserved = await db.transaction(async (tx) => {
           const result = await tx.one(
             `UPDATE github_status_sync SET status='uncertain',pending_target=$2,
-          error_code=NULL,lease_until=NULL,updated_at=now()
+          error_code=NULL,lease_until=clock_timestamp()+interval '2 minutes',updated_at=now()
           WHERE thread_id=$1 AND issue_url=$5 AND status IN ('ready','error') AND
+          lease_until=$6::timestamptz AND
           EXISTS(SELECT 1 FROM threads t JOIN projects p ON p.id=t.project_id
             WHERE t.id=$1 AND t.revision=$3 AND p.data->>'githubConnected'='true'
               AND p.data->>'githubStatusSync'='true' AND p.data->>'repositoryUrl'=$4)
-          RETURNING thread_id`,
-            [row.id, local, row.revision, row.project.repositoryUrl, issue.url],
+          RETURNING lease_until::text AS claim_token`,
+            [
+              row.id,
+              local,
+              row.revision,
+              row.project.repositoryUrl,
+              issue.url,
+              claimed.sync.claim_token,
+            ],
           );
           if (result)
             await event(
@@ -135,23 +162,39 @@ export async function pollGithubStatusSync(
           await client.setIssueState(repo, link.number, local);
         } catch {
           // A PATCH can succeed despite a timeout. A maintainer reconciles it.
+          await db.query(
+            `UPDATE github_status_sync SET lease_until=NULL,updated_at=now()
+             WHERE thread_id=$1 AND status='uncertain' AND lease_until=$2::timestamptz`,
+            [row.id, reserved.claim_token],
+          );
           continue;
         }
-        await applyOutcome(db, row.id, local, "feedbacks", issue.url, row.revision);
+        await applyOutcome(
+          db,
+          row.id,
+          local,
+          "feedbacks",
+          issue.url,
+          row.revision,
+          reserved.claim_token,
+        );
         continue;
       }
-      await applyOutcome(db, row.id, issue.state, null, issue.url, row.revision);
+      await applyOutcome(
+        db,
+        row.id,
+        issue.state,
+        null,
+        issue.url,
+        row.revision,
+        claimed.sync.claim_token,
+      );
     } catch (error) {
       const code =
         typeof error === "object" && error && "code" in error
           ? String(error.code)
           : "GITHUB_UNAVAILABLE";
-      const current = await db.one(
-        "SELECT status FROM github_status_sync WHERE thread_id=$1",
-        [claimed.row.id],
-      );
-      if (current?.status !== "uncertain")
-        await setOutcome(db, claimed.row.id, "error", null, code);
+      await setOutcome(db, claimed.row.id, claimed.sync.claim_token, "error", null, code);
     }
   }
 }
@@ -159,32 +202,41 @@ export async function pollGithubStatusSync(
 async function setOutcome(
   db: Database,
   threadId: string,
+  claimToken: string,
   status: "conflict" | "uncertain" | "error",
   pendingTarget: GithubState | null,
   errorCode: string | null,
 ) {
   await db.transaction((tx) =>
-    updateOutcome(tx, threadId, status, pendingTarget, errorCode),
+    updateOutcome(tx, threadId, claimToken, status, pendingTarget, errorCode),
   );
 }
 
 async function updateOutcome(
   tx: Database,
   threadId: string,
+  claimToken: string,
   status: "conflict" | "uncertain" | "error",
   pendingTarget: GithubState | null,
   errorCode: string | null,
 ) {
   const prior = await tx.one(
-    `SELECT s.*,t.project_id FROM github_status_sync s
-      JOIN threads t ON t.id=s.thread_id WHERE s.thread_id=$1 FOR UPDATE OF s`,
-    [threadId],
+    `SELECT s.*,t.project_id,s.lease_until=$2::timestamptz AS owns_claim
+      FROM github_status_sync s JOIN threads t ON t.id=s.thread_id
+      WHERE s.thread_id=$1 FOR UPDATE OF s`,
+    [threadId, claimToken],
   );
-  if (!prior) return;
+  if (
+    !prior ||
+    !prior.owns_claim ||
+    (prior.status !== "ready" && prior.status !== "error")
+  )
+    return;
   await tx.query(
     `UPDATE github_status_sync SET status=$2,pending_target=$3,error_code=$4,
-      next_at=now()+interval '5 minutes',lease_until=NULL,updated_at=now() WHERE thread_id=$1`,
-    [threadId, status, pendingTarget, errorCode],
+      next_at=now()+interval '5 minutes',lease_until=NULL,updated_at=now()
+      WHERE thread_id=$1 AND lease_until=$5::timestamptz AND status IN ('ready','error')`,
+    [threadId, status, pendingTarget, errorCode, claimToken],
   );
   if (
     prior.status !== status ||
@@ -212,6 +264,7 @@ async function applyOutcome(
   source: "github" | "feedbacks" | null,
   issueUrl: string,
   expectedRevision: number,
+  claimToken: string,
 ) {
   await db.transaction(async (tx) => {
     const row = await tx.one(
@@ -219,20 +272,23 @@ async function applyOutcome(
       [threadId],
     );
     const sync = await tx.one(
-      "SELECT * FROM github_status_sync WHERE thread_id=$1 FOR UPDATE",
-      [threadId],
+      `SELECT *,lease_until=$2::timestamptz AS owns_claim
+       FROM github_status_sync WHERE thread_id=$1 FOR UPDATE`,
+      [threadId, claimToken],
     );
     if (
       !row?.project.githubConnected ||
       !row.project.githubStatusSync ||
       !sync ||
-      sync.issue_url !== issueUrl
+      sync.issue_url !== issueUrl ||
+      !sync.owns_claim
     )
       return;
     if (row.revision !== expectedRevision) {
       await updateOutcome(
         tx,
         threadId,
+        claimToken,
         source === "feedbacks" ? "uncertain" : "conflict",
         githubState,
         null,
@@ -255,11 +311,11 @@ async function applyOutcome(
       return;
     const current = desiredGithubState(row.data.work.state);
     if (!current) {
-      await updateOutcome(tx, threadId, "conflict", null, null);
+      await updateOutcome(tx, threadId, claimToken, "conflict", null, null);
       return;
     }
     if (source === "feedbacks" && current !== githubState) {
-      await updateOutcome(tx, threadId, "conflict", null, null);
+      await updateOutcome(tx, threadId, claimToken, "conflict", null, null);
       return;
     }
     const next =
@@ -301,8 +357,8 @@ async function applyOutcome(
     await tx.query(
       `UPDATE github_status_sync SET feedbacks_state=$2,github_state=$3,status='ready',
       pending_target=NULL,error_code=NULL,next_at=now()+interval '5 minutes',lease_until=NULL,updated_at=now()
-      WHERE thread_id=$1`,
-      [threadId, next, githubState],
+      WHERE thread_id=$1 AND lease_until=$4::timestamptz`,
+      [threadId, next, githubState, claimToken],
     );
   });
 }

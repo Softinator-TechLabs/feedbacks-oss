@@ -20,6 +20,10 @@ test("opt-in status sync reads a verified closed Issue and resolves its thread o
   let posts = 0;
   let createdBody = "";
   let patches = 0;
+  let failPatchBeforeApply = false;
+  let holdPatch = false;
+  let releasePatch: (() => void) | undefined;
+  let patchStarted: (() => void) | undefined;
   let state: "open" | "closed" = "closed";
   const url = "https://github.com/acme/site/issues/13";
   const fetcher: typeof fetch = async (input, init) => {
@@ -34,6 +38,15 @@ test("opt-in status sync reads a verified closed Issue and resolves its thread o
     }
     if (path.endsWith("/issues/13") && init?.method === "PATCH") {
       patches++;
+      if (failPatchBeforeApply)
+        throw new Error("GitHub response lost before state confirmation");
+      if (holdPatch) {
+        holdPatch = false;
+        patchStarted?.();
+        await new Promise<void>((resolve) => {
+          releasePatch = resolve;
+        });
+      }
       state = JSON.parse(String(init.body)).state;
       return Response.json({ number: 13, state });
     }
@@ -124,14 +137,53 @@ test("opt-in status sync reads a verified closed Issue and resolves its thread o
       revision: again.revision,
       state: "open",
     });
-    const pushed = await ops.executeOperation(owner, "github.statusSync", {
+    holdPatch = true;
+    const started = new Promise<void>((resolve) => {
+      patchStarted = resolve;
+    });
+    const push = ops.executeOperation(owner, "github.statusSync", {
       threadId: thread.id,
       revision: reopened.revision,
       issueUrl: url,
       source: "feedbacks",
     });
+    await started;
+    try {
+      await assert.rejects(
+        ops.executeOperation(owner, "github.statusSync", {
+          threadId: thread.id,
+          revision: reopened.revision,
+          issueUrl: url,
+          source: "feedbacks",
+        }),
+        { code: "GITHUB_UNCERTAIN" },
+      );
+      assert.equal(patches, 1);
+    } finally {
+      releasePatch?.();
+    }
+    const pushed = await push;
     assert.equal(pushed.externalIssues[0].state, "open");
     assert.equal(patches, 1);
+    const closedLocally = await ops.executeOperation(owner, "threads.status", {
+      threadId: thread.id,
+      revision: pushed.revision,
+      state: "resolved",
+    });
+    failPatchBeforeApply = true;
+    const retryInput = {
+      threadId: thread.id,
+      revision: closedLocally.revision,
+      issueUrl: url,
+      source: "feedbacks",
+    };
+    await assert.rejects(ops.executeOperation(owner, "github.statusSync", retryInput), {
+      code: "GITHUB_UNAVAILABLE",
+    });
+    await assert.rejects(ops.executeOperation(owner, "github.statusSync", retryInput), {
+      code: "GITHUB_UNCERTAIN",
+    });
+    assert.equal(patches, 2, "a lost PATCH response must not cause a second PATCH");
     const disabled = await ops.executeOperation(owner, "github.disconnect", {
       projectId: connected.id,
       revision: enabled.revision,
@@ -140,7 +192,7 @@ test("opt-in status sync reads a verified closed Issue and resolves its thread o
     await assert.rejects(
       ops.executeOperation(owner, "github.statusSync", {
         threadId: thread.id,
-        revision: pushed.revision,
+        revision: closedLocally.revision,
         issueUrl: url,
         source: "github",
       }),
@@ -164,6 +216,9 @@ test("worker pulls a one-sided GitHub close, pushes a one-sided Feedbacks reopen
   let githubState: "open" | "closed" = "open";
   let patchCount = 0;
   let failPatch = false;
+  let holdPatch = false;
+  let releasePatch: (() => void) | undefined;
+  let patchStarted: (() => void) | undefined;
   const fetcher: typeof fetch = async (input, init) => {
     const path = new URL(String(input)).pathname;
     if (path.endsWith("/installation")) return Response.json({ id: 91 });
@@ -171,6 +226,13 @@ test("worker pulls a one-sided GitHub close, pushes a one-sided Feedbacks reopen
       return Response.json({ token: "installation-token" });
     if (path.endsWith("/issues/21") && init?.method === "PATCH") {
       patchCount++;
+      if (holdPatch) {
+        holdPatch = false;
+        patchStarted?.();
+        await new Promise<void>((resolve) => {
+          releasePatch = resolve;
+        });
+      }
       if (failPatch) throw new Error("GitHub response lost after PATCH");
       githubState = JSON.parse(String(init.body)).state;
       return Response.json({ state: githubState });
@@ -235,7 +297,26 @@ test("worker pulls a one-sided GitHub close, pushes a one-sided Feedbacks reopen
       "UPDATE github_status_sync SET next_at=now()-interval '1 minute' WHERE thread_id=$1",
       [thread.id],
     );
-    await pollGithubStatusSync(db, config, github);
+    holdPatch = true;
+    const started = new Promise<void>((resolve) => {
+      patchStarted = resolve;
+    });
+    const poll = pollGithubStatusSync(db, config, github);
+    await started;
+    try {
+      await assert.rejects(
+        ops.executeOperation(owner, "github.statusSync", {
+          threadId: thread.id,
+          revision: reopened.revision,
+          issueUrl: url,
+          source: "github",
+        }),
+        { code: "GITHUB_PENDING" },
+      );
+    } finally {
+      releasePatch?.();
+    }
+    await poll;
     assert.equal(githubState, "open");
     assert.equal(patchCount, 1);
     const synced = await ops.executeOperation(owner, "threads.get", {
@@ -275,7 +356,7 @@ test("worker pulls a one-sided GitHub close, pushes a one-sided Feedbacks reopen
       ).status,
       "ready",
     );
-    await ops.executeOperation(owner, "threads.status", {
+    const workerReopened = await ops.executeOperation(owner, "threads.status", {
       threadId: thread.id,
       revision: resolved.revision,
       state: "open",
@@ -294,6 +375,16 @@ test("worker pulls a one-sided GitHub close, pushes a one-sided Feedbacks reopen
       ).status,
       "uncertain",
     );
+    await assert.rejects(
+      ops.executeOperation(owner, "github.statusSync", {
+        threadId: thread.id,
+        revision: workerReopened.revision,
+        issueUrl: url,
+        source: "feedbacks",
+      }),
+      { code: "GITHUB_UNCERTAIN" },
+    );
+    assert.equal(patchCount, 2);
     await pollGithubStatusSync(db, config, github);
     assert.equal(patchCount, 2);
     const disconnected = await ops.executeOperation(owner, "github.disconnect", {

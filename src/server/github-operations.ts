@@ -274,6 +274,7 @@ export async function githubOperation(
       return { repo, number: issueNumber(i.issueUrl, repo) };
     });
     const issue = await client.readIssue(target.repo, target.number);
+    let reservationToken: string | null = null;
     if (i.source === "feedbacks") {
       const state = await db.transaction(async (tx) => {
         await accountLock(tx);
@@ -292,7 +293,7 @@ export async function githubOperation(
         return row.data.work.state === "resolved" ? "closed" : "open";
       });
       if (issue.state !== state) {
-        await db.transaction(async (tx) => {
+        reservationToken = await db.transaction(async (tx) => {
           await accountLock(tx);
           const a = await human(tx, actor);
           const row = await threadRow(tx, a, i.threadId, "maintain", true);
@@ -309,19 +310,54 @@ export async function githubOperation(
               "Status sync was disabled or repository changed",
               409,
             );
-          await tx.query(
-            `INSERT INTO github_status_sync(thread_id,issue_url,status,pending_target,next_at)
-          VALUES($1,$2,'uncertain',$3,now()+interval '5 minutes')
-          ON CONFLICT(thread_id) DO UPDATE SET status='uncertain',pending_target=$3,
-            error_code=NULL,next_at=now()+interval '5 minutes',updated_at=now()`,
-            [i.threadId, issue.url, state],
+          const link = row.data.externalIssues?.find(
+            (entry: any) =>
+              entry.url === issue.url && entry.verification === "github_verified",
           );
+          if (!link) fail("GITHUB_ISSUE_INVALID", "Verified Issue link changed", 409);
+          await tx.query(
+            `INSERT INTO github_status_sync(thread_id,issue_url) VALUES($1,$2)
+             ON CONFLICT(thread_id) DO NOTHING`,
+            [row.id, issue.url],
+          );
+          const prior = await tx.one(
+            "SELECT * FROM github_status_sync WHERE thread_id=$1 FOR UPDATE",
+            [row.id],
+          );
+          if (prior.status === "uncertain")
+            fail(
+              "GITHUB_UNCERTAIN",
+              "Inspect GitHub and reconcile the uncertain Issue state first",
+              409,
+            );
+          if (prior.lease_until && new Date(prior.lease_until).getTime() > Date.now())
+            fail("GITHUB_PENDING", "A status sync is already in progress", 409);
+          const reserved = await tx.one(
+            `UPDATE github_status_sync SET issue_url=$2,status='uncertain',pending_target=$3,
+              error_code=NULL,next_at=now()+interval '5 minutes',
+              lease_until=clock_timestamp()+interval '2 minutes',updated_at=now()
+             WHERE thread_id=$1 AND status<>'uncertain'
+             RETURNING lease_until::text AS claim_token`,
+            [row.id, issue.url, state],
+          );
+          if (!reserved)
+            fail("GITHUB_UNCERTAIN", "Inspect GitHub before trying again", 409);
           await event(tx, a, row.project_id, row.id, "github.statusSync.uncertain", {
             issueUrl: issue.url,
             pendingTarget: state,
           });
+          return reserved.claim_token as string;
         });
-        await client.setIssueState(target.repo, target.number, state);
+        try {
+          await client.setIssueState(target.repo, target.number, state);
+        } catch (error) {
+          await db.query(
+            `UPDATE github_status_sync SET lease_until=NULL,updated_at=now()
+             WHERE thread_id=$1 AND status='uncertain' AND lease_until=$2::timestamptz`,
+            [i.threadId, reservationToken],
+          );
+          throw error;
+        }
       }
       issue.state = state;
     }
@@ -347,6 +383,31 @@ export async function githubOperation(
           entry.url === issue.url && entry.verification === "github_verified",
       );
       if (!link) fail("GITHUB_ISSUE_INVALID", "Verified Issue link changed", 409);
+      const sync = await tx.one(
+        `SELECT *,lease_until=$2::timestamptz AS owns_reservation
+         FROM github_status_sync WHERE thread_id=$1 FOR UPDATE`,
+        [row.id, reservationToken],
+      );
+      if (reservationToken) {
+        if (sync?.status !== "uncertain" || !sync.owns_reservation)
+          fail(
+            "GITHUB_UNCERTAIN",
+            "Status sync ownership changed after the GitHub write",
+            409,
+          );
+      } else if (sync?.lease_until && new Date(sync.lease_until).getTime() > Date.now()) {
+        fail("GITHUB_PENDING", "A status sync is already in progress", 409);
+      } else if (
+        i.source === "feedbacks" &&
+        sync?.status === "uncertain" &&
+        sync.pending_target !== issue.state
+      ) {
+        fail(
+          "GITHUB_UNCERTAIN",
+          "Inspect GitHub and reconcile the uncertain Issue state first",
+          409,
+        );
+      }
       if (i.source === "github" && row.data.work.state === "declined")
         fail(
           "GITHUB_SYNC_CONFLICT",

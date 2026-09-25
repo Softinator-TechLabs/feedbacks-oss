@@ -21,7 +21,7 @@ The existing GitHub App creates and verifies Issues and reads their state; `thre
 
 ## Compatibility and recovery
 
-Migration 15 adds a per-thread sync cursor; it does not rewrite existing threads. Disabled projects do not poll GitHub. Enabling or re-enabling starts a fresh baseline; existing mismatches pause for a human choice. Disconnect preserves historical Issue links and work history. A timed-out PATCH is not retried automatically, because GitHub may have accepted it. A maintainer inspects GitHub and selects the authoritative side in the thread. There is no GitHub webhook or automatic Issue creation.
+Migration 16 adds a per-thread sync cursor; it does not rewrite existing threads. Disabled projects do not poll GitHub. Enabling or re-enabling starts a fresh baseline; existing mismatches pause for a human choice. Disconnect preserves historical Issue links and work history. A timed-out PATCH is not retried automatically, because GitHub may have accepted it. A maintainer inspects GitHub and selects the authoritative side in the thread. There is no GitHub webhook or automatic Issue creation.
 
 ## Completion receipt
 
