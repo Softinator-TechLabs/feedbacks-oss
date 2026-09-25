@@ -35,6 +35,31 @@ test("static page scanner stays within the exact origin and treats uncertain lin
   ]);
 });
 
+test("scanner distinguishes real alt attributes and definite HEAD results", async () => {
+  const result = await scanPublicPage("https://example.com/docs", async (url, method) => {
+    if (method === "GET")
+      return {
+        status: 200,
+        contentType: "text/html",
+        body: `<img data-alt="hint"><img ?alt="hint"><img src="alt=fake"><img alt="real"><a href="/ok">ok</a><a href="/missing">missing</a><a href="/method">method</a><a href="/redirect">redirect</a>`,
+      };
+    return {
+      status: url.endsWith("/ok")
+        ? 200
+        : url.endsWith("/missing")
+          ? 404
+          : url.endsWith("/method")
+            ? 405
+            : 302,
+      contentType: "",
+      body: "",
+    };
+  });
+  assert.equal(result.missingAlt, 3);
+  assert.equal(result.checkedLinks, 2);
+  assert.deepEqual(result.brokenLinks, [{ path: "/missing", status: 404 }]);
+});
+
 test("project QA requires explicit public approved pages and maintainer opt-in", async () => {
   const pg = new PGlite();
   const db = new Database(pg as any);
@@ -229,6 +254,135 @@ test("scheduled QA records reviewable findings without creating feedback", async
     assert.equal(
       (await ops.executeOperation(owner, "qa.get", { projectId: project.id })).enabled,
       false,
+    );
+  } finally {
+    await pg.close();
+  }
+});
+
+test("expired worker lease retries a scan interrupted after claim", async () => {
+  const pg = new PGlite();
+  const db = new Database(pg as any);
+  try {
+    await migrate(db);
+    const ops = new Operations(
+      db,
+      {} as any,
+      { appOrigin: "http://localhost:3000" } as any,
+    );
+    const owner = await ops.auth.bootstrap(
+      "qa-crash@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const project = await ops.executeOperation(owner, "projects.create", {
+      name: "QA",
+      origins: ["https://example.com"],
+    });
+    await ops.executeOperation(owner, "qa.configure", {
+      projectId: project.id,
+      enabled: true,
+      urls: ["https://example.com/docs"],
+    });
+    const originalOne = db.one.bind(db);
+    db.one = async (sql: string, params: any[] = []) => {
+      if (sql.startsWith("SELECT data FROM projects")) throw Error("worker interrupted");
+      return originalOne(sql, params);
+    };
+    await assert.rejects(runScheduledQa(db), /worker interrupted/);
+    db.one = originalOne;
+    const claimed = await db.one(
+      "SELECT next_at,lease_until FROM qa_configs WHERE project_id=$1",
+      [project.id],
+    );
+    assert.ok(claimed.next_at <= new Date(), "interrupted work stays due");
+    assert.ok(claimed.lease_until > new Date(), "live lease prevents a concurrent retry");
+    await db.query(
+      "UPDATE qa_configs SET lease_until=now()-interval '1 second' WHERE project_id=$1",
+      [project.id],
+    );
+    const seen: string[] = [];
+    await runScheduledQa(db, async (url) => {
+      seen.push(url);
+      return {
+        url,
+        status: 200,
+        missingAlt: 0,
+        brokenLinks: [],
+        checkedLinks: 0,
+        error: null,
+      };
+    });
+    assert.deepEqual(seen, ["https://example.com/docs"]);
+    assert.equal(
+      (await ops.executeOperation(owner, "qa.runs", { projectId: project.id })).items
+        .length,
+      1,
+    );
+  } finally {
+    await pg.close();
+  }
+});
+
+test("Run soon during an active lease cannot queue a second scan", async () => {
+  const pg = new PGlite();
+  const db = new Database(pg as any);
+  try {
+    await migrate(db);
+    const ops = new Operations(
+      db,
+      {} as any,
+      { appOrigin: "http://localhost:3000" } as any,
+    );
+    const owner = await ops.auth.bootstrap(
+      "qa-lease@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const project = await ops.executeOperation(owner, "projects.create", {
+      name: "QA",
+      origins: ["https://example.com"],
+    });
+    await ops.executeOperation(owner, "qa.configure", {
+      projectId: project.id,
+      enabled: true,
+      urls: ["https://example.com/docs"],
+    });
+    let scans = 0;
+    let runSoonError: any;
+    await runScheduledQa(db, async (url) => {
+      scans++;
+      try {
+        await ops.executeOperation(owner, "qa.runNow", { projectId: project.id });
+      } catch (error) {
+        runSoonError = error;
+      }
+      return {
+        url,
+        status: 200,
+        missingAlt: 0,
+        brokenLinks: [],
+        checkedLinks: 0,
+        error: null,
+      };
+    });
+    assert.equal(runSoonError?.code, "RATE_LIMIT");
+    await runScheduledQa(db, async (url) => {
+      scans++;
+      return {
+        url,
+        status: 200,
+        missingAlt: 0,
+        brokenLinks: [],
+        checkedLinks: 0,
+        error: null,
+      };
+    });
+    assert.equal(scans, 1);
+    assert.equal(
+      (await ops.executeOperation(owner, "qa.runs", { projectId: project.id })).items
+        .length,
+      1,
     );
   } finally {
     await pg.close();

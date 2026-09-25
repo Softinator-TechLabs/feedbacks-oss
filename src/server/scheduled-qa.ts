@@ -105,6 +105,34 @@ async function publicPageRequest(url: string, method: "GET" | "HEAD") {
   );
 }
 
+function hasAltAttribute(tag: string) {
+  let cursor = 4;
+  while (cursor < tag.length) {
+    while (/\s|\//.test(tag[cursor] ?? "")) cursor++;
+    if (tag[cursor] === ">") break;
+    const start = cursor;
+    while (cursor < tag.length && !/[\s=/>]/.test(tag[cursor])) cursor++;
+    const name = tag.slice(start, cursor).toLowerCase();
+    while (/\s/.test(tag[cursor] ?? "")) cursor++;
+    const assigned = tag[cursor] === "=";
+    if (assigned) {
+      cursor++;
+      while (/\s/.test(tag[cursor] ?? "")) cursor++;
+      const quote = tag[cursor];
+      if (quote === '"' || quote === "'") {
+        cursor++;
+        while (cursor < tag.length && tag[cursor] !== quote) cursor++;
+        cursor++;
+      } else {
+        while (cursor < tag.length && !/[\s>]/.test(tag[cursor])) cursor++;
+      }
+    }
+    if (name === "alt" && assigned) return true;
+    if (cursor === start) cursor++;
+  }
+  return false;
+}
+
 export async function scanPublicPage(
   url: string,
   fetchPage = publicPageRequest,
@@ -130,8 +158,8 @@ export async function scanPublicPage(
     }
     result.missingAlt = Math.min(
       10,
-      [...page.body.matchAll(/<img\b[^>]*>/gi)].filter(
-        (match) => !/\balt\s*=/i.test(match[0]),
+      [...page.body.matchAll(/<img\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi)].filter(
+        (match) => !hasAltAttribute(match[0]),
       ).length,
     );
     const links = new Set<string>();
@@ -154,7 +182,12 @@ export async function scanPublicPage(
     for (const target of links) {
       try {
         const head = await fetchPage(target, "HEAD");
-        result.checkedLinks++;
+        if (
+          (head.status >= 200 && head.status < 300) ||
+          head.status === 404 ||
+          head.status === 410
+        )
+          result.checkedLinks++;
         if (head.status === 404 || head.status === 410)
           result.brokenLinks.push({
             path: new URL(target).pathname,
@@ -241,10 +274,17 @@ export async function manageQa(db: Database, actor: Actor, op: string, input: an
     );
     if (recent) fail("RATE_LIMIT", "Wait one hour between manual QA scans", 429);
     const row = await db.one(
-      "UPDATE qa_configs SET next_at=now() WHERE project_id=$1 AND enabled=true RETURNING project_id",
+      "UPDATE qa_configs SET next_at=now() WHERE project_id=$1 AND enabled=true AND (lease_until IS NULL OR lease_until<now()) RETURNING project_id",
       [input.projectId],
     );
-    if (!row) fail("NOT_FOUND", "Enable project QA first", 404);
+    if (!row) {
+      const config = await db.one("SELECT enabled FROM qa_configs WHERE project_id=$1", [
+        input.projectId,
+      ]);
+      if (config?.enabled)
+        fail("RATE_LIMIT", "A project QA scan is already running", 429);
+      fail("NOT_FOUND", "Enable project QA first", 404);
+    }
     return { queued: true };
   }
   const rows = await db.query(
@@ -333,7 +373,7 @@ export async function runScheduledQa(db: Database, scanner = scanPublicPage) {
     );
     if (!row) return null;
     await tx.query(
-      "UPDATE qa_configs SET next_at=now()+interval '24 hours',lease_until=now()+interval '10 minutes' WHERE project_id=$1",
+      "UPDATE qa_configs SET lease_until=now()+interval '10 minutes' WHERE project_id=$1",
       [row.project_id],
     );
     return row;
@@ -384,8 +424,9 @@ export async function runScheduledQa(db: Database, scanner = scanPublicPage) {
         [job.project_id],
       );
     }
-    await tx.query("UPDATE qa_configs SET lease_until=NULL WHERE project_id=$1", [
-      job.project_id,
-    ]);
+    await tx.query(
+      "UPDATE qa_configs SET next_at=CASE WHEN enabled THEN now()+interval '24 hours' ELSE next_at END,lease_until=NULL WHERE project_id=$1",
+      [job.project_id],
+    );
   });
 }
