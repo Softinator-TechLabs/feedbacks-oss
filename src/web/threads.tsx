@@ -891,10 +891,14 @@ export function ThreadDetail({
             <div className="thread-pane">
               <div id="thread-discussion" hidden={panel !== "discussion"}>
                 <section className="replies">
-                  <h2>
+                  <h2 id="thread-discussion-heading" tabIndex={-1}>
                     Discussion <span className="muted">{t.replies?.length ?? 0}</span>
-                    {t.response.state !== "unanswered" && (
-                      <span className="response-state">{labels[t.response.state]}</span>
+                    {(t.response.state !== "unanswered" || !!t.replies?.length) && (
+                      <span className="response-state">
+                        {t.response.state === "unanswered"
+                          ? "Needs reply"
+                          : labels[t.response.state]}
+                      </span>
                     )}
                   </h2>
                   {t.replies?.length ? (
@@ -1036,7 +1040,12 @@ export function ThreadDetail({
                 <button
                   type="button"
                   className="context-back"
-                  onClick={() => setPanel("discussion")}
+                  onClick={() => {
+                    setPanel("discussion");
+                    requestAnimationFrame(() => {
+                      document.getElementById("thread-discussion-heading")?.focus();
+                    });
+                  }}
                 >
                   ← Discussion
                 </button>
