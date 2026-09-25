@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
+import { matrixRows } from "../site/comparison-matrix.mjs";
 
 const compareDirectory = resolve(import.meta.dirname, "../site/compare");
 
@@ -32,4 +33,15 @@ test("comparison pages open every external link in a new tab with nofollow", asy
       assert.doesNotMatch(anchor, /\btarget="_blank"/, `${page}: ${anchor}`);
     }
   }
+});
+
+test("Feedbacks comparison describes current optional video and GitHub workflows", async () => {
+  assert.equal(matrixRows.feedbacks.video.status, "yes");
+  assert.match(matrixRows.feedbacks.video.url, /docs\/extension\.md$/);
+  assert.equal(matrixRows.feedbacks.github.status, "yes");
+  assert.match(matrixRows.feedbacks.github.url, /docs\/api\.md$/);
+  const page = await readFile(resolve(compareDirectory, "bugpin.html"), "utf8");
+  assert.doesNotMatch(page, /does not automatically create or synchronize Issues/);
+  assert.ok(page.includes("optional GitHub App"));
+  assert.ok(page.includes("short tab video"));
 });

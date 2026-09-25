@@ -42,8 +42,12 @@ export const matrixRows = {
     extension: yes(feedbacks),
     drawing: yes(feedbacks),
     mcp: yes(agent),
-    video: note("no", feedbacks),
-    github: note("agent", feedbacks),
+    video: yes(
+      "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+    ),
+    github: yes(
+      "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/api.md",
+    ),
     expertise: yes(feedbacks),
   },
   bugpin: {
