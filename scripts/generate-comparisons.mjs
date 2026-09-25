@@ -15,6 +15,7 @@ const store =
   "https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo";
 const source = "https://github.com/Softinator-TechLabs/feedbacks-oss";
 const check = process.argv.includes("--check");
+const externalLink = 'target="_blank" rel="nofollow noopener noreferrer"';
 
 function escape(value) {
   return String(value).replace(/[&<>"']/g, (character) => {
@@ -47,13 +48,13 @@ function shell({ title, description, canonical, content }) {
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header wrap compare-header">
       <a class="wordmark" href="/" aria-label="Feedbacks home"><img src="/favicon.svg" width="30" height="30" alt="" />feedbacks<span class="wordmark-dot">.</span></a>
-      <nav aria-label="Main navigation"><a href="/">Home</a><a href="/compare/">Compare tools</a><a href="${source}">GitHub <span aria-hidden="true">↗</span></a></nav>
-      <a class="button header-cta" href="${store}">Get it for Chrome <span aria-hidden="true">↗</span></a>
+      <nav aria-label="Main navigation"><a href="/">Home</a><a href="/compare/">Compare tools</a><a href="${source}" ${externalLink}>GitHub <span aria-hidden="true">↗</span></a></nav>
+      <a class="button header-cta" href="${store}" ${externalLink}>Get it for Chrome <span aria-hidden="true">↗</span></a>
     </header>
     <main id="main">${content}</main>
     <footer class="site-footer wrap compare-footer">
-      <div><a class="wordmark" href="/">feedbacks.</a><p>By <a href="https://softinator.ai">Softinator</a>. Built in the open.</p></div>
-      <nav aria-label="Footer navigation"><a href="/compare/">All comparisons</a><a href="${source}">Source</a><a href="/privacy.html">Privacy</a></nav>
+      <div><a class="wordmark" href="/">feedbacks.</a><p>By <a href="https://softinator.ai" ${externalLink}>Softinator</a>. Built in the open.</p></div>
+      <nav aria-label="Footer navigation"><a href="/compare/">All comparisons</a><a href="${source}" ${externalLink}>Source</a><a href="/privacy.html">Privacy</a></nav>
     </footer>
   </body>
 </html>`;
@@ -95,7 +96,7 @@ function matrix(activeSlug) {
           }
           const symbol = statusLabels[evidence.status];
           const value = evidence.status === "yes" ? "Confirmed" : symbol;
-          return `<td class="matrix-${evidence.status}"><a href="${escape(evidence.url)}" aria-label="${escape(entry.name)}: ${escape(label)}. ${escape(value)}. Read source." title="Read source for ${escape(entry.name)}: ${escape(label)}">${escape(symbol)}</a></td>`;
+          return `<td class="matrix-${evidence.status}"><a href="${escape(evidence.url)}" ${externalLink} aria-label="${escape(entry.name)}: ${escape(label)}. ${escape(value)}. Read source." title="Read source for ${escape(entry.name)}: ${escape(label)}">${escape(symbol)}</a></td>`;
         })
         .join("");
       const name =
@@ -154,15 +155,15 @@ function detail(entry, index) {
         <p>Feedbacks is an early 0.x product. An agent can create an Issue using its separate GitHub access and link it here through MCP after the team agrees. Feedbacks does not automatically create or synchronize Issues. It offers opt-in project surveys and NPS, but does not include video replay or an AI model subscription. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
         <p>Reviewer expertise belongs in owner-approved guidance. A private member note or profile field is not automatically shared with an ordinary agent. Guidance helps interpretation but never grants permissions or guarantees how a model will decide.</p>
       </aside>
-      <div class="compare-actions"><a class="button primary" href="${store}">Get the Chrome extension</a><a href="${source}/blob/HEAD/docs/self-hosting.md">Self-host Feedbacks</a></div>
+      <div class="compare-actions"><a class="button primary" href="${store}" ${externalLink}>Get the Chrome extension</a><a href="${source}/blob/HEAD/docs/self-hosting.md" ${externalLink}>Self-host Feedbacks</a></div>
       <section class="compare-sources" aria-labelledby="compare-sources-heading">
         <h2 id="compare-sources-heading">Sources and scope.</h2>
         <p>Checked ${reviewed}. This is a comparison of published product documentation, not a hands-on certification of every plan or deployment. Features and plans can change.</p>
         ${entry.scopeNote ? `<p>${escape(entry.scopeNote)}</p>` : ""}
         <ul>
-          <li><a href="${source}/blob/HEAD/docs/why-feedbacks.md">Feedbacks product boundaries</a></li>
-          <li><a href="${source}/blob/HEAD/docs/self-hosting.md">Feedbacks self-hosting</a></li>
-          ${entry.sources.map(([label, url]) => `<li><a href="${escape(url)}">${escape(label)}</a></li>`).join("")}
+          <li><a href="${source}/blob/HEAD/docs/why-feedbacks.md" ${externalLink}>Feedbacks product boundaries</a></li>
+          <li><a href="${source}/blob/HEAD/docs/self-hosting.md" ${externalLink}>Feedbacks self-hosting</a></li>
+          ${entry.sources.map(([label, url]) => `<li><a href="${escape(url)}" ${externalLink}>${escape(label)}</a></li>`).join("")}
         </ul>
       </section>
       <nav class="compare-next" aria-label="Other comparisons"><a href="/compare/${siblings[0].slug}.html">← ${escape(siblings[0].name)}</a><a href="/compare/${siblings[1].slug}.html">${escape(siblings[1].name)} →</a></nav>
@@ -195,7 +196,7 @@ function indexPage() {
               .join("")}</div></section>`,
         )
         .join("")}
-      <div class="compare-index-end"><p>Own the full stack. Keep the thread.</p><a class="button primary" href="${store}">Get the Chrome extension</a><a href="${source}">Explore the source</a></div>
+      <div class="compare-index-end"><p>Own the full stack. Keep the thread.</p><a class="button primary" href="${store}" ${externalLink}>Get the Chrome extension</a><a href="${source}" ${externalLink}>Explore the source</a></div>
     </div>`,
   });
 }
