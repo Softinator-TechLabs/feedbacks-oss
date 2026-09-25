@@ -3,7 +3,7 @@ import { request } from "node:https";
 import { pathToFileURL } from "node:url";
 import { chromium } from "playwright";
 import sharp from "sharp";
-import { publicAddress } from "../src/server/webhooks.js";
+import { pinnedLookup, publicAddress } from "../src/server/webhooks.js";
 import { validateQaUrl } from "../src/server/scheduled-qa.js";
 
 const MAX_RESOURCE_BYTES = 1024 * 1024;
@@ -51,8 +51,7 @@ async function fetchPinnedResource(url) {
         method: "GET",
         timeout: 5000,
         headers: { "user-agent": "Feedbacks-Visual-QA/1", "accept-encoding": "identity" },
-        lookup: (_host, _opts, callback) =>
-          callback(null, address.address, address.family),
+        lookup: pinnedLookup(address),
       },
       (res) => {
         const status = res.statusCode ?? 0;
