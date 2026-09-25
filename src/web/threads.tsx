@@ -581,11 +581,13 @@ export function ThreadDetail({
   function openDetail(id: string) {
     setPanel("details");
     requestAnimationFrame(() => {
-      const section = document.getElementById(id) as HTMLDetailsElement | null;
+      const section = document.getElementById(id);
       if (!section) return;
-      section.open = true;
-      section.scrollIntoView({ block: "nearest" });
-      section.querySelector("summary")?.focus({ preventScroll: true });
+      if (section instanceof HTMLDetailsElement) section.open = true;
+      section.scrollIntoView({ block: "start" });
+      if (section instanceof HTMLDetailsElement)
+        section.querySelector("summary")?.focus({ preventScroll: true });
+      else section.focus({ preventScroll: true });
     });
   }
   if (!t)
@@ -601,7 +603,7 @@ export function ThreadDetail({
     );
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading thread-page-heading">
         <div>
           <h1>
             <a className="back" href={`/projects/${t.projectId}${location.search}`}>
@@ -612,90 +614,109 @@ export function ThreadDetail({
             {t.author?.name} · <HumanTime at={t.createdAt} />
           </p>
         </div>
-        <div className="thread-tools" role="group" aria-label="Feedback actions">
-          <ExternalLink href={t.context.url}>
-            <span
-              className="icon-action"
-              data-tooltip={t.context.document ? "Open document" : "Open original page"}
-            >
-              <Icon name="external" />
-              <span className="sr-only">
-                {t.context.document ? "Open document" : "Open original page"}
-              </span>
-            </span>
-          </ExternalLink>
+        <div className="thread-header-actions">
           {project?.permissions.canWrite && (
+            <ThreadStatus
+              key={`status:${t.id}`}
+              thread={t}
+              canResolve={project.permissions.canResolve}
+              onSaved={setThread}
+            />
+          )}
+          <ThreadReview
+            key={`review:${t.id}`}
+            thread={t}
+            canWrite={!!project?.permissions.canWrite}
+            onSaved={setThread}
+          />
+          <div className="thread-tools" role="group" aria-label="Feedback actions">
+            <ExternalLink href={t.context.url}>
+              <span
+                className="icon-action"
+                data-tooltip={t.context.document ? "Open document" : "Open original page"}
+              >
+                <Icon name="external" />
+                <span className="sr-only">
+                  {t.context.document ? "Open document" : "Open original page"}
+                </span>
+              </span>
+            </ExternalLink>
+            {project?.permissions.canMaintain && (
+              <button
+                type="button"
+                className="thread-tool-button"
+                data-tooltip="Create a guest discussion link"
+                onClick={() => openDetail("thread-guest-links")}
+              >
+                Share
+              </button>
+            )}
             <button
               type="button"
-              className="icon-action"
-              aria-label="Attach screenshot"
-              data-tooltip="Attach screenshot"
-              onClick={() => {
-                const upload = document.getElementById(
-                  "thread-upload",
-                ) as HTMLDetailsElement | null;
-                if (upload) {
-                  upload.open = true;
-                  upload.scrollIntoView({ block: "center" });
-                  upload
-                    .querySelector<HTMLInputElement>('input[type="file"]')
-                    ?.focus({ preventScroll: true });
+              className="thread-tool-button"
+              data-tooltip="View or link GitHub issues"
+              onClick={() => openDetail("thread-issues")}
+            >
+              Issues
+            </button>
+            <details
+              className="thread-action-menu"
+              onClick={(event) => {
+                if (
+                  (event.target as Element).closest(".thread-action-menu-panel button")
+                ) {
+                  event.currentTarget.open = false;
                 }
               }}
             >
-              <Icon name="attachment" />
-            </button>
-          )}
-          <button
-            type="button"
-            className="icon-action history-action"
-            aria-label="Activity history"
-            data-tooltip="Activity history"
-            onClick={() => openDetail("thread-history")}
-          >
-            <Icon name="history" />
-          </button>
-          <button
-            className="icon-action"
-            aria-label="Copy link"
-            data-tooltip="Copy link"
-            onClick={() =>
-              a.run(
-                () => navigator.clipboard.writeText(`${location.origin}/threads/${t.id}`),
-                "Thread link copied.",
-              )
-            }
-          >
-            <Icon name="link" />
-          </button>
-          {project?.permissions.canWrite && (
-            <button
-              type="button"
-              className="thread-tool-button"
-              data-tooltip="Edit category and tags"
-              onClick={() => openDetail("thread-organize")}
-            >
-              Organize
-            </button>
-          )}
-          {project?.permissions.canMaintain && (
-            <button
-              type="button"
-              className="thread-tool-button"
-              data-tooltip="Create a guest discussion link"
-              onClick={() => openDetail("thread-guest-links")}
-            >
-              Share
-            </button>
-          )}
-          <button
-            type="button"
-            className="thread-tool-button"
-            data-tooltip="View or link GitHub issues"
-            onClick={() => openDetail("thread-issues")}
-          >
-            Issues
-          </button>
+              <summary>More</summary>
+              <div className="thread-action-menu-panel">
+                <button type="button" onClick={() => openDetail("thread-details")}>
+                  Details
+                </button>
+                {project?.permissions.canWrite && (
+                  <>
+                    <button type="button" onClick={() => openDetail("thread-organize")}>
+                      Organize
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const upload = document.getElementById(
+                          "thread-upload",
+                        ) as HTMLDetailsElement | null;
+                        if (!upload) return;
+                        upload.open = true;
+                        upload.scrollIntoView({ block: "center" });
+                        upload
+                          .querySelector<HTMLInputElement>('input[type="file"]')
+                          ?.focus({ preventScroll: true });
+                      }}
+                    >
+                      Attach screenshot
+                    </button>
+                  </>
+                )}
+                <button type="button" onClick={() => openDetail("thread-history")}>
+                  Activity history
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void a.run(
+                      () =>
+                        navigator.clipboard.writeText(
+                          `${location.origin}/threads/${t.id}`,
+                        ),
+                      "Thread link copied.",
+                    )
+                  }
+                >
+                  Copy link
+                </button>
+              </div>
+            </details>
+          </div>
         </div>
       </div>
       <ErrorNotice error={error} />
@@ -723,17 +744,7 @@ export function ThreadDetail({
         </Notice>
       )}
       <div className="thread-content">
-        <div className="thread-workflow">
-          {project?.permissions.canWrite && (
-            <ThreadStatus
-              key={`status:${t.id}`}
-              thread={t}
-              canResolve={project.permissions.canResolve}
-              onSaved={setThread}
-            />
-          )}
-        </div>
-        <div className="detail-grid">
+        <div className={`detail-grid ${panel === "details" ? "showing-details" : ""}`}>
           <div className="evidence-pane">
             <article className="first-comment">
               {t.category !== "general" && (
@@ -752,28 +763,6 @@ export function ThreadDetail({
                 </div>
               )}
             </article>
-            <div className="state-line">
-              <span>Response: {labels[t.response.state]}</span>
-              {t.archived && <span>Archived</span>}
-              <DiscussionLike
-                key={t.id}
-                threadId={t.id}
-                target="original feedback"
-                likes={t.likes}
-                canWrite={!!project?.permissions.canWrite}
-                onSaved={(likes) =>
-                  setThread((current) => current && { ...current, likes })
-                }
-              />
-            </div>
-            {t.assets?.filter((asset) => asset.contentType !== "video/webm").length >
-              0 && (
-              <ScreenshotComparison
-                assets={t.assets.filter((asset) => asset.contentType !== "video/webm")}
-                threadId={t.id}
-                canMaintain={!!project?.permissions.canMaintain}
-              />
-            )}
             {t.assets?.length > 0 && (
               <section className="attachments">
                 <h2 className="sr-only">Attachments</h2>
@@ -805,6 +794,27 @@ export function ThreadDetail({
                   </figure>
                 ))}
               </section>
+            )}
+            <div className="feedback-reactions">
+              <DiscussionLike
+                key={t.id}
+                threadId={t.id}
+                target="original feedback"
+                likes={t.likes}
+                canWrite={!!project?.permissions.canWrite}
+                onSaved={(likes) =>
+                  setThread((current) => current && { ...current, likes })
+                }
+              />
+              {t.archived && <span>Archived</span>}
+            </div>
+            {t.assets?.filter((asset) => asset.contentType !== "video/webm").length >
+              0 && (
+              <ScreenshotComparison
+                assets={t.assets.filter((asset) => asset.contentType !== "video/webm")}
+                threadId={t.id}
+                canMaintain={!!project?.permissions.canMaintain}
+              />
             )}
             {project?.permissions.canWrite && (
               <details className="section" id="thread-upload">
@@ -878,38 +888,14 @@ export function ThreadDetail({
             )}
           </div>
           <div className="thread-side">
-            <div className="thread-side-controls">
-              <ThreadReview
-                key={`review:${t.id}`}
-                thread={t}
-                canWrite={!!project?.permissions.canWrite}
-                onSaved={setThread}
-              />
-              <ThreadNavigation key={threadId} threadId={threadId} />
-            </div>
             <div className="thread-pane">
-              <nav className="thread-tabs" aria-label="Thread sections">
-                <button
-                  type="button"
-                  aria-pressed={panel === "discussion"}
-                  aria-controls="thread-discussion"
-                  onClick={() => setPanel("discussion")}
-                >
-                  Discussion <span>{t.replies?.length ?? 0}</span>
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={panel === "details"}
-                  aria-controls="thread-details"
-                  onClick={() => setPanel("details")}
-                >
-                  Details
-                </button>
-              </nav>
               <div id="thread-discussion" hidden={panel !== "discussion"}>
                 <section className="replies">
                   <h2>
                     Discussion <span className="muted">{t.replies?.length ?? 0}</span>
+                    {t.response.state !== "unanswered" && (
+                      <span className="response-state">{labels[t.response.state]}</span>
+                    )}
                   </h2>
                   {t.replies?.length ? (
                     t.replies.map((r) => (
@@ -1044,8 +1030,17 @@ export function ThreadDetail({
               <aside
                 className="context-panel"
                 id="thread-details"
+                tabIndex={-1}
                 hidden={panel !== "details"}
               >
+                <button
+                  type="button"
+                  className="context-back"
+                  onClick={() => setPanel("discussion")}
+                >
+                  ← Discussion
+                </button>
+                <h2>Details</h2>
                 {project?.permissions.canMaintain && <GuestLinks threadId={t.id} />}
                 <ThreadOrganization
                   thread={t}
@@ -1218,6 +1213,7 @@ export function ThreadDetail({
             </div>
           </div>
         </div>
+        <ThreadNavigation key={threadId} threadId={threadId} />
       </div>
     </>
   );
