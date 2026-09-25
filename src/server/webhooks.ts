@@ -2,7 +2,7 @@ import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { request } from "node:https";
 import type { IncomingMessage } from "node:http";
-import { BlockList, isIP } from "node:net";
+import { BlockList, isIP, type LookupFunction } from "node:net";
 import type { Database } from "./db.js";
 import type { Actor } from "../shared/contracts.js";
 import { access, event } from "./access.js";
@@ -75,11 +75,21 @@ export function validateWebhookDestination(raw: string) {
   return url!.toString();
 }
 
-async function publicAddress(hostname: string) {
+export async function publicAddress(hostname: string) {
   const addresses = await lookup(hostname, { all: true, verbatim: true });
   if (!addresses.length || addresses.some(({ address }) => !isPublicAddress(address)))
     throw Error("Destination is not public");
   return addresses[0];
+}
+
+export function pinnedLookup(address: {
+  address: string;
+  family: number;
+}): LookupFunction {
+  return (_host, options, callback) => {
+    if (options.all) callback(null, [address]);
+    else callback(null, address.address, address.family);
+  };
 }
 
 export function webhookResponseStatus(response: IncomingMessage) {
@@ -107,8 +117,7 @@ export async function postWebhook(
           "content-length": Buffer.byteLength(body),
         },
         timeout: 5000,
-        lookup: (_host, _opts, callback) =>
-          callback(null, address.address, address.family),
+        lookup: pinnedLookup(address),
       },
       (res) => {
         resolve(webhookResponseStatus(res));

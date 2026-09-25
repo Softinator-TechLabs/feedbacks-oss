@@ -6,10 +6,12 @@ import { hash, publicActor } from "./auth.js";
 import { fail } from "./errors.js";
 import { normalizeUrl, viewContext, viewStats } from "./views.js";
 import { reviewerContext } from "./accounts.js";
-import { threadQuery } from "./review-views.js";
+import { priorityScore, threadQuery } from "./review-views.js";
 import { discussionLikes, setDiscussionLike } from "./discussion-likes.js";
 import { issueDraft } from "./issue-draft.js";
+import { reportedIssue } from "./issue-links.js";
 import { documentRow } from "./documents.js";
+import { figmaReferenceUrl } from "./figma-reference.js";
 import type { Config } from "./config.js";
 // Legacy human messages had no reliable intent. Treat them as requests on read;
 // preserve agent responses and explicit intent without rewriting work history.
@@ -195,6 +197,7 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
   return {
     ...data,
     review: data.review ?? { round: 1, state: "open", history: [] },
+    figmaReference: data.figmaReference ?? null,
     tags: data.tags ?? [],
     id: row.id,
     projectId: row.project_id,
@@ -278,6 +281,8 @@ export async function feedback(
   }
   if (op === "threads.neighbors") {
     const row = await threadRow(db, a, i.threadId);
+    if (i.sort === "priority" && !canReadPolicy(a))
+      fail("FORBIDDEN", "Priority order requires approved policy access", 403);
     const { filter, args, order } = threadQuery(row.project_id, i);
     args.push(row.id);
     const result = await db.one(
@@ -294,6 +299,8 @@ export async function feedback(
   }
   if (op === "threads.list") {
     await access(db, a, i.projectId);
+    if (i.sort === "priority" && !canReadPolicy(a))
+      fail("FORBIDDEN", "Priority order requires approved policy access", 403);
     const { filter, args, order } = threadQuery(i.projectId, i);
     const count = await db.one(
       `SELECT count(*)::integer AS total FROM threads WHERE ${filter}`,
@@ -301,7 +308,7 @@ export async function feedback(
     );
     args.push(i.limit, i.offset);
     const rows = await db.query(
-      `SELECT * FROM threads WHERE ${filter} ORDER BY ${order} LIMIT $${args.length - 1} OFFSET $${args.length}`,
+      `SELECT threads.*${i.sort === "priority" ? `,${priorityScore} AS priority_score` : ""} FROM threads WHERE ${filter} ORDER BY ${order} LIMIT $${args.length - 1} OFFSET $${args.length}`,
       args,
     );
     const websiteRows = await db.query(
@@ -310,7 +317,14 @@ export async function feedback(
     );
     const data = rows.length ? await listData(db, a, rows) : undefined;
     return {
-      items: data ? await Promise.all(rows.map((r) => fullThread(db, a, r, data))) : [],
+      items: data
+        ? await Promise.all(
+            rows.map(async (r) => ({
+              ...(await fullThread(db, a, r, data)),
+              ...(i.sort === "priority" ? { priorityScore: r.priority_score } : {}),
+            })),
+          )
+        : [],
       total: count.total,
       nextOffset: i.offset + rows.length < count.total ? i.offset + rows.length : null,
       websiteFilters: {
@@ -385,6 +399,7 @@ export async function feedback(
       work: { state: "open", history: [] },
       review: { round: 1, state: "open", history: [] },
       externalIssues: [],
+      figmaReference: null,
       fixEvidence: [],
       importance: {
         feedbackTime: {
@@ -402,7 +417,13 @@ export async function feedback(
     await event(db, a, i.projectId, id, "thread.created", { revision: 1 });
     return fullThread(db, a, row);
   }
-  const row = await threadRow(db, a, i.threadId, "write", true),
+  const row = await threadRow(
+      db,
+      a,
+      i.threadId,
+      op === "threads.figmaReference" ? "maintain" : "write",
+      true,
+    ),
     data = row.data;
   if (op === "threads.like") return setDiscussionLike(db, a, row, i);
   const prior = await retry(db, a, op, i);
@@ -471,6 +492,9 @@ export async function feedback(
   } else if (op === "threads.review") {
     if (a.kind !== "human")
       fail("FORBIDDEN", "A signed-in human reviewer must record a review decision", 403);
+    const project = await access(db, a, row.project_id);
+    if (!project.reviewEnabled)
+      fail("FORBIDDEN", "Review decisions are turned off for this project", 403);
     const review = data.review ?? { round: 1, state: "open", history: [] };
     if (i.decision === "reopen") {
       if (review.state === "open") fail("VALIDATION", "Review round is already open");
@@ -490,28 +514,30 @@ export async function feedback(
     });
     data.review = review;
   } else if (op === "threads.linkIssue") {
-    const u = new URL(i.url),
-      match = u.pathname.match(/^\/([^/]+)\/([^/]+)\/issues\/([1-9]\d*)\/?$/);
+    const issue = reportedIssue(i.url);
     if (
-      u.origin !== "https://github.com" ||
-      u.username ||
-      u.password ||
-      u.search ||
-      u.hash ||
-      !match
+      !data.externalIssues.some(
+        (link: any) =>
+          link.url === issue.url ||
+          (issue.provider === "linear" &&
+            link.provider === "linear" &&
+            link.workspace === issue.workspace &&
+            link.issueKey === issue.issueKey),
+      )
     )
-      fail("VALIDATION", "Expected https://github.com/OWNER/REPO/issues/NUMBER");
-    const url = `https://github.com/${match[1]}/${match[2]}/issues/${match[3]}`;
-    if (!data.externalIssues.some((link: any) => link.url === url))
       data.externalIssues.push({
-        url,
-        repository: `${match[1]}/${match[2]}`,
-        number: Number(match[3]),
+        ...issue,
         verification: "reported",
         linkedBy: actor,
         linkedAt: at,
         reportedCreatedAt: i.createdAt ?? null,
       });
+  } else if (op === "threads.figmaReference") {
+    if (a.kind !== "human")
+      fail("FORBIDDEN", "A signed-in project maintainer must link Figma", 403);
+    data.figmaReference = i.url
+      ? { url: figmaReferenceUrl(i.url), linkedBy: actor, linkedAt: at }
+      : null;
   } else if (op === "threads.evidence") {
     data.fixEvidence.push({
       url: normalizeUrl(i.url),

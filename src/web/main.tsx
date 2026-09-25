@@ -18,6 +18,7 @@ import { officialWebsiteUrl } from "../shared/product-links.js";
 import { GuestReview } from "./guest-review.js";
 import { GuestProjectReview } from "./guest-project-review.js";
 import { Documents, DocumentViewer } from "./documents.js";
+import { Surveys, SurveyPublic } from "./surveys.js";
 function App() {
   const pageLocation = usePageLocation();
   const path = pageLocation.split("?")[0];
@@ -54,6 +55,12 @@ function App() {
     history.replaceState(null, "", "/guest-project");
     return token;
   });
+  const [surveyToken] = useState(() => {
+    if (location.pathname !== "/survey") return "";
+    const token = new URLSearchParams(location.hash.slice(1)).get("token") ?? "";
+    history.replaceState(null, "", "/survey");
+    return token;
+  });
   const [version, setVersion] = useState(0),
     [threadProject, setThreadProject] = useState<{
       threadId: string;
@@ -61,7 +68,7 @@ function App() {
     }>(),
     session = useLoad(
       () =>
-        path === "/guest" || path === "/guest-project"
+        path === "/guest" || path === "/guest-project" || path === "/survey"
           ? Promise.resolve(undefined)
           : api<{ actor: Actor; projects: Project[] }>("auth.me", {}),
       [version, path],
@@ -119,6 +126,7 @@ function App() {
     );
   if (path === "/guest") return <GuestReview token={guestToken} />;
   if (path === "/guest-project") return <GuestProjectReview token={guestProjectToken} />;
+  if (path === "/survey") return <SurveyPublic token={surveyToken} />;
   if (session.data?.actor.mustChangePassword && !publicPage)
     return <PasswordReplacement onChanged={signOut} />;
   if (path === "/invite")
@@ -243,6 +251,7 @@ function App() {
               {[
                 ["", "Feedback"],
                 ["documents", "Documents"],
+                ["surveys", "Surveys"],
                 ["members", "Members"],
                 ["instructions", "Instructions"],
                 ["settings", "Settings"],
@@ -305,13 +314,15 @@ function App() {
               />
             ) : section === "documents" ? (
               <Documents project={project} />
+            ) : section === "surveys" ? (
+              <Surveys project={project} />
             ) : section.startsWith("documents/") ? (
               <DocumentViewer
                 project={project}
                 documentId={section.slice("documents/".length)}
               />
             ) : section === "" ? (
-              <ThreadList project={project} />
+              <ThreadList project={project} actor={actor} />
             ) : (
               <p>
                 Page not found. <a href="/">Open projects</a>

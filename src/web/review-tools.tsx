@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { ReviewFilters } from "../shared/contracts.js";
 import { api, labels, type Thread } from "./api.js";
 import { navigate, usePageLocation, useUnsavedChanges } from "./navigation.js";
@@ -23,6 +23,7 @@ export function SavedReviewViews({
 }) {
   const [version, setVersion] = useState(0),
     [selected, setSelected] = useState("");
+  const manageRef = useRef<HTMLDetailsElement>(null);
   const a = useAction();
   const { data, error } = useLoad(
     () => api<{ items: SavedView[] }>("reviewViews.list", { projectId }),
@@ -31,29 +32,37 @@ export function SavedReviewViews({
   const view = data?.items.find((item) => item.id === selected);
   useUnsavedChanges(a.busy);
   return (
-    <details className="saved-views section compact-details">
-      <summary>Saved views{data?.items.length ? ` (${data.items.length})` : ""}</summary>
+    <div className="saved-views" role="group" aria-label="Saved views">
+      <span className="saved-views-label">Views</span>
       <ErrorNotice error={error} />
       {error && (
         <button onClick={() => setVersion((v) => v + 1)}>Retry saved views</button>
       )}
-      <div className="saved-view-picker">
-        <Field label="Saved filter">
-          <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-            <option value="">Select a view</option>
-            {data?.items.map((item) => (
+      {!!data?.items.length && (
+        <label className="saved-view-select">
+          <span className="sr-only">Open a saved view</span>
+          <select
+            aria-label="Open a saved view"
+            value={selected}
+            disabled={a.busy}
+            onChange={(e) => {
+              const id = e.target.value;
+              setSelected(id);
+              const next = data.items.find((item) => item.id === id);
+              if (next) onApply(next.filters);
+            }}
+          >
+            <option value="">Saved views ({data.items.length})</option>
+            {data.items.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
             ))}
           </select>
-        </Field>
-        <button disabled={!view || a.busy} onClick={() => view && onApply(view.filters)}>
-          Apply
-        </button>
-      </div>
-      <details className="saved-view-manage">
-        <summary>Save or remove a view</summary>
+        </label>
+      )}
+      <details className="saved-view-manage" ref={manageRef}>
+        <summary>Save current view</summary>
         <form
           className="saved-view-picker"
           onSubmit={(e) => {
@@ -69,6 +78,7 @@ export function SavedReviewViews({
               setSelected(saved.id);
               setVersion((v) => v + 1);
               form.reset();
+              manageRef.current?.removeAttribute("open");
             }, "Current filters saved.");
           }}
         >
@@ -98,7 +108,7 @@ export function SavedReviewViews({
         )}
       </details>
       <ActionState action={a} />
-    </details>
+    </div>
   );
 }
 
@@ -292,18 +302,39 @@ export function ThreadOrganization({
   );
 }
 
-export function ScreenshotComparison({ assets }: { assets: Thread["assets"] }) {
+export function ScreenshotComparison({
+  assets,
+  threadId,
+  canMaintain,
+}: {
+  assets: Thread["assets"];
+  threadId: string;
+  canMaintain: boolean;
+}) {
   const [leftId, setLeft] = useState(assets[0].id),
     [rightId, setRight] = useState(assets.at(-1)!.id),
     [mode, setMode] = useState("side"),
     [split, setSplit] = useState(50),
-    [failed, setFailed] = useState(false);
+    [failed, setFailed] = useState(false),
+    [baselineVersion, setBaselineVersion] = useState(0),
+    [metric, setMetric] = useState<{
+      changedPercent: number;
+      baselineAssetId: string;
+      candidateAssetId: string;
+    }>();
+  const qaAction = useAction();
+  const baseline = useLoad<{ assetId: string | null; setAt: string | null }>(
+    () => api("qa.baselineGet", { threadId }),
+    [threadId, baselineVersion],
+  );
   const left = assets.find((a) => a.id === leftId) ?? assets[0],
     right = assets.find((a) => a.id === rightId) ?? assets.at(-1)!;
+  const baselineAsset = assets.find((asset) => asset.id === baseline.data?.assetId);
   const matched = left.width === right.width && left.height === right.height;
   const overlay = mode === "overlay" && matched && left.id !== right.id;
   useEffect(() => {
     setFailed(false);
+    setMetric(undefined);
   }, [left.id, right.id]);
   const image = (asset: typeof left, label: string) => (
     <img
@@ -317,12 +348,15 @@ export function ScreenshotComparison({ assets }: { assets: Thread["assets"] }) {
   );
   return (
     <details className="section screenshot-comparison">
-      <summary>Compare screenshots</summary>
+      <summary>Visual baseline and comparison</summary>
       <div className="review-controls">
-        {[
-          ["First image", left.id, setLeft],
-          ["Second image", right.id, setRight],
-        ].map(([label, value, set]) => (
+        {(assets.length === 1
+          ? [["First image", left.id, setLeft]]
+          : [
+              ["First image", left.id, setLeft],
+              ["Second image", right.id, setRight],
+            ]
+        ).map(([label, value, set]) => (
           <Field key={String(label)} label={String(label)}>
             <select
               value={String(value)}
@@ -337,18 +371,72 @@ export function ScreenshotComparison({ assets }: { assets: Thread["assets"] }) {
           </Field>
         ))}
       </div>
-      <div className="review-controls" role="group" aria-label="Comparison mode">
-        <button aria-pressed={!overlay} onClick={() => setMode("side")}>
-          Side by side
-        </button>
-        <button
-          disabled={!matched || left.id === right.id}
-          aria-pressed={overlay}
-          onClick={() => setMode("overlay")}
-        >
-          Overlay
-        </button>
+      {assets.length > 1 && (
+        <div className="review-controls" role="group" aria-label="Comparison mode">
+          <button aria-pressed={!overlay} onClick={() => setMode("side")}>
+            Side by side
+          </button>
+          <button
+            disabled={!matched || left.id === right.id}
+            aria-pressed={overlay}
+            onClick={() => setMode("overlay")}
+          >
+            Overlay
+          </button>
+        </div>
+      )}
+      <div className="review-controls">
+        {canMaintain && (
+          <button
+            type="button"
+            disabled={qaAction.busy}
+            onClick={() =>
+              void qaAction.run(async () => {
+                await api("qa.baselineSet", { threadId, assetId: left.id });
+                setBaselineVersion((value) => value + 1);
+                setMetric(undefined);
+              }, "First image saved as this thread's baseline.")
+            }
+          >
+            Set first image as baseline
+          </button>
+        )}
+        {assets.length > 1 && (
+          <button
+            type="button"
+            disabled={
+              qaAction.busy ||
+              !baselineAsset ||
+              baselineAsset.width !== right.width ||
+              baselineAsset.height !== right.height ||
+              baselineAsset.id === right.id
+            }
+            onClick={() =>
+              void qaAction.run(async () => {
+                const result = await api<{
+                  changedPercent: number;
+                  baselineAssetId: string;
+                  candidateAssetId: string;
+                }>("qa.compare", { threadId, assetId: right.id });
+                setMetric(result);
+              })
+            }
+          >
+            Compare second image with baseline
+          </button>
+        )}
       </div>
+      {baselineAsset && (
+        <p className="muted">Baseline: image {assets.indexOf(baselineAsset) + 1}</p>
+      )}
+      {metric && (
+        <p role="status">
+          {metric.changedPercent}% of pixels differ by more than 20 channel values. Review
+          alignment and content before treating this as a regression.
+        </p>
+      )}
+      <ActionState action={qaAction} />
+      <ErrorNotice error={baseline.error} />
       {!matched && (
         <p className="muted">
           Different image sizes. Compare side by side to preserve each image’s
@@ -356,7 +444,11 @@ export function ScreenshotComparison({ assets }: { assets: Thread["assets"] }) {
         </p>
       )}
       {left.id === right.id && (
-        <p className="muted">Choose two different images to compare.</p>
+        <p className="muted">
+          {assets.length === 1
+            ? "Set this image as a baseline; attach another image later to compare."
+            : "Choose two different images to compare."}
+        </p>
       )}
       <ErrorNotice
         error={
@@ -365,7 +457,7 @@ export function ScreenshotComparison({ assets }: { assets: Thread["assets"] }) {
             : ""
         }
       />
-      {overlay ? (
+      {assets.length === 1 ? null : overlay ? (
         <>
           <div className="comparison-overlay">
             {image(right, "Second image")}

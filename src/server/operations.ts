@@ -32,6 +32,8 @@ import { GithubApp } from "./github-app.js";
 import { githubOperation } from "./github-operations.js";
 import { manageGuestProjectLinks } from "./guest-project-links.js";
 import { manageWebhooks } from "./webhooks.js";
+import { manageQa, compareQaImages } from "./scheduled-qa.js";
+import { manageSurveys } from "./surveys.js";
 import {
   documents,
   documentUploadPreflight,
@@ -59,6 +61,8 @@ export class Operations {
     if (name === "assets.upload" || name === "assets.uploadVideo")
       return this.uploadAsset(actor, parsed.data);
     if (name === "documents.upload") return this.uploadDocument(actor, parsed.data);
+    if (name === "qa.compare")
+      return compareQaImages(this.db, actor, this.store, parsed.data as any);
     if (name.startsWith("github."))
       return githubOperation(this.db, actor, name, parsed.data, this.config, this.github);
     if (name === "context.export" && !(parsed.data as any).snapshotId)
@@ -109,6 +113,9 @@ export class Operations {
         if (name === "context.reviewers") return reviewerContext(db, a, i.projectId);
         if (name.startsWith("projects.")) return projects(db, a, name, i);
         if (name.startsWith("webhooks.")) return manageWebhooks(db, a, name, i);
+        if (name.startsWith("qa.")) return manageQa(db, a, name, i);
+        if (name.startsWith("surveys."))
+          return manageSurveys(db, a, name, i, this.config);
         if (name.startsWith("documents.")) return documents(db, a, name, i);
         if (name.startsWith("guestLinks."))
           return manageGuestLinks(db, a, name, i, this.config);

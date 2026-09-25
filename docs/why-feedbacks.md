@@ -8,6 +8,8 @@ An unclear requirement, a copy correction and a reproducible bug can arrive in t
 
 A small change can be discussed and completed within its thread. Continue agreed design work in Figma when a design artifact is needed. For work that needs engineering tracking, an authorized coding agent can read the decided discussion through Feedbacks MCP. With a connected GitHub App and an explicitly granted project-scoped Issue creation key, the agent can review a bounded draft, create the Issue through MCP and have Feedbacks verify and link it. An agent with separately granted GitHub access can instead create the Issue with that tool, read it back and register the URL. A signed-in project maintainer can use the App from the web interface. None of these paths create Issues from incoming feedback automatically. The original request, replies, response obligations, work status and fix evidence stay together; an Issue link or agent reply alone does not resolve the feedback.
 
+A project maintainer can [register the resulting Figma file reference](review-workflow.md#continue-agreed-design-work-in-figma) on the thread without moving its private discussion or screenshots.
+
 ## Give agents the discussion and its context
 
 MCP clients can read the thread, page and screenshot context, named authors, replies and recorded outcomes. They can ask questions, reply, attach evidence and change work status within their granted permissions. Approved project instructions remain separately versioned.

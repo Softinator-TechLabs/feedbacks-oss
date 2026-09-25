@@ -152,7 +152,7 @@ function detail(entry, index) {
       </section>
       <aside class="compare-limits">
         <h2>What Feedbacks does today.</h2>
-        <p>Feedbacks is an early 0.x product. An agent can create an Issue using its separate GitHub access and link it here through MCP after the team agrees. Feedbacks does not automatically create or synchronize Issues. It does not include video replay, surveys or an AI model subscription. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
+        <p>Feedbacks is an early 0.x product. An agent can create an Issue using its separate GitHub access and link it here through MCP after the team agrees. Feedbacks does not automatically create or synchronize Issues. It offers opt-in project surveys and NPS, but does not include video replay or an AI model subscription. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
         <p>Reviewer expertise belongs in owner-approved guidance. A private member note or profile field is not automatically shared with an ordinary agent. Guidance helps interpretation but never grants permissions or guarantees how a model will decide.</p>
       </aside>
       <div class="compare-actions"><a class="button primary" href="${store}" ${externalLink}>Get the Chrome extension</a><a href="${source}/blob/HEAD/docs/self-hosting.md" ${externalLink}>Self-host Feedbacks</a></div>

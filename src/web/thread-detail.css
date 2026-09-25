@@ -15,18 +15,12 @@
 .thread-side {
   min-width: 0;
 }
-.thread-side-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.thread-side-controls .thread-navigation {
-  margin-left: 0;
-}
-.thread-side-controls .thread-navigation .review-controls {
-  flex-wrap: wrap;
+.thread-pane {
+  border: 0;
+  border-left: 1px solid var(--border);
+  border-radius: 0;
+  padding: 4px 0 0 20px;
+  background: transparent;
 }
 .first-comment {
   border: 0;
@@ -36,24 +30,23 @@
   margin: 0 0 12px;
   font-size: 1.13rem;
 }
-.state-line {
-  margin: 10px 0 14px;
-  gap: 8px;
+.feedback-reactions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
 }
-.state-line > span {
+.feedback-reactions > span {
   color: var(--muted);
   font-size: 0.85rem;
 }
-.state-line .discussion-like button {
+.feedback-reactions .discussion-like button {
   min-height: 34px;
   padding: 4px 10px;
   font-size: 0.85rem;
 }
-.state-line > button {
-  margin-left: auto;
-}
 .attachments {
-  margin: 24px 0;
+  margin: 14px 0 0;
 }
 .attachments h2 {
   font-size: 0.95rem;
@@ -70,12 +63,23 @@
   width: 100%;
 }
 .replies {
-  margin-top: 20px;
+  margin-top: 0;
   padding: 0;
   border: 0;
 }
 .replies > h2 {
-  display: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+.response-state {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
 }
 .replies form {
   margin-top: 16px;
@@ -110,41 +114,13 @@
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-.thread-tabs {
-  display: flex;
-  gap: 24px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 12px;
-}
-.thread-tabs button {
+.context-back {
+  margin-bottom: 12px;
+  padding-inline: 0;
   border: 0;
   background: transparent;
-  padding: 6px 0;
-  border-radius: 0;
-  color: var(--muted);
-  font-weight: 500;
-}
-.thread-tabs button[aria-pressed="true"] {
-  position: relative;
   color: var(--accent);
-  font-weight: 650;
-}
-.thread-tabs button[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  height: 2px;
-  background: var(--accent);
-  bottom: -13px;
-  left: 0;
-  right: 0;
-}
-.thread-tabs button:hover {
-  color: var(--accent);
-  background: transparent;
-}
-.thread-tabs span {
-  font-size: 0.85em;
-  color: var(--muted);
+  font-weight: 600;
 }
 .thread-pane .context-panel {
   padding-top: 24px;
@@ -295,8 +271,8 @@
   max-width: min(240px, 80vw);
   padding: 5px 8px;
   border-radius: 5px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--tooltip-surface);
+  color: var(--tooltip-ink);
   font-size: 0.78rem;
   font-weight: 500;
   line-height: 1.25;
@@ -325,11 +301,162 @@
   font: inherit;
   color: inherit;
 }
+.thread-page-heading {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+.thread-page-heading > div:first-child {
+  flex: 1 1 190px;
+}
+.thread-page-heading h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+.thread-page-heading p {
+  margin: 2px 0 0;
+  font-size: 0.83rem;
+}
+.thread-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  margin-left: auto;
+}
+.thread-content .thread-navigation {
+  margin-top: 16px;
+}
+.thread-icon-button,
+.thread-header-actions .status-options > summary,
+.thread-header-actions .thread-review > summary,
+.thread-action-menu > summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.thread-header-actions
+  :is(
+    .thread-icon-button:not(.primary),
+    .status-options > summary,
+    .thread-review > summary,
+    .thread-action-menu > summary
+  ):hover,
+.thread-header-actions .thread-header-popover[open] > summary {
+  background: var(--soft-surface);
+}
+.thread-header-actions .status-controls .thread-icon-button {
+  padding: 0;
+}
+.thread-icon-button.primary {
+  color: #fff;
+  background: var(--accent);
+}
+.thread-header-actions .status-editor {
+  position: relative;
+  gap: 6px;
+}
+.thread-header-actions .status-controls {
+  gap: 5px;
+}
+.thread-header-actions .status-controls .field > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.thread-header-actions .status-controls select,
+.thread-header-actions .status-controls button {
+  min-height: 44px;
+  padding: 5px 9px;
+  font-size: 0.85rem;
+}
+.thread-header-actions .status-controls select {
+  max-width: 155px;
+  border-color: var(--control-border);
+  font-weight: 600;
+}
+.thread-header-actions .status-options {
+  position: relative;
+}
+.thread-header-actions .status-options[open] {
+  flex-basis: auto;
+}
+.thread-header-actions .status-options > summary,
+.thread-action-menu > summary {
+  display: inline-flex;
+}
+.thread-header-actions .thread-header-popover[open] > summary {
+  margin-bottom: 0;
+}
+.thread-header-actions .status-options > summary::marker,
+.thread-action-menu > summary::marker {
+  content: "";
+}
+.status-options-panel,
+.thread-review-panel,
+.thread-action-menu-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(360px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 40px rgba(12, 31, 48, 0.16);
+}
+.status-options-panel .field {
+  margin: 0 0 10px;
+}
+.status-options-panel textarea,
+.status-options-panel input,
+.thread-review-panel textarea {
+  width: 100%;
+}
+.thread-action-menu {
+  position: relative;
+}
+.thread-action-menu-panel {
+  width: 195px;
+  padding: 5px;
+}
+.thread-action-menu-panel button {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 0.88rem;
+}
+.thread-action-menu-panel button:hover,
+.thread-action-menu-panel button:focus-visible {
+  background: var(--soft-surface);
+}
 .thread-tools {
   display: flex;
   gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
 }
 .thread-tools > a {
@@ -340,26 +467,29 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
   padding: 8px;
-  border: 0;
-  border-radius: 6px;
+  border: 1px solid transparent;
+  border-radius: 9px;
   background: transparent;
   color: var(--accent);
 }
 .thread-tool-button {
-  min-height: 36px;
+  min-height: 40px;
   padding: 5px 9px;
   font-size: 0.85rem;
 }
 .thread-tools [data-tooltip] {
   position: relative;
 }
-.thread-tools [data-tooltip]:hover::after,
-.thread-tools [data-tooltip]:focus-visible::after,
-.thread-tools a:focus-visible [data-tooltip]::after {
+.thread-header-actions [data-tooltip] {
+  position: relative;
+}
+.thread-header-actions [data-tooltip]:hover::after,
+.thread-header-actions [data-tooltip]:focus-visible::after,
+.thread-header-actions a:focus-visible [data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
   z-index: 20;
@@ -369,30 +499,49 @@
   max-width: min(240px, 80vw);
   padding: 5px 8px;
   border-radius: 5px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--tooltip-surface);
+  color: var(--tooltip-ink);
   font-size: 0.78rem;
   line-height: 1.25;
   font-weight: 500;
   white-space: normal;
   pointer-events: none;
 }
+.thread-header-actions .thread-header-popover[open] > summary::after {
+  display: none;
+}
 .thread-tools a:hover .icon-action {
-  background: #edf1f4;
+  background: var(--soft-surface);
 }
 @media (max-width: 500px) {
-  .page-heading:has(.thread-tools) {
-    flex-wrap: wrap;
+  .thread-header-actions {
+    position: relative;
+    justify-content: flex-start;
+    margin-left: 0;
+    width: 100%;
+  }
+  .thread-header-actions .status-editor,
+  .thread-header-actions .status-options,
+  .thread-header-actions .thread-review {
+    position: static;
+  }
+  .thread-header-actions .status-options-panel,
+  .thread-header-actions .thread-review-panel,
+  .thread-header-actions .thread-action-menu-panel {
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    max-height: min(65vh, 520px);
+    overflow: auto;
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -14px 48px rgba(12, 31, 48, 0.22);
+  }
+  .thread-review-state {
+    display: none;
   }
   .thread-tools {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-    flex-wrap: nowrap;
     gap: 3px;
-  }
-  .thread-tools .history-action {
-    display: none;
   }
   .thread-tools .thread-tool-button {
     padding-inline: 7px;
@@ -412,9 +561,19 @@
   .detail-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  .detail-grid.showing-details .thread-side {
+    order: -1;
+  }
   .evidence-pane,
   .thread-pane {
     padding: 18px;
+  }
+  .thread-pane {
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    padding: 18px 0 0;
+    background: transparent;
   }
   .context-panel {
     padding: 0;
@@ -430,52 +589,20 @@
     max-width: none;
   }
 }
-.thread-workflow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  border-block: 1px solid var(--border);
-  padding: 7px 0;
-  margin-bottom: 12px;
-}
-.thread-workflow .status-controls {
-  gap: 6px;
-}
-.thread-workflow .status-controls button,
-.thread-workflow .status-controls select {
-  min-height: 36px;
-  padding-block: 4px;
-}
-.thread-workflow .status-controls .field {
-  gap: 6px;
-}
-.thread-workflow .status-options {
-  position: relative;
-}
 .thread-review {
   position: relative;
   margin: 0;
 }
 .thread-review > summary {
-  min-height: 36px;
-  padding: 6px 8px;
   margin: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
 }
-.thread-review[open] {
-  flex-basis: 100%;
-  order: 4;
-  padding: 8px 0 12px;
+.thread-review-state {
+  margin-left: 5px;
+  color: var(--muted);
+  font-size: 0.77rem;
+  font-weight: 500;
 }
-.thread-review[open] > summary {
-  width: fit-content;
-  margin-bottom: 8px;
-}
-.thread-review > p {
+.thread-review-panel > p {
   margin: 4px 0 8px;
 }
 .thread-review-actions {
@@ -489,8 +616,7 @@
   margin: 12px 0 6px;
 }
 .thread-review textarea {
-  width: 100%;
-  max-width: 680px;
+  max-width: 100%;
 }
 .thread-review-actions {
   margin-top: 10px;
@@ -517,13 +643,15 @@
   .thread-content .first-comment {
     order: 2;
   }
-  .thread-content .state-line {
+  .thread-content .feedback-reactions {
     order: 3;
   }
   .thread-content .evidence-pane > details {
     order: 4;
   }
-  .thread-content .thread-side-controls {
-    margin-top: 8px;
-  }
+}
+.figma-reference-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }

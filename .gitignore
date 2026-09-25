@@ -20,6 +20,10 @@ test-results/
 .DS_Store
 .superpowers/
 .worktrees/
+/sdk/ios/.build/
+/sdk/ios/.swiftpm/
+/sdk/android/.gradle/
+/sdk/android/build/
 graphify-out/
 .impeccable/review/
 .impeccable/build/

@@ -14,6 +14,8 @@
   --control-border: #64798b;
   --control-hover: #96b1c7;
   --soft-surface: #1d2833;
+  --tooltip-surface: #30445b;
+  --tooltip-ink: #fff;
 }
 :root[data-theme="dark"]
   :is(
@@ -32,6 +34,22 @@
   background: var(--surface);
   color: var(--accent);
   border-color: #526374;
+}
+:root[data-theme="dark"] .account-nav :is(.theme-switch, .sign-out-button) {
+  background: transparent;
+  border-color: transparent;
+}
+:root[data-theme="dark"] .account-nav :is(.theme-switch, .sign-out-button):hover {
+  background: var(--soft-surface);
+  border-color: transparent;
+}
+:root[data-theme="dark"] :is(.thread-priority-button, .thread-filter-clear) {
+  background: transparent;
+  border-color: transparent;
+}
+:root[data-theme="dark"] .thread-priority-button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color: transparent;
 }
 :root[data-theme="dark"] :is(button:enabled:hover, .button:hover) {
   background: #293847;
@@ -115,6 +133,27 @@
 }
 :root[data-theme="dark"] :is(.thread-tabs button, .icon-action, .mention-trigger) {
   background: transparent;
+}
+:root[data-theme="dark"]
+  .thread-header-actions
+  :is(
+    .thread-icon-button:not(.primary),
+    .status-options > summary,
+    .thread-review > summary,
+    .thread-action-menu > summary
+  ) {
+  background: transparent;
+  border-color: transparent;
+}
+:root[data-theme="dark"]
+  .thread-header-actions
+  :is(
+    .thread-icon-button:not(.primary),
+    .status-options > summary,
+    .thread-review > summary,
+    .thread-action-menu > summary
+  ):hover {
+  background: var(--soft-surface);
 }
 :root[data-theme="dark"] .thread-tabs button {
   color: var(--muted);

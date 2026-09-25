@@ -10,7 +10,8 @@ export function readFilters(query: string): ReviewFilters {
   const sort = p.get("sort");
   const filters: ReviewFilters = {
     search: (p.get("search") ?? "").slice(0, 200),
-    sort: sort === "newest" || sort === "likes" ? sort : "activity",
+    sort:
+      sort === "newest" || sort === "likes" || sort === "priority" ? sort : "activity",
     showResolved: p.get("showResolved") === "true",
   };
   for (const key of ["url", "domain", "hostname", "tag"] as const) {

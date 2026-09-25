@@ -4,7 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
-import { memberWelcomeMessage } from "../src/web/account-admin.js";
+import { memberLoginDetails, memberWelcomeMessage } from "../src/web/account-admin.js";
 
 test("disabled people can be removed from the list and restored without losing their record", async () => {
   const pg = new PGlite();
@@ -128,7 +128,18 @@ test("welcome message uses the installed app and help page", () => {
     "https://feedbacks.example.test",
   );
   assert.match(message, /Hey Asha/);
+  assert.match(message, /https:\/\/feedbacks\.example\.test\/login/);
   assert.match(message, /https:\/\/feedbacks\.example\.test\/help/);
+  assert.match(message, /Email: asha@example\.test/);
+  assert.match(message, /Password: Secret-For-Test/);
+});
+
+test("saved password handoff includes the exact login link and account", () => {
+  const message = memberLoginDetails(
+    { email: "asha@example.test", password: "Secret-For-Test" },
+    "https://feedbacks.example.test",
+  );
+  assert.match(message, /^Feedbacks login: https:\/\/feedbacks\.example\.test\/login/m);
   assert.match(message, /Email: asha@example\.test/);
   assert.match(message, /Password: Secret-For-Test/);
 });

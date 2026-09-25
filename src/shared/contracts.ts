@@ -25,9 +25,39 @@ export const tagsSchema = z
   .array(tagSchema)
   .max(12)
   .transform((tags) => [...new Set(tags)].sort());
+const surveyQuestionBase = {
+  id: z.string().regex(/^[a-z][a-z0-9_-]{0,31}$/),
+  prompt: z.string().trim().min(1).max(300),
+  required: z.boolean(),
+};
+export const surveyQuestionSchema = z.discriminatedUnion("type", [
+  z.object({ ...surveyQuestionBase, type: z.literal("nps") }),
+  z.object({ ...surveyQuestionBase, type: z.literal("rating") }),
+  z.object({ ...surveyQuestionBase, type: z.literal("text") }),
+  z.object({
+    ...surveyQuestionBase,
+    type: z.literal("single_choice"),
+    options: z
+      .array(z.string().trim().min(1).max(80))
+      .min(2)
+      .max(8)
+      .refine(
+        (options) => new Set(options).size === options.length,
+        "Options must be distinct",
+      ),
+  }),
+]);
+export const surveyQuestionsSchema = z
+  .array(surveyQuestionSchema)
+  .min(1)
+  .max(8)
+  .refine(
+    (questions) => new Set(questions.map((q) => q.id)).size === questions.length,
+    "Question IDs must be distinct",
+  );
 export const reviewFiltersSchema = z.object({
   search: z.string().max(200).default(""),
-  sort: z.enum(["newest", "activity", "likes"]).default("activity"),
+  sort: z.enum(["newest", "activity", "likes", "priority"]).default("activity"),
   showResolved: z.boolean().default(false),
   url: z.string().url().max(4096).optional(),
   domain: z.string().trim().min(1).max(253).optional(),
@@ -91,6 +121,7 @@ const projectInput = z
     origins: z.array(z.string().url()).max(100),
     captureMode: captureMode.optional(),
     repositoryUrl: z.string().url().max(1000).optional(),
+    reviewEnabled: z.boolean().optional(),
   })
   .superRefine((project, ctx) => {
     if ((project.captureMode ?? "origins") === "origins" && !project.origins.length)
@@ -195,6 +226,18 @@ export const inputSchemas = {
   "github.issueState": z.object({ threadId: id }),
   "github.connect": z.object({ projectId: id, revision }),
   "github.disconnect": z.object({ projectId: id, revision }),
+  "github.statusSyncConfigure": z.object({
+    projectId: id,
+    revision,
+    enabled: z.boolean(),
+  }),
+  "github.statusSync": z.object({
+    threadId: id,
+    revision,
+    issueUrl: z.string().url(),
+    source: z.enum(["github", "feedbacks"]),
+  }),
+  "github.statusSyncState": z.object({ threadId: id }),
   "github.issueCreate": z.object({
     threadId: id,
     revision,
@@ -219,6 +262,17 @@ export const inputSchemas = {
   "webhooks.rotate": z.object({ projectId: id }),
   "webhooks.disable": z.object({ projectId: id }),
   "webhooks.deliveries": z.object({ projectId: id }),
+  "qa.get": z.object({ projectId: id }),
+  "qa.configure": z.object({
+    projectId: id,
+    enabled: z.boolean(),
+    urls: z.array(z.string().url().max(500)).max(3),
+  }),
+  "qa.runNow": z.object({ projectId: id }),
+  "qa.runs": z.object({ projectId: id }),
+  "qa.baselineGet": z.object({ threadId: id }),
+  "qa.baselineSet": z.object({ threadId: id, assetId: id }),
+  "qa.compare": z.object({ threadId: id, assetId: id }),
   "members.list": z.object({
     projectId: id.optional(),
     includeRemoved: z.boolean().optional(),
@@ -318,6 +372,24 @@ export const inputSchemas = {
     url: z.string().url().max(4096),
     turnstileToken: z.string().min(1).max(2048),
   }),
+  "surveys.create": z.object({
+    projectId: id,
+    title: z.string().trim().min(1).max(120),
+    description: z.string().trim().max(1000).default(""),
+    questions: surveyQuestionsSchema,
+    expiresInDays: z.number().int().min(1).max(90).default(30),
+    maxResponses: z.number().int().min(1).max(1000).default(100),
+  }),
+  "surveys.list": z.object({ projectId: id }),
+  "surveys.results": z.object({ surveyId: id }),
+  "surveys.revoke": z.object({ surveyId: id }),
+  "survey.inspect": z.object({ token: z.string().min(20).max(200) }),
+  "survey.submit": z.object({
+    token: z.string().min(20).max(200),
+    answers: z.record(z.string(), z.union([z.string().max(500), z.number()])),
+    responseKey: z.string().min(8).max(200),
+    turnstileToken: z.string().min(1).max(2048),
+  }),
   "widget.inspect": z.object({ linkId: id, token: z.string().min(20).max(200) }),
   "widget.submit": z.object({
     linkId: id,
@@ -379,6 +451,10 @@ export const inputSchemas = {
     ...tm,
     url: z.string().url(),
     createdAt: z.string().datetime().optional(),
+  }),
+  "threads.figmaReference": z.object({
+    ...tm,
+    url: z.string().url().max(2000).nullable(),
   }),
   "threads.evidence": z.object({
     ...tm,
@@ -513,14 +589,24 @@ export const threadOutput = z
       z
         .object({
           url: z.string(),
+          provider: z.enum(["github", "jira", "linear"]).optional(),
           verification: z.enum(["reported", "github_verified"]),
         })
         .passthrough(),
     ),
+    figmaReference: z
+      .object({
+        url: z.string().url(),
+        linkedBy: z.object({}).passthrough(),
+        linkedAt: z.string().datetime(),
+      })
+      .nullable()
+      .optional(),
     fixEvidence: z.array(z.object({}).passthrough()),
     pins: z.object({ defaultVisible: z.boolean() }),
     lastActor: z.object({}).passthrough(),
     updatedAt: z.string(),
+    priorityScore: z.number().optional(),
     reviewerContext: reviewerContextOutput.optional(),
   })
   .passthrough();
@@ -541,6 +627,8 @@ const projectOutput = z.object({
   captureMode: captureMode.optional(),
   repositoryUrl: z.string().nullable(),
   githubConnected: z.boolean().optional(),
+  githubStatusSync: z.boolean().optional(),
+  reviewEnabled: z.boolean().default(false),
   revision,
   permissions: z.object({
     role: z.enum(["maintainer", "reviewer", "viewer"]),
@@ -669,6 +757,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "github.connection": z.object({
     configured: z.boolean(),
     connected: z.boolean(),
+    statusSyncEnabled: z.boolean(),
     repositoryUrl: z.string().nullable(),
     installUrl: z.string().nullable(),
   }),
@@ -679,6 +768,16 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   }),
   "github.connect": projectOutput,
   "github.disconnect": projectOutput,
+  "github.statusSyncConfigure": projectOutput,
+  "github.statusSync": threadOutput,
+  "github.statusSyncState": z.object({
+    status: z.enum(["disabled", "pending", "ready", "conflict", "uncertain", "error"]),
+    issueUrl: z.string().nullable(),
+    feedbacksState: z.string().nullable(),
+    githubState: z.enum(["open", "closed"]).nullable(),
+    pendingTarget: z.enum(["open", "closed"]).nullable(),
+    errorCode: z.string().nullable(),
+  }),
   "github.issueCreate": threadOutput,
   "github.issueReconcile": threadOutput,
   "github.issueAbandon": z.object({ abandoned: z.boolean() }),
@@ -711,6 +810,44 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
         deliveredAt: z.string().nullable(),
       }),
     ),
+  }),
+  "qa.get": z.object({
+    enabled: z.boolean(),
+    urls: z.array(z.string()),
+    nextAt: z.string().nullable(),
+  }),
+  "qa.configure": z.object({
+    enabled: z.boolean(),
+    urls: z.array(z.string()),
+    nextAt: z.string().nullable(),
+  }),
+  "qa.runNow": z.object({ queued: z.boolean() }),
+  "qa.runs": z.object({
+    items: z.array(
+      z.object({
+        id,
+        createdAt: z.string(),
+        pages: z.array(
+          z.object({
+            url: z.string(),
+            status: z.number().nullable(),
+            missingAlt: z.number().int(),
+            brokenLinks: z.array(z.object({ path: z.string(), status: z.number() })),
+            checkedLinks: z.number().int(),
+            error: z.string().nullable(),
+          }),
+        ),
+      }),
+    ),
+  }),
+  "qa.baselineGet": z.object({ assetId: id.nullable(), setAt: z.string().nullable() }),
+  "qa.baselineSet": z.object({ assetId: id, setAt: z.string() }),
+  "qa.compare": z.object({
+    baselineAssetId: id,
+    candidateAssetId: id,
+    width: z.number().int(),
+    height: z.number().int(),
+    changedPercent: z.number(),
   }),
   "members.list": z.object({
     items: z.array(
@@ -856,6 +993,50 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     turnstileSiteKey: z.string(),
   }),
   "guestProject.submit": z.object({ posted: z.boolean() }),
+  "surveys.create": z.object({
+    id,
+    token: z.string(),
+    path: z.string(),
+    expiresAt: z.string(),
+  }),
+  "surveys.list": z.object({
+    items: z.array(
+      z.object({
+        id,
+        title: z.string(),
+        description: z.string(),
+        questions: surveyQuestionsSchema,
+        expiresAt: z.string(),
+        revokedAt: z.string().nullable(),
+        responses: z.number().int(),
+        maxResponses: z.number().int(),
+      }),
+    ),
+  }),
+  "surveys.results": z.object({
+    surveyId: id,
+    total: z.number().int(),
+    questions: z.array(
+      z.object({
+        id: z.string(),
+        type: z.string(),
+        prompt: z.string(),
+        counts: z.record(z.string(), z.number().int()),
+        nps: z.number().nullable(),
+        answers: z.array(z.string()),
+      }),
+    ),
+  }),
+  "surveys.revoke": z.object({ revoked: z.boolean() }),
+  "survey.inspect": z.object({
+    projectName: z.string(),
+    title: z.string(),
+    description: z.string(),
+    questions: surveyQuestionsSchema,
+    expiresAt: z.string(),
+    turnstileSiteKey: z.string(),
+  }),
+  "survey.submit": z.object({ posted: z.boolean() }),
   "widget.inspect": z.object({ projectName: z.string(), turnstileSiteKey: z.string() }),
   "widget.submit": z.object({ posted: z.boolean() }),
   "threads.neighbors": z.object({
@@ -877,6 +1058,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "threads.status": threadOutput,
   "threads.review": threadOutput,
   "threads.linkIssue": threadOutput,
+  "threads.figmaReference": threadOutput,
   "threads.evidence": threadOutput,
   "threads.archive": threadOutput,
   "views.get": viewOutput,
@@ -933,6 +1115,10 @@ export const scopedAgentOperations = [
 
 export const agentTokenScopes = [
   ...scopedAgentOperations,
+  "qa.get",
+  "qa.runs",
+  "qa.baselineGet",
+  "qa.compare",
   "documents.list",
   "documents.get",
   "documents.threads",
@@ -967,6 +1153,7 @@ export const agentOperations = businessOperations.filter(
   (name) =>
     name !== "members.archive" &&
     name !== "threads.review" &&
+    name !== "threads.figmaReference" &&
     !name.startsWith("webhooks.") &&
     name !== "documents.upload" &&
     (name === "github.issueCreate" || !name.startsWith("github.")),
@@ -981,13 +1168,20 @@ const readOperations = new Set<string>([
   "auth.me",
   "projects.list",
   "projects.get",
+  "surveys.list",
+  "surveys.results",
   "documents.list",
   "documents.get",
   "documents.threads",
   "github.connection",
   "github.issueState",
+  "github.statusSyncState",
   "webhooks.get",
   "webhooks.deliveries",
+  "qa.get",
+  "qa.runs",
+  "qa.baselineGet",
+  "qa.compare",
   "members.list",
   "members.notes.get",
   "members.guidance.get",

@@ -54,6 +54,20 @@ export async function assetPreview(
     height: info.height,
   };
 }
+
+// Keep list previews small without exposing the private original asset or its storage key.
+export async function assetListThumbnail(store: AssetStore, objectKey: string) {
+  return sharp(await store.get(objectKey))
+    .resize({
+      width: 160,
+      height: 100,
+      fit: "cover",
+      position: "north",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: 70 })
+    .toBuffer();
+}
 export class LocalAssets implements AssetStore {
   constructor(private directory: string) {}
   async put(key: string, bytes: Buffer, _contentType?: string) {

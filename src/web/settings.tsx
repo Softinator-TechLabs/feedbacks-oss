@@ -3,7 +3,8 @@ import { agentTokenScopes } from "../shared/contracts.js";
 import { AgentSetupPrompt, type AgentIssuance } from "./agent-setup.js";
 import { CreateMember, MemberAdministration } from "./account-admin.js";
 import { OwnerLinks } from "./owner-links.js";
-import { api, date, labels, type Actor, type Project } from "./api.js";
+import { api, labels, type Actor, type Project } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import {
   ActionState,
   ConfirmButton,
@@ -46,21 +47,36 @@ const categories = [
 const expertiseCategories = categories.map((category) => labels[category]);
 function PolicyFields({ policy, prefix = "" }: { policy?: Policy; prefix?: string }) {
   return (
-    <div className="policy-grid">
-      {categories.map((c) => (
-        <Field key={c} label={labels[c]}>
-          <input
-            type="number"
-            name={`${prefix}${c}`}
-            min={0}
-            max={10}
-            step={0.1}
-            defaultValue={policy?.[c] ?? (c === "general" ? 1 : "")}
-            required={c === "general"}
-            placeholder="Use general"
-          />
-        </Field>
-      ))}
+    <div className="policy-fields">
+      <Field label="Overall importance" hint="1 is normal, 2 counts twice, 0 ignores.">
+        <input
+          type="number"
+          name={`${prefix}general`}
+          min={0}
+          max={10}
+          step={0.1}
+          defaultValue={policy?.general ?? 1}
+          required
+        />
+      </Field>
+      <details className="policy-topics">
+        <summary>Set a different weight for a topic</summary>
+        <div className="policy-grid">
+          {categories.slice(1).map((c) => (
+            <Field key={c} label={labels[c]} hint="Blank uses the overall importance.">
+              <input
+                type="number"
+                name={`${prefix}${c}`}
+                min={0}
+                max={10}
+                step={0.1}
+                defaultValue={policy?.[c] ?? ""}
+                placeholder="Use overall"
+              />
+            </Field>
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
@@ -74,6 +90,10 @@ function readPolicy(f: FormData, prefix = "") {
 export function Members({ actor, project }: { actor: Actor; project?: Project }) {
   const [version, setVersion] = useState(0),
     [selectedId, setSelectedId] = useState<string | null>(null),
+    [memberAction, setMemberAction] = useState<"create" | "invite" | "add" | null>(null),
+    [search, setSearch] = useState(""),
+    [roleFilter, setRoleFilter] = useState("all"),
+    [visibleCount, setVisibleCount] = useState(40),
     [showRemoved, setShowRemoved] = useState(false),
     { data, error } = useLoad(
       () =>
@@ -92,6 +112,21 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
     ),
     a = useAction(),
     [invite, setInvite] = useState("");
+  const matchingMembers = (data?.items ?? []).filter((member) => {
+    const query = search.trim().toLocaleLowerCase();
+    const role = member.primaryOwner
+      ? "owner"
+      : member.owner
+        ? "owner"
+        : (member.role ?? "member").toLocaleLowerCase();
+    return (
+      (roleFilter === "all" || role === roleFilter) &&
+      (!query ||
+        [member.name, member.email, role, ...(member.expertise ?? [])]
+          .filter(Boolean)
+          .some((value) => value!.toLocaleLowerCase().includes(query)))
+    );
+  });
   const refresh = () => setVersion((v) => v + 1);
   useEffect(() => {
     if (selectedId) document.getElementById("person-back")?.focus();
@@ -103,15 +138,47 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
           <h1>{project ? "Project members" : "People"}</h1>
           <p>
             {actor.owner
-              ? "Manage your team."
+              ? `${data?.items.length ?? 0} ${(data?.items.length ?? 0) === 1 ? "person" : "people"} with access.`
               : "People who can participate in this project."}
           </p>
         </div>
       </div>
       <ErrorNotice error={error} />
-      {!selectedId && actor.owner && <CreateMember project={project} onSaved={refresh} />}
-      {!selectedId && actor.owner && project && (
-        <details className="section">
+      {!selectedId && actor.owner && (
+        <div className="member-actions" role="group" aria-label="Manage people">
+          {project && (
+            <button
+              type="button"
+              className={memberAction === "invite" ? "primary" : ""}
+              aria-pressed={memberAction === "invite"}
+              onClick={() => setMemberAction(memberAction === "invite" ? null : "invite")}
+            >
+              Invite person
+            </button>
+          )}
+          <button
+            type="button"
+            aria-pressed={memberAction === "create"}
+            onClick={() => setMemberAction(memberAction === "create" ? null : "create")}
+          >
+            Create user
+          </button>
+          {project && (
+            <button
+              type="button"
+              aria-pressed={memberAction === "add"}
+              onClick={() => setMemberAction(memberAction === "add" ? null : "add")}
+            >
+              Add existing
+            </button>
+          )}
+        </div>
+      )}
+      {!selectedId && actor.owner && memberAction === "create" && (
+        <CreateMember project={project} onSaved={refresh} initiallyOpen />
+      )}
+      {!selectedId && actor.owner && project && memberAction === "invite" && (
+        <details className="section member-action-panel" open>
           <summary>Invite a colleague</summary>
           <form
             className="form-grid"
@@ -148,8 +215,8 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
           <ActionState action={a} />
         </details>
       )}
-      {!selectedId && actor.owner && project && (
-        <details className="section">
+      {!selectedId && actor.owner && project && memberAction === "add" && (
+        <details className="section member-action-panel" open>
           <summary>Add an existing member</summary>
           <form
             className="form-grid"
@@ -201,6 +268,44 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
           Show removed accounts
         </label>
       )}
+      {!selectedId && data && (
+        <div className="member-directory-controls">
+          <label>
+            <span className="sr-only">Search people</span>
+            <input
+              type="search"
+              value={search}
+              placeholder="Search name, email or expertise"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setVisibleCount(40);
+              }}
+            />
+          </label>
+          <label>
+            <span className="sr-only">Filter by role</span>
+            <select
+              aria-label="Filter by role"
+              value={roleFilter}
+              onChange={(event) => {
+                setRoleFilter(event.target.value);
+                setVisibleCount(40);
+              }}
+            >
+              <option value="all">All roles</option>
+              <option value="owner">Owners</option>
+              <option value="maintainer">Maintainers</option>
+              <option value="reviewer">Reviewers</option>
+              <option value="viewer">Viewers</option>
+            </select>
+          </label>
+          <span className="muted" role="status">
+            Showing {Math.min(visibleCount, matchingMembers.length)} of{" "}
+            {matchingMembers.length} matching{" "}
+            {matchingMembers.length === 1 ? "person" : "people"}
+          </span>
+        </div>
+      )}
       {!data && !error ? (
         <Loading />
       ) : data?.items.length ? (
@@ -227,30 +332,45 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
               ))}
           </>
         ) : (
-          <div className="member-list" aria-label="People">
-            {data.items.map((m) => (
+          <div className="member-directory">
+            {matchingMembers.length ? (
+              <div className="member-list" aria-label="People">
+                {matchingMembers.slice(0, visibleCount).map((m) => (
+                  <button
+                    type="button"
+                    className="member-list-item"
+                    key={m.id}
+                    onClick={() => setSelectedId(m.id)}
+                  >
+                    <span>
+                      <strong>{m.name}</strong>
+                      {actor.owner && <small>{m.email}</small>}
+                    </span>
+                    <span>
+                      {m.removedAt
+                        ? "Removed"
+                        : m.primaryOwner
+                          ? "Primary owner"
+                          : m.owner
+                            ? "Owner"
+                            : (m.role ?? "Member")}
+                      {!m.active && !m.removedAt ? " · Disabled" : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Empty title="No matching people">Try another name, email or role.</Empty>
+            )}
+            {matchingMembers.length > visibleCount && (
               <button
                 type="button"
-                className="member-list-item"
-                key={m.id}
-                onClick={() => setSelectedId(m.id)}
+                className="member-show-more"
+                onClick={() => setVisibleCount((count) => count + 40)}
               >
-                <span>
-                  <strong>{m.name}</strong>
-                  {actor.owner && <small>{m.email}</small>}
-                </span>
-                <span>
-                  {m.removedAt
-                    ? "Removed"
-                    : m.primaryOwner
-                      ? "Primary owner"
-                      : m.owner
-                        ? "Owner"
-                        : (m.role ?? "Member")}
-                  {!m.active && !m.removedAt ? " · Disabled" : ""}
-                </span>
+                Show next 40 people
               </button>
-            ))}
+            )}
           </div>
         )
       ) : (
@@ -415,10 +535,9 @@ function MemberEditor({
               Account active
             </label>
             <details className="wide importance-details">
-              <summary>Feedback weighting (advanced)</summary>
+              <summary>Feedback importance (advanced)</summary>
               <p className="muted">
-                This influences preference summaries only. 1 is normal, 2 counts twice as
-                much, 0 excludes a topic. It never changes access.
+                This affects preference summaries, not access or permissions.
               </p>
               <PolicyFields policy={m.policy} />
             </details>
@@ -575,7 +694,7 @@ export function Instructions({ project }: { project: Project }) {
                       {n === 0 ? " · Current" : ""}
                     </h2>
                     <span>
-                      {item.actor.name} · {date(item.createdAt)}
+                      {item.actor.name} · <HumanTime at={item.createdAt} />
                     </span>
                   </div>
                   <p className="message">{item.body}</p>
@@ -740,9 +859,15 @@ export function Account({
                     ? ` · ends in ${token.secretSuffix}`
                     : " · key ending unavailable for older keys"}
                   {" · "}
-                  {token.revokedAt
-                    ? `Revoked ${date(token.revokedAt)}`
-                    : `Expires ${date(token.expiresAt)}`}
+                  {token.revokedAt ? (
+                    <>
+                      Revoked <HumanTime at={token.revokedAt} />
+                    </>
+                  ) : (
+                    <>
+                      Expires <HumanTime at={token.expiresAt} />
+                    </>
+                  )}
                 </p>
                 <details>
                   <summary>Access details</summary>

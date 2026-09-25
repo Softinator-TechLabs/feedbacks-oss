@@ -151,5 +151,77 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       await tx.query("ALTER TABLE users ADD COLUMN removed_at timestamptz");
       await tx.query("INSERT INTO migrations(version) VALUES(14)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=15"))) {
+      await tx.query(`CREATE TABLE surveys(
+        id uuid PRIMARY KEY,
+        project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        token_hash text NOT NULL UNIQUE,
+        definition jsonb NOT NULL,
+        created_by uuid NOT NULL REFERENCES users(id),
+        expires_at timestamptz NOT NULL,
+        revoked_at timestamptz,
+        responses integer NOT NULL DEFAULT 0,
+        max_responses integer NOT NULL CHECK(max_responses BETWEEN 1 AND 1000),
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(
+        "CREATE INDEX surveys_project ON surveys(project_id,created_at DESC)",
+      );
+      await tx.query(`CREATE TABLE survey_responses(
+        id uuid PRIMARY KEY,
+        survey_id uuid NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
+        response_key_hash text NOT NULL,
+        answers jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE(survey_id,response_key_hash)
+      )`);
+      await tx.query(
+        "CREATE INDEX survey_responses_survey ON survey_responses(survey_id,created_at DESC)",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(15)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=16"))) {
+      await tx.query(`CREATE TABLE qa_configs(
+        project_id uuid PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        enabled boolean NOT NULL DEFAULT false,
+        urls jsonb NOT NULL DEFAULT '[]',
+        next_at timestamptz NOT NULL DEFAULT now(),
+        lease_until timestamptz,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(`CREATE TABLE qa_runs(
+        id uuid PRIMARY KEY,
+        project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        pages jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(
+        "CREATE INDEX qa_runs_project ON qa_runs(project_id,created_at DESC)",
+      );
+      await tx.query(`CREATE TABLE qa_baselines(
+        thread_id uuid PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
+        asset_id uuid NOT NULL REFERENCES assets(id),
+        set_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query("INSERT INTO migrations(version) VALUES(16)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=17"))) {
+      await tx.query(`CREATE TABLE github_status_sync(
+        thread_id uuid PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
+        issue_url text NOT NULL,
+        feedbacks_state text,
+        github_state text,
+        status text NOT NULL DEFAULT 'ready' CHECK(status IN ('ready','conflict','uncertain','error')),
+        pending_target text,
+        error_code text,
+        next_at timestamptz NOT NULL DEFAULT now(),
+        lease_until timestamptz,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(
+        "CREATE INDEX github_status_sync_due ON github_status_sync(next_at) WHERE status IN ('ready','error')",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(17)");
+    }
   });
 }

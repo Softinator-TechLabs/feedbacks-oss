@@ -145,4 +145,18 @@ export class GithubApp {
     const token = await this.installationToken(repo, "read");
     return this.readIssueWithToken(repo, number, token);
   }
+
+  async setIssueState(repo: GithubRepo, number: number, state: "open" | "closed") {
+    const token = await this.installationToken(repo, "write");
+    await this.request(
+      `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/issues/${number}`,
+      token,
+      "PATCH",
+      { state },
+    );
+    const issue = await this.readIssueWithToken(repo, number, token);
+    if (issue.state !== state)
+      fail("GITHUB_UNCERTAIN", "GitHub did not confirm the requested state", 503);
+    return issue;
+  }
 }

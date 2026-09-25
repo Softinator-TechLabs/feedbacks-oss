@@ -27,7 +27,8 @@ import {
 import { Icon } from "./icons.js";
 import { GuestLinks } from "./guest-review.js";
 import { GithubIssue } from "./github-issue.js";
-import { api, uid, date, labels, type Project, type Thread } from "./api.js";
+import { api, uid, date, labels, type Actor, type Project, type Thread } from "./api.js";
+import { HumanTime } from "./human-time.js";
 import {
   ActionState,
   Empty,
@@ -40,7 +41,7 @@ import {
   useAction,
   useLoad,
 } from "./ui.js";
-export function ThreadList({ project }: { project: Project }) {
+export function ThreadList({ project, actor }: { project: Project; actor: Actor }) {
   const pageLocation = usePageLocation(),
     query = pageLocation.split("?")[1] ?? "";
   const filters = readFilters(query),
@@ -84,7 +85,7 @@ export function ThreadList({ project }: { project: Project }) {
     navigate(`/projects/${project.id}${filterQuery(next, nextOffset)}`);
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading thread-list-heading">
         <div>
           <h1>Feedback</h1>
           <p>
@@ -93,11 +94,23 @@ export function ThreadList({ project }: { project: Project }) {
               : "Project discussion"}{" "}
           </p>
         </div>
-        {project.permissions.canWrite && (
-          <button className="primary" onClick={() => setCreating(!creating)}>
-            {creating ? "Close form" : "New feedback"}
-          </button>
-        )}
+        <div className="thread-list-quick-actions">
+          {actor.owner && (
+            <button
+              className="thread-priority-button"
+              aria-pressed={sort === "priority"}
+              title="Sort active feedback by current reviewer importance and view support"
+              onClick={() => apply({ ...filters, sort: "priority", showResolved: false })}
+            >
+              Top priority
+            </button>
+          )}
+          {project.permissions.canWrite && (
+            <button className="primary" onClick={() => setCreating(!creating)}>
+              {creating ? "Close form" : "New feedback"}
+            </button>
+          )}
+        </div>
       </div>
       {creating && (
         <ThreadComposer
@@ -107,118 +120,126 @@ export function ThreadList({ project }: { project: Project }) {
           }}
         />
       )}
-      <form
-        key={`${project.id}:${query}`}
-        className="filters thread-filters"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget),
-            p = new URLSearchParams();
-          for (const [key, value] of f) if (String(value)) p.set(key, String(value));
-          apply(readFilters(p.toString()));
-        }}
-      >
-        <Field label="Search feedback">
-          <input
-            name="search"
-            type="search"
-            placeholder="Search discussion"
-            defaultValue={search}
-            maxLength={200}
-          />
-        </Field>
-        <Field label="Status">
-          <select name="showResolved" defaultValue={String(showResolved)}>
-            <option value="false">Active</option>
-            <option value="true">All statuses</option>
-          </select>
-        </Field>
-        <Field label="Sort">
-          <select name="sort" defaultValue={sort}>
-            <option value="activity">Latest activity</option>
-            <option value="newest">Newest</option>
-            <option value="likes">Most liked views</option>
-          </select>
-        </Field>
-        <button className="thread-filter-apply">Apply</button>
-        <button
-          className="thread-filter-clear"
-          type="button"
-          onClick={() => apply(readFilters(""))}
+      <section className="thread-filter-panel" aria-label="Feedback filters and views">
+        <SavedReviewViews
+          projectId={project.id}
+          filters={filters}
+          onApply={(next) => apply(next)}
+        />
+        <form
+          key={`${project.id}:${query}`}
+          className="filters thread-filters"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget),
+              p = new URLSearchParams();
+            for (const [key, value] of f) if (String(value)) p.set(key, String(value));
+            apply(readFilters(p.toString()));
+          }}
         >
-          Clear
-        </button>
-        <details
-          className="advanced-filters"
-          open={
-            !!(url || domain || hostname || deviceClass || category || tag) || undefined
-          }
-        >
-          <summary>
-            More filters
-            {url || domain || hostname || deviceClass || category || tag
-              ? " · active"
-              : ""}
-          </summary>
-          <div className="advanced-filter-fields">
-            <Field label="Page URL">
-              <input name="url" type="url" placeholder="All pages" defaultValue={url} />
-            </Field>
-            <Field label="Domain">
-              <select name="domain" defaultValue={domain ?? ""}>
-                <option value="">All domains</option>
-                {[
-                  ...new Set([
-                    ...(domain ? [domain] : []),
-                    ...(data?.websiteFilters.domains ?? []),
-                  ]),
-                ].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Hostname">
-              <select name="hostname" defaultValue={hostname ?? ""}>
-                <option value="">All hostnames</option>
-                {[
-                  ...new Set([
-                    ...(hostname ? [hostname] : []),
-                    ...(data?.websiteFilters.hostnames ?? []),
-                  ]),
-                ].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Device">
-              <select name="deviceClass" defaultValue={deviceClass ?? ""}>
-                <option value="">All devices</option>
-                {["mobile", "tablet", "desktop"].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Category">
-              <select name="category" defaultValue={category ?? ""}>
-                <option value="">All categories</option>
-                {categories.map((v) => (
-                  <option key={v} value={v}>
-                    {labels[v]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Tag">
-              <input name="tag" defaultValue={tag} maxLength={32} placeholder="Any tag" />
-            </Field>
-          </div>
-        </details>
-      </form>
-      <SavedReviewViews
-        projectId={project.id}
-        filters={filters}
-        onApply={(next) => apply(next)}
-      />
+          <Field label="Search feedback">
+            <input
+              name="search"
+              type="search"
+              placeholder="Search discussion"
+              defaultValue={search}
+              maxLength={200}
+            />
+          </Field>
+          <Field label="Status">
+            <select name="showResolved" defaultValue={String(showResolved)}>
+              <option value="false">Active</option>
+              <option value="true">All statuses</option>
+            </select>
+          </Field>
+          <Field label="Sort">
+            <select name="sort" defaultValue={sort}>
+              <option value="activity">Latest activity</option>
+              <option value="newest">Newest</option>
+              <option value="likes">Most liked views</option>
+              {actor.owner && <option value="priority">Top priority</option>}
+            </select>
+          </Field>
+          <button className="thread-filter-apply primary">Apply</button>
+          <button
+            className="thread-filter-clear"
+            type="button"
+            onClick={() => apply(readFilters(""))}
+          >
+            Clear
+          </button>
+          <details
+            className="advanced-filters"
+            open={
+              !!(url || domain || hostname || deviceClass || category || tag) || undefined
+            }
+          >
+            <summary>
+              More filters
+              {url || domain || hostname || deviceClass || category || tag
+                ? " · active"
+                : ""}
+            </summary>
+            <div className="advanced-filter-fields">
+              <Field label="Page URL">
+                <input name="url" type="url" placeholder="All pages" defaultValue={url} />
+              </Field>
+              <Field label="Domain">
+                <select name="domain" defaultValue={domain ?? ""}>
+                  <option value="">All domains</option>
+                  {[
+                    ...new Set([
+                      ...(domain ? [domain] : []),
+                      ...(data?.websiteFilters.domains ?? []),
+                    ]),
+                  ].map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Hostname">
+                <select name="hostname" defaultValue={hostname ?? ""}>
+                  <option value="">All hostnames</option>
+                  {[
+                    ...new Set([
+                      ...(hostname ? [hostname] : []),
+                      ...(data?.websiteFilters.hostnames ?? []),
+                    ]),
+                  ].map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Device">
+                <select name="deviceClass" defaultValue={deviceClass ?? ""}>
+                  <option value="">All devices</option>
+                  {["mobile", "tablet", "desktop"].map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Category">
+                <select name="category" defaultValue={category ?? ""}>
+                  <option value="">All categories</option>
+                  {categories.map((v) => (
+                    <option key={v} value={v}>
+                      {labels[v]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Tag">
+                <input
+                  name="tag"
+                  defaultValue={tag}
+                  maxLength={32}
+                  placeholder="Any tag"
+                />
+              </Field>
+            </div>
+          </details>
+        </form>
+      </section>
       <ErrorNotice error={error} />
       {error && <button onClick={() => setVersion((v) => v + 1)}>Retry loading</button>}
       {!data && !error ? (
@@ -226,74 +247,104 @@ export function ThreadList({ project }: { project: Project }) {
       ) : data?.items.length ? (
         <>
           <div className="thread-list">
-            {data.items.map((t) => (
-              <div className="thread-row" key={t.id}>
-                <a
-                  className="thread-row-main"
-                  href={`/threads/${t.id}${filterQuery(filters, offset)}`}
-                >
-                  <div className="thread-summary">
-                    <h2>{t.body}</h2>
-                    {!!t.tags?.length && (
-                      <div className="tag-list">
-                        {t.tags.map((tag) => (
-                          <span className="tag" key={tag}>
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
+            {data.items.map((t) => {
+              const image =
+                t.assets?.find(
+                  (asset) =>
+                    asset.contentType === "image/webp" && asset.rendition === "thumbnail",
+                ) ?? t.assets?.find((asset) => asset.contentType === "image/webp");
+              return (
+                <div className="thread-row" key={t.id}>
+                  <a
+                    className={`thread-row-main${image ? " has-thumbnail" : ""}`}
+                    href={`/threads/${t.id}${filterQuery(filters, offset)}`}
+                  >
+                    {image && (
+                      <img
+                        className="thread-row-thumbnail"
+                        src={`${image.url}?preview=list`}
+                        alt=""
+                        width="160"
+                        height="100"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     )}
-                    <div className="meta">
-                      <span>{t.author?.name ?? "Member"}</span>
-                      <span>
-                        {t.context.deviceClass} · {t.context.viewport.width} ×{" "}
-                        {t.context.viewport.height}
-                      </span>
-                      <span>{t.context.url}</span>
+                    <div className="thread-summary">
+                      <h2>{t.body}</h2>
+                      {!!t.tags?.length && (
+                        <div className="tag-list">
+                          {t.tags.map((tag) => (
+                            <span className="tag" key={tag}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="meta">
+                        <span>{t.author?.name ?? "Member"}</span>
+                        <span>
+                          {t.context.deviceClass} · {t.context.viewport.width} ×{" "}
+                          {t.context.viewport.height}
+                        </span>
+                        <span>{t.context.url}</span>
+                      </div>
                     </div>
+                    <div className="thread-stats">
+                      <span>
+                        {t.view?.uniqueLikes ?? 0}{" "}
+                        {t.view?.uniqueLikes === 1 ? "view like" : "view likes"} ·{" "}
+                        {t.replies?.length ?? 0}{" "}
+                        {t.replies?.length === 1 ? "reply" : "replies"}
+                      </span>
+                      <HumanTime at={t.updatedAt} />
+                    </div>
+                  </a>
+                  <div className="thread-row-actions">
+                    <ThreadQuickStatus
+                      thread={t}
+                      canWrite={project.permissions.canWrite}
+                      canResolve={project.permissions.canResolve}
+                      onSaved={(updated) =>
+                        setLoaded((current) => {
+                          if (!current || current.query !== query) return current;
+                          const leavesView =
+                            !showResolved &&
+                            ["resolved", "declined"].includes(updated.work.state);
+                          return {
+                            ...current,
+                            result: {
+                              ...current.result,
+                              items: leavesView
+                                ? current.result.items.filter(
+                                    (item) => item.id !== updated.id,
+                                  )
+                                : current.result.items.map((item) =>
+                                    item.id === updated.id ? updated : item,
+                                  ),
+                              total: current.result.total - (leavesView ? 1 : 0),
+                            },
+                          };
+                        })
+                      }
+                    />
+                    {t.response.state === "unanswered" ? (
+                      !!t.replies?.length && (
+                        <span className="muted">Needs team response</span>
+                      )
+                    ) : (
+                      <span className="muted">
+                        {t.response.state === "responded"
+                          ? "Team responded"
+                          : t.response.state === "needs-follow-up"
+                            ? "Follow-up needed"
+                            : (labels[t.response.state] ?? t.response.state)}
+                      </span>
+                    )}
                   </div>
-                  <div className="thread-stats">
-                    <span>
-                      {t.view?.uniqueLikes ?? 0}{" "}
-                      {t.view?.uniqueLikes === 1 ? "view like" : "view likes"} ·{" "}
-                      {t.replies?.length ?? 0}{" "}
-                      {t.replies?.length === 1 ? "reply" : "replies"}
-                    </span>
-                    <time dateTime={t.updatedAt}>{date(t.updatedAt)}</time>
-                  </div>
-                </a>
-                <div className="thread-row-actions">
-                  <ThreadQuickStatus
-                    thread={t}
-                    canWrite={project.permissions.canWrite}
-                    canResolve={project.permissions.canResolve}
-                    onSaved={(updated) =>
-                      setLoaded((current) => {
-                        if (!current || current.query !== query) return current;
-                        const leavesView =
-                          !showResolved &&
-                          ["resolved", "declined"].includes(updated.work.state);
-                        return {
-                          ...current,
-                          result: {
-                            ...current.result,
-                            items: leavesView
-                              ? current.result.items.filter(
-                                  (item) => item.id !== updated.id,
-                                )
-                              : current.result.items.map((item) =>
-                                  item.id === updated.id ? updated : item,
-                                ),
-                            total: current.result.total - (leavesView ? 1 : 0),
-                          },
-                        };
-                      })
-                    }
-                  />
-                  <span className="muted">{labels[t.response.state]}</span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="pagination">
             <button
@@ -550,6 +601,32 @@ export function ThreadDetail({
       undefined,
     );
   useUnsavedChanges(!!reply.trim() || mentions.length > 0 || !!image || a.busy);
+  useEffect(() => {
+    const close = () => {
+      for (const open of document.querySelectorAll<HTMLDetailsElement>(
+        ".thread-header-actions details.thread-header-popover[open]",
+      )) {
+        open.open = false;
+      }
+    };
+    const outside = (event: PointerEvent) => {
+      if (
+        !(event.target instanceof Element) ||
+        !event.target.closest(".thread-header-actions")
+      ) {
+        close();
+      }
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [threadId]);
   const { data: members, error: memberError } = useLoad(
     () =>
       project
@@ -561,7 +638,12 @@ export function ThreadDetail({
     [project?.id, memberVersion],
   );
   async function mutate(
-    op: "threads.status" | "threads.linkIssue" | "threads.evidence" | "threads.archive",
+    op:
+      | "threads.status"
+      | "threads.linkIssue"
+      | "threads.figmaReference"
+      | "threads.evidence"
+      | "threads.archive",
     input: Record<string, unknown>,
   ) {
     if (!t) return;
@@ -580,11 +662,13 @@ export function ThreadDetail({
   function openDetail(id: string) {
     setPanel("details");
     requestAnimationFrame(() => {
-      const section = document.getElementById(id) as HTMLDetailsElement | null;
+      const section = document.getElementById(id);
       if (!section) return;
-      section.open = true;
-      section.scrollIntoView({ block: "nearest" });
-      section.querySelector("summary")?.focus({ preventScroll: true });
+      if (section instanceof HTMLDetailsElement) section.open = true;
+      section.scrollIntoView({ block: "start" });
+      if (section instanceof HTMLDetailsElement)
+        section.querySelector("summary")?.focus({ preventScroll: true });
+      else section.focus({ preventScroll: true });
     });
   }
   if (!t)
@@ -600,7 +684,7 @@ export function ThreadDetail({
     );
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading thread-page-heading">
         <div>
           <h1>
             <a className="back" href={`/projects/${t.projectId}${location.search}`}>
@@ -608,93 +692,129 @@ export function ThreadDetail({
             </a>
           </h1>
           <p>
-            {t.author?.name} · {date(t.createdAt)}
+            {t.author?.name} · <HumanTime at={t.createdAt} />
           </p>
         </div>
-        <div className="thread-tools" role="group" aria-label="Feedback actions">
-          <ExternalLink href={t.context.url}>
-            <span
-              className="icon-action"
-              data-tooltip={t.context.document ? "Open document" : "Open original page"}
-            >
-              <Icon name="external" />
-              <span className="sr-only">
-                {t.context.document ? "Open document" : "Open original page"}
-              </span>
-            </span>
-          </ExternalLink>
+        <div
+          className="thread-header-actions"
+          onClickCapture={(event) => {
+            const target = event.target as Element;
+            const current = target.closest("details.thread-header-popover");
+            for (const open of event.currentTarget.querySelectorAll<HTMLDetailsElement>(
+              "details.thread-header-popover[open]",
+            )) {
+              if (open !== current) open.open = false;
+            }
+          }}
+        >
           {project?.permissions.canWrite && (
+            <ThreadStatus
+              key={`status:${t.id}`}
+              thread={t}
+              canResolve={project.permissions.canResolve}
+              onSaved={setThread}
+            />
+          )}
+          {project?.reviewEnabled && (
+            <ThreadReview
+              key={`review:${t.id}`}
+              thread={t}
+              canWrite={!!project?.permissions.canWrite}
+              onSaved={setThread}
+            />
+          )}
+          <div className="thread-tools" role="group" aria-label="Feedback actions">
+            <ExternalLink href={t.context.url}>
+              <span
+                className="icon-action"
+                data-tooltip={t.context.document ? "Open document" : "Open original page"}
+              >
+                <Icon name="external" />
+                <span className="sr-only">
+                  {t.context.document ? "Open document" : "Open original page"}
+                </span>
+              </span>
+            </ExternalLink>
+            {project?.permissions.canMaintain && (
+              <button
+                type="button"
+                className="thread-icon-button"
+                aria-label="Create a guest discussion link"
+                data-tooltip="Create a guest discussion link"
+                onClick={() => openDetail("thread-guest-links")}
+              >
+                <Icon name="share" />
+              </button>
+            )}
             <button
               type="button"
-              className="icon-action"
-              aria-label="Attach screenshot"
-              data-tooltip="Attach screenshot"
-              onClick={() => {
-                const upload = document.getElementById(
-                  "thread-upload",
-                ) as HTMLDetailsElement | null;
-                if (upload) {
-                  upload.open = true;
-                  upload.scrollIntoView({ block: "center" });
-                  upload
-                    .querySelector<HTMLInputElement>('input[type="file"]')
-                    ?.focus({ preventScroll: true });
+              className="thread-icon-button"
+              aria-label="View or link issues"
+              data-tooltip="View or link issues"
+              onClick={() => openDetail("thread-issues")}
+            >
+              <Icon name="issue" />
+            </button>
+            <details
+              className="thread-action-menu thread-header-popover"
+              onClick={(event) => {
+                if (
+                  (event.target as Element).closest(".thread-action-menu-panel button")
+                ) {
+                  event.currentTarget.open = false;
                 }
               }}
             >
-              <Icon name="attachment" />
-            </button>
-          )}
-          <button
-            type="button"
-            className="icon-action history-action"
-            aria-label="Activity history"
-            data-tooltip="Activity history"
-            onClick={() => openDetail("thread-history")}
-          >
-            <Icon name="history" />
-          </button>
-          <button
-            className="icon-action"
-            aria-label="Copy link"
-            data-tooltip="Copy link"
-            onClick={() =>
-              a.run(
-                () => navigator.clipboard.writeText(`${location.origin}/threads/${t.id}`),
-                "Thread link copied.",
-              )
-            }
-          >
-            <Icon name="link" />
-          </button>
-          {project?.permissions.canWrite && (
-            <button
-              type="button"
-              className="thread-tool-button"
-              data-tooltip="Edit category and tags"
-              onClick={() => openDetail("thread-organize")}
-            >
-              Organize
-            </button>
-          )}
-          {project?.permissions.canMaintain && (
-            <button
-              type="button"
-              className="thread-tool-button"
-              data-tooltip="Create a guest discussion link"
-              onClick={() => openDetail("thread-guest-links")}
-            >
-              Share
-            </button>
-          )}
-          <button
-            type="button"
-            className="thread-tool-button"
-            data-tooltip="View or link GitHub issues"
-            onClick={() => openDetail("thread-issues")}
-          >
-            Issues
-          </button>
+              <summary aria-label="More actions" data-tooltip="More actions">
+                <Icon name="more" />
+              </summary>
+              <div className="thread-action-menu-panel">
+                <button type="button" onClick={() => openDetail("thread-details")}>
+                  Details
+                </button>
+                {project?.permissions.canWrite && (
+                  <>
+                    <button type="button" onClick={() => openDetail("thread-organize")}>
+                      Organize
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const upload = document.getElementById(
+                          "thread-upload",
+                        ) as HTMLDetailsElement | null;
+                        if (!upload) return;
+                        upload.open = true;
+                        upload.scrollIntoView({ block: "center" });
+                        upload
+                          .querySelector<HTMLInputElement>('input[type="file"]')
+                          ?.focus({ preventScroll: true });
+                      }}
+                    >
+                      Attach screenshot
+                    </button>
+                  </>
+                )}
+                <button type="button" onClick={() => openDetail("thread-history")}>
+                  Activity history
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void a.run(
+                      () =>
+                        navigator.clipboard.writeText(
+                          `${location.origin}/threads/${t.id}`,
+                        ),
+                      "Thread link copied.",
+                    )
+                  }
+                >
+                  Copy link
+                </button>
+              </div>
+            </details>
+          </div>
         </div>
       </div>
       <ErrorNotice error={error} />
@@ -722,17 +842,7 @@ export function ThreadDetail({
         </Notice>
       )}
       <div className="thread-content">
-        <div className="thread-workflow">
-          {project?.permissions.canWrite && (
-            <ThreadStatus
-              key={`status:${t.id}`}
-              thread={t}
-              canResolve={project.permissions.canResolve}
-              onSaved={setThread}
-            />
-          )}
-        </div>
-        <div className="detail-grid">
+        <div className={`detail-grid ${panel === "details" ? "showing-details" : ""}`}>
           <div className="evidence-pane">
             <article className="first-comment">
               {t.category !== "general" && (
@@ -751,26 +861,6 @@ export function ThreadDetail({
                 </div>
               )}
             </article>
-            <div className="state-line">
-              <span>Response: {labels[t.response.state]}</span>
-              {t.archived && <span>Archived</span>}
-              <DiscussionLike
-                key={t.id}
-                threadId={t.id}
-                target="original feedback"
-                likes={t.likes}
-                canWrite={!!project?.permissions.canWrite}
-                onSaved={(likes) =>
-                  setThread((current) => current && { ...current, likes })
-                }
-              />
-            </div>
-            {t.assets?.filter((asset) => asset.contentType !== "video/webm").length >
-              1 && (
-              <ScreenshotComparison
-                assets={t.assets.filter((asset) => asset.contentType !== "video/webm")}
-              />
-            )}
             {t.assets?.length > 0 && (
               <section className="attachments">
                 <h2 className="sr-only">Attachments</h2>
@@ -802,6 +892,27 @@ export function ThreadDetail({
                   </figure>
                 ))}
               </section>
+            )}
+            <div className="feedback-reactions">
+              <DiscussionLike
+                key={t.id}
+                threadId={t.id}
+                target="original feedback"
+                likes={t.likes}
+                canWrite={!!project?.permissions.canWrite}
+                onSaved={(likes) =>
+                  setThread((current) => current && { ...current, likes })
+                }
+              />
+              {t.archived && <span>Archived</span>}
+            </div>
+            {t.assets?.filter((asset) => asset.contentType !== "video/webm").length >
+              0 && (
+              <ScreenshotComparison
+                assets={t.assets.filter((asset) => asset.contentType !== "video/webm")}
+                threadId={t.id}
+                canMaintain={!!project?.permissions.canMaintain}
+              />
             )}
             {project?.permissions.canWrite && (
               <details className="section" id="thread-upload">
@@ -875,38 +986,18 @@ export function ThreadDetail({
             )}
           </div>
           <div className="thread-side">
-            <div className="thread-side-controls">
-              <ThreadReview
-                key={`review:${t.id}`}
-                thread={t}
-                canWrite={!!project?.permissions.canWrite}
-                onSaved={setThread}
-              />
-              <ThreadNavigation key={threadId} threadId={threadId} />
-            </div>
             <div className="thread-pane">
-              <nav className="thread-tabs" aria-label="Thread sections">
-                <button
-                  type="button"
-                  aria-pressed={panel === "discussion"}
-                  aria-controls="thread-discussion"
-                  onClick={() => setPanel("discussion")}
-                >
-                  Discussion <span>{t.replies?.length ?? 0}</span>
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={panel === "details"}
-                  aria-controls="thread-details"
-                  onClick={() => setPanel("details")}
-                >
-                  Details
-                </button>
-              </nav>
               <div id="thread-discussion" hidden={panel !== "discussion"}>
                 <section className="replies">
-                  <h2>
+                  <h2 id="thread-discussion-heading" tabIndex={-1}>
                     Discussion <span className="muted">{t.replies?.length ?? 0}</span>
+                    {(t.response.state !== "unanswered" || !!t.replies?.length) && (
+                      <span className="response-state">
+                        {t.response.state === "unanswered"
+                          ? "Needs reply"
+                          : labels[t.response.state]}
+                      </span>
+                    )}
                   </h2>
                   {t.replies?.length ? (
                     t.replies.map((r) => (
@@ -923,7 +1014,7 @@ export function ThreadDetail({
                               ? "Requests follow-up"
                               : "Response"}
                           </span>
-                          <time>{date(r.createdAt)}</time>
+                          <HumanTime at={r.createdAt} />
                         </div>
                         <p className="message">{r.body}</p>
                         <DiscussionLike
@@ -1041,8 +1132,36 @@ export function ThreadDetail({
               <aside
                 className="context-panel"
                 id="thread-details"
+                tabIndex={-1}
                 hidden={panel !== "details"}
               >
+                <button
+                  type="button"
+                  className="context-back"
+                  onClick={() => {
+                    setPanel("discussion");
+                    requestAnimationFrame(() => {
+                      document.getElementById("thread-discussion-heading")?.focus();
+                    });
+                  }}
+                >
+                  ← Discussion
+                </button>
+                <h2>Details</h2>
+                {!project?.reviewEnabled && !!t.review.history.length && (
+                  <details className="section compact-details">
+                    <summary>Past review decisions ({t.review.history.length})</summary>
+                    <ol>
+                      {t.review.history.map((entry, index) => (
+                        <li key={`${entry.round}-${index}`}>
+                          Round {entry.round}: {entry.decision.replaceAll("_", " ")} by{" "}
+                          {entry.actor.name} · <HumanTime at={entry.at} />
+                          {entry.note && <p className="message">{entry.note}</p>}
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                )}
                 {project?.permissions.canMaintain && <GuestLinks threadId={t.id} />}
                 <ThreadOrganization
                   thread={t}
@@ -1092,6 +1211,13 @@ export function ThreadDetail({
                   {t.externalIssues?.length ? (
                     t.externalIssues.map((issue) => (
                       <p key={issue.url}>
+                        <strong>
+                          {issue.provider === "jira"
+                            ? "Jira"
+                            : issue.provider === "linear"
+                              ? "Linear"
+                              : "GitHub"}
+                        </strong>{" "}
                         <ExternalLink href={issue.url}>{issue.url}</ExternalLink>
                         <small>
                           {issue.verification === "github_verified"
@@ -1114,12 +1240,12 @@ export function ThreadDetail({
                           void mutate("threads.linkIssue", { url: f.get("url") });
                         }}
                       >
-                        <Field label="GitHub Issue URL">
+                        <Field label="GitHub, Jira Cloud or Linear Issue URL">
                           <input
                             name="url"
                             type="url"
                             required
-                            placeholder="https://github.com/org/repo/issues/123"
+                            placeholder="https://linear.app/team/issue/ENG-123"
                           />
                         </Field>
                         <button disabled={a.busy}>Register Issue</button>
@@ -1128,6 +1254,65 @@ export function ThreadDetail({
                   )}
                   {project && (
                     <GithubIssue thread={t} project={project} onSaved={setThread} />
+                  )}
+                </details>
+                <details className="section compact-details" id="thread-figma-reference">
+                  <summary>Figma design reference</summary>
+                  {t.figmaReference ? (
+                    <p>
+                      <ExternalLink href={t.figmaReference.url}>
+                        Open Figma file
+                      </ExternalLink>
+                      <small>
+                        Linked by {t.figmaReference.linkedBy.name} ·{" "}
+                        <HumanTime at={t.figmaReference.linkedAt} />
+                      </small>
+                    </p>
+                  ) : (
+                    <p className="muted">No Figma file linked.</p>
+                  )}
+                  {project?.permissions.canMaintain && (
+                    <>
+                      <p className="muted">
+                        Register a Figma file after agreeing on design work. This saves
+                        the file link here; it does not copy feedback or screenshots to
+                        Figma. Check access in Figma before sharing the file.
+                      </p>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const f = new FormData(e.currentTarget);
+                          void mutate("threads.figmaReference", { url: f.get("url") });
+                        }}
+                      >
+                        <Field label="Figma file URL">
+                          <input
+                            key={t.figmaReference?.url ?? "empty"}
+                            name="url"
+                            type="url"
+                            defaultValue={t.figmaReference?.url ?? ""}
+                            required
+                            placeholder="https://www.figma.com/design/..."
+                          />
+                        </Field>
+                        <div className="figma-reference-actions">
+                          <button disabled={a.busy}>
+                            {t.figmaReference ? "Replace reference" : "Link Figma file"}
+                          </button>
+                          {t.figmaReference && (
+                            <button
+                              type="button"
+                              disabled={a.busy}
+                              onClick={() =>
+                                void mutate("threads.figmaReference", { url: null })
+                              }
+                            >
+                              Remove reference
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    </>
                   )}
                 </details>
                 <details className="section compact-details">
@@ -1183,7 +1368,7 @@ export function ThreadDetail({
                   <summary>Activity history</summary>
                   <p>
                     Last activity: {t.lastActor?.name} ({t.lastActor?.kind}) ·{" "}
-                    {date(t.updatedAt)}
+                    <HumanTime at={t.updatedAt} />
                   </p>
                   {t.work.history?.map((h, n) => (
                     <div key={n}>
@@ -1191,7 +1376,12 @@ export function ThreadDetail({
                       <p className="message">{h.note}</p>
                       <small>
                         {h.actor?.name}
-                        {h.at ? ` · ${date(h.at)}` : ""}
+                        {h.at && (
+                          <>
+                            {" "}
+                            · <HumanTime at={h.at} />
+                          </>
+                        )}
                       </small>
                     </div>
                   ))}
@@ -1210,6 +1400,7 @@ export function ThreadDetail({
             </div>
           </div>
         </div>
+        <ThreadNavigation key={threadId} threadId={threadId} />
       </div>
     </>
   );

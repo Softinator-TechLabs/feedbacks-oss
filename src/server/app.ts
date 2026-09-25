@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { Operations } from "./operations.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
-import { assetRow, type AssetStore } from "./assets.js";
+import { assetListThumbnail, assetRow, type AssetStore } from "./assets.js";
 import { documentRow } from "./documents.js";
 import { DomainError, fail } from "./errors.js";
 import { inputSchemas, type OperationName } from "../shared/contracts.js";
@@ -17,6 +17,7 @@ import { guestInspect, guestReply } from "./guest-links.js";
 import { guestProjectInspect, guestProjectSubmit } from "./guest-project-links.js";
 import { verifyGuestTurnstile } from "./turnstile.js";
 import { widgetInspect, widgetLink } from "./widget.js";
+import { surveyInspect, surveySubmit } from "./surveys.js";
 export function createApp(config: Config, database: Database, assets: AssetStore) {
   const app = express(),
     ops = new Operations(database, assets, config),
@@ -56,7 +57,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         "X-Frame-Options": "DENY",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         "Content-Security-Policy":
-          req.path === "/guest" || req.path === "/guest-project"
+          req.path === "/guest" || req.path === "/guest-project" || req.path === "/survey"
             ? "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
             : "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       });
@@ -183,6 +184,8 @@ export function createApp(config: Config, database: Database, assets: AssetStore
           "guestProject.submit",
           "widget.inspect",
           "widget.submit",
+          "survey.inspect",
+          "survey.submit",
         ].includes(name)
       ) {
         const ip = req.ip ?? "unknown";
@@ -192,7 +195,8 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         else if (
           name.startsWith("guest.") ||
           name.startsWith("guestProject.") ||
-          name.startsWith("widget.")
+          name.startsWith("widget.") ||
+          name.startsWith("survey.")
         )
           rate(
             `${name}:${ip}`,
@@ -208,6 +212,26 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         const parsed = inputSchemas[name as OperationName].safeParse(req.body);
         if (!parsed.success) fail("VALIDATION", "Invalid request fields");
         const i: any = parsed.data;
+        if (name.startsWith("survey.")) {
+          requireOrigin(req);
+          if (name === "survey.inspect") {
+            res.json({ ok: true, data: await surveyInspect(database, i.token, config) });
+            return;
+          }
+          await verifyGuestTurnstile(
+            config,
+            i.turnstileToken,
+            req.ip,
+            fetch,
+            "survey_submit",
+          );
+          const data = await database.transaction(async (db) => {
+            await accountLock(db);
+            return surveySubmit(db, i);
+          });
+          res.json({ ok: true, data });
+          return;
+        }
         if (name.startsWith("widget.")) {
           if (req.query.linkId !== i.linkId)
             fail("ORIGIN_DENIED", "Widget link does not match request", 403);
@@ -391,6 +415,12 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       // Do not hold the organization transaction lock during remote storage I/O.
       if (!["image/webp", "video/webm"].includes(objectKey.contentType))
         fail("VALIDATION", "Unsupported asset type");
+      if (req.query.preview === "list") {
+        if (objectKey.contentType !== "image/webp")
+          fail("VALIDATION", "Image preview is available only for screenshots");
+        res.type("image/webp").send(await assetListThumbnail(assets, objectKey.key));
+        return;
+      }
       res.type(objectKey.contentType).send(await assets.get(objectKey.key));
     } catch (e) {
       next(e);

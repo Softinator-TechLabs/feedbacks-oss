@@ -12,15 +12,15 @@ Neighbors stay fixed while you edit the current thread, so posting a reply or re
 
 The status selector at the top of a thread saves as soon as you choose a state. **Resolve** closes the thread in one click for members with resolution permission; **Reopen** opens it again. Notes are optional. Use **Add a note or duplicate link** when there is extra context to record.
 
-The status stays above the feedback. On a narrow screen the screenshot appears before the review round, queue navigation and discussion. On desktop those controls sit beside the evidence. Open **Review** when a human sign-off is needed. The top actions open category and tags, a guest link, or linked issues in Details; the discussion remains the default pane. Icon actions have labels on hover and keyboard focus.
+The status stays above the feedback. On a narrow screen the screenshot appears before discussion and queue navigation. On desktop, discussion sits beside the evidence. The top icon actions open optional notes, review decisions, guest links, linked issues and details. On narrow screens these menus open at the bottom of the viewport. Each icon has an accessible name and a label on hover or keyboard focus.
 
-Project lists also show a status selector on each row. Changing it saves immediately, with resolution options only for members who can resolve threads. Dates throughout the app display in 12-hour IST format.
+Project lists also show a status selector on each row. Changing it saves immediately, with resolution options only for members who can resolve threads. Recent dates use short relative labels such as “3 mins ago”; the full 12-hour IST date and time is available on hover or keyboard focus.
 
 The saved status remains visible while a request is pending or fails. Failed updates retain their selection and details for retry. A conflicting revision must be loaded before retrying; the app does not silently overwrite another member's changes. Status history still records the actor and time. Resolving a thread does not claim delivery evidence or change its response obligation.
 
 ## Record a review decision
 
-Review rounds record an explicit human decision separately from work status. A project writer can choose **Approve this round** or **Request changes**, with an optional note. The decision records the reviewer, time and round. **Open another round** increments the round number and preserves earlier decisions. An approval does not resolve the thread or assert that work is deployed. Agent keys cannot record a human sign-off. The thread revision prevents concurrent decisions from overwriting one another.
+Review rounds are off by default. A project maintainer can enable **Require a separate review decision** in project settings when formal sign-off is needed. A project writer can then choose **Approve this round** or **Request changes**, with an optional note. The decision records the reviewer, time and round. **Open another round** increments the round number and preserves earlier decisions. Turning review off again hides the decision control and preserves its history in thread details. An approval does not resolve the thread or assert that work is deployed. Agent keys cannot record a human sign-off. The thread revision prevents concurrent decisions from overwriting one another.
 
 ## Invite a guest to one discussion
 
@@ -33,6 +33,14 @@ The guest sees only the original feedback text and project name. The guest can s
 A project maintainer can create a **Guest feedback link** in project settings when Turnstile is configured. It permits new feedback only: the guest sees the project name and a form for name, page URL and feedback, with no access to existing threads, screenshots, member notes or reviewer guidance. The submitted page URL must match an approved project origin unless the project accepts any website. New feedback appears as an untrusted guest request in the project's inbox. The form does not capture a screenshot or know the reviewed page's viewport; stored context marks its viewport as unknown.
 
 Choose an expiry of 1, 7 or 30 days and a limit of 1 to 50 submissions. Up to ten unexpired links with capacity can remain active per project. The token appears once, only as a private URL fragment, and only its hash is stored. Maintainers can list submission counts and revoke a link. Each submission passes a server-side Turnstile check and an IP rate limit. A spent, expired or revoked link cannot accept further feedback.
+
+## Run an opt-in survey
+
+Open a project's **Surveys** tab as a maintainer. Create a short form with 0–10 recommendation (NPS), 1–5 rating, single-choice or written-answer questions. Mark individual questions required as needed. Set the link lifetime and maximum responses, then copy the one-time link. The questions are fixed for that link; create a new survey if the wording changes.
+
+Visitors open the shared link in the Feedbacks app and complete a Turnstile check. The form asks for no name or email and does not reveal existing project feedback. Maintainers can inspect response counts, distributions and written answers in **Surveys**, and revoke the link. NPS is the percentage of 9–10 promoters minus the percentage of 0–6 detractors among answered recommendation questions. A score is absent until at least one recommendation answer exists. Survey responses remain separate from feedback threads.
+
+Public links can be forwarded. Use short expiry and a modest response cap when sharing broadly. Turnstile must be configured for survey creation and submission.
 
 ## Add the website widget
 
@@ -48,7 +56,9 @@ Use **Saved views** to apply a named filter. Open **Save or remove a view** for 
 
 ## Compare attachments
 
-A thread with two or more screenshots offers **Compare screenshots**. Pick any two attachments and use side-by-side comparison. Equal-sized images also support an overlay slider. Different dimensions stay side by side without stretching. These are attachment comparisons, not automated image diffs; equal dimensions do not establish that two captures show the same page position.
+For an existing thread with two private images, a maintainer can choose a baseline and any project member can calculate a pixel-difference percentage against another equal-sized image. Review the side-by-side or overlay image before deciding whether a change matters. See [scheduled page QA and visual baselines](scheduled-qa.md) for the limits of static scans and visual comparisons.
+
+A thread with an image offers **Visual baseline and comparison**. With two or more screenshots, pick any two attachments for side-by-side comparison. Equal-sized images also support an overlay slider. Different dimensions stay side by side without stretching. Equal dimensions do not establish that two captures show the same page position.
 
 An explicitly recorded tab video appears in the thread's attachments with playback controls. Video is excluded from screenshot comparison. Teammates need current access to the project to load it.
 
@@ -70,4 +80,14 @@ _Mobile viewer showing the same generated PDF at a narrow viewport._
 
 In the extension popup, open **Console & network**, start collection, reproduce the problem and take a screenshot. Collection covers the top-level page from that moment until capture, stop, navigation or five minutes. Review the entries in the editor and explicitly enable sharing. See [extension privacy and limits](extension.md#optional-console-and-network-context).
 
-Quick requests and discussion stay here. An agent with separately granted GitHub access can create an Issue after the team agrees and link its actual URL to the thread through MCP. Feedbacks does not automatically create or synchronize Issues.
+## Issue handoff
+
+Quick requests and discussion stay here. After the team agrees, a reviewer can prepare a bounded Issue draft, create an Issue in GitHub, Jira Cloud or Linear, and register its actual URL on the thread. Supported reported links use `https://github.com/ORG/REPO/issues/123`, `https://SITE.atlassian.net/browse/KEY-123` or `https://linear.app/WORKSPACE/issue/KEY-123` (with an optional title slug). Query strings, fragments and lookalike hosts are rejected. These patterns follow [Atlassian's Jira Cloud issue URL](https://support.atlassian.com/jira/kb/known-problems-with-viewing-requests-on-the-customer-portal/) and [Linear's issue URL example](https://linear.app/developers/graphql), checked on 2026-09-25.
+
+Manually registered links are labeled by provider and remain **reported**, not remotely verified. The draft excludes screenshots, diagnostics, private member notes and reviewer policy; inspect its text before copying it to another service. An agent needs separate tracker access and an explicitly granted `threads.issueDraft` scope to use this path. A connected GitHub App also supports explicit, verified GitHub Issue creation and optional project-level status sync. Incoming feedback never creates Issues automatically.
+
+## Continue agreed design work in Figma
+
+A signed-in project maintainer can open **Figma design reference** in a thread's Details and register one Figma file URL. The link can point to a selected Figma node. Replace or remove it there as design work changes. The reference is visible to project members who can read the thread; Figma controls access to the file itself.
+
+Registering the reference saves only the Figma file URL in Feedbacks. It does not import a design, copy the thread or screenshots into Figma, verify Figma permissions, or resolve the feedback. If a designer needs source material in Figma, review what can be shared and move it explicitly using their authorized Figma workflow.

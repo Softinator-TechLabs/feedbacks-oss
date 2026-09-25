@@ -7,6 +7,8 @@ import type { Pool } from "pg";
 import { purgeExpiredExports } from "./export-limits.js";
 import { purgeExpiredPairings } from "./auth.js";
 import { deliverWebhooks } from "./webhooks.js";
+import { pollGithubStatusSync } from "./github-status-worker.js";
+import { runScheduledQa } from "./scheduled-qa.js";
 
 try {
   const config = configFromEnv();
@@ -27,10 +29,12 @@ try {
       purgeExpiredExports(db),
       purgeExpiredPairings(db),
       deliverWebhooks(db),
+      pollGithubStatusSync(db, config),
+      runScheduledQa(db),
     ])
       .then((results) => {
         if (results.some((result) => result.status === "rejected"))
-          console.error("Expiry cleanup failed.");
+          console.error("Maintenance task failed.");
       })
       .finally(() => {
         maintenanceRunning = false;

@@ -19,7 +19,14 @@ export function memberWelcomeMessage(
   member: { name: string; email: string; password: string },
   origin: string,
 ) {
-  return `Hey ${member.name}, Feedbacks par join karein: ${origin}\nEmail: ${member.email}\nPassword: ${member.password}\nChrome extension aur Codex, Claude Code, Antigravity agent setup: ${origin}/help\nPlease sign in karke password change kar dein.`;
+  return `Hey ${member.name}, Feedbacks par join karein: ${origin}/login\nEmail: ${member.email}\nPassword: ${member.password}\nChrome extension aur Codex, Claude Code, Antigravity agent setup: ${origin}/help\nPlease sign in karke password change kar dein.`;
+}
+
+export function memberLoginDetails(
+  member: { email?: string; password: string },
+  origin: string,
+) {
+  return `Feedbacks login: ${origin}/login${member.email ? `\nEmail: ${member.email}` : ""}\nPassword: ${member.password}\nPlease sign in and change this password.`;
 }
 
 function generatePassword() {
@@ -122,7 +129,7 @@ function PasswordInput({
               );
           }}
         >
-          Copy password
+          Copy draft password
         </button>
       </div>
       <small id={statusId} role="status" aria-live="polite">
@@ -251,7 +258,14 @@ export function PasswordReplacement({
     </main>
   );
 }
-export function CreateMember({ onSaved }: { project?: Project; onSaved: () => void }) {
+export function CreateMember({
+  onSaved,
+  initiallyOpen = false,
+}: {
+  project?: Project;
+  onSaved: () => void;
+  initiallyOpen?: boolean;
+}) {
   const a = useAction(),
     [password, setPassword] = useState(""),
     [created, setCreated] = useState<{
@@ -261,7 +275,7 @@ export function CreateMember({ onSaved }: { project?: Project; onSaved: () => vo
     } | null>(null),
     { data, error } = useLoad(() => api<{ items: Project[] }>("projects.list", {}), []);
   return (
-    <details className="section">
+    <details className="section member-action-panel" open={initiallyOpen}>
       <summary>Create a user</summary>
       <form
         onSubmit={(e) => {
@@ -342,7 +356,7 @@ export function CreateMember({ onSaved }: { project?: Project; onSaved: () => vo
               )
             }
           >
-            Copy credentials and setup message
+            Copy login and setup message
           </button>
           <button type="button" onClick={() => setCreated(null)}>
             Clear message
@@ -420,6 +434,7 @@ export function MemberAdministration({
   actor: Actor;
   member: {
     id: string;
+    email?: string;
     owner: boolean;
     primaryOwner?: boolean;
     active: boolean;
@@ -428,7 +443,8 @@ export function MemberAdministration({
 }) {
   const a = useAction(),
     [link, setLink] = useState(""),
-    [password, setPassword] = useState("");
+    [password, setPassword] = useState(""),
+    [savedPassword, setSavedPassword] = useState("");
   const protectedAccount = member.primaryOwner && !actor.primaryOwner;
   return (
     <>
@@ -471,20 +487,49 @@ export function MemberAdministration({
               e.preventDefault();
               const form = e.currentTarget,
                 f = new FormData(form);
+              const enteredPassword = String(f.get("password"));
+              setSavedPassword("");
               void a.run(async () => {
                 await api("members.resetPassword", {
                   userId: member.id,
-                  password: String(f.get("password")),
+                  password: enteredPassword,
                 });
                 form.reset();
                 setPassword("");
                 setLink("");
+                setSavedPassword(enteredPassword);
               }, "Password saved. Deliver it privately; it can be used immediately.");
             }}
           >
             <PasswordInput label="New password" value={password} onChange={setPassword} />
             <button disabled={a.busy}>Set password</button>
           </form>
+          {savedPassword && (
+            <div className="created-member-actions">
+              <p>New password saved. Copy the login details and send them privately.</p>
+              <button
+                type="button"
+                disabled={a.busy}
+                onClick={() =>
+                  void a.run(
+                    () =>
+                      navigator.clipboard.writeText(
+                        memberLoginDetails(
+                          { email: member.email, password: savedPassword },
+                          location.origin,
+                        ),
+                      ),
+                    "Login details copied. Send them privately.",
+                  )
+                }
+              >
+                Copy password and login link
+              </button>
+              <button type="button" onClick={() => setSavedPassword("")}>
+                Clear login details
+              </button>
+            </div>
+          )}
           <button
             disabled={a.busy}
             onClick={() =>
@@ -492,6 +537,7 @@ export function MemberAdministration({
                 const r = await api("members.resetPassword", {
                   userId: member.id,
                 });
+                setSavedPassword("");
                 setLink(`${location.origin}${r.resetPath}`);
               })
             }
