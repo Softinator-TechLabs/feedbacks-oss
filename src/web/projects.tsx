@@ -603,8 +603,128 @@ export function ProjectSettings({
         )}
       </section>
       {project.permissions.canMaintain && <WebhookSettings projectId={project.id} />}
+      {project.permissions.canMaintain && (
+        <GithubSettings project={project} onSaved={onSaved} />
+      )}
       {project.permissions.canMaintain && <ScheduledQaSettings projectId={project.id} />}
       {project.permissions.canMaintain && <GuestProjectLinks projectId={project.id} />}
     </>
+  );
+}
+
+function GithubSettings({
+  project,
+  onSaved,
+}: {
+  project: Project;
+  onSaved: (p: Project) => void;
+}) {
+  const action = useAction();
+  const connection = useLoad<{
+    configured: boolean;
+    connected: boolean;
+    statusSyncEnabled: boolean;
+    installUrl: string | null;
+  }>(
+    () => api("github.connection", { projectId: project.id }),
+    [project.id, project.revision],
+  );
+  return (
+    <section className="section" aria-labelledby="github-heading">
+      <h2 id="github-heading">GitHub Issues</h2>
+      <p className="muted">
+        Connect the repository above to create reviewed Issues. Status sync is separate
+        and applies only to verified Issue links in this repository.
+      </p>
+      {connection.error && <ErrorNotice error={connection.error} />}
+      {!connection.data && !project.githubConnected ? (
+        !connection.error && <p role="status">Loading GitHub connection…</p>
+      ) : !project.githubConnected && !connection.data?.configured ? (
+        <p>The server owner must configure the GitHub App before connecting.</p>
+      ) : !project.githubConnected ? (
+        <>
+          {connection.data?.installUrl && (
+            <p>
+              <ExternalLink href={connection.data.installUrl}>
+                Install GitHub App
+              </ExternalLink>
+            </p>
+          )}
+          <button
+            type="button"
+            disabled={action.busy || !project.repositoryUrl}
+            onClick={() =>
+              void action.run(async () => {
+                onSaved(
+                  await api<Project>("github.connect", {
+                    projectId: project.id,
+                    revision: project.revision,
+                  }),
+                );
+              }, "GitHub repository connected.")
+            }
+          >
+            Connect repository
+          </button>
+        </>
+      ) : (
+        <div className="form-grid">
+          <p>Connected to {project.repositoryUrl}</p>
+          {!connection.data?.configured && (
+            <p role="alert">
+              GitHub App credentials are unavailable on this server. Status checks are
+              paused; you can disable sync or disconnect.
+            </p>
+          )}
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={project.githubStatusSync === true}
+              disabled={
+                action.busy || (!connection.data?.configured && !project.githubStatusSync)
+              }
+              onChange={(event) =>
+                void action.run(
+                  async () => {
+                    onSaved(
+                      await api<Project>("github.statusSyncConfigure", {
+                        projectId: project.id,
+                        revision: project.revision,
+                        enabled: event.target.checked,
+                      }),
+                    );
+                  },
+                  event.target.checked
+                    ? "GitHub status sync enabled."
+                    : "GitHub status sync disabled.",
+                )
+              }
+            />{" "}
+            Sync verified Issue open/closed state with thread work status
+          </label>
+          <p className="muted">
+            The server checks up to 10 linked threads per pass. A first mismatch or
+            changes on both sides need a maintainer’s choice on the thread.
+          </p>
+          <button
+            type="button"
+            disabled={action.busy}
+            onClick={() =>
+              void action.run(async () => {
+                onSaved(
+                  await api<Project>("github.disconnect", {
+                    projectId: project.id,
+                    revision: project.revision,
+                  }),
+                );
+              }, "GitHub disconnected; status sync stopped.")
+            }
+          >
+            Disconnect GitHub
+          </button>
+        </div>
+      )}
+      <ActionState action={action} />
+    </section>
   );
 }

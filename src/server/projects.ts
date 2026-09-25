@@ -52,6 +52,11 @@ export async function projects(db: Database, a: Actor, op: string, i: any) {
       op !== "projects.create" &&
       current?.githubConnected === true &&
       (i.repositoryUrl ?? null) === current.repositoryUrl,
+    githubStatusSync:
+      op !== "projects.create" &&
+      current?.githubConnected === true &&
+      current?.githubStatusSync === true &&
+      (i.repositoryUrl ?? null) === current.repositoryUrl,
   };
   let id = i.projectId;
   if (op === "projects.create") {
@@ -66,6 +71,11 @@ export async function projects(db: Database, a: Actor, op: string, i: any) {
       [JSON.stringify(data), id, i.revision],
     );
     if (!saved) fail("CONFLICT", "Project changed; reload first", 409);
+    if ((i.repositoryUrl ?? null) !== current?.repositoryUrl)
+      await db.query(
+        "DELETE FROM github_status_sync WHERE thread_id IN (SELECT id FROM threads WHERE project_id=$1) AND status<>'uncertain'",
+        [id],
+      );
   }
   await event(db, a, id, id, op, {});
   return access(db, a, id);

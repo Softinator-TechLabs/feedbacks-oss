@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { generateKeyPairSync } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -9,6 +10,8 @@ import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
 import { feedback } from "../src/server/feedback.js";
+import { GithubApp } from "../src/server/github-app.js";
+import { pollGithubStatusSync } from "../src/server/github-status-worker.js";
 import sharp from "sharp";
 
 // Opt-in native PostgreSQL: PGlite intentionally serializes its one connection and
@@ -62,7 +65,7 @@ test(
         (await db.query("SELECT version FROM migrations ORDER BY version")).map(
           (r) => r.version,
         ),
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
       );
       const owner = await ops.auth.bootstrap(
         "owner@example.test",
@@ -245,6 +248,100 @@ test(
         (await db.one("SELECT count(*)::integer AS count FROM assets")).count,
         1,
       );
+
+      // Pause the worker after it has decided to record a failed read, but
+      // before its status-row lock. A maintainer can reserve a PATCH here.
+      const raceProject = await ops.executeOperation(owner, "projects.create", {
+        name: "GitHub race",
+        origins: ["https://example.test"],
+        repositoryUrl: "https://github.com/acme/site",
+      });
+      const raceThread = await ops.executeOperation(owner, "threads.create", {
+        ...base,
+        projectId: raceProject.id,
+        idempotencyKey: "status-race-thread",
+      });
+      const issueUrl = "https://github.com/acme/site/issues/13";
+      await db.query(
+        `UPDATE projects SET data=jsonb_set(jsonb_set(data,'{githubConnected}','true'::jsonb),
+          '{githubStatusSync}','true'::jsonb) WHERE id=$1`,
+        [raceProject.id],
+      );
+      await db.query(
+        `UPDATE threads SET data=jsonb_set(data,'{externalIssues}',
+          jsonb_build_array(jsonb_build_object('url',$2::text,'repository','acme/site',
+          'number',13,'verification','github_verified','state','closed'))) WHERE id=$1`,
+        [raceThread.id, issueUrl],
+      );
+      await db.query(
+        `INSERT INTO github_status_sync(thread_id,issue_url,status,next_at)
+         VALUES($1,$2,'ready',now()-interval '1 minute')`,
+        [raceThread.id, issueUrl],
+      );
+      const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+      const githubConfig: any = {
+        githubAppId: "123",
+        githubAppSlug: "feedbacks-test",
+        githubAppPrivateKey: privateKey
+          .export({ type: "pkcs8", format: "pem" })
+          .toString(),
+      };
+      const github = new GithubApp(githubConfig, async (input, init) => {
+        const route = new URL(String(input)).pathname;
+        if (route.endsWith("/installation")) return Response.json({ id: 91 });
+        if (route.endsWith("/access_tokens"))
+          return Response.json({ token: "installation-token" });
+        if (route.endsWith("/issues/13")) throw new Error("worker read failed");
+        throw new Error(`Unexpected GitHub API ${route}`);
+      });
+      let workerSelectEntered: (() => void) | undefined;
+      let releaseWorkerSelect: (() => void) | undefined;
+      const workerSelectStarted = new Promise<void>((resolve) => {
+        workerSelectEntered = resolve;
+      });
+      let interceptWorkerSelect = true;
+      const workerDb = new Database({
+        query: (sql: string, params?: any[]) => pool!.query(sql, params),
+        connect: async () => {
+          const client = await pool!.connect();
+          return {
+            query: async (sql: string, params?: any[]) => {
+              if (
+                interceptWorkerSelect &&
+                /FROM github_status_sync s\s+JOIN threads t ON t.id=s.thread_id/.test(sql)
+              ) {
+                interceptWorkerSelect = false;
+                workerSelectEntered?.();
+                await new Promise<void>((resolve) => {
+                  releaseWorkerSelect = resolve;
+                });
+              }
+              return client.query(sql, params);
+            },
+            release: () => client.release(),
+          };
+        },
+      });
+      const workerPoll = pollGithubStatusSync(workerDb, githubConfig, github);
+      await workerSelectStarted;
+      try {
+        // Model the later PATCH reservation while the worker still holds its
+        // earlier claim. The worker must not turn this uncertain write into error.
+        await db.query(
+          `UPDATE github_status_sync SET status='uncertain',pending_target='open',
+            lease_until=clock_timestamp()+interval '2 minutes' WHERE thread_id=$1`,
+          [raceThread.id],
+        );
+        releaseWorkerSelect?.();
+        await workerPoll;
+        const afterWorker = await db.one(
+          "SELECT status,pending_target FROM github_status_sync WHERE thread_id=$1",
+          [raceThread.id],
+        );
+        assert.deepEqual(afterWorker, { status: "uncertain", pending_target: "open" });
+      } finally {
+        releaseWorkerSelect?.();
+      }
     } finally {
       if (a) {
         await a.query("ROLLBACK").catch(() => {});

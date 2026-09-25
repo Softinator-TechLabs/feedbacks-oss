@@ -68,6 +68,12 @@ export const operationDescriptions: Record<string, string> = {
     "Show whether a reviewed GitHub Issue request is pending or linked. A pending request may have succeeded remotely and must be reconciled before any new attempt. Human web sessions only.",
   "github.issueCreate":
     "Create and verify one Issue in the project's connected GitHub repository from a reviewed title and body. Human project maintainers or agents with a separately granted project-scoped github.issueCreate key may call this. The tool records the verified URL on the Feedbacks thread. Use a stable idempotencyKey; if the external result is uncertain, stop and ask a human maintainer to reconcile rather than retrying with a new key.",
+  "github.statusSyncConfigure":
+    "A signed-in human project maintainer enables or disables periodic open/closed status sync for verified Issues in the connected repository. Enabling starts a new baseline; a mismatch needs manual reconciliation.",
+  "github.statusSyncState":
+    "Show ready, pending, conflict, uncertain or read-error state for a linked Issue's opt-in status sync. Human project maintainers only.",
+  "github.statusSync":
+    "A human project maintainer explicitly resolves a status mismatch for a verified Issue. source:github applies open/closed to Feedbacks work; source:feedbacks applies open/resolved to GitHub. Declined has no automatic GitHub equivalent. Read the Issue and thread before choosing; uncertain external writes require manual inspection.",
   "threads.review":
     "Record a human review-round decision: approved or changes_requested. Reopen starts a new round while preserving prior decisions. Agent tokens cannot use this operation. This is separate from thread work status and resolution.",
   "assets.get":

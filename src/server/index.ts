@@ -7,6 +7,7 @@ import type { Pool } from "pg";
 import { purgeExpiredExports } from "./export-limits.js";
 import { purgeExpiredPairings } from "./auth.js";
 import { deliverWebhooks } from "./webhooks.js";
+import { pollGithubStatusSync } from "./github-status-worker.js";
 import { runScheduledQa } from "./scheduled-qa.js";
 
 try {
@@ -28,6 +29,7 @@ try {
       purgeExpiredExports(db),
       purgeExpiredPairings(db),
       deliverWebhooks(db),
+      pollGithubStatusSync(db, config),
       runScheduledQa(db),
     ])
       .then((results) => {

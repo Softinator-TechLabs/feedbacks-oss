@@ -22,7 +22,7 @@ The transport returns `structuredContent` with an explicit output schema and a s
 - `response`: state, last human request, last response, actor and time.
 - `work`: current state and attributed state-change history; resolution requires a note.
 - `review`: current round, decision state and attributed history. Older export snapshots may not contain this field. Human sign-off is independent of work status; agent tokens cannot write it.
-- `externalIssues`: URL, repository, issue number, linked-by actor, link time and optional reported creation time. Manual links have `verification:"reported"`; an optional human-operated GitHub App connection records `github_verified` and can read open or closed state. Neither kind changes work status.
+- `externalIssues`: URL, repository, issue number, linked-by actor, link time and optional reported creation time. Manual links have `verification:"reported"`; an optional GitHub App connection records `github_verified` and can read open or closed state. Linking and readback alone leave work status unchanged. A project maintainer may separately enable status sync for verified links; the worker then reconciles one-sided open/closed changes conservatively, with visible conflict and uncertainty states.
 - `fixEvidence`: attributable commit/PR/variant/incorporated-in links and notes. A supplied URL is not proof that the target is deployed or verified.
 - `pins.defaultVisible`: resolved/declined/archived pins are hidden by default. Original context and client anchor match remain separate.
 - `context`: sanitized target URL, requested preset, actual viewport, pixel ratio, scroll, capture dimensions and bounded element anchor metadata.

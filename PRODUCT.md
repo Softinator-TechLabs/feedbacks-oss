@@ -16,7 +16,7 @@ Product teams review public sites, authenticated dashboards and local prototypes
 
 ## Product Purpose
 
-Be the team's shared slate for the web: capture a screenshot, draw on it with a pencil, and discuss the point with people and authorized agents. Give quick client requirements and visual reviews a place to become clear before the team takes agreed design work to Figma or engineering work to GitHub Issues and Projects. Keep element-specific screenshots, discussion, response obligations and delivery evidence together without requiring either tool or implying automatic integration.
+Be the team's shared slate for the web: capture a screenshot, draw on it with a pencil, and discuss the point with people and authorized agents. Give quick client requirements and visual reviews a place to become clear before the team takes agreed design work to Figma or engineering work to GitHub Issues and Projects. Keep element-specific screenshots, discussion, response obligations and delivery evidence together without requiring either tool. A connected project may separately opt into verified GitHub Issue status sync.
 
 Developers and authorized coding agents share that context. Owners can describe reviewer expertise in approved guidance and assign subject-specific importance weights, with project overrides. Agents receive this advisory context separately from untrusted discussion and approved project instructions. Weights support interpretation; they do not guarantee a model's decisions or grant permission to act.
 

@@ -14,6 +14,7 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 - [Scheduled project QA and visual baselines](scheduled-project-qa.md)
 - [Scoped guest review links](guest-review-links.md)
 - [Optional GitHub Issues connection](github-issues-app.md)
+- [Optional GitHub Issue status sync](github-status-sync.md)
 - [Signed project webhooks](signed-project-webhooks.md)
 - [Project document review](attachment-review.md)
 - [Embeddable website feedback widget](embeddable-widget.md)
