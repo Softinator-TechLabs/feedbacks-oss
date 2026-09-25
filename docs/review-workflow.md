@@ -34,6 +34,14 @@ A project maintainer can create a **Guest feedback link** in project settings wh
 
 Choose an expiry of 1, 7 or 30 days and a limit of 1 to 50 submissions. Up to ten unexpired links with capacity can remain active per project. The token appears once, only as a private URL fragment, and only its hash is stored. Maintainers can list submission counts and revoke a link. Each submission passes a server-side Turnstile check and an IP rate limit. A spent, expired or revoked link cannot accept further feedback.
 
+## Run an opt-in survey
+
+Open a project's **Surveys** tab as a maintainer. Create a short form with 0–10 recommendation (NPS), 1–5 rating, single-choice or written-answer questions. Mark individual questions required as needed. Set the link lifetime and maximum responses, then copy the one-time link. The questions are fixed for that link; create a new survey if the wording changes.
+
+Visitors open the shared link in the Feedbacks app and complete a Turnstile check. The form asks for no name or email and does not reveal existing project feedback. Maintainers can inspect response counts, distributions and written answers in **Surveys**, and revoke the link. NPS is the percentage of 9–10 promoters minus the percentage of 0–6 detractors among answered recommendation questions. A score is absent until at least one recommendation answer exists. Survey responses remain separate from feedback threads.
+
+Public links can be forwarded. Use short expiry and a modest response cap when sharing broadly. Turnstile must be configured for survey creation and submission.
+
 ## Add the website widget
 
 In project settings, choose **Website widget** when creating a guest feedback link. The project must use exact approved origins. Copy the one-time script snippet into an approved website. The script shows a fixed **Send feedback** launcher; it does not load existing project feedback. The form sends the current page URL, viewport dimensions, visitor name and feedback. The host script does not capture screenshots or other tabs. Use the Chrome extension for private screenshot review.
