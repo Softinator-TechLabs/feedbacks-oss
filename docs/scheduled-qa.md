@@ -26,3 +26,14 @@ The command uses a new browser context without cookies, downloads or permissions
 Request interception and browser flags reduce exposure but are not an operating-system network sandbox for hostile page code. Do not run script mode on an untrusted third-party page or in an environment with private network access or sensitive browser profiles.
 
 This local operator check does not run in the scheduled worker. Unattended screenshot capture still needs a managed browser runtime and independently enforced network egress isolation before it can safely be connected to scheduled project QA. The existing scheduled static scan and authorized thread image comparison continue as described above.
+
+## Signed-in app layout regression
+
+The separate `qa:app-visual` command starts the disposable local harness, signs in as its synthetic owner, and captures the seeded feedback list and thread at desktop (1280 × 800) and mobile (390 × 844) sizes in both themes. It never loads production credentials, projects, screenshots or cookies. Its browser permits requests only to the harness's exact loopback origin and blocks WebSockets and popups. Run `npm run build` first; install Chromium with `npx playwright install chromium` if needed. Create a local baseline once, then compare against it after UI changes:
+
+```sh
+npm run qa:app-visual -- --baseline-dir=output/playwright/app-baseline --output-dir=output/playwright/app-first --init-baseline=true
+npm run qa:app-visual -- --baseline-dir=output/playwright/app-baseline --output-dir=output/playwright/app-next --max-change=0.5
+```
+
+Each capture writes eight PNGs to the ignored `output/playwright/` folder with private file permissions. The command never overwrites a baseline or output image. Exit 1 means at least one capture changed beyond the selected pixel threshold; exit 2 means setup or capture failed. Review the PNGs before accepting a changed baseline. This checks the authenticated app shell and synthetic queue/thread layout; the seeded thread has no screenshot, and the command does not browse production or run on a schedule. Browser-version and font changes can cause pixel differences even when the app behavior is correct.
