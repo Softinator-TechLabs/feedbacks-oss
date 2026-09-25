@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { ReviewFilters } from "../shared/contracts.js";
 import { api, labels, type Thread } from "./api.js";
 import { navigate, usePageLocation, useUnsavedChanges } from "./navigation.js";
@@ -23,6 +23,7 @@ export function SavedReviewViews({
 }) {
   const [version, setVersion] = useState(0),
     [selected, setSelected] = useState("");
+  const manageRef = useRef<HTMLDetailsElement>(null);
   const a = useAction();
   const { data, error } = useLoad(
     () => api<{ items: SavedView[] }>("reviewViews.list", { projectId }),
@@ -31,29 +32,36 @@ export function SavedReviewViews({
   const view = data?.items.find((item) => item.id === selected);
   useUnsavedChanges(a.busy);
   return (
-    <details className="saved-views section compact-details">
-      <summary>Saved views{data?.items.length ? ` (${data.items.length})` : ""}</summary>
+    <div className="saved-views" role="group" aria-label="Saved views">
       <ErrorNotice error={error} />
       {error && (
         <button onClick={() => setVersion((v) => v + 1)}>Retry saved views</button>
       )}
-      <div className="saved-view-picker">
-        <Field label="Saved filter">
-          <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-            <option value="">Select a view</option>
-            {data?.items.map((item) => (
+      {!!data?.items.length && (
+        <label className="saved-view-select">
+          <span className="sr-only">Open a saved view</span>
+          <select
+            aria-label="Open a saved view"
+            value={selected}
+            disabled={a.busy}
+            onChange={(e) => {
+              const id = e.target.value;
+              setSelected(id);
+              const next = data.items.find((item) => item.id === id);
+              if (next) onApply(next.filters);
+            }}
+          >
+            <option value="">Saved views ({data.items.length})</option>
+            {data.items.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
             ))}
           </select>
-        </Field>
-        <button disabled={!view || a.busy} onClick={() => view && onApply(view.filters)}>
-          Apply
-        </button>
-      </div>
-      <details className="saved-view-manage">
-        <summary>Save or remove a view</summary>
+        </label>
+      )}
+      <details className="saved-view-manage" ref={manageRef}>
+        <summary>Save view</summary>
         <form
           className="saved-view-picker"
           onSubmit={(e) => {
@@ -69,6 +77,7 @@ export function SavedReviewViews({
               setSelected(saved.id);
               setVersion((v) => v + 1);
               form.reset();
+              manageRef.current?.removeAttribute("open");
             }, "Current filters saved.");
           }}
         >
@@ -98,7 +107,7 @@ export function SavedReviewViews({
         )}
       </details>
       <ActionState action={a} />
-    </details>
+    </div>
   );
 }
 
