@@ -2,7 +2,7 @@
 
 Feedbacks' own source is covered by `LICENSE` and `NOTICE`. Dependencies retain their original copyrights, licenses and notices in their installed packages; the lockfile records exact resolved versions. A source release includes the lockfile; the runtime container preserves production packages and their notices.
 
-The principal runtime packages are React/React DOM, Express, pg, Zod, Argon2, Sharp, tldts, the AWS SDK and the Model Context Protocol SDK. Development tools include TypeScript, Vite, tsx, Prettier and PGlite. Native dependencies such as libvips have their own notices in the relevant packages. Use `npm sbom --sbom-format cyclonedx` after `npm ci` for the installed dependency inventory; this does not replace reviewing license text.
+The principal runtime packages are React/React DOM, Express, pg, Zod, Argon2, Sharp, tldts, the AWS SDK and the Model Context Protocol SDK. Development tools include TypeScript, Vite, tsx, Prettier, PGlite and Playwright (Apache-2.0). Native dependencies such as libvips have their own notices in the relevant packages. Use `npm sbom --sbom-format cyclonedx` after `npm ci` for the installed dependency inventory; this does not replace reviewing license text.
 
 Existing reference research is recorded in [reference provenance](docs/reference-provenance.md). It records inspected examples, not a claim of copied code or permission to reuse proprietary features. New source reuse requires its exact origin, revision, license and required notices here.
 
