@@ -58,7 +58,19 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     tag,
   } = filters;
   const [creating, setCreating] = useState(false),
+    [filtersOpen, setFiltersOpen] = useState(false),
     [version, setVersion] = useState(0);
+  const activeFilterCount = [
+    search,
+    url,
+    domain,
+    hostname,
+    deviceClass,
+    category,
+    tag,
+    sort !== "activity",
+    showResolved,
+  ].filter(Boolean).length;
   const {
     data: loaded,
     setData: setLoaded,
@@ -120,8 +132,25 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           }}
         />
       )}
-      <section className="thread-filter-panel" aria-label="Feedback filters and views">
+      <section
+        className={`thread-filter-panel${filtersOpen ? " is-expanded" : ""}`}
+        aria-label="Feedback filters and views"
+      >
+        <button
+          className="thread-filter-mobile-toggle"
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-controls="feedback-filter-form"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <span>Search &amp; filters</span>
+          {activeFilterCount > 0 && (
+            <span className="thread-filter-active-count">{activeFilterCount} active</span>
+          )}
+          <span className="thread-filter-chevron" aria-hidden="true" />
+        </button>
         <form
+          id="feedback-filter-form"
           key={`${project.id}:${query}`}
           className="filters thread-filters"
           onSubmit={(e) => {
@@ -129,6 +158,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
             const f = new FormData(e.currentTarget),
               p = new URLSearchParams();
             for (const [key, value] of f) if (String(value)) p.set(key, String(value));
+            setFiltersOpen(false);
             apply(readFilters(p.toString()));
           }}
         >
@@ -159,7 +189,10 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           <button
             className="thread-filter-clear"
             type="button"
-            onClick={() => apply(readFilters(""))}
+            onClick={() => {
+              setFiltersOpen(false);
+              apply(readFilters(""));
+            }}
           >
             Clear
           </button>
@@ -237,7 +270,10 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
         <SavedReviewViews
           projectId={project.id}
           filters={filters}
-          onApply={(next) => apply(next)}
+          onApply={(next) => {
+            setFiltersOpen(false);
+            apply(next);
+          }}
         />
       </section>
       <ErrorNotice error={error} />
