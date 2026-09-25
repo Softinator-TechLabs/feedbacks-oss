@@ -84,6 +84,9 @@
 :root[data-theme="dark"] :is(.filters, .loading, .reading pre) {
   background: #1d2833;
 }
+:root[data-theme="dark"] .thread-filters {
+  background: transparent;
+}
 :root[data-theme="dark"] :is(.project-row:hover, .thread-row:hover) {
   background: #202e3c;
 }
