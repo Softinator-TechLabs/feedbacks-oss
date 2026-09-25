@@ -18,6 +18,8 @@
   --control-border: #adb8c1;
   --control-hover: #7b8c99;
   --soft-surface: #f5f7f7;
+  --tooltip-surface: #17324d;
+  --tooltip-ink: #fff;
 }
 * {
   box-sizing: border-box;
@@ -215,6 +217,13 @@ small {
 .account-nav button {
   font-size: 0.85rem;
 }
+.account-nav :is(.theme-switch, .sign-out-button) {
+  border-color: transparent;
+  background: transparent;
+}
+.account-nav :is(.theme-switch, .sign-out-button):hover {
+  background: var(--soft-surface);
+}
 .shell {
   max-width: 1440px;
   margin: auto;
@@ -237,6 +246,30 @@ small {
 .page-heading p {
   color: var(--muted);
   margin-bottom: 0;
+}
+.thread-list-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.thread-list-quick-actions button {
+  white-space: nowrap;
+}
+.thread-priority-button {
+  border-color: transparent;
+  background: transparent;
+}
+.thread-priority-button[aria-pressed="true"] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+.thread-filter-panel {
+  margin: 8px 0 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--soft-surface);
 }
 .project-nav {
   display: flex;
@@ -345,6 +378,19 @@ small {
 .thread-row-main:hover {
   color: inherit;
 }
+.thread-row-main.has-thumbnail {
+  grid-template-columns: 96px minmax(0, 1fr) 130px;
+}
+.thread-row-thumbnail {
+  display: block;
+  width: 96px;
+  height: 64px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--soft-surface);
+}
 .thread-row-actions {
   display: flex;
   flex-direction: column;
@@ -421,6 +467,17 @@ small {
   .thread-row-main {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
+  }
+  .thread-row-main.has-thumbnail {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 8px 12px;
+  }
+  .thread-row-thumbnail {
+    width: 88px;
+    height: 60px;
+  }
+  .thread-row-main.has-thumbnail .thread-stats {
+    grid-column: 2;
   }
   .thread-row .thread-stats {
     align-items: flex-start;
@@ -1297,10 +1354,17 @@ legend {
   .page-heading p {
     font-size: 0.85rem;
   }
-  .page-heading > button {
+  .thread-list-heading {
+    flex-wrap: wrap;
+  }
+  .thread-list-heading .thread-list-quick-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .page-heading > button,
+  .thread-list-quick-actions button {
     font-size: 0.85rem;
     flex-shrink: 0;
-    max-width: 125px;
   }
   .project-nav {
     gap: 10px;
@@ -1342,8 +1406,11 @@ legend {
     gap: 12px;
   }
   .thread-filters {
-    padding: 0 0 11px;
+    padding: 12px 0 0;
     gap: 10px;
+  }
+  .thread-filter-panel {
+    padding: 14px;
   }
   .filters .field,
   .filters .field:first-child {

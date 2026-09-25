@@ -304,3 +304,96 @@ test("URL review state round-trips filters and safely bounds pagination", () => 
     assert.equal(readOffset(invalid), 0);
   assert.equal(readFilters("sort=unknown&deviceClass=bad&category=bad").sort, "activity");
 });
+
+test("policy-authorized priority order is shared by the inbox and MCP navigation", async () => {
+  const pg = new PGlite();
+  const db = new Database(pg as any);
+  try {
+    await migrate(db);
+    const ops = new Operations(db, {} as any, {} as any);
+    const owner = await ops.auth.bootstrap(
+      "owner@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const project = await ops.executeOperation(owner, "projects.create", {
+      name: "Priority review",
+      origins: ["https://example.test"],
+    });
+    const invitation = await ops.executeOperation(owner, "members.invite", {
+      email: "reviewer@example.test",
+      projectId: project.id,
+      role: "reviewer",
+    });
+    await ops.auth.acceptInvite(
+      invitation.token,
+      "Reviewer",
+      "Correct-Horse-Battery-123",
+    );
+    const reviewer = (
+      await ops.auth.login("reviewer@example.test", "Correct-Horse-Battery-123")
+    ).actor;
+    await db.query("UPDATE users SET policy=$1 WHERE id=$2", [
+      JSON.stringify({ general: 1, visualDesign: 5 }),
+      owner.userId,
+    ]);
+    await db.query("UPDATE users SET policy=$1 WHERE id=$2", [
+      JSON.stringify({ general: 4 }),
+      reviewer.userId,
+    ]);
+    const design = await ops.executeOperation(owner, "threads.create", {
+      projectId: project.id,
+      body: "Visual alignment",
+      category: "visualDesign",
+      context: {
+        url: "https://example.test/design",
+        viewport: { width: 1200, height: 800 },
+      },
+      idempotencyKey: "priority-design",
+    });
+    const workflow = await ops.executeOperation(reviewer, "threads.create", {
+      projectId: project.id,
+      body: "Checkout workflow",
+      category: "productWorkflow",
+      context: {
+        url: "https://example.test/workflow",
+        viewport: { width: 1200, height: 800 },
+      },
+      idempotencyKey: "priority-workflow",
+    });
+    await ops.executeOperation(reviewer, "views.like", {
+      projectId: project.id,
+      context: {
+        url: "https://example.test/workflow",
+        viewport: { width: 1200, height: 800 },
+      },
+      liked: true,
+    });
+    await assert.rejects(
+      ops.executeOperation(reviewer, "threads.list", {
+        projectId: project.id,
+        sort: "priority",
+      }),
+      { code: "FORBIDDEN" },
+    );
+    const prioritized = await ops.executeOperation(owner, "threads.list", {
+      projectId: project.id,
+      sort: "priority",
+    });
+    assert.deepEqual(
+      prioritized.items.map((item: any) => [item.id, item.priorityScore]),
+      [
+        [workflow.id, 8],
+        [design.id, 5],
+      ],
+    );
+    const adjacent = await ops.executeOperation(owner, "threads.neighbors", {
+      threadId: workflow.id,
+      sort: "priority",
+    });
+    assert.equal(adjacent.next, design.id);
+    assert.equal(readFilters("sort=priority").sort, "priority");
+  } finally {
+    await pg.close();
+  }
+});

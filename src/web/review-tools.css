@@ -19,7 +19,16 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px 14px;
-  margin: 0 0 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.saved-views-label {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 600;
 }
 .saved-view-select select {
   min-height: 44px;
@@ -53,12 +62,21 @@
   display: inline-flex;
   align-items: center;
   list-style: none;
-  padding: 6px 8px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
   font-size: 0.86rem;
   font-weight: 600;
 }
 .saved-view-manage > summary::-webkit-details-marker {
   display: none;
+}
+.saved-view-manage > summary:hover {
+  background: var(--soft-surface);
+}
+.saved-view-manage > summary:focus-visible {
+  outline: 2px solid var(--focus);
 }
 .saved-view-manage[open] {
   order: 2;

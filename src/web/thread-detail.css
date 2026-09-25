@@ -271,8 +271,8 @@
   max-width: min(240px, 80vw);
   padding: 5px 8px;
   border-radius: 5px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--tooltip-surface);
+  color: var(--tooltip-ink);
   font-size: 0.78rem;
   font-weight: 500;
   line-height: 1.25;
@@ -342,11 +342,21 @@
   height: 44px;
   min-height: 44px;
   padding: 0;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 9px;
-  background: var(--surface);
+  background: transparent;
   color: var(--accent);
   cursor: pointer;
+}
+.thread-header-actions
+  :is(
+    .thread-icon-button:not(.primary),
+    .status-options > summary,
+    .thread-review > summary,
+    .thread-action-menu > summary
+  ):hover,
+.thread-header-actions .thread-header-popover[open] > summary {
+  background: var(--soft-surface);
 }
 .thread-header-actions .status-controls .thread-icon-button {
   padding: 0;
@@ -389,6 +399,9 @@
 .thread-header-actions .status-options > summary,
 .thread-action-menu > summary {
   display: inline-flex;
+}
+.thread-header-actions .thread-header-popover[open] > summary {
+  margin-bottom: 0;
 }
 .thread-header-actions .status-options > summary::marker,
 .thread-action-menu > summary::marker {
@@ -458,9 +471,9 @@
   height: 44px;
   min-height: 44px;
   padding: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 9px;
-  background: var(--surface);
+  background: transparent;
   color: var(--accent);
 }
 .thread-tool-button {
@@ -486,8 +499,8 @@
   max-width: min(240px, 80vw);
   padding: 5px 8px;
   border-radius: 5px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--tooltip-surface);
+  color: var(--tooltip-ink);
   font-size: 0.78rem;
   line-height: 1.25;
   font-weight: 500;

@@ -33,6 +33,7 @@ export function SavedReviewViews({
   useUnsavedChanges(a.busy);
   return (
     <div className="saved-views" role="group" aria-label="Saved views">
+      <span className="saved-views-label">Views</span>
       <ErrorNotice error={error} />
       {error && (
         <button onClick={() => setVersion((v) => v + 1)}>Retry saved views</button>
@@ -61,7 +62,7 @@ export function SavedReviewViews({
         </label>
       )}
       <details className="saved-view-manage" ref={manageRef}>
-        <summary>Save view</summary>
+        <summary>Save current view</summary>
         <form
           className="saved-view-picker"
           onSubmit={(e) => {

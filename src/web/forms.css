@@ -116,10 +116,10 @@ textarea::placeholder {
 }
 .thread-filters {
   align-items: end;
-  gap: 10px 12px;
-  padding: 0 0 11px;
-  margin-bottom: 6px;
-  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  padding: 12px 0 0;
+  margin: 0;
+  border: 0;
   border-radius: 0;
   background: transparent;
 }

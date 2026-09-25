@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { Operations } from "./operations.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
-import { assetRow, type AssetStore } from "./assets.js";
+import { assetListThumbnail, assetRow, type AssetStore } from "./assets.js";
 import { documentRow } from "./documents.js";
 import { DomainError, fail } from "./errors.js";
 import { inputSchemas, type OperationName } from "../shared/contracts.js";
@@ -415,6 +415,12 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       // Do not hold the organization transaction lock during remote storage I/O.
       if (!["image/webp", "video/webm"].includes(objectKey.contentType))
         fail("VALIDATION", "Unsupported asset type");
+      if (req.query.preview === "list") {
+        if (objectKey.contentType !== "image/webp")
+          fail("VALIDATION", "Image preview is available only for screenshots");
+        res.type("image/webp").send(await assetListThumbnail(assets, objectKey.key));
+        return;
+      }
       res.type(objectKey.contentType).send(await assets.get(objectKey.key));
     } catch (e) {
       next(e);

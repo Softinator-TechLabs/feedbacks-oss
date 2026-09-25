@@ -210,6 +210,7 @@ export type ReviewDocument = {
 export type Thread = {
   id: string;
   projectId: string;
+  priorityScore?: number;
   body: string;
   likes: { uniqueLikes: number; liked: boolean };
   category: string;

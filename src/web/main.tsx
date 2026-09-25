@@ -322,7 +322,7 @@ function App() {
                 documentId={section.slice("documents/".length)}
               />
             ) : section === "" ? (
-              <ThreadList project={project} />
+              <ThreadList project={project} actor={actor} />
             ) : (
               <p>
                 Page not found. <a href="/">Open projects</a>
