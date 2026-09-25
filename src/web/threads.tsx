@@ -272,6 +272,9 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                     )}
                     <div className="thread-summary">
                       <h2>{t.body}</h2>
+                      {t.topPriority && !project.permissions.canMaintain && (
+                        <span className="thread-priority-label">Top priority</span>
+                      )}
                       {!!t.tags?.length && (
                         <div className="tag-list">
                           {t.tags.map((tag) => (
@@ -328,6 +331,27 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                         })
                       }
                     />
+                    {project.permissions.canMaintain && (
+                      <ThreadQuickPriority
+                        thread={t}
+                        onSaved={(updated) => {
+                          setLoaded((current) =>
+                            current && current.query === query
+                              ? {
+                                  ...current,
+                                  result: {
+                                    ...current.result,
+                                    items: current.result.items.map((item) =>
+                                      item.id === updated.id ? updated : item,
+                                    ),
+                                  },
+                                }
+                              : current,
+                          );
+                          setVersion((value) => value + 1);
+                        }}
+                      />
+                    )}
                     {t.response.state === "unanswered" ? (
                       !!t.replies?.length && (
                         <span className="muted">Needs team response</span>
@@ -381,6 +405,41 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
         )
       )}
     </>
+  );
+}
+function ThreadQuickPriority({
+  thread,
+  onSaved,
+}: {
+  thread: Thread;
+  onSaved: (thread: Thread) => void;
+}) {
+  const action = useAction();
+  return (
+    <div className="thread-row-priority">
+      <button
+        type="button"
+        className="thread-row-priority-button"
+        aria-label={`${thread.topPriority ? "Remove" : "Mark"} top priority for ${thread.body.slice(0, 80)}`}
+        title={thread.topPriority ? "Remove top priority" : "Mark top priority"}
+        aria-pressed={thread.topPriority}
+        disabled={action.busy}
+        onClick={() => {
+          void action.run(async () => {
+            onSaved(
+              await api<Thread>("threads.priority", {
+                threadId: thread.id,
+                revision: thread.revision,
+                topPriority: !thread.topPriority,
+              }),
+            );
+          });
+        }}
+      >
+        <Icon name="priority" />
+      </button>
+      <ActionState action={action} />
+    </div>
   );
 }
 function ThreadQuickStatus({

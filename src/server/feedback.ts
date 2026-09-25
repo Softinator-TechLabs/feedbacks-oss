@@ -196,6 +196,7 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
   }
   return {
     ...data,
+    topPriority: data.topPriority === true,
     review: data.review ?? { round: 1, state: "open", history: [] },
     figmaReference: data.figmaReference ?? null,
     tags: data.tags ?? [],
@@ -225,7 +226,13 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
     updatedAt: new Date(row.updated_at).toISOString(),
   };
 }
-export async function saveThread(db: Database, a: Actor, row: any, kind: string) {
+export async function saveThread(
+  db: Database,
+  a: Actor,
+  row: any,
+  kind: string,
+  eventData: Record<string, unknown> = {},
+) {
   row.data.lastActor = publicActor(a);
   row.data.lastActivityAt = new Date().toISOString();
   const saved = await db.one(
@@ -235,6 +242,7 @@ export async function saveThread(db: Database, a: Actor, row: any, kind: string)
   if (!saved) fail("CONFLICT", "Feedback changed; reload before retrying", 409);
   await event(db, a, row.project_id, row.id, kind, {
     revision: saved.revision,
+    ...eventData,
   });
   return saved;
 }
@@ -421,7 +429,7 @@ export async function feedback(
       db,
       a,
       i.threadId,
-      op === "threads.figmaReference" ? "maintain" : "write",
+      ["threads.figmaReference", "threads.priority"].includes(op) ? "maintain" : "write",
       true,
     ),
     data = row.data;
@@ -434,6 +442,8 @@ export async function feedback(
   if (op === "threads.organize") {
     data.category = i.category;
     data.tags = i.tags;
+  } else if (op === "threads.priority") {
+    data.topPriority = i.topPriority;
   } else if (op === "threads.reply") {
     data.response = (await fullThread(db, a, row)).response;
     for (const userId of i.mentions) {
@@ -551,7 +561,13 @@ export async function feedback(
     await access(db, a, row.project_id, "maintain");
     data.archived = i.archived;
   } else fail("NOT_FOUND", "Unknown thread operation", 404);
-  const saved = await saveThread(db, a, row, op);
+  const saved = await saveThread(
+    db,
+    a,
+    row,
+    op,
+    op === "threads.priority" ? { topPriority: i.topPriority } : {},
+  );
   await remember(db, a, op, i, row.id);
   return fullThread(db, a, saved);
 }

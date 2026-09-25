@@ -50,6 +50,8 @@ export const operationDescriptions: Record<string, string> = {
     "Find previous and next thread in the same filtered and sorted inbox, across pagination. Returns null neighbors if the thread is outside current filters. This is a live view, not an immutable queue.",
   "threads.organize":
     "Replace optional category and tags using the current revision. Read existing tags first to preserve relevant labels. Does not change workflow status.",
+  "threads.priority":
+    "Mark or unmark one thread as top priority using its current revision. Requires project maintainer access; marked active threads lead the Top priority sort before weighted scores. Does not change work status.",
   "reviewViews.list":
     "Read the authenticated user's personal saved filters for this project. Other users' saved views are never returned.",
   "reviewViews.save":

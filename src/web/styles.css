@@ -419,6 +419,46 @@ small {
 .thread-row-actions .badge {
   margin-top: 5px;
 }
+.thread-row-priority {
+  max-width: 100%;
+}
+.thread-row-priority-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-height: 44px;
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+}
+.thread-row-priority-button svg {
+  flex: none;
+}
+.thread-row-priority-button:hover,
+.thread-row-priority-button[aria-pressed="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+.thread-row-priority-button[aria-pressed="true"] svg {
+  fill: currentColor;
+}
+.thread-row-priority-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.thread-priority-label {
+  display: inline-block;
+  margin-bottom: 4px;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
 .thread-row .thread-stats time {
   white-space: nowrap;
 }

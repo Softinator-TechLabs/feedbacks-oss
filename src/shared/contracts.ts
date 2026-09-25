@@ -330,6 +330,7 @@ export const inputSchemas = {
     category: categorySchema.default("general"),
     tags: tagsSchema,
   }),
+  "threads.priority": z.object({ ...tm, topPriority: z.boolean() }),
   "reviewViews.list": z.object({ projectId: id }),
   "reviewViews.save": z.object({
     projectId: id,
@@ -555,6 +556,8 @@ export const threadOutput = z
     projectId: id,
     revision,
     body: z.string(),
+    // Older immutable export snapshots may predate explicit priority.
+    topPriority: z.boolean().optional(),
     // Older immutable snapshots may predate attachment metadata.
     assets: z.array(assetMetadataOutput).optional(),
     // Pre-migration immutable export snapshots have no discussion-like fields.
@@ -1046,6 +1049,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     total: z.number().int(),
   }),
   "threads.organize": threadOutput,
+  "threads.priority": threadOutput,
   "reviewViews.list": z.object({ items: z.array(reviewViewOutput) }),
   "reviewViews.save": reviewViewOutput,
   "reviewViews.delete": z.object({ deleted: z.boolean() }),
@@ -1127,6 +1131,7 @@ export const agentTokenScopes = [
   "threads.issueDraft",
   "github.issueCreate",
   "threads.organize",
+  "threads.priority",
   "reviewViews.list",
   "reviewViews.save",
   "reviewViews.delete",
