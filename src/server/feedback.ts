@@ -6,7 +6,7 @@ import { hash, publicActor } from "./auth.js";
 import { fail } from "./errors.js";
 import { normalizeUrl, viewContext, viewStats } from "./views.js";
 import { reviewerContext } from "./accounts.js";
-import { threadQuery } from "./review-views.js";
+import { priorityScore, threadQuery } from "./review-views.js";
 import { discussionLikes, setDiscussionLike } from "./discussion-likes.js";
 import { issueDraft } from "./issue-draft.js";
 import { reportedIssue } from "./issue-links.js";
@@ -281,6 +281,8 @@ export async function feedback(
   }
   if (op === "threads.neighbors") {
     const row = await threadRow(db, a, i.threadId);
+    if (i.sort === "priority" && !canReadPolicy(a))
+      fail("FORBIDDEN", "Priority order requires approved policy access", 403);
     const { filter, args, order } = threadQuery(row.project_id, i);
     args.push(row.id);
     const result = await db.one(
@@ -297,6 +299,8 @@ export async function feedback(
   }
   if (op === "threads.list") {
     await access(db, a, i.projectId);
+    if (i.sort === "priority" && !canReadPolicy(a))
+      fail("FORBIDDEN", "Priority order requires approved policy access", 403);
     const { filter, args, order } = threadQuery(i.projectId, i);
     const count = await db.one(
       `SELECT count(*)::integer AS total FROM threads WHERE ${filter}`,
@@ -304,7 +308,7 @@ export async function feedback(
     );
     args.push(i.limit, i.offset);
     const rows = await db.query(
-      `SELECT * FROM threads WHERE ${filter} ORDER BY ${order} LIMIT $${args.length - 1} OFFSET $${args.length}`,
+      `SELECT threads.*${i.sort === "priority" ? `,${priorityScore} AS priority_score` : ""} FROM threads WHERE ${filter} ORDER BY ${order} LIMIT $${args.length - 1} OFFSET $${args.length}`,
       args,
     );
     const websiteRows = await db.query(
@@ -313,7 +317,14 @@ export async function feedback(
     );
     const data = rows.length ? await listData(db, a, rows) : undefined;
     return {
-      items: data ? await Promise.all(rows.map((r) => fullThread(db, a, r, data))) : [],
+      items: data
+        ? await Promise.all(
+            rows.map(async (r) => ({
+              ...(await fullThread(db, a, r, data)),
+              ...(i.sort === "priority" ? { priorityScore: r.priority_score } : {}),
+            })),
+          )
+        : [],
       total: count.total,
       nextOffset: i.offset + rows.length < count.total ? i.offset + rows.length : null,
       websiteFilters: {

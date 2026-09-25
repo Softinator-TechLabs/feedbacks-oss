@@ -5,6 +5,25 @@ import { access } from "./access.js";
 import { fail } from "./errors.js";
 import { normalizeUrl } from "./views.js";
 
+// A priority queue is available only with policy-reading authority. It uses
+// current category importance for the author plus the weighted likes on that
+// captured view. Keep the expression shared by list pagination and neighbors.
+const category = "COALESCE(threads.data->>'category','general')";
+const policyWeight = (user: string, grant: string) =>
+  `COALESCE((${grant}.policy->>${category})::double precision,(${grant}.policy->>'general')::double precision,(${user}.policy->>${category})::double precision,(${user}.policy->>'general')::double precision,1::double precision)`;
+export const priorityScore = `(
+  COALESCE((SELECT ${policyWeight("author_user", "author_grant")}
+    FROM users author_user LEFT JOIN grants author_grant
+    ON author_grant.user_id=author_user.id AND author_grant.project_id=threads.project_id
+    WHERE author_user.id=(threads.data->'author'->>'userId')::uuid),1::double precision)
+  + COALESCE((SELECT SUM(${policyWeight("voter_user", "voter_grant")})
+    FROM view_likes vote JOIN users voter_user ON voter_user.id=vote.user_id
+    LEFT JOIN grants voter_grant ON voter_grant.user_id=voter_user.id
+      AND voter_grant.project_id=vote.project_id
+    WHERE vote.project_id=threads.project_id
+      AND vote.fingerprint=threads.data->'context'->>'fingerprint'),0::double precision)
+)`;
+
 // One predicate/order for the inbox and cross-page keyboard navigation.
 export function threadQuery(projectId: string, i: ReviewFilters) {
   const args: unknown[] = [projectId];
@@ -33,7 +52,9 @@ export function threadQuery(projectId: string, i: ReviewFilters) {
       ? "created_at DESC"
       : i.sort === "likes"
         ? "(SELECT count(*) FROM view_likes v WHERE v.project_id=threads.project_id AND v.fingerprint=threads.data->'context'->>'fingerprint') DESC,updated_at DESC"
-        : "updated_at DESC") + ",id";
+        : i.sort === "priority"
+          ? `CASE WHEN threads.data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,${priorityScore} DESC,updated_at DESC`
+          : "updated_at DESC") + ",id";
   return { filter, args, order };
 }
 

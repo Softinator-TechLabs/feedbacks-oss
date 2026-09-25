@@ -238,6 +238,15 @@ small {
   color: var(--muted);
   margin-bottom: 0;
 }
+.thread-list-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.thread-list-quick-actions button {
+  white-space: nowrap;
+}
 .project-nav {
   display: flex;
   align-items: center;
@@ -1297,10 +1306,10 @@ legend {
   .page-heading p {
     font-size: 0.85rem;
   }
-  .page-heading > button {
+  .page-heading > button,
+  .thread-list-quick-actions button {
     font-size: 0.85rem;
     flex-shrink: 0;
-    max-width: 125px;
   }
   .project-nav {
     gap: 10px;

@@ -57,7 +57,7 @@ export const surveyQuestionsSchema = z
   );
 export const reviewFiltersSchema = z.object({
   search: z.string().max(200).default(""),
-  sort: z.enum(["newest", "activity", "likes"]).default("activity"),
+  sort: z.enum(["newest", "activity", "likes", "priority"]).default("activity"),
   showResolved: z.boolean().default(false),
   url: z.string().url().max(4096).optional(),
   domain: z.string().trim().min(1).max(253).optional(),
@@ -606,6 +606,7 @@ export const threadOutput = z
     pins: z.object({ defaultVisible: z.boolean() }),
     lastActor: z.object({}).passthrough(),
     updatedAt: z.string(),
+    priorityScore: z.number().optional(),
     reviewerContext: reviewerContextOutput.optional(),
   })
   .passthrough();

@@ -27,7 +27,7 @@ import {
 import { Icon } from "./icons.js";
 import { GuestLinks } from "./guest-review.js";
 import { GithubIssue } from "./github-issue.js";
-import { api, uid, date, labels, type Project, type Thread } from "./api.js";
+import { api, uid, date, labels, type Actor, type Project, type Thread } from "./api.js";
 import { HumanTime } from "./human-time.js";
 import {
   ActionState,
@@ -41,7 +41,7 @@ import {
   useAction,
   useLoad,
 } from "./ui.js";
-export function ThreadList({ project }: { project: Project }) {
+export function ThreadList({ project, actor }: { project: Project; actor: Actor }) {
   const pageLocation = usePageLocation(),
     query = pageLocation.split("?")[1] ?? "";
   const filters = readFilters(query),
@@ -94,11 +94,23 @@ export function ThreadList({ project }: { project: Project }) {
               : "Project discussion"}{" "}
           </p>
         </div>
-        {project.permissions.canWrite && (
-          <button className="primary" onClick={() => setCreating(!creating)}>
-            {creating ? "Close form" : "New feedback"}
-          </button>
-        )}
+        <div className="thread-list-quick-actions">
+          {actor.owner && (
+            <button
+              className={sort === "priority" ? "primary" : undefined}
+              aria-pressed={sort === "priority"}
+              title="Sort active feedback by current reviewer importance and view support"
+              onClick={() => apply({ ...filters, sort: "priority", showResolved: false })}
+            >
+              Top priority
+            </button>
+          )}
+          {project.permissions.canWrite && (
+            <button className="primary" onClick={() => setCreating(!creating)}>
+              {creating ? "Close form" : "New feedback"}
+            </button>
+          )}
+        </div>
       </div>
       {creating && (
         <ThreadComposer
@@ -139,6 +151,7 @@ export function ThreadList({ project }: { project: Project }) {
             <option value="activity">Latest activity</option>
             <option value="newest">Newest</option>
             <option value="likes">Most liked views</option>
+            {actor.owner && <option value="priority">Top priority</option>}
           </select>
         </Field>
         <button className="thread-filter-apply">Apply</button>
