@@ -19,6 +19,9 @@
   align-items: stretch;
   gap: 8px;
 }
+.thread-filter-mobile-toggle {
+  display: none;
+}
 .thread-filter-panel > .thread-filters {
   order: 0;
 }
@@ -104,6 +107,62 @@
   .saved-view-popover {
     top: calc(100% + 8px);
     bottom: auto;
+  }
+}
+@media (max-width: 680px) {
+  .thread-filter-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 0;
+    padding: 10px 14px;
+  }
+  .thread-filter-mobile-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font-weight: 700;
+    text-align: left;
+  }
+  .thread-filter-mobile-toggle:enabled:hover {
+    border-color: transparent;
+    background: transparent;
+    color: var(--accent);
+  }
+  .thread-filter-active-count {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .thread-filter-chevron {
+    width: 7px;
+    height: 7px;
+    margin-left: auto;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+  }
+  .thread-filter-mobile-toggle[aria-expanded="true"] .thread-filter-chevron {
+    transform: translateY(2px) rotate(225deg);
+  }
+  .thread-filter-panel > .saved-views {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .thread-filter-panel > .thread-filters {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .thread-filter-panel:not(.is-expanded) > .thread-filters {
+    display: none;
   }
 }
 .thread-navigation {
