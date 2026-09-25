@@ -1,6 +1,6 @@
 # Plan: scheduled project QA and visual baselines
 
-Status: source complete. Owner: Feedbacks maintainers. Date: 2026-09-25.
+Status: source merged; deployed worker acceptance pending. Owner: Feedbacks maintainers. Date: 2026-09-25.
 
 ## Outcome and scope
 
@@ -30,8 +30,8 @@ Migration 15 adds opt-in configuration, run history and baseline references. No 
 
 ## Completion receipt
 
-Source revision: this branch's implementation commit.
+Source revision: PR #45 merged as `9e6e99b`.
 Checks and results: `npm run check` passed under Node 24, including the disposable HTTP smoke and generated catalog. Eight focused QA tests passed, including interrupted-lease retry, active-lease manual-run throttling, HTML attribute parsing and definite HEAD results. Desktop and 390 px mobile browser layouts were inspected using a synthetic project; opt-in save, baseline selection and image comparison completed. The native PostgreSQL migration/concurrency test passed separately with `npm run test:postgres` (it remains skipped in the standard suite).
 Artifacts: typed QA operations, migration 16, project settings, visual baseline controls and this guide.
-Deployment and live verification: out of scope for this branch.
+Deployment and live verification: source merged into the deployed app; an unattended live worker pass has not been verified.
 Remaining risks: browser-rendered state and authenticated pages are outside the server scan. An opt-in local browser regression command is now documented in [scheduled QA](../scheduled-qa.md); no unattended screenshot capture or scheduled visual comparison runs. Those require a managed browser runtime and network egress isolation. Public-site network behavior and deployed worker execution remain unverified.
