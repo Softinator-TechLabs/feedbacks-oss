@@ -85,7 +85,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     navigate(`/projects/${project.id}${filterQuery(next, nextOffset)}`);
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading thread-list-heading">
         <div>
           <h1>Feedback</h1>
           <p>

@@ -1332,6 +1332,13 @@ legend {
   .page-heading p {
     font-size: 0.85rem;
   }
+  .thread-list-heading {
+    flex-wrap: wrap;
+  }
+  .thread-list-heading .thread-list-quick-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
   .page-heading > button,
   .thread-list-quick-actions button {
     font-size: 0.85rem;
