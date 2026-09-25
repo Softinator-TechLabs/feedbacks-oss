@@ -83,23 +83,28 @@ The [native app integration kit](mobile-sdk.md) uses existing paired-device cred
 
 Both boundaries remove query names containing token, secret, password, passwd, auth, session, cookie, email, key, code, signature, jwt or credential (case insensitive); legitimate parameters such as `variant` remain sorted. The extension uses sanitized URL for route identity and independent hashed record identity for anchors. Selected evidence survives unmatched confidence; opaque evidence IDs keep unkeyed selections distinct without claiming relocation. A capture without a selected element records the viewport center as its coordinate fallback. The service also includes screenshot point and scroll in view identity when no fingerprint/selector exists. Older anchor versions remain readable through thread/unmatched lists but are not automatically relocated by the newer resolver.
 
-| Operation            | Input                                                                                                                                        | Returned data                                                          |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `threads.create`     | `{projectId,body,context?,document?,category?:general,idempotencyKey}`; provide exactly one of `context` or `document:{documentId,page,x,y}` | full `Thread`                                                          |
-| `threads.list`       | `{projectId,limit?:30,offset?:0,search?:"",sort?:activity,showResolved?:false,url?,domain?,hostname?,deviceClass?}`                          | `{items:Thread[],total,nextOffset,websiteFilters:{domains,hostnames}}` |
-| `threads.get`        | `{threadId}`                                                                                                                                 | full `Thread`                                                          |
-| `threads.issueDraft` | `{threadId}`                                                                                                                                 | bounded, read-only Issue draft; explicit new token scope               |
-| `threads.like`       | `{threadId,replyId?,liked:boolean}`                                                                                                          | `{threadId,replyId:null\|UUID,uniqueLikes,liked}`                      |
-| `threads.reply`      | `{threadId,revision,body,intent?:request\|response,idempotencyKey,mentions?:UUID[]}`                                                         | fresh `Thread`                                                         |
-| `threads.status`     | `{threadId,revision,state,note?,duplicateOf?}`                                                                                               | fresh `Thread`                                                         |
-| `threads.review`     | `{threadId,revision,decision:approved\|changes_requested\|reopen,note?}`                                                                     | fresh `Thread`; signed-in human project writer only                    |
-| `threads.linkIssue`  | `{threadId,revision,url,createdAt?}`                                                                                                         | fresh `Thread`                                                         |
-| `threads.evidence`   | `{threadId,revision,url,note,kind?:incorporated_in}`                                                                                         | fresh `Thread`                                                         |
-| `threads.archive`    | `{threadId,revision,archived}`                                                                                                               | fresh `Thread`; maintainer only                                        |
-| `views.get`          | `{projectId,context}`                                                                                                                        | `{fingerprint,uniqueLikes,liked,discussionCount,weightedPreference?}`  |
-| `views.like`         | `{projectId,context,liked:boolean}`                                                                                                          | same view data, one like per human per view/target                     |
+| Operation                | Input                                                                                                                                        | Returned data                                                          |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `threads.create`         | `{projectId,body,context?,document?,category?:general,idempotencyKey}`; provide exactly one of `context` or `document:{documentId,page,x,y}` | full `Thread`                                                          |
+| `threads.list`           | `{projectId,limit?:30,offset?:0,search?:"",sort?:activity,showResolved?:false,url?,domain?,hostname?,deviceClass?}`                          | `{items:Thread[],total,nextOffset,websiteFilters:{domains,hostnames}}` |
+| `threads.get`            | `{threadId}`                                                                                                                                 | full `Thread`                                                          |
+| `threads.issueDraft`     | `{threadId}`                                                                                                                                 | bounded, read-only Issue draft; explicit new token scope               |
+| `threads.like`           | `{threadId,replyId?,liked:boolean}`                                                                                                          | `{threadId,replyId:null\|UUID,uniqueLikes,liked}`                      |
+| `threads.reply`          | `{threadId,revision,body,intent?:request\|response,idempotencyKey,mentions?:UUID[]}`                                                         | fresh `Thread`                                                         |
+| `threads.status`         | `{threadId,revision,state,note?,duplicateOf?}`                                                                                               | fresh `Thread`                                                         |
+| `threads.review`         | `{threadId,revision,decision:approved\|changes_requested\|reopen,note?}`                                                                     | fresh `Thread`; signed-in human project writer only                    |
+| `threads.linkIssue`      | `{threadId,revision,url,createdAt?}`                                                                                                         | fresh `Thread`                                                         |
+| `threads.figmaReference` | `{threadId,revision,url:string\|null}`                                                                                                       | fresh `Thread`; signed-in human project maintainer only                |
+| `threads.evidence`       | `{threadId,revision,url,note,kind?:incorporated_in}`                                                                                         | fresh `Thread`                                                         |
+| `threads.archive`        | `{threadId,revision,archived}`                                                                                                               | fresh `Thread`; maintainer only                                        |
+| `views.get`              | `{projectId,context}`                                                                                                                        | `{fingerprint,uniqueLikes,liked,discussionCount,weightedPreference?}`  |
+| `views.like`             | `{projectId,context,liked:boolean}`                                                                                                          | same view data, one like per human per view/target                     |
 
 `category` is `general|visualDesign|productWorkflow|usabilityAccessibility`. Sort is `newest|activity|likes`; deviceClass is `mobile|tablet|desktop` (<600, <1000, >=1000 actual width). `state` is `open|in_progress|ready_for_review|resolved|declined`. Resolved/declined requires a nonempty note and permission. Human review decisions are independent of status; reopening starts a new round. `kind` for evidence is `commit|pull_request|variant|incorporated_in`. Issue URL must be `https://github.com/OWNER/REPO/issues/NUMBER`. Manual `threads.linkIssue` links remain `reported`. The optional GitHub App path verifies created Issues through GitHub readback and records `github_verified` without changing thread work status.
+
+`threads.figmaReference` accepts a Figma `design`, `file`, `board`, `proto`, `slides` or `deck` file URL on `figma.com` or `www.figma.com`. It keeps the file key and optional `node-id`; other query parameters, fragments and the file name are discarded. It makes no Figma API call and does not verify access. This operation is unavailable to agent keys. The thread returns `figmaReference:{url,linkedBy,linkedAt}|null`; older export snapshots may omit this field. No discussion or attachment is sent to Figma.
+
+Figma's [file URL format](https://developers.figma.com/docs/rest-api/file-endpoints/) and [node link behavior](https://developers.figma.com/docs/embeds/resources/) were checked on 2026-09-25 for this URL-only handoff. Those docs describe file reads that require Figma authorization; Feedbacks does not call them here.
 
 ## Optional GitHub App
 
@@ -158,6 +163,7 @@ Legacy migration is conservative and performed on reads: historical human replie
     }
   ],
   "fixEvidence": [],
+  "figmaReference": null,
   "pins": { "defaultVisible": true },
   "lastActor": {
     "id": "UUID",

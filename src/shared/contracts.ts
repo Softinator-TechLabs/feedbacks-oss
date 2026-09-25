@@ -452,6 +452,10 @@ export const inputSchemas = {
     url: z.string().url(),
     createdAt: z.string().datetime().optional(),
   }),
+  "threads.figmaReference": z.object({
+    ...tm,
+    url: z.string().url().max(2000).nullable(),
+  }),
   "threads.evidence": z.object({
     ...tm,
     url: z.string().url().max(2000),
@@ -589,6 +593,14 @@ export const threadOutput = z
         })
         .passthrough(),
     ),
+    figmaReference: z
+      .object({
+        url: z.string().url(),
+        linkedBy: z.object({}).passthrough(),
+        linkedAt: z.string().datetime(),
+      })
+      .nullable()
+      .optional(),
     fixEvidence: z.array(z.object({}).passthrough()),
     pins: z.object({ defaultVisible: z.boolean() }),
     lastActor: z.object({}).passthrough(),
@@ -1044,6 +1056,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "threads.status": threadOutput,
   "threads.review": threadOutput,
   "threads.linkIssue": threadOutput,
+  "threads.figmaReference": threadOutput,
   "threads.evidence": threadOutput,
   "threads.archive": threadOutput,
   "views.get": viewOutput,
@@ -1138,6 +1151,7 @@ export const agentOperations = businessOperations.filter(
   (name) =>
     name !== "members.archive" &&
     name !== "threads.review" &&
+    name !== "threads.figmaReference" &&
     !name.startsWith("webhooks.") &&
     name !== "documents.upload" &&
     (name === "github.issueCreate" || !name.startsWith("github.")),

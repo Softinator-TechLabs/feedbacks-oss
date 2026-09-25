@@ -62,6 +62,8 @@ export const operationDescriptions: Record<string, string> = {
     "Get a bounded, read-only GitHub Issue draft from the thread. It excludes screenshots, diagnostics, private member notes and reviewer policy. Review for privacy and accuracy before creating an Issue. With an explicitly granted github.issueCreate scope and connected GitHub App, the agent can create and link it through Feedbacks. Otherwise use a separately authorized GitHub tool and then threads.linkIssue.",
   "threads.linkIssue":
     "After an agreed engineering handoff using a separately authorized GitHub tool, read back the actual Issue URL and register it here using the current thread revision. A connected GitHub App plus an explicitly granted github.issueCreate scope offers direct creation and verified linking instead. Linking never resolves the thread.",
+  "threads.figmaReference":
+    "A signed-in human project maintainer can register, replace or clear one Figma file reference after design work is agreed. Supply a Figma file URL or null to clear. The server stores a canonical file URL with an optional node-id and never transfers discussion or assets to Figma. This browser-only operation does not verify Figma access or change thread work status.",
   "github.connection":
     "Show whether this project has an optional GitHub App connection. Human web sessions only; the server never returns App credentials.",
   "github.issueState":
