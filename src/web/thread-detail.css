@@ -271,8 +271,8 @@
   max-width: min(240px, 80vw);
   padding: 5px 8px;
   border-radius: 5px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--tooltip-surface);
+  color: var(--tooltip-ink);
   font-size: 0.78rem;
   font-weight: 500;
   line-height: 1.25;
@@ -390,6 +390,9 @@
 .thread-action-menu > summary {
   display: inline-flex;
 }
+.thread-header-actions .thread-header-popover[open] > summary {
+  margin-bottom: 0;
+}
 .thread-header-actions .status-options > summary::marker,
 .thread-action-menu > summary::marker {
   content: "";
@@ -486,8 +489,8 @@
   max-width: min(240px, 80vw);
   padding: 5px 8px;
   border-radius: 5px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--tooltip-surface);
+  color: var(--tooltip-ink);
   font-size: 0.78rem;
   line-height: 1.25;
   font-weight: 500;

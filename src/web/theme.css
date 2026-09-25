@@ -14,6 +14,8 @@
   --control-border: #64798b;
   --control-hover: #96b1c7;
   --soft-surface: #1d2833;
+  --tooltip-surface: #30445b;
+  --tooltip-ink: #fff;
 }
 :root[data-theme="dark"]
   :is(

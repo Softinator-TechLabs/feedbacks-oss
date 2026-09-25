@@ -18,6 +18,8 @@
   --control-border: #adb8c1;
   --control-hover: #7b8c99;
   --soft-surface: #f5f7f7;
+  --tooltip-surface: #17324d;
+  --tooltip-ink: #fff;
 }
 * {
   box-sizing: border-box;
