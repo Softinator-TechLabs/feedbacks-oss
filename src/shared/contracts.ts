@@ -589,6 +589,7 @@ export const threadOutput = z
       z
         .object({
           url: z.string(),
+          provider: z.enum(["github", "jira", "linear"]).optional(),
           verification: z.enum(["reported", "github_verified"]),
         })
         .passthrough(),

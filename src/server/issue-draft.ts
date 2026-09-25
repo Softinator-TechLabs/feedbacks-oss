@@ -38,7 +38,7 @@ export function issueDraft(thread: any, repositoryUrl: string | null) {
     warnings: [
       "Check the draft for private information and accuracy before creating an Issue.",
       "Screenshot assets and private reviewer notes are not copied into this draft.",
-      "Use a separately authorized GitHub tool, then verify and link the created Issue URL.",
+      "Create the Issue in your chosen issue tracker, then register its URL in Feedbacks. Jira and Linear links are reported, not remotely verified.",
     ],
   };
 }

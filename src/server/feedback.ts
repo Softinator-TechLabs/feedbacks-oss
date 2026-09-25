@@ -9,6 +9,7 @@ import { reviewerContext } from "./accounts.js";
 import { threadQuery } from "./review-views.js";
 import { discussionLikes, setDiscussionLike } from "./discussion-likes.js";
 import { issueDraft } from "./issue-draft.js";
+import { reportedIssue } from "./issue-links.js";
 import { documentRow } from "./documents.js";
 import { figmaReferenceUrl } from "./figma-reference.js";
 import type { Config } from "./config.js";
@@ -502,23 +503,19 @@ export async function feedback(
     });
     data.review = review;
   } else if (op === "threads.linkIssue") {
-    const u = new URL(i.url),
-      match = u.pathname.match(/^\/([^/]+)\/([^/]+)\/issues\/([1-9]\d*)\/?$/);
+    const issue = reportedIssue(i.url);
     if (
-      u.origin !== "https://github.com" ||
-      u.username ||
-      u.password ||
-      u.search ||
-      u.hash ||
-      !match
+      !data.externalIssues.some(
+        (link: any) =>
+          link.url === issue.url ||
+          (issue.provider === "linear" &&
+            link.provider === "linear" &&
+            link.workspace === issue.workspace &&
+            link.issueKey === issue.issueKey),
+      )
     )
-      fail("VALIDATION", "Expected https://github.com/OWNER/REPO/issues/NUMBER");
-    const url = `https://github.com/${match[1]}/${match[2]}/issues/${match[3]}`;
-    if (!data.externalIssues.some((link: any) => link.url === url))
       data.externalIssues.push({
-        url,
-        repository: `${match[1]}/${match[2]}`,
-        number: Number(match[3]),
+        ...issue,
         verification: "reported",
         linkedBy: actor,
         linkedAt: at,
