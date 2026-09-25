@@ -26,6 +26,7 @@ flowchart LR
 - `context.ts`, `export-limits.ts`: versioned instructions, stable bounded exports and change cursors.
 - `operations.ts`: transactional operation dispatch. `app.ts` and `mcp.ts` handle transport concerns.
 - `src/shared/contracts.ts`: discoverable operation input/output schemas and transport registry.
+- `sdk/ios`, `sdk/android`: optional native app clients using existing paired-device HTTP operations; neither owns authorization or embeds server credentials.
 
 Client state is not authoritative. Database revisions detect stale writes; idempotency keys protect retries. Credentials are checked against current account state. Agents cannot become humans by selecting an input field.
 
@@ -39,6 +40,7 @@ Use one codebase and separate runtime installations. A deployment represents one
 | Team application          | `Dockerfile` + PostgreSQL + private S3 | One organization per database                                         |
 | Hosted customer workspace | The same application image             | Separate database, object-store credentials and runtime configuration |
 | Browser extension         | Versioned extension ZIP                | User-selected server and local connection state                       |
+| Native app integration    | Host-built Swift or Android module     | Host app pairs a reviewer device and stores its scoped token locally  |
 
 Organization-specific deployment inventory and secrets should live in a separate private infrastructure repository. A separate enterprise code fork is unnecessary for the current feature set and creates duplicated fixes. If commercial-only services are introduced later, keep their interfaces explicit and their licensing separate.
 
