@@ -458,9 +458,9 @@
   height: 44px;
   min-height: 44px;
   padding: 8px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
   color: var(--accent);
 }
 .thread-tool-button {
@@ -498,7 +498,7 @@
   display: none;
 }
 .thread-tools a:hover .icon-action {
-  background: #edf1f4;
+  background: var(--soft-surface);
 }
 @media (max-width: 500px) {
   .thread-header-actions {
