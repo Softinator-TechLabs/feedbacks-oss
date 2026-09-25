@@ -116,12 +116,12 @@ textarea::placeholder {
 }
 .thread-filters {
   align-items: end;
-  gap: 10px 12px;
-  padding: 0 0 11px;
-  margin-bottom: 6px;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  background: transparent;
+  gap: 12px;
+  padding: 16px;
+  margin: 8px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--soft-surface);
 }
 .thread-filters > .field {
   flex: 0 1 170px;

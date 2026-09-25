@@ -356,6 +356,19 @@ small {
 .thread-row-main:hover {
   color: inherit;
 }
+.thread-row-main.has-thumbnail {
+  grid-template-columns: 96px minmax(0, 1fr) 130px;
+}
+.thread-row-thumbnail {
+  display: block;
+  width: 96px;
+  height: 64px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--soft-surface);
+}
 .thread-row-actions {
   display: flex;
   flex-direction: column;
@@ -432,6 +445,17 @@ small {
   .thread-row-main {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
+  }
+  .thread-row-main.has-thumbnail {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 8px 12px;
+  }
+  .thread-row-thumbnail {
+    width: 88px;
+    height: 60px;
+  }
+  .thread-row-main.has-thumbnail .thread-stats {
+    grid-column: 2;
   }
   .thread-row .thread-stats {
     align-items: flex-start;
@@ -1353,7 +1377,7 @@ legend {
     gap: 12px;
   }
   .thread-filters {
-    padding: 0 0 11px;
+    padding: 14px;
     gap: 10px;
   }
   .filters .field,
