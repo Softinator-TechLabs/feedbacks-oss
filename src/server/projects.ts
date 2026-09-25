@@ -48,6 +48,7 @@ export async function projects(db: Database, a: Actor, op: string, i: any) {
     origins,
     ...(i.captureMode === "any" ? { captureMode: "any" } : {}),
     repositoryUrl: i.repositoryUrl ?? null,
+    reviewEnabled: i.reviewEnabled ?? current?.reviewEnabled ?? false,
     githubConnected:
       op !== "projects.create" &&
       current?.githubConnected === true &&

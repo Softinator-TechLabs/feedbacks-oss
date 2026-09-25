@@ -90,6 +90,10 @@ function readPolicy(f: FormData, prefix = "") {
 export function Members({ actor, project }: { actor: Actor; project?: Project }) {
   const [version, setVersion] = useState(0),
     [selectedId, setSelectedId] = useState<string | null>(null),
+    [memberAction, setMemberAction] = useState<"create" | "invite" | "add" | null>(null),
+    [search, setSearch] = useState(""),
+    [roleFilter, setRoleFilter] = useState("all"),
+    [visibleCount, setVisibleCount] = useState(40),
     [showRemoved, setShowRemoved] = useState(false),
     { data, error } = useLoad(
       () =>
@@ -108,6 +112,21 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
     ),
     a = useAction(),
     [invite, setInvite] = useState("");
+  const matchingMembers = (data?.items ?? []).filter((member) => {
+    const query = search.trim().toLocaleLowerCase();
+    const role = member.primaryOwner
+      ? "owner"
+      : member.owner
+        ? "owner"
+        : (member.role ?? "member").toLocaleLowerCase();
+    return (
+      (roleFilter === "all" || role === roleFilter) &&
+      (!query ||
+        [member.name, member.email, role, ...(member.expertise ?? [])]
+          .filter(Boolean)
+          .some((value) => value!.toLocaleLowerCase().includes(query)))
+    );
+  });
   const refresh = () => setVersion((v) => v + 1);
   useEffect(() => {
     if (selectedId) document.getElementById("person-back")?.focus();
@@ -119,15 +138,47 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
           <h1>{project ? "Project members" : "People"}</h1>
           <p>
             {actor.owner
-              ? "Manage your team."
+              ? `${data?.items.length ?? 0} ${(data?.items.length ?? 0) === 1 ? "person" : "people"} with access.`
               : "People who can participate in this project."}
           </p>
         </div>
       </div>
       <ErrorNotice error={error} />
-      {!selectedId && actor.owner && <CreateMember project={project} onSaved={refresh} />}
-      {!selectedId && actor.owner && project && (
-        <details className="section">
+      {!selectedId && actor.owner && (
+        <div className="member-actions" role="group" aria-label="Manage people">
+          {project && (
+            <button
+              type="button"
+              className={memberAction === "invite" ? "primary" : ""}
+              aria-pressed={memberAction === "invite"}
+              onClick={() => setMemberAction(memberAction === "invite" ? null : "invite")}
+            >
+              Invite person
+            </button>
+          )}
+          <button
+            type="button"
+            aria-pressed={memberAction === "create"}
+            onClick={() => setMemberAction(memberAction === "create" ? null : "create")}
+          >
+            Create user
+          </button>
+          {project && (
+            <button
+              type="button"
+              aria-pressed={memberAction === "add"}
+              onClick={() => setMemberAction(memberAction === "add" ? null : "add")}
+            >
+              Add existing
+            </button>
+          )}
+        </div>
+      )}
+      {!selectedId && actor.owner && memberAction === "create" && (
+        <CreateMember project={project} onSaved={refresh} initiallyOpen />
+      )}
+      {!selectedId && actor.owner && project && memberAction === "invite" && (
+        <details className="section member-action-panel" open>
           <summary>Invite a colleague</summary>
           <form
             className="form-grid"
@@ -164,8 +215,8 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
           <ActionState action={a} />
         </details>
       )}
-      {!selectedId && actor.owner && project && (
-        <details className="section">
+      {!selectedId && actor.owner && project && memberAction === "add" && (
+        <details className="section member-action-panel" open>
           <summary>Add an existing member</summary>
           <form
             className="form-grid"
@@ -217,6 +268,44 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
           Show removed accounts
         </label>
       )}
+      {!selectedId && data && (
+        <div className="member-directory-controls">
+          <label>
+            <span className="sr-only">Search people</span>
+            <input
+              type="search"
+              value={search}
+              placeholder="Search name, email or expertise"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setVisibleCount(40);
+              }}
+            />
+          </label>
+          <label>
+            <span className="sr-only">Filter by role</span>
+            <select
+              aria-label="Filter by role"
+              value={roleFilter}
+              onChange={(event) => {
+                setRoleFilter(event.target.value);
+                setVisibleCount(40);
+              }}
+            >
+              <option value="all">All roles</option>
+              <option value="owner">Owners</option>
+              <option value="maintainer">Maintainers</option>
+              <option value="reviewer">Reviewers</option>
+              <option value="viewer">Viewers</option>
+            </select>
+          </label>
+          <span className="muted" role="status">
+            Showing {Math.min(visibleCount, matchingMembers.length)} of{" "}
+            {matchingMembers.length} matching{" "}
+            {matchingMembers.length === 1 ? "person" : "people"}
+          </span>
+        </div>
+      )}
       {!data && !error ? (
         <Loading />
       ) : data?.items.length ? (
@@ -243,30 +332,45 @@ export function Members({ actor, project }: { actor: Actor; project?: Project })
               ))}
           </>
         ) : (
-          <div className="member-list" aria-label="People">
-            {data.items.map((m) => (
+          <div className="member-directory">
+            {matchingMembers.length ? (
+              <div className="member-list" aria-label="People">
+                {matchingMembers.slice(0, visibleCount).map((m) => (
+                  <button
+                    type="button"
+                    className="member-list-item"
+                    key={m.id}
+                    onClick={() => setSelectedId(m.id)}
+                  >
+                    <span>
+                      <strong>{m.name}</strong>
+                      {actor.owner && <small>{m.email}</small>}
+                    </span>
+                    <span>
+                      {m.removedAt
+                        ? "Removed"
+                        : m.primaryOwner
+                          ? "Primary owner"
+                          : m.owner
+                            ? "Owner"
+                            : (m.role ?? "Member")}
+                      {!m.active && !m.removedAt ? " · Disabled" : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Empty title="No matching people">Try another name, email or role.</Empty>
+            )}
+            {matchingMembers.length > visibleCount && (
               <button
                 type="button"
-                className="member-list-item"
-                key={m.id}
-                onClick={() => setSelectedId(m.id)}
+                className="member-show-more"
+                onClick={() => setVisibleCount((count) => count + 40)}
               >
-                <span>
-                  <strong>{m.name}</strong>
-                  {actor.owner && <small>{m.email}</small>}
-                </span>
-                <span>
-                  {m.removedAt
-                    ? "Removed"
-                    : m.primaryOwner
-                      ? "Primary owner"
-                      : m.owner
-                        ? "Owner"
-                        : (m.role ?? "Member")}
-                  {!m.active && !m.removedAt ? " · Disabled" : ""}
-                </span>
+                Show next 40 people
               </button>
-            ))}
+            )}
           </div>
         )
       ) : (

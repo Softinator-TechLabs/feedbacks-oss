@@ -471,6 +471,9 @@ export async function feedback(
   } else if (op === "threads.review") {
     if (a.kind !== "human")
       fail("FORBIDDEN", "A signed-in human reviewer must record a review decision", 403);
+    const project = await access(db, a, row.project_id);
+    if (!project.reviewEnabled)
+      fail("FORBIDDEN", "Review decisions are turned off for this project", 403);
     const review = data.review ?? { round: 1, state: "open", history: [] };
     if (i.decision === "reopen") {
       if (review.state === "open") fail("VALIDATION", "Review round is already open");

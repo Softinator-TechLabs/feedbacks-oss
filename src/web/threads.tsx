@@ -551,6 +551,32 @@ export function ThreadDetail({
       undefined,
     );
   useUnsavedChanges(!!reply.trim() || mentions.length > 0 || !!image || a.busy);
+  useEffect(() => {
+    const close = () => {
+      for (const open of document.querySelectorAll<HTMLDetailsElement>(
+        ".thread-header-actions details.thread-header-popover[open]",
+      )) {
+        open.open = false;
+      }
+    };
+    const outside = (event: PointerEvent) => {
+      if (
+        !(event.target instanceof Element) ||
+        !event.target.closest(".thread-header-actions")
+      ) {
+        close();
+      }
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [threadId]);
   const { data: members, error: memberError } = useLoad(
     () =>
       project
@@ -614,7 +640,18 @@ export function ThreadDetail({
             {t.author?.name} · <HumanTime at={t.createdAt} />
           </p>
         </div>
-        <div className="thread-header-actions">
+        <div
+          className="thread-header-actions"
+          onClickCapture={(event) => {
+            const target = event.target as Element;
+            const current = target.closest("details.thread-header-popover");
+            for (const open of event.currentTarget.querySelectorAll<HTMLDetailsElement>(
+              "details.thread-header-popover[open]",
+            )) {
+              if (open !== current) open.open = false;
+            }
+          }}
+        >
           {project?.permissions.canWrite && (
             <ThreadStatus
               key={`status:${t.id}`}
@@ -623,12 +660,14 @@ export function ThreadDetail({
               onSaved={setThread}
             />
           )}
-          <ThreadReview
-            key={`review:${t.id}`}
-            thread={t}
-            canWrite={!!project?.permissions.canWrite}
-            onSaved={setThread}
-          />
+          {project?.reviewEnabled && (
+            <ThreadReview
+              key={`review:${t.id}`}
+              thread={t}
+              canWrite={!!project?.permissions.canWrite}
+              onSaved={setThread}
+            />
+          )}
           <div className="thread-tools" role="group" aria-label="Feedback actions">
             <ExternalLink href={t.context.url}>
               <span
@@ -644,23 +683,25 @@ export function ThreadDetail({
             {project?.permissions.canMaintain && (
               <button
                 type="button"
-                className="thread-tool-button"
+                className="thread-icon-button"
+                aria-label="Create a guest discussion link"
                 data-tooltip="Create a guest discussion link"
                 onClick={() => openDetail("thread-guest-links")}
               >
-                Share
+                <Icon name="share" />
               </button>
             )}
             <button
               type="button"
-              className="thread-tool-button"
+              className="thread-icon-button"
+              aria-label="View or link GitHub issues"
               data-tooltip="View or link GitHub issues"
               onClick={() => openDetail("thread-issues")}
             >
-              Issues
+              <Icon name="issue" />
             </button>
             <details
-              className="thread-action-menu"
+              className="thread-action-menu thread-header-popover"
               onClick={(event) => {
                 if (
                   (event.target as Element).closest(".thread-action-menu-panel button")
@@ -669,7 +710,9 @@ export function ThreadDetail({
                 }
               }}
             >
-              <summary>More</summary>
+              <summary aria-label="More actions" data-tooltip="More actions">
+                <Icon name="more" />
+              </summary>
               <div className="thread-action-menu-panel">
                 <button type="button" onClick={() => openDetail("thread-details")}>
                   Details
@@ -1050,6 +1093,20 @@ export function ThreadDetail({
                   ← Discussion
                 </button>
                 <h2>Details</h2>
+                {!project?.reviewEnabled && !!t.review.history.length && (
+                  <details className="section compact-details">
+                    <summary>Past review decisions ({t.review.history.length})</summary>
+                    <ol>
+                      {t.review.history.map((entry, index) => (
+                        <li key={`${entry.round}-${index}`}>
+                          Round {entry.round}: {entry.decision.replaceAll("_", " ")} by{" "}
+                          {entry.actor.name} · <HumanTime at={entry.at} />
+                          {entry.note && <p className="message">{entry.note}</p>}
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                )}
                 {project?.permissions.canMaintain && <GuestLinks threadId={t.id} />}
                 <ThreadOrganization
                   thread={t}

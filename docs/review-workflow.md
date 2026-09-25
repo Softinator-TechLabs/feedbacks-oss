@@ -12,15 +12,15 @@ Neighbors stay fixed while you edit the current thread, so posting a reply or re
 
 The status selector at the top of a thread saves as soon as you choose a state. **Resolve** closes the thread in one click for members with resolution permission; **Reopen** opens it again. Notes are optional. Use **Add a note or duplicate link** when there is extra context to record.
 
-The status stays above the feedback. On a narrow screen the screenshot appears before the review round, queue navigation and discussion. On desktop those controls sit beside the evidence. Open **Review** when a human sign-off is needed. The top actions open category and tags, a guest link, or linked issues in Details; the discussion remains the default pane. Icon actions have labels on hover and keyboard focus.
+The status stays above the feedback. On a narrow screen the screenshot appears before discussion and queue navigation. On desktop, discussion sits beside the evidence. The top icon actions open optional notes, review decisions, guest links, linked issues and details. On narrow screens these menus open at the bottom of the viewport. Each icon has an accessible name and a label on hover or keyboard focus.
 
-Project lists also show a status selector on each row. Changing it saves immediately, with resolution options only for members who can resolve threads. Dates throughout the app display in 12-hour IST format.
+Project lists also show a status selector on each row. Changing it saves immediately, with resolution options only for members who can resolve threads. Recent dates use short relative labels such as “3 mins ago”; the full 12-hour IST date and time is available on hover or keyboard focus.
 
 The saved status remains visible while a request is pending or fails. Failed updates retain their selection and details for retry. A conflicting revision must be loaded before retrying; the app does not silently overwrite another member's changes. Status history still records the actor and time. Resolving a thread does not claim delivery evidence or change its response obligation.
 
 ## Record a review decision
 
-Review rounds record an explicit human decision separately from work status. A project writer can choose **Approve this round** or **Request changes**, with an optional note. The decision records the reviewer, time and round. **Open another round** increments the round number and preserves earlier decisions. An approval does not resolve the thread or assert that work is deployed. Agent keys cannot record a human sign-off. The thread revision prevents concurrent decisions from overwriting one another.
+Review rounds are off by default. A project maintainer can enable **Require a separate review decision** in project settings when formal sign-off is needed. A project writer can then choose **Approve this round** or **Request changes**, with an optional note. The decision records the reviewer, time and round. **Open another round** increments the round number and preserves earlier decisions. Turning review off again hides the decision control and preserves its history in thread details. An approval does not resolve the thread or assert that work is deployed. Agent keys cannot record a human sign-off. The thread revision prevents concurrent decisions from overwriting one another.
 
 ## Invite a guest to one discussion
 
@@ -80,4 +80,4 @@ _Mobile viewer showing the same generated PDF at a narrow viewport._
 
 In the extension popup, open **Console & network**, start collection, reproduce the problem and take a screenshot. Collection covers the top-level page from that moment until capture, stop, navigation or five minutes. Review the entries in the editor and explicitly enable sharing. See [extension privacy and limits](extension.md#optional-console-and-network-context).
 
-Quick requests and discussion stay here. An agent with separately granted GitHub access can create an Issue after the team agrees and link its actual URL to the thread through MCP. Feedbacks does not automatically create or synchronize Issues.
+Quick requests and discussion stay here. An agent with separately granted GitHub access can create an Issue after the team agrees and link its actual URL to the thread through MCP. A connected GitHub App also supports an explicit Issue handoff and optional project-level status sync. Incoming feedback never creates Issues automatically.

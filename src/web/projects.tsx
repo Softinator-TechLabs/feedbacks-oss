@@ -409,6 +409,7 @@ export function ProjectEditor({
         const input = {
           name: String(f.get("name")),
           captureMode,
+          reviewEnabled: f.has("reviewEnabled"),
           origins: String(f.get("origins"))
             .split(/\n/)
             .map((v) => v.trim())
@@ -445,6 +446,17 @@ export function ProjectEditor({
           defaultValue={project?.repositoryUrl ?? ""}
         />
       </Field>
+      <label className="check wide">
+        <input
+          name="reviewEnabled"
+          type="checkbox"
+          defaultChecked={project?.reviewEnabled ?? false}
+        />
+        Require a separate review decision
+      </label>
+      <p className="muted wide">
+        For client sign-off. Keep this off when status and discussion are enough.
+      </p>
       <label className="check wide">
         <input
           name="captureMode"

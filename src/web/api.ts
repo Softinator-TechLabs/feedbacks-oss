@@ -152,6 +152,7 @@ export type Project = {
   repositoryUrl: string | null;
   githubConnected?: boolean;
   githubStatusSync?: boolean;
+  reviewEnabled?: boolean;
   revision: number;
   permissions: {
     role: string;

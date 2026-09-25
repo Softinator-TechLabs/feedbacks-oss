@@ -251,7 +251,14 @@ export function PasswordReplacement({
     </main>
   );
 }
-export function CreateMember({ onSaved }: { project?: Project; onSaved: () => void }) {
+export function CreateMember({
+  onSaved,
+  initiallyOpen = false,
+}: {
+  project?: Project;
+  onSaved: () => void;
+  initiallyOpen?: boolean;
+}) {
   const a = useAction(),
     [password, setPassword] = useState(""),
     [created, setCreated] = useState<{
@@ -261,7 +268,7 @@ export function CreateMember({ onSaved }: { project?: Project; onSaved: () => vo
     } | null>(null),
     { data, error } = useLoad(() => api<{ items: Project[] }>("projects.list", {}), []);
   return (
-    <details className="section">
+    <details className="section member-action-panel" open={initiallyOpen}>
       <summary>Create a user</summary>
       <form
         onSubmit={(e) => {
