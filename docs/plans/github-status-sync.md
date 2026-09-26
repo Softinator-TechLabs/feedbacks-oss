@@ -1,6 +1,6 @@
 # Plan: optional GitHub Issue status sync
 
-Status: merged; mobile layout inspected, live GitHub verification pending. Owner: Feedbacks maintainers. Date: 2026-09-26.
+Status: merged; mobile layout and live two-way sync verified, conflict recovery pending. Owner: Feedbacks maintainers. Date: 2026-09-26.
 
 ## Outcome and scope
 
@@ -18,6 +18,8 @@ The existing GitHub App creates and verifies Issues and reads their state; `thre
 - [x] Expose controls and error state in project settings and thread details.
 - [x] Regenerate operation catalog, run local checks and inspect desktop controls.
 - [x] Inspect mobile controls in the disposable signed-in app at 390 pixels, in light and dark themes.
+- [x] Verify scheduled close and reopen on a synthetic Issue in the connected production repository, then disable sync again.
+- [ ] Exercise a live conflict and uncertain external write recovery on an authorized synthetic case.
 
 ## Compatibility and recovery
 
@@ -28,5 +30,5 @@ Migration 17 adds a per-thread sync cursor; it does not rewrite existing threads
 Source revision: PR #44 merged as `1fc1ee1`.
 Checks and results: focused GitHub status sync tests passed again on 2026-09-25. The original branch ran native PostgreSQL, build, harness/docs, typecheck and release checks; its unrelated HTTP/MCP timeout passed in isolation. Desktop settings inspection passed. On 2026-09-26, synthetic app captures covered light and dark mobile views; at 390 pixels the sync checkbox was visible and within the viewport, with no horizontal document overflow.
 Artifacts: generated operation catalog and local build outputs.
-Deployment and live verification: source merged into the deployed app; a real connected GitHub repository has not been exercised.
-Remaining risks or follow-up: verify live polling, conflict and external write recovery against an authorized test repository.
+Deployment and live verification: in the connected production Feedbacks project, a previously linked synthetic Issue and thread began open/open. With project sync temporarily enabled, closing the Issue caused the scheduled worker to resolve the thread; reopening the thread caused the worker to reopen the Issue. Both settled at open/open with the panel reporting Up to date. The project switch was turned off and its disabled state survived a reload. No customer thread or attachment was used.
+Remaining risks or follow-up: live conflict and uncertain external write recovery remain unexercised; focused tests cover both. The project continues with automatic status sync off.
