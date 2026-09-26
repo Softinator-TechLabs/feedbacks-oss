@@ -61,6 +61,12 @@ try {
     password: access.password,
   });
   const auth = { cookie: login.cookie, csrf: login.data.csrf };
+  if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1")
+    await post(
+      "projects.create",
+      { name: "Public capture QA", origins: ["https://impeccable.style"] },
+      auth,
+    );
   const request = (await post("pairing.request", { name: "Synthetic browser QA" })).data;
   await post("pairing.approve", { pairingId: request.pairingId }, auth);
   const paired = (
@@ -107,7 +113,7 @@ try {
             : 2100;
     const change =
       mode === "changing"
-        ? '<script>let size=2100; setInterval(()=>{ size=size===2100?2300:2100; document.querySelector("main").style.height=size+"px" },75)</script>'
+        ? '<script>let size=2100; window.qaTimer=setInterval(()=>{ size=size===2100?2300:2100; document.querySelector("main").style.height=size+"px" },75)</script>'
         : "";
     return route.fulfill({
       status: 200,
@@ -137,6 +143,42 @@ try {
     await page.getByRole("heading", { name: "Controlled page" }).waitFor();
   };
   const results = {};
+
+  if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1") {
+    await page.bringToFront();
+    await page.goto("https://impeccable.style/", {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+    await page.waitForTimeout(2500);
+    const publicTab = await tabId();
+    const full = await send({
+      type: "popupAction",
+      tabId: publicTab,
+      action: "capture-full",
+    });
+    const captured = await draft();
+    results.publicSite = {
+      fullCaptured: full.captured,
+      fullPages: captured?.capturePages?.length || 0,
+      fullError: captured?.captureError,
+    };
+    assert.equal(results.publicSite.fullCaptured, true);
+    assert.ok(results.publicSite.fullPages > 1);
+    await send({ type: "discard" });
+    await page.bringToFront();
+    const visible = await send({
+      type: "popupAction",
+      tabId: publicTab,
+      action: "capture",
+    });
+    const visibleDraft = await draft();
+    results.publicSite.visibleCaptured = visible.captured;
+    results.publicSite.visibleImage = !!visibleDraft?.image;
+    assert.equal(results.publicSite.visibleCaptured, true);
+    assert.equal(results.publicSite.visibleImage, true);
+    await send({ type: "discard" });
+  }
 
   await toFixture();
   await mkdir(join(root, ".local/remaining-todos-qa"), { recursive: true });
@@ -203,6 +245,7 @@ try {
   const seriesEditor = await context.newPage();
   await seriesEditor.goto(`chrome-extension://${extensionId}/editor.html`);
   await seriesEditor.locator("#page-select option").last().waitFor({ state: "attached" });
+  await seriesEditor.locator(".page-thumbnail img[src]").first().waitFor();
   await seriesEditor.screenshot({
     path: join(root, ".local/remaining-todos-qa/ordered-editor.png"),
   });
@@ -281,6 +324,49 @@ try {
   );
   assert.equal(results.seriesReview.draftCleared, true);
 
+  mode = "long";
+  await toFixture();
+  await send({ type: "popupAction", tabId: id, action: "capture-full" });
+  const removableDraft = await draft();
+  const removableEditor = await context.newPage();
+  await removableEditor.goto(`chrome-extension://${extensionId}/editor.html`);
+  await removableEditor.locator(".page-thumbnail").last().waitFor();
+  await removableEditor.locator(".page-thumbnail img[src]").first().waitFor();
+  results.pageReview = {
+    previews: await removableEditor.locator(".page-thumbnail").count(),
+  };
+  await removableEditor.getByRole("button", { name: /^Remove screenshot 2:/ }).click();
+  await removableEditor.locator(".page-thumbnail").last().waitFor();
+  await removableEditor.waitForFunction(
+    () => document.querySelectorAll(".page-thumbnail").length === 3,
+  );
+  const pruned = await draft();
+  results.pageReview.remaining = pruned.capturePages.map((page) => page.name);
+  results.pageReview.secondImageMatches =
+    (await send({ type: "capturePage", id: pruned.id, index: 1 })).page.name ===
+    "full-page-003-of-004.webp";
+  await removableEditor.locator("#include-combined").check();
+  await removableEditor
+    .locator("#body")
+    .fill("Synthetic capture selection and combined image.");
+  await removableEditor.locator("#send").click();
+  await removableEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
+  const combinedThreadUrl = await removableEditor.locator("#thread").getAttribute("href");
+  const combinedThreadId = combinedThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
+  if (!combinedThreadId)
+    throw Error("Combined screenshot submission lacks a thread link");
+  const combinedThread = (await post("threads.get", { threadId: combinedThreadId }, auth))
+    .data;
+  results.pageReview.assetNames = combinedThread.assets.map((asset) => asset.filename);
+  assert.equal(results.pageReview.previews, removableDraft.capturePages.length);
+  assert.equal(results.pageReview.secondImageMatches, true);
+  assert.deepEqual(results.pageReview.assetNames, [
+    "full-page-001-of-004.webp",
+    "full-page-003-of-004.webp",
+    "full-page-004-of-004.webp",
+    "full-page-combined.webp",
+  ]);
+
   await page.setViewportSize({ width: 900, height: 650 });
   mode = "changing";
   await toFixture();
@@ -293,6 +379,19 @@ try {
     scrollRestored: Math.abs((await page.evaluate(() => scrollY)) - beforeChanging) < 2,
     error: changed?.error,
   };
+  await page.evaluate(() => clearInterval(window.qaTimer));
+  // Headless Chromium's native capture uses a 563px content area after
+  // switching from an extension editor. Match that viewport for this test.
+  await page.setViewportSize({ width: 900, height: 563 });
+  const retryEditor = await context.newPage();
+  await retryEditor.goto(`chrome-extension://${extensionId}/editor.html`);
+  await retryEditor.getByRole("button", { name: "Retry full-page capture" }).waitFor();
+  await retryEditor.getByRole("button", { name: "Retry full-page capture" }).click();
+  await retryEditor
+    .getByText("Capture ready.", { exact: false })
+    .waitFor({ timeout: 120000 });
+  results.changing.retryPages = (await draft())?.capturePages?.length;
+  assert.ok(results.changing.retryPages > 1);
   await send({ type: "discard" });
 
   mode = "short";

@@ -20,6 +20,8 @@ let draft,
   baseLoad = 0,
   loadingBase = false;
 let originalTabId;
+let thumbnailObserver;
+const thumbnailCache = new Map();
 function completed(url) {
   clearTimeout(saveTimer);
   dirty = false;
@@ -135,6 +137,7 @@ function payload() {
     ),
     projectId: $("project").value,
     noImage: $("no-image").checked,
+    includeCombined: $("include-combined").checked,
     toolState: shapes,
     pageIndex,
   };
@@ -171,6 +174,88 @@ function redactionRectangle(shape) {
     height: Math.max(2, Math.abs(b.y - a.y)),
   };
 }
+function renderThumbnails(fresh) {
+  thumbnailObserver?.disconnect();
+  const list = $("page-thumbnails");
+  const pages = fresh?.capturePages || [];
+  list.hidden = !pages.length;
+  list.replaceChildren();
+  if (!pages.length) return;
+  thumbnailObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        thumbnailObserver.unobserve(entry.target);
+        const image = entry.target.querySelector("img");
+        const index = Number(entry.target.dataset.index);
+        const key = `${fresh.id}:${fresh.imageRevision}:${index}`;
+        if (thumbnailCache.has(key)) {
+          image.src = thumbnailCache.get(key);
+          continue;
+        }
+        send({ type: "captureThumbnail", id: fresh.id, index })
+          .then(({ image: source }) => {
+            thumbnailCache.set(key, source);
+            if (draft?.id === fresh.id && entry.target.isConnected) image.src = source;
+          })
+          .catch(() => {
+            image.alt = "Preview unavailable; open this screenshot to review it.";
+          });
+      }
+    },
+    { root: list },
+  );
+  for (const [index, page] of pages.entries()) {
+    const card = document.createElement("div");
+    card.className = "page-thumbnail";
+    card.dataset.index = String(index);
+    card.setAttribute("role", "listitem");
+    if (index === pageIndex) card.setAttribute("aria-current", "page");
+    const open = document.createElement("button");
+    open.type = "button";
+    open.setAttribute("aria-label", `Review screenshot ${index + 1}: ${page.name}`);
+    const image = document.createElement("img");
+    image.alt = "";
+    const label = document.createElement("strong");
+    label.textContent = `Screenshot ${index + 1}`;
+    const range = document.createElement("small");
+    range.textContent = `${page.startY}–${page.endY}px`;
+    open.append(image, label, range);
+    open.onclick = () => changePage(index);
+    card.append(open);
+    if (!fresh.frozen) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "remove-page";
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", `Remove screenshot ${index + 1}: ${page.name}`);
+      remove.onclick = () => removePage(index);
+      card.append(remove);
+    }
+    list.append(card);
+    thumbnailObserver.observe(card);
+  }
+}
+async function removePage(index) {
+  if (!draft || draft.frozen || loadingBase || redacting || sendingApproval) return;
+  try {
+    await persist();
+    await send({
+      type: "removeCapturePage",
+      id: draft.id,
+      index,
+      imageRevision: draft.imageRevision,
+    });
+    if (pageIndex > index) pageIndex--;
+    const fresh = await send({ type: "draft" });
+    await loadBase(fresh);
+    status(
+      `${fresh.capturePages.length} screenshots remain. The removed image will not be sent.`,
+    );
+  } catch (error) {
+    status(`Screenshot could not be removed: ${error.message}`, "error");
+  }
+}
 async function loadBase(fresh) {
   if (draft && fresh && (fresh.imageRevision || 0) < (draft.imageRevision || 0)) return;
   const request = ++baseLoad;
@@ -184,6 +269,9 @@ async function loadBase(fresh) {
   draft = fresh;
   const pages = fresh?.capturePages || [];
   if (pageIndex >= pages.length) pageIndex = 0;
+  renderThumbnails(fresh);
+  $("combine-option").hidden = pages.length < 2;
+  $("include-combined").checked = !!fresh?.includeCombined && pages.length > 1;
   $("page-navigation").hidden = pages.length < 2;
   $("page-select").replaceChildren(
     ...pages.map(
@@ -203,7 +291,7 @@ async function loadBase(fresh) {
     : scopeCopy;
   $("retry-capture").textContent =
     fresh?.captureScope === "fullPage"
-      ? "Retry visible-area capture"
+      ? "Retry full-page capture"
       : "Retry capture on original tab";
   renderDiagnostics();
   if (!fresh) {
@@ -232,7 +320,7 @@ async function loadBase(fresh) {
       : fresh.pageToolStates?.[pageIndex] || []
     : fresh.toolState || [];
   $("no-image").checked = !!fresh.noImage;
-  $("retry-capture").hidden = !!pixels || !!fresh.frozen;
+  $("retry-capture").hidden = (!fresh.captureError && !!pixels) || !!fresh.frozen;
   canvas.hidden = !pixels;
   current = null;
   render();
@@ -390,6 +478,7 @@ for (const id of [
   "body",
   "project",
   "no-image",
+  "include-combined",
   "category",
   "tags",
   "include-diagnostics",
@@ -397,6 +486,7 @@ for (const id of [
   $(id).oninput = schedule;
 $("no-image").addEventListener("change", () => {
   canvas.style.opacity = $("no-image").checked ? ".35" : "1";
+  $("include-combined").disabled = $("no-image").checked;
 });
 $("discard").onclick = async () => {
   if (!confirm("Discard this local draft and its screenshot?")) return;
@@ -407,10 +497,11 @@ $("discard").onclick = async () => {
 };
 function lock(value) {
   for (const el of document.querySelectorAll(
-    "input,select,textarea,[data-tool],[data-diagnostic-mask],#undo,#reset",
+    "input,select,textarea,[data-tool],[data-diagnostic-mask],#undo,#reset,.remove-page",
   ))
     el.disabled = value;
   $("no-image").disabled = value || !base;
+  $("include-combined").disabled = value || !base || $("no-image").checked;
   for (const el of document.querySelectorAll("[data-tool],#undo,#reset,#annotation"))
     el.disabled = value || !base;
   const pageLocked = loadingBase || redacting || sendingApproval;
@@ -601,6 +692,7 @@ async function init() {
   $("tags").value = (draft.tags || []).join(", ");
   renderDiagnostics();
   $("no-image").checked = draft.noImage;
+  $("include-combined").checked = !!draft.includeCombined;
   const legacy = (draft.toolState || []).filter((shape) => shape.tool === "redact");
   if (legacy.length && !draft.frozen)
     await permanentRedaction(legacy.map(redactionRectangle), true);

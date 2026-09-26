@@ -35,6 +35,11 @@ const set = async (value) => {
 let polling = false,
   capturing = false,
   sending = false;
+function captureUrl(value) {
+  const url = new URL(value);
+  url.hash = "";
+  return url.href;
+}
 let draftWrites = Promise.resolve();
 function writeDraft(work) {
   const result = draftWrites.then(work);
@@ -300,23 +305,27 @@ async function restoreWindow(tab, saved) {
   if (saved.bounds.state && saved.bounds.state !== "normal")
     await chrome.windows.update(original.id, { state: saved.bounds.state });
 }
-function watchCapture(tabId, windowId) {
-  let changed = false;
-  const invalidate = () => {
-    changed = true;
+function watchCapture(tabId, windowId, sourceUrl) {
+  let changedReason = "";
+  const invalidate = (reason) => {
+    changedReason ||= reason;
   };
   const activated = (info) => {
-    if (info.windowId === windowId && info.tabId !== tabId) invalidate();
+    if (info.windowId === windowId && info.tabId !== tabId)
+      invalidate("another tab became active");
   };
   const updated = (id, change) => {
-    if (id === tabId && (change.status === "loading" || "url" in change)) invalidate();
+    // Chrome reports "loading" when a page fetches more content while scrolling.
+    // The capture checks below still reject a changed document or viewport.
+    if (id === tabId && change.url && captureUrl(change.url) !== captureUrl(sourceUrl))
+      invalidate("the page navigated");
   };
   const removed = (id) => {
-    if (id === tabId) invalidate();
+    if (id === tabId) invalidate("the source tab closed or moved");
   };
   const replaced = (_added, removedId) => removed(removedId);
   const boundsChanged = (window) => {
-    if (window.id === windowId) invalidate();
+    if (window.id === windowId) invalidate("the browser window resized");
   };
   const subscriptions = [
     [chrome.tabs.onActivated, activated],
@@ -329,9 +338,9 @@ function watchCapture(tabId, windowId) {
   for (const [event, handler] of subscriptions) event.addListener(handler);
   return {
     assert() {
-      if (changed)
+      if (changedReason)
         throw Error(
-          "The review tab changed or was left during capture. Keep it active and try again.",
+          `Capture stopped because ${changedReason}. Return to the original tab and retry.`,
         );
     },
     dispose() {
@@ -342,7 +351,7 @@ function watchCapture(tabId, windowId) {
 async function capture(sender, retryId, pointToken = null, scope = "visible", body = "") {
   if (capturing) throw Error("A capture is already in progress.");
   capturing = true;
-  const guard = watchCapture(sender.tab.id, sender.tab.windowId);
+  const guard = watchCapture(sender.tab.id, sender.tab.windowId, sender.tab.url);
   let pending,
     captured = false;
   try {
@@ -350,14 +359,14 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       state = await get();
     if (retryId) {
       pointToken = state.draft?.pointToken || null;
-      scope = "visible";
+      scope = state.draft?.captureScope === "fullPage" ? "fullPage" : "visible";
     }
     if (
       state.draft &&
       (state.draft.id !== retryId ||
         state.draft.frozen ||
         state.draft.image ||
-        state.draft.capturePages?.length)
+        (state.draft.capturePages?.length && !state.draft.captureError))
     )
       return await openDraft();
     const tab = await chrome.tabs.get(sender.tab.id);
@@ -378,6 +387,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       throw Error(
         "The original review page changed. Send this draft without an image, or discard it and capture the new page.",
       );
+    if (retryId) await deleteDraftPages(retryId);
     pending = {
       ...(retryId ? state.draft : {}),
       id: retryId || crypto.randomUUID(),
@@ -446,7 +456,9 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
     }
     if (scope === "fullPage") {
       let tileWidth, tileHeight;
-      for (const page of plan.pages) {
+      let coveredHeight = plan.height;
+      for (let pageIndex = 0; pageIndex < plan.pages.length; pageIndex++) {
+        const page = plan.pages[pageIndex];
         const y = page.scrollY;
         guard.assert();
         const step = await chrome.tabs.sendMessage(tab.id, {
@@ -467,11 +479,13 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
         if (
           !current.active ||
           current.windowId !== tab.windowId ||
-          current.url !== tab.url ||
+          captureUrl(current.url) !== captureUrl(tab.url) ||
           after.signature !== step.signature ||
           after.captureEpoch !== 0
         )
-          throw Error("The page moved during full-page capture. Retry the visible area.");
+          throw Error(
+            "The page moved during full-page capture. Retry on the original tab.",
+          );
         const bitmap = await createImageBitmap(await (await fetch(pixels)).blob());
         try {
           if (!tileWidth) {
@@ -481,7 +495,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
             const sourceY = tileHeight / metrics.viewportHeight;
             if (Math.abs(sourceX - sourceY) > 0.03)
               throw Error(
-                "The browser scale changed during capture. Retry the visible area.",
+                `The browser's captured area changed during capture (${bitmap.width}×${bitmap.height} image, ${metrics.viewportWidth}×${metrics.viewportHeight} viewport). Keep the original tab active and retry.`,
               );
             sx = sourceX;
             sy = sourceY;
@@ -518,7 +532,32 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
         } finally {
           bitmap.close();
         }
+        // Lazy sections may add document height as they enter the viewport.
+        // Continue scrolling until the newly revealed tail has been captured.
+        if (step.documentHeight > coveredHeight) {
+          let startY = coveredHeight;
+          while (startY < step.documentHeight) {
+            const scrollY = Math.min(
+              startY,
+              Math.max(0, step.documentHeight - metrics.viewportHeight),
+            );
+            const endY = Math.min(step.documentHeight, scrollY + metrics.viewportHeight);
+            plan.pages.push({
+              index: plan.pages.length,
+              scrollY,
+              cropY: startY - scrollY,
+              startY,
+              endY,
+            });
+            startY = endY;
+          }
+          coveredHeight = step.documentHeight;
+        }
       }
+      const digits = Math.max(3, String(pending.capturePages.length).length);
+      pending.capturePages.forEach((page, index) => {
+        page.name = `full-page-${String(index + 1).padStart(digits, "0")}-of-${String(pending.capturePages.length).padStart(digits, "0")}.webp`;
+      });
       const restored = await chrome.tabs.sendMessage(tab.id, {
         type: "fullPageScroll",
         x: before.context.scroll.x,
@@ -559,7 +598,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       if (!retryId)
         await chrome.tabs.create({ url: chrome.runtime.getURL("editor.html") });
       captured = true;
-      return { captured: true, pages: plan.pages.length };
+      return { captured: true, pages: pending.capturePages.length };
     }
     {
       const pixels = await chrome.tabs.captureVisibleTab(tab.windowId, {
@@ -574,7 +613,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       if (
         !current.active ||
         current.windowId !== tab.windowId ||
-        tab.url !== current.url ||
+        captureUrl(tab.url) !== captureUrl(current.url) ||
         before.signature !== after.signature ||
         after.captureEpoch !== 0
       )
@@ -653,14 +692,27 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
     return { captured: true };
   } catch (error) {
     if (pending) {
-      await deleteDraftPages(pending.id).catch(() => {});
-      pending.capturePages = [];
+      const partial =
+        pending.captureScope === "fullPage" && pending.capturePages.length > 0;
+      if (!partial) {
+        await deleteDraftPages(pending.id).catch(() => {});
+        pending.capturePages = [];
+      } else {
+        const digits = Math.max(3, String(pending.capturePages.length).length);
+        pending.capturePages.forEach((page, index) => {
+          page.name = `full-page-${String(index + 1).padStart(digits, "0")}-of-${String(pending.capturePages.length).padStart(digits, "0")}-partial.webp`;
+        });
+      }
       const { draft } = await get();
       if (draft?.id === pending.id) {
         await set({
           draft: {
             ...pending,
             captureError: error.message,
+            captureNotice: partial
+              ? `${pending.capturePages.length} pages were saved before capture stopped. This is an incomplete page; review or remove them, or retry the full capture.`
+              : null,
+            noImage: !partial,
             imageRevision: Math.max(pending.imageRevision, draft.imageRevision || 0) + 1,
           },
         });
@@ -728,6 +780,8 @@ async function saveDraft(message) {
     },
     includeDiagnostics: message.includeDiagnostics === true && !!draft.diagnostics,
     noImage: !(draft.image || draft.capturePages?.length) || !!message.noImage,
+    includeCombined:
+      message.includeCombined === true && (draft.capturePages?.length || 0) > 1,
     toolState: message.toolState,
     projectId: message.projectId,
   };
@@ -759,6 +813,67 @@ async function capturePage(message) {
     draft.frozen && !draft.noImage ? "approved" : "source",
   );
   return { image: await pageDataUrl(blob), page: draft.capturePages[index] };
+}
+async function captureThumbnail(message) {
+  const { draft } = await get();
+  if (!draft || draft.id !== message.id) throw Error("No pending draft.");
+  const index = message.index;
+  if (!Number.isInteger(index) || index < 0 || index >= (draft.capturePages?.length || 0))
+    throw Error("Select a valid screenshot page.");
+  const blob = await getPage(
+    draft.id,
+    index,
+    draft.frozen && !draft.noImage ? "approved" : "source",
+  );
+  if (!blob) throw Error("This screenshot is no longer available in this browser.");
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const width = Math.min(160, bitmap.width);
+    const height = Math.max(1, Math.round((bitmap.height / bitmap.width) * width));
+    const canvas = new OffscreenCanvas(width, height);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+    return {
+      image: await pageDataUrl(
+        await canvas.convertToBlob({ type: "image/webp", quality: 0.66 }),
+      ),
+    };
+  } finally {
+    bitmap.close();
+  }
+}
+async function removeCapturePage(message) {
+  const { draft } = await get();
+  if (!draft || draft.id !== message.id || draft.frozen || !draft.capturePages?.length)
+    throw Error("This screenshot cannot be removed.");
+  requireImageRevision(draft, message.imageRevision);
+  const index = message.index;
+  if (!Number.isInteger(index) || index < 0 || index >= draft.capturePages.length)
+    throw Error("Select a valid screenshot page.");
+  for (let next = index + 1; next < draft.capturePages.length; next++) {
+    const source = await getPage(draft.id, next, "source");
+    if (!source)
+      throw Error("A screenshot is missing. Reload the draft before removing pages.");
+    await putPage(draft.id, next - 1, "source", source);
+  }
+  await deletePage(draft.id, draft.capturePages.length - 1, "source");
+  for (let next = 0; next < draft.capturePages.length; next++)
+    await deletePage(draft.id, next, "approved");
+  const capturePages = draft.capturePages.filter((_, position) => position !== index);
+  const pageToolStates = [...(draft.pageToolStates || [])];
+  pageToolStates.splice(index, 1);
+  const updated = {
+    ...draft,
+    capturePages,
+    pageToolStates,
+    approvedPageIndices: [],
+    noImage: capturePages.length === 0,
+    captureNotice: capturePages.length
+      ? `${capturePages.length} selected ${capturePages.length === 1 ? "screenshot" : "screenshots"} in page order. Removed pages will not be sent.`
+      : "All screenshots removed. Your page context and comment are still saved.",
+    imageRevision: draft.imageRevision + 1,
+  };
+  await set({ draft: updated });
+  return { removed: true, remaining: capturePages.length };
 }
 async function approveCapturePage(message) {
   const { draft } = await get();
@@ -873,6 +988,46 @@ async function redactDiagnostic(message) {
   await set({ draft: updated });
   return updated;
 }
+async function combineApprovedPages(draft) {
+  let width = 0;
+  let height = 0;
+  for (let index = 0; index < draft.capturePages.length; index++) {
+    const blob = await getPage(draft.id, index, "approved");
+    if (!blob) throw Error(`Approved screenshot ${index + 1} is missing.`);
+    const bitmap = await createImageBitmap(blob);
+    if (width && bitmap.width !== width) {
+      bitmap.close();
+      throw Error("Screenshot widths changed; send the ordered images separately.");
+    }
+    width = bitmap.width;
+    height += bitmap.height;
+    bitmap.close();
+  }
+  try {
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw Error("Canvas is unavailable.");
+    let top = 0;
+    for (let index = 0; index < draft.capturePages.length; index++) {
+      const bitmap = await createImageBitmap(await getPage(draft.id, index, "approved"));
+      ctx.drawImage(bitmap, 0, top);
+      top += bitmap.height;
+      bitmap.close();
+    }
+    let blob;
+    for (const quality of [0.85, 0.7, 0.5]) {
+      blob = await canvas.convertToBlob({ type: "image/webp", quality });
+      if (blob.size <= 10 * 1024 * 1024) break;
+    }
+    if (!blob?.size || blob.size > 10 * 1024 * 1024)
+      throw Error("Combined image exceeds the server's per-image size.");
+    await putPage(draft.id, 0, "combined", blob);
+  } catch {
+    throw Error(
+      "This browser could not combine the page into one image. Turn off the combined image and send the ordered screenshots instead.",
+    );
+  }
+}
 async function submit(message) {
   if (sending) throw Error("Submission is already in progress.");
   sending = true;
@@ -899,6 +1054,8 @@ async function submit(message) {
         throw Error(
           "The annotated image is too large. Use Send without screenshot, or discard and capture a smaller window.",
         );
+      if (series && !draft.noImage && draft.includeCombined)
+        await combineApprovedPages(draft);
       draft = {
         ...draft,
         frozen: true,
@@ -1029,6 +1186,47 @@ async function submit(message) {
         draft.thread = result.thread;
         draft.uploadIndex = index + 1;
         draft.pageUploadAttempt = null;
+        await set({ draft });
+      }
+      if (draft.includeCombined && !draft.combinedUploaded) {
+        const blob = await getPage(draft.id, 0, "combined");
+        if (!blob) throw Error("The combined image is missing. Retry from this browser.");
+        if (!draft.combinedUploadAttempt) {
+          draft.combinedUploadAttempt = {
+            threadId: draft.thread.id,
+            revision: draft.thread.revision,
+            rendition: "annotated",
+            filename: "full-page-combined.webp",
+            idempotencyKey: `${draft.id}-combined`,
+          };
+          await set({ draft });
+        }
+        let result;
+        try {
+          result = await authenticated(
+            "assets.upload",
+            { ...draft.combinedUploadAttempt, imageBase64: await pageDataUrl(blob) },
+            draft.server,
+          );
+        } catch (error) {
+          if (error.code === "CONFLICT") {
+            draft.thread = await authenticated(
+              "threads.get",
+              { threadId: draft.thread.id },
+              draft.server,
+            );
+            draft.combinedUploadAttempt = {
+              ...draft.combinedUploadAttempt,
+              revision: draft.thread.revision,
+              idempotencyKey: crypto.randomUUID(),
+            };
+            await set({ draft });
+          }
+          throw error;
+        }
+        draft.thread = result.thread;
+        draft.combinedUploaded = true;
+        draft.combinedUploadAttempt = null;
         await set({ draft });
       }
     }
@@ -1335,6 +1533,10 @@ async function route(message, sender) {
       return writeDraft(() => saveDraft(message));
     case "capturePage":
       return capturePage(message);
+    case "captureThumbnail":
+      return captureThumbnail(message);
+    case "removeCapturePage":
+      return writeDraft(() => removeCapturePage(message));
     case "approveCapturePage":
       return writeDraft(() => approveCapturePage(message));
     case "retryCapture":
@@ -1345,7 +1547,7 @@ async function route(message, sender) {
           draft.id !== message.id ||
           draft.frozen ||
           draft.image ||
-          draft.capturePages?.length
+          (draft.capturePages?.length && !draft.captureError)
         )
           throw Error("Only a context-only draft can retry capture.");
         const tab = await chrome.tabs.get(draft.sourceTabId);
@@ -1355,6 +1557,7 @@ async function route(message, sender) {
           );
         await chrome.windows.update(tab.windowId, { focused: true });
         await chrome.tabs.update(tab.id, { active: true });
+        await new Promise((resolve) => setTimeout(resolve, 700));
         const result = await capture(
           { tab: { ...tab, active: true }, frameId: 0, url: tab.url },
           draft.id,

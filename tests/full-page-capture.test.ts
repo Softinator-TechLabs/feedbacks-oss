@@ -40,15 +40,18 @@ test("full-page plan refuses unsupported dimensions", () => {
   assert.throws(() => fullPagePlan({ ...page, documentHeight: NaN }), /dimensions/);
 });
 
-test("full-page capture rejects page mutation and unintended scroll", () => {
+test("full-page capture allows height growth but rejects navigation and unintended scroll", () => {
   const step = { ...page, x: 0, y: 800, captureEpoch: 0 };
   assert.doesNotThrow(() => verifyFullPageStep(page, step, 800));
   assert.throws(
     () => verifyFullPageStep(page, { ...step, url: "https://other.test" }, 800),
     /page changed/,
   );
+  assert.doesNotThrow(() =>
+    verifyFullPageStep(page, { ...step, documentHeight: 2200 }, 800),
+  );
   assert.throws(
-    () => verifyFullPageStep(page, { ...step, documentHeight: 2200 }, 800),
+    () => verifyFullPageStep(page, { ...step, documentHeight: 0 }, 800),
     /page changed/,
   );
   assert.throws(

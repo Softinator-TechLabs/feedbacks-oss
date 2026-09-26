@@ -23,6 +23,12 @@ The public Store extension starts without a preset server. An unpacked developer
 
 Browser-protected pages cannot be captured. Some inaccessible frames permit coordinate-only evidence rather than a precise element. For local HTTP development, open the extension's **Advanced** section and enable the separate local-server allowance; use HTTPS for team servers.
 
+## Full-page screenshots
+
+Choose **Capture full page** to scroll through the current tab. The editor shows the results in page order with numbered previews and pixel ranges. Open each preview to annotate or redact it, and use **Remove** to leave out a screenshot before sending. Each retained image keeps its own numbered filename. If the page changes during capture, the editor keeps the pages collected so far and marks the capture incomplete; you can review those pages or retry on the original tab.
+
+Separate screenshots are recommended for AI review. You can also select **Also include one combined image** in the editor. Very tall images can be difficult for an LLM agent to inspect; if the browser cannot create a combined image within the server's per-image size, turn that option off and send the ordered screenshots. The capture has no fixed page-count cutoff, but a page or browser can still change while scrolling. No image leaves the browser until you select **Send feedback**.
+
 ## Video and updates
 
 **Record a short tab video** opens Chrome's tab picker. Stop after at most 30 seconds, preview the clip, add a comment and send it. The clip is stored privately with the thread. Recordings above 8 MiB are discarded. Chrome Web Store installs update through Chrome; after an update, refresh pages you are reviewing. An unpacked build requires **Reload** in `chrome://extensions`.
