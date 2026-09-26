@@ -222,8 +222,11 @@
       },
     };
   }
-  const signature = () =>
-    `${location.href}|${innerWidth}|${innerHeight}|${scrollX}|${scrollY}|${devicePixelRatio}`;
+  const signature = () => {
+    const url = new URL(location.href);
+    url.hash = "";
+    return `${url.href}|${innerWidth}|${innerHeight}|${scrollX}|${scrollY}|${devicePixelRatio}`;
+  };
   function button(text, action, parent = bar) {
     const b = document.createElement("button");
     b.type = "button";

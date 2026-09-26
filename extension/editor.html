@@ -55,6 +55,13 @@
           <select id="page-select" aria-label="Choose screenshot page"></select>
           <button id="page-next" type="button">Next →</button>
         </nav>
+        <div
+          id="page-thumbnails"
+          class="page-thumbnails"
+          role="list"
+          aria-label="Captured screenshots"
+          hidden
+        ></div>
         <label class="text-label" for="annotation" hidden
           >Text to place
           <input
@@ -120,6 +127,16 @@
         <label class="check"
           ><input id="no-image" type="checkbox" /> Send without screenshot</label
         >
+        <div id="combine-option" class="combine-option" hidden>
+          <label class="check" for="include-combined"
+            ><input id="include-combined" type="checkbox" /> Also include one combined
+            image</label
+          >
+          <p class="hint">
+            Separate, numbered screenshots are recommended for AI review. A very tall
+            combined image can be difficult for an LLM agent to read.
+          </p>
+        </div>
         <p class="hint">Your draft stays in this browser until you explicitly send it.</p>
         <button id="send" class="primary">Send feedback</button>
         <button id="retry-capture" hidden>Retry capture on original tab</button>

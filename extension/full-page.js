@@ -34,16 +34,19 @@ export function fullPagePlan({
 }
 
 export function verifyFullPageStep(expected, actual, y) {
+  const fields = ["url", "viewportWidth", "viewportHeight", "documentWidth"];
+  const changed = !actual
+    ? ["response"]
+    : fields.filter((field) => actual[field] !== expected[field]);
   if (
-    !actual ||
-    actual.url !== expected.url ||
-    actual.viewportWidth !== expected.viewportWidth ||
-    actual.viewportHeight !== expected.viewportHeight ||
-    actual.documentWidth !== expected.documentWidth ||
-    actual.documentHeight !== expected.documentHeight ||
-    actual.x !== 0 ||
-    Math.abs(actual.y - y) > 1 ||
-    actual.captureEpoch !== 0
+    actual &&
+    (actual.x !== 0 || Math.abs(actual.y - y) > 1 || actual.captureEpoch !== 0)
   )
-    throw Error("The page changed during full-page capture. Retry the visible area.");
+    changed.push("scroll position");
+  if (
+    changed.length ||
+    !Number.isSafeInteger(actual?.documentHeight) ||
+    actual.documentHeight < 1
+  )
+    throw Error("The page changed during full-page capture. Retry on the original tab.");
 }
