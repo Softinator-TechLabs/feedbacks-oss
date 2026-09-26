@@ -393,6 +393,8 @@ try {
   await page.keyboard.type("Bottom point");
   await page.keyboard.press("Tab");
   await page.keyboard.press("Enter");
+  await page.bringToFront();
+  await worker.evaluate((tabId) => chrome.tabs.update(tabId, { active: true }), id);
   const multiScroll = await send({
     type: "popupAction",
     tabId: id,
