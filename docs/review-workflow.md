@@ -14,7 +14,7 @@ Project maintainers can mark or unmark **Top priority** directly on a feedback r
 
 The status selector at the top of a thread saves as soon as you choose a state. **Resolve** closes the thread in one click for members with resolution permission; **Reopen** opens it again. Notes are optional. Use **Add a note or duplicate link** when there is extra context to record.
 
-The status stays above the feedback. On a narrow screen the screenshot appears before discussion and queue navigation. On desktop, discussion sits beside the evidence. The top icon actions open optional notes, review decisions, guest links, linked issues and details. On narrow screens these menus open at the bottom of the viewport. Each icon has an accessible name and a label on hover or keyboard focus.
+The status stays above the feedback. On a narrow screen the screenshot appears before discussion and queue navigation. On desktop, discussion sits beside the evidence. The top icon actions open optional notes, review decisions, guest links, linked issues and details. A compact GitHub bar directly below the heading shows connection state, a one-click Issue action and the linked Issue. On narrow screens menus open at the bottom of the viewport. Each icon has an accessible name and a label on hover or keyboard focus.
 
 Project lists also show a status selector on each row. Changing it saves immediately, with resolution options only for members who can resolve threads. Recent dates use short relative labels such as “3 mins ago”; the full 12-hour IST date and time is available on hover or keyboard focus.
 

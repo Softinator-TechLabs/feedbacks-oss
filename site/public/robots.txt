@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
 Sitemap: https://feedbacks.softinator.ai/sitemap.xml
+Sitemap: https://feedbacks.softinator.ai/docs/sitemap.xml

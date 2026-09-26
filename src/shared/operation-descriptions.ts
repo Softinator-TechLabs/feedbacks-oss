@@ -67,11 +67,13 @@ export const operationDescriptions: Record<string, string> = {
   "threads.figmaReference":
     "A signed-in human project maintainer can register, replace or clear one Figma file reference after design work is agreed. Supply a Figma file URL or null to clear. The server stores a canonical file URL with an optional node-id and never transfers discussion or assets to Figma. This browser-only operation does not verify Figma access or change thread work status.",
   "github.connection":
-    "Show whether this project has an optional GitHub App connection. Human web sessions only; the server never returns App credentials.",
+    "Show server App configuration, selected-repository installation and this project's connection separately. A cached connection can remain after installation access is revoked. Human web sessions only; the server never returns App credentials.",
   "github.issueState":
     "Show whether a reviewed GitHub Issue request is pending or linked. A pending request may have succeeded remotely and must be reconciled before any new attempt. Human web sessions only.",
   "github.issueCreate":
     "Create and verify one Issue in the project's connected GitHub repository from a reviewed title and body. Human project maintainers or agents with a separately granted project-scoped github.issueCreate key may call this. The tool records the verified URL on the Feedbacks thread. Use a stable idempotencyKey; if the external result is uncertain, stop and ask a human maintainer to reconcile rather than retrying with a new key.",
+  "github.issueCreateQuick":
+    "A signed-in human project maintainer creates one Issue directly from the original feedback. The server includes authenticated attachment links; for private repositories it also includes seven-day signed storage URLs. This deliberate one-click action is unavailable to agent keys. Pending external writes require reconciliation, never a new-key retry.",
   "github.statusSyncConfigure":
     "A signed-in human project maintainer enables or disables periodic open/closed status sync for verified Issues in the connected repository. Enabling starts a new baseline; a mismatch needs manual reconciliation.",
   "github.statusSyncState":

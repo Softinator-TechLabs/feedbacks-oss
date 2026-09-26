@@ -8,6 +8,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Database } from "./db.js";
 import type { Actor } from "../shared/contracts.js";
 import type { Config } from "./config.js";
@@ -25,6 +26,7 @@ export interface AssetStore {
   put(key: string, bytes: Buffer, contentType?: string): Promise<void>;
   get(key: string): Promise<Buffer>;
   remove(key: string): Promise<void>;
+  signedGetUrl?(key: string, expiresInSeconds: number): Promise<string | null>;
 }
 // Called only after the operation has authorized access and released its transaction.
 export async function assetPreview(
@@ -81,6 +83,9 @@ export class LocalAssets implements AssetStore {
   async remove(key: string) {
     await rm(path.join(this.directory, key), { force: true });
   }
+  async signedGetUrl(_key: string, _expiresInSeconds: number) {
+    return null;
+  }
 }
 export class S3Assets implements AssetStore {
   private client: S3Client;
@@ -118,6 +123,13 @@ export class S3Assets implements AssetStore {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: this.config.s3Bucket, Key: key }),
       { abortSignal: AbortSignal.timeout(15000) },
+    );
+  }
+  async signedGetUrl(key: string, expiresInSeconds: number) {
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({ Bucket: this.config.s3Bucket, Key: key }),
+      { expiresIn: expiresInSeconds },
     );
   }
 }

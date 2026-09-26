@@ -7,6 +7,7 @@ export const sourceDirectories = [
   "src",
   "extension",
   "site",
+  "site-docs",
   "scripts",
   "tests",
   "docs",
@@ -72,9 +73,11 @@ export async function sourceFiles(root) {
         if (
           !/^[A-Za-z0-9_.-]+$/.test(entry) ||
           (entry.startsWith(".") &&
-            !["plugins/feedbacks/.codex-plugin", "plugins/feedbacks/.mcp.json"].includes(
-              `${relative}/${entry}`,
-            ))
+            ![
+              "plugins/feedbacks/.codex-plugin",
+              "plugins/feedbacks/.mcp.json",
+              "site-docs/.vitepress",
+            ].includes(`${relative}/${entry}`))
         )
           throw new Error(`Unexpected source entry: ${relative}/${entry}`);
         await walk(`${relative}/${entry}`);

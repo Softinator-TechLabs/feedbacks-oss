@@ -27,10 +27,13 @@ test("public source export excludes history and runtime state and refuses nested
     ])
       await writeFile(join(root, path), "must not export\n");
     await writeFile(join(root, "docs/public.md"), "public\n");
+    await mkdir(join(root, "site-docs/.vitepress"), { recursive: true });
+    await writeFile(join(root, "site-docs/.vitepress/config.ts"), "export default {};\n");
     const files = await sourceFiles(root);
     assert.ok(files.includes(".gitignore"));
     assert.ok(files.includes(".env.example"));
     assert.ok(files.includes("docs/public.md"));
+    assert.ok(files.includes("site-docs/.vitepress/config.ts"));
     assert.ok(
       !files.some(
         (file: string) =>

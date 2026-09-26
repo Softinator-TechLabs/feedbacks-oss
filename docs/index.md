@@ -2,6 +2,8 @@
 
 This is the entry point for contributors and coding agents. Guides describe current behavior; [decisions](decisions/0001-repository-harness.md) explain tradeoffs; [plans](plans/README.md) track substantial work. Start with the relevant row, then verify linked code and tests.
 
+The public, searchable user and developer guide is built from [`site-docs`](../site-docs/index.md) at [feedbacks.softinator.ai/docs](https://feedbacks.softinator.ai/docs/). Its Markdown is exported for coding agents alongside the HTML.
+
 | Task                              | Read                                                                                                                                       |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Understand the product            | [Purpose](why-feedbacks.md), [product brief](../PRODUCT.md), [review workflow](review-workflow.md)                                         |

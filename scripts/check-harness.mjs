@@ -14,8 +14,10 @@ const errors = [];
 for (const file of files) {
   if (!/\.(?:md|[cm]?[jt]sx?)$/.test(file)) continue;
   const text = await readFile(join(root, file), "utf8");
-  if (file.endsWith(".md")) documents.set(file, text);
-  else errors.push(...architectureErrors(file, text));
+  if (file.endsWith(".md")) {
+    // VitePress links are rooted at /docs/ and its build validates them separately.
+    if (!file.startsWith("site-docs/")) documents.set(file, text);
+  } else errors.push(...architectureErrors(file, text));
 }
 errors.push(
   ...documentationErrors(documents, new Set(files)),

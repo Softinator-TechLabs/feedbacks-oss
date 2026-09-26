@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api, type Project, type Thread } from "./api.js";
-import { ActionState, Field, useAction } from "./ui.js";
+import { ActionState, ErrorNotice, Field, useAction, useLoad } from "./ui.js";
 import { useUnsavedChanges } from "./navigation.js";
 
 type Draft = {
@@ -34,6 +34,18 @@ export function GithubIssue({
   const [requestKey, setRequestKey] = useState("");
   const [issueUrl, setIssueUrl] = useState("");
   const [confirmedAbsent, setConfirmedAbsent] = useState(false);
+  const connection = useLoad<{
+    configured: boolean;
+    installation:
+      | "not_configured"
+      | "no_repository"
+      | "installed"
+      | "not_installed"
+      | "unavailable";
+  }>(
+    () => api("github.connection", { projectId: project.id }),
+    [project.id, project.revision],
+  );
   useUnsavedChanges(!!draft);
   const refresh = () =>
     api<RequestState>("github.issueState", { threadId: thread.id }).then((value) => {
@@ -58,7 +70,35 @@ export function GithubIssue({
   }, [thread.id]);
   if (!project.permissions.canMaintain) return null;
   return (
-    <div className="github-issue-control">
+    <section
+      className="github-issue-control"
+      aria-label="GitHub Issue"
+      id="thread-github"
+    >
+      <div className="github-issue-summary">
+        <div>
+          <strong>GitHub</strong>{" "}
+          <span className="muted">
+            {connection.error
+              ? "Could not check connection"
+              : !connection.data
+                ? "Checking connection…"
+                : !connection.data.configured
+                  ? "App not configured"
+                  : connection.data.installation === "not_installed"
+                    ? "App not installed on this repository"
+                    : !project.githubConnected
+                      ? "Project not connected"
+                      : connection.data.installation === "unavailable"
+                        ? "Connection needs checking"
+                        : request?.status === "linked"
+                          ? "Issue linked"
+                          : "Ready to create an Issue"}
+          </span>
+        </div>
+        <a href={`/projects/${project.id}/github`}>GitHub settings</a>
+      </div>
+      <ErrorNotice error={connection.error} />
       {loadError && (
         <p role="alert">
           Could not load the GitHub request state.{" "}
@@ -135,45 +175,84 @@ export function GithubIssue({
           </button>
         </>
       ) : request?.status === "linked" && request.issueUrl ? (
-        <button
-          type="button"
-          disabled={action.busy}
-          onClick={() =>
-            void action.run(async () => {
-              const saved = await api<Thread>("github.issueRefresh", {
-                threadId: thread.id,
-                revision: thread.revision,
-                issueUrl: request.issueUrl!,
-              });
-              onSaved(saved);
-            }, "GitHub Issue state refreshed.")
-          }
-        >
-          Refresh Issue state
-        </button>
+        <div className="github-issue-actions">
+          <a href={request.issueUrl} target="_blank" rel="noopener noreferrer">
+            Open GitHub Issue ↗
+          </a>
+          <button
+            type="button"
+            className="text-button"
+            disabled={action.busy}
+            onClick={() =>
+              void action.run(async () => {
+                const saved = await api<Thread>("github.issueRefresh", {
+                  threadId: thread.id,
+                  revision: thread.revision,
+                  issueUrl: request.issueUrl!,
+                });
+                onSaved(saved);
+              }, "GitHub Issue state refreshed.")
+            }
+          >
+            Refresh state
+          </button>
+        </div>
       ) : !project.githubConnected ? (
         <p className="muted">
-          Connect the GitHub App in project settings to create or refresh Issues.
+          <a href={`/projects/${project.id}/github`}>Connect GitHub</a> to create Issues
+          from this feedback.
         </p>
       ) : request?.status !== "linked" && !draft ? (
-        <button
-          type="button"
-          disabled={action.busy || request === null}
-          onClick={() =>
-            void action.run(async () => {
-              const value = await api<Draft>("threads.issueDraft", {
-                threadId: thread.id,
-              });
-              setDraft(value);
-              setTitle(value.title);
-              setBody(value.body);
-              setReviewed(false);
-              setRequestKey(crypto.randomUUID());
-            })
-          }
-        >
-          Prepare GitHub Issue
-        </button>
+        <div className="github-issue-actions">
+          <button
+            className="primary"
+            type="button"
+            disabled={
+              action.busy ||
+              request === null ||
+              !!connection.error ||
+              connection.data?.installation !== "installed"
+            }
+            onClick={() =>
+              void action.run(async () => {
+                const key = requestKey || crypto.randomUUID();
+                setRequestKey(key);
+                try {
+                  const saved = await api<Thread>("github.issueCreateQuick", {
+                    threadId: thread.id,
+                    revision: thread.revision,
+                    idempotencyKey: key,
+                  });
+                  onSaved(saved);
+                } finally {
+                  await refresh();
+                }
+              }, "GitHub Issue created and linked.")
+            }
+          >
+            Create Issue
+          </button>
+          <button
+            type="button"
+            className="text-button"
+            disabled={action.busy}
+            onClick={() =>
+              void action.run(async () => {
+                const value = await api<Draft>("threads.issueDraft", {
+                  threadId: thread.id,
+                });
+                setDraft(value);
+                setTitle(value.title);
+                setBody(value.body);
+                setReviewed(false);
+                setRequestKey(crypto.randomUUID());
+              })
+            }
+          >
+            Review/edit first
+          </button>
+          <span className="muted">Images and videos are linked automatically.</span>
+        </div>
       ) : request?.status !== "linked" && draft ? (
         <form
           onSubmit={(event) => {
@@ -238,7 +317,7 @@ export function GithubIssue({
       ) : null}
       <GithubStatusSync thread={thread} project={project} onSaved={onSaved} />
       <ActionState action={action} />
-    </div>
+    </section>
   );
 }
 
@@ -271,7 +350,7 @@ function GithubStatusSync({
       issue.url.toLowerCase().startsWith(`${repository.toLowerCase()}/issues/`),
   );
   useEffect(() => {
-    if (!link) return;
+    if (!link || !project.githubStatusSync) return;
     let active = true;
     const refresh = () =>
       void api<SyncState>("github.statusSyncState", { threadId: thread.id })
@@ -292,8 +371,8 @@ function GithubStatusSync({
       active = false;
       clearInterval(timer);
     };
-  }, [thread.id, thread.revision, link?.url]);
-  if (!link) return null;
+  }, [thread.id, thread.revision, link?.url, project.githubStatusSync]);
+  if (!link || !project.githubStatusSync) return null;
   const synchronize = (source: "github" | "feedbacks") =>
     void action.run(
       async () => {
@@ -311,8 +390,27 @@ function GithubStatusSync({
         : "Issue state updated from Feedbacks.",
     );
   return (
-    <div className="section" aria-label="GitHub status sync">
-      <h3>Issue status sync</h3>
+    <details
+      className="github-status-sync"
+      aria-label="GitHub status sync"
+      open={
+        sync?.status === "conflict" ||
+        sync?.status === "uncertain" ||
+        sync?.status === "error"
+          ? true
+          : undefined
+      }
+    >
+      <summary>
+        Issue status sync
+        {sync?.status === "ready"
+          ? " · Up to date"
+          : sync?.status === "conflict" ||
+              sync?.status === "uncertain" ||
+              sync?.status === "error"
+            ? " · Needs attention"
+            : ""}
+      </summary>
       <p className="muted">
         GitHub open/closed ↔ Feedbacks open/resolved. In progress and ready for review
         stay open on GitHub.
@@ -371,6 +469,6 @@ function GithubStatusSync({
         </div>
       )}
       <ActionState action={action} />
-    </div>
+    </details>
   );
 }

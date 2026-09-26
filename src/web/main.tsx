@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api, type Actor, type Project } from "./api.js";
 import { AuthScreen, Pairing } from "./auth.js";
-import { Projects, ProjectSettings } from "./projects.js";
+import { Projects, ProjectSettings, ProjectGithub } from "./projects.js";
 import { ThreadList, ThreadDetail } from "./threads.js";
 import { Members, Instructions, Account } from "./settings.js";
 import { Help, Privacy } from "./help.js";
@@ -250,6 +250,7 @@ function App() {
             <nav aria-label="Project navigation">
               {[
                 ["", "Feedback"],
+                ["github", "GitHub"],
                 ["documents", "Documents"],
                 ["surveys", "Surveys"],
                 ["members", "Members"],
@@ -312,6 +313,8 @@ function App() {
                 actor={actor}
                 onSaved={() => setVersion((v) => v + 1)}
               />
+            ) : section === "github" ? (
+              <ProjectGithub project={project} onSaved={() => setVersion((v) => v + 1)} />
             ) : section === "documents" ? (
               <Documents project={project} />
             ) : section === "surveys" ? (

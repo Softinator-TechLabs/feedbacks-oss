@@ -5,7 +5,9 @@ RUN npm ci
 COPY vite.site.config.ts ./
 COPY .prettierrc.json ./
 COPY scripts/generate-comparisons.mjs ./scripts/
+COPY scripts/export-docs.mjs ./scripts/
 COPY site ./site
+COPY site-docs ./site-docs
 RUN npm run build:site
 
 FROM nginxinc/nginx-unprivileged:1.28-alpine

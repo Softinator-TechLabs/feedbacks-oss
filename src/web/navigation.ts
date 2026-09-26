@@ -3,7 +3,7 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 // Keep the working app mounted between ordinary pages. Capability links,
 // downloads and administrative forms retain their native document navigation.
 const ordinaryPage = (path: string) =>
-  /^(?:\/|\/help|\/projects\/[^/]+(?:\/(?:members|instructions|settings|documents(?:\/[^/]+)?))?|\/threads\/[^/]+)$/.test(
+  /^(?:\/|\/help|\/projects\/[^/]+(?:\/(?:members|instructions|github|settings|documents(?:\/[^/]+)?))?|\/threads\/[^/]+)$/.test(
     path,
   );
 const guards = new Set<() => boolean>();

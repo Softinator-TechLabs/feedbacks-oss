@@ -6,7 +6,9 @@ import { Auth, accountLock, hash, publicActor } from "./auth.js";
 import { access, event } from "./access.js";
 import { checkRevision, fullThread, saveThread, threadRow } from "./feedback.js";
 import { GithubApp, githubRepo, type GithubRepo } from "./github-app.js";
-import { fail } from "./errors.js";
+import { DomainError, fail } from "./errors.js";
+import { quickIssueDraft } from "./issue-draft.js";
+import type { AssetStore } from "./assets.js";
 
 async function human(db: Database, actor: Actor) {
   const current = await new Auth(db).current(actor);
@@ -115,9 +117,10 @@ export async function githubOperation(
   i: any,
   config: Config,
   client: GithubApp,
+  store?: AssetStore,
 ) {
-  if (name === "github.connection")
-    return db.transaction(async (tx) => {
+  if (name === "github.connection") {
+    const connection = await db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
       const project = await access(tx, a, i.projectId);
@@ -135,6 +138,28 @@ export async function githubOperation(
           : null,
       };
     });
+    let installation:
+      | "not_configured"
+      | "no_repository"
+      | "installed"
+      | "not_installed"
+      | "unavailable" = !connection.configured
+      ? "not_configured"
+      : !connection.repositoryUrl
+        ? "no_repository"
+        : "unavailable";
+    if (connection.configured && connection.repositoryUrl) {
+      try {
+        await client.check(githubRepo(connection.repositoryUrl));
+        installation = "installed";
+      } catch (error) {
+        if (error instanceof DomainError && error.code === "GITHUB_NOT_INSTALLED")
+          installation = "not_installed";
+        else installation = "unavailable";
+      }
+    }
+    return { ...connection, installation };
+  }
   if (name === "github.issueState")
     return db.transaction(async (tx) => {
       await accountLock(tx);
@@ -539,6 +564,61 @@ export async function githubOperation(
       const a = await issueAuthor(tx, actor);
       return linkedThread(tx, a, i, reservation.repo, issue, "github.issueCreate");
     });
+  }
+  if (name === "github.issueCreateQuick") {
+    requireApp(config);
+    const prepared = await db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await human(tx, actor);
+      const row = await threadRow(tx, a, i.threadId, "maintain", true);
+      const project = await access(tx, a, row.project_id, "maintain");
+      const repo = requireConnected(project);
+      const existing = await tx.one(
+        "SELECT status,request_key FROM github_issue_requests WHERE thread_id=$1 FOR UPDATE",
+        [row.id],
+      );
+      if (existing) {
+        if (existing.request_key !== i.idempotencyKey)
+          fail(
+            "IDEMPOTENCY_CONFLICT",
+            "An Issue request already exists for this thread",
+            409,
+          );
+        if (existing.status === "linked") return { prior: await fullThread(tx, a, row) };
+        fail(
+          "GITHUB_UNCERTAIN",
+          "The earlier Issue request may have succeeded. Inspect GitHub before retrying",
+          409,
+        );
+      }
+      checkRevision(row, i.revision);
+      const thread = await fullThread(tx, a, row);
+      const assets = await tx.query(
+        "SELECT id,object_key,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',id LIMIT 40",
+        [row.id],
+      );
+      return { thread, repo, assets };
+    });
+    if ("prior" in prepared) return prepared.prior;
+    const privateRepository = await client.repositoryPrivate(prepared.repo);
+    const attachments = [];
+    for (const asset of prepared.assets) {
+      const directUrl =
+        privateRepository && store?.signedGetUrl
+          ? await store.signedGetUrl(asset.object_key, 7 * 24 * 60 * 60)
+          : null;
+      attachments.push({ id: asset.id, contentType: asset.data.contentType, directUrl });
+    }
+    const draft = quickIssueDraft(prepared.thread, config.appOrigin, attachments);
+    return githubOperation(
+      db,
+      actor,
+      "github.issueCreate",
+      { ...i, ...draft, reviewed: true },
+      config,
+      client,
+      store,
+    );
   }
   if (name === "github.issueReconcile") {
     requireApp(config);
