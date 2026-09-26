@@ -387,6 +387,22 @@ test("worker pulls a one-sided GitHub close, pushes a one-sided Feedbacks reopen
     assert.equal(patchCount, 2);
     await pollGithubStatusSync(db, config, github);
     assert.equal(patchCount, 2);
+    const recovered = await ops.executeOperation(owner, "github.statusSync", {
+      threadId: thread.id,
+      revision: workerReopened.revision,
+      issueUrl: url,
+      source: "github",
+    });
+    assert.equal(recovered.work.state, "resolved");
+    assert.equal(
+      (
+        await ops.executeOperation(owner, "github.statusSyncState", {
+          threadId: thread.id,
+        })
+      ).status,
+      "ready",
+    );
+    assert.equal(patchCount, 2, "manual recovery reads GitHub without retrying PATCH");
     const disconnected = await ops.executeOperation(owner, "github.disconnect", {
       projectId: connected.id,
       revision: enabled.revision,

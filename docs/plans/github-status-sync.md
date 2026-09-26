@@ -1,6 +1,6 @@
 # Plan: optional GitHub Issue status sync
 
-Status: merged; mobile layout, live two-way sync and conflict recovery verified; uncertain-write recovery pending. Owner: Feedbacks maintainers. Date: 2026-09-26.
+Status: merged; mobile layout and live sync/conflict verified; controlled uncertain-write recovery tested. Owner: Feedbacks maintainers. Date: 2026-09-26.
 
 ## Outcome and scope
 
@@ -20,7 +20,7 @@ The existing GitHub App creates and verifies Issues and reads their state; `thre
 - [x] Inspect mobile controls in the disposable signed-in app at 390 pixels, in light and dark themes.
 - [x] Verify scheduled close and reopen on a synthetic Issue in the connected production repository, then disable sync again.
 - [x] Exercise a live two-sided conflict and manual reconciliation on the synthetic case.
-- [ ] Exercise uncertain external write recovery with controlled fault injection outside production.
+- [x] Exercise uncertain external write recovery with controlled fault injection outside production.
 
 ## Compatibility and recovery
 
@@ -29,7 +29,7 @@ Migration 17 adds a per-thread sync cursor; it does not rewrite existing threads
 ## Completion receipt
 
 Source revision: PR #44 merged as `1fc1ee1`.
-Checks and results: focused GitHub status sync tests passed again on 2026-09-25. The original branch ran native PostgreSQL, build, harness/docs, typecheck and release checks; its unrelated HTTP/MCP timeout passed in isolation. Desktop settings inspection passed. On 2026-09-26, synthetic app captures covered light and dark mobile views; at 390 pixels the sync checkbox was visible and within the viewport, with no horizontal document overflow.
+Checks and results: focused GitHub status sync tests passed again on 2026-09-26. The controlled GitHub mock loses a PATCH response, leaves the cursor uncertain, rejects automatic retries, then lets a maintainer read GitHub and restore ready state without issuing another PATCH. The original branch ran native PostgreSQL, build, harness/docs, typecheck and release checks; its unrelated HTTP/MCP timeout passed in isolation. Desktop settings inspection passed. Synthetic app captures covered light and dark mobile views; at 390 pixels the sync checkbox was visible and within the viewport, with no horizontal document overflow.
 Artifacts: generated operation catalog and local build outputs.
 Deployment and live verification: in the connected production Feedbacks project, a previously linked synthetic Issue and thread began open/open. With project sync temporarily enabled, closing the Issue caused the scheduled worker to resolve the thread; reopening the thread caused the worker to reopen the Issue. Both settled at open/open with the panel reporting Up to date. A second synthetic pass changed both sides from open/open to closed/resolved after the agreed baseline; the worker paused with Needs attention. Selecting GitHub status cleared the conflict. The thread and Issue were restored to open/open, the project switch was turned off, and its disabled state survived a reload. No customer thread or attachment was used.
-Remaining risks or follow-up: uncertain external write recovery is covered by focused tests but needs fault injection in a controlled non-production environment. The project continues with automatic status sync off.
+Remaining risks or follow-up: real network loss cannot be triggered safely on demand in production; the controlled fault-injection test covers the recovery choice. The project continues with automatic status sync off.
