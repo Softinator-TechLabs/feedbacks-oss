@@ -1,6 +1,6 @@
 # GitHub workflow and public documentation
 
-Status: implementation verified locally; production release in progress. Owner: Feedbacks maintainers. Date: 2026-09-26.
+Status: merged and verified in production. Owner: Feedbacks maintainers. Date: 2026-09-26.
 
 ## Outcome
 
@@ -41,7 +41,7 @@ at `/docs/`; Help offers short setup paths and links to those guides.
       machine-readable Markdown and `llms.txt`.
 - [x] Run focused tests, full `npm run check`, source diff review and public
       site build/route checks.
-- [ ] Merge through required CI, deploy and verify live app and public `/docs/` routes.
+- [x] Merge through required CI, deploy and verify live app and public `/docs/` routes.
 
 Local evidence: `npm run check` passed on 2026-09-26, including the full PGlite
 suite, TypeScript, site/app/extension builds, synthetic sandbox and release
@@ -49,7 +49,16 @@ source checks. `npm audit --audit-level=high` reported zero vulnerabilities.
 The disposable signed-in app captured desktop/mobile, light/dark GitHub and
 thread views with no blocked requests. Local docs preview served the home,
 GitHub guide, MCP Markdown and `llms.txt`; built-in search returned GitHub
-results. The production site still returns 404 for `/docs/` until deployment.
+results. PR [#65](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/65)
+merged as `33f21e5`; Node 22/24, secrets and container checks passed. The signed-in
+production project displayed App configured, App installed and Project connected;
+its linked synthetic thread displayed the GitHub Issue control. The public site
+returned 200 for `/docs/`, `/docs/guide/github`, `/docs/guide/mcp.md` and
+`/docs/llms.txt`; Docs and Help were inspected in Chrome. A later
+[alignment fix](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/66)
+merged as `de197f7`; main CI passed and the live stylesheet matched its build.
+This inspection did not create a new customer Issue or download a private
+attachment. The synthetic Issue and focused server tests cover those paths.
 
 ## Research
 

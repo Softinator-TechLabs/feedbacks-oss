@@ -33,6 +33,7 @@
     "test:containers": "node scripts/smoke-containers.mjs",
     "qa:visual": "node --import tsx scripts/visual-qa.mjs",
     "qa:app-visual": "node --import tsx scripts/visual-app-qa.mjs",
+    "qa:extension-browser": "node scripts/extension-browser-qa.mjs",
     "build:plugin": "node scripts/package-plugin.mjs",
     "harness:dev": "npm run build && node scripts/dev-sandbox.mjs",
     "harness:smoke": "node scripts/dev-sandbox.mjs --smoke",

@@ -1,6 +1,6 @@
 # Plan: optional full-page website capture
 
-Status: merged; full-page Chrome acceptance and Store publication pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: isolated Chromium acceptance passed; Store-installed acceptance and publication pending. Owner: Feedbacks maintainers. Date: 2026-09-26.
 
 ## Outcome and scope
 
@@ -15,7 +15,8 @@ The current extension calls `captureVisibleTab` once and labels the result as a 
 - [x] Confirm current capture path and Chrome API limit.
 - [x] Implement the separate action, scroll restoration, size and stability guards, and a visible-area fallback.
 - [x] Add focused geometry, page-change and popup-action tests.
-- [ ] Exercise the unpacked extension in Chrome on short, long, sticky and changing pages.
+- [x] Exercise the unpacked extension in isolated Chromium on short, long, sticky and changing pages.
+- [ ] Confirm optional permission flow and full-page capture in the Store-installed Chrome extension after publication.
 - [x] Update extension guidance and verify the built package.
 
 ## Compatibility and recovery
@@ -30,7 +31,7 @@ Existing drafts and visible captures continue to work. Failed full-page capture 
 ## Completion receipt
 
 Source revision: PR [#28](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/28), merged as `b57c44b`.
-Checks and results: `npm run check` passed on 2026-09-24; focused geometry and popup-action tests passed. Chrome browser smoke remains pending.
+Checks and results: `npm run check` passed on 2026-09-24; focused geometry and popup-action tests passed. On 2026-09-26, `npm run qa:extension-browser` captured short and long pages, verified image output and scroll restoration, and rejected a changing page without retaining an image. The 2,182-pixel long-page image was inspected visually; its sticky header repeats across stitched tiles.
 Artifacts: the full-page path is included in extension source version 0.1.15 and its versioned ZIP.
-Deployment and live verification, if in scope: the public Chrome Web Store listing still served 0.1.11 on 2026-09-25. Store publication and a full-page capture on controlled short, long and changing pages remain separate gates.
-Remaining risks or follow-up: sticky or lazy content can repeat or shift. Verify in Chrome before a Store submission.
+Deployment and live verification, if in scope: the controlled browser test uses extension runtime files with test-only host grants in a temporary copy. The public Chrome Web Store listing served 0.1.11 on 2026-09-26; the uploaded 0.1.15 package has not been observed live.
+Remaining risks or follow-up: sticky or lazy content can repeat or shift. Verify the Store-installed optional permission prompt and capture after publication.

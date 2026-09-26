@@ -1,6 +1,6 @@
 # Plan: optional page QA scan
 
-Status: merged; controlled-page Chrome acceptance and Store publication pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: isolated Chromium acceptance passed; Store-installed acceptance and publication pending. Owner: Feedbacks maintainers. Date: 2026-09-26.
 
 ## Outcome and scope
 
@@ -15,7 +15,8 @@ The extension already has an active-page review gesture and a local draft editor
 - [x] Trace the review and capture path.
 - [x] Implement the explicit scan, bounded report and editable draft handoff.
 - [x] Add focused validation tests and run the package checks.
-- [ ] Verify actual browser behavior on a controlled page.
+- [x] Verify actual browser behavior on a controlled page in isolated Chromium.
+- [ ] Confirm optional permission flow and scan in the Store-installed Chrome extension after publication.
 - [x] Update extension guidance.
 
 ## Compatibility and recovery
@@ -29,7 +30,7 @@ Existing captures and drafts remain unchanged. Unsupported HEAD requests may lea
 ## Completion receipt
 
 Source revision: PR [#30](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/30), merged as `5d29c7c`.
-Checks and results: `npm run check` passed on 2026-09-24, including popup, report, package, sandbox and release checks. Chrome browser smoke is pending.
+Checks and results: `npm run check` passed on 2026-09-24, including popup, report, package, sandbox and release checks. On 2026-09-26, `npm run qa:extension-browser` opened a controlled page with a missing image alt attribute and a same-origin 404 link. The explicit scan created a local draft containing both findings and a screenshot, then the draft was discarded without publication.
 Artifacts: extension 0.1.15 source and a versioned ZIP.
-Deployment and live verification: the public Chrome Web Store listing still served 0.1.11 on 2026-09-25. A controlled-page Chrome scan and Store-installed check remain open.
+Deployment and live verification: the controlled browser test uses extension runtime files with test-only host grants in a temporary copy. The public Chrome Web Store listing served 0.1.11 on 2026-09-26; the uploaded 0.1.15 package has not been observed live.
 Remaining risks or follow-up: HEAD requests can be unsupported or misleading on a site. The reviewer must confirm and edit every finding before sending.
