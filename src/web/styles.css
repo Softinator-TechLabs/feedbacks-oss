@@ -367,6 +367,7 @@ small {
 .github-repository-form .field {
   flex: 1 1 340px;
   min-width: 0;
+  margin-bottom: 0;
 }
 .github-repository-form button,
 .github-connection-actions button {
