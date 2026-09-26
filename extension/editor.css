@@ -39,6 +39,21 @@ main {
   border-color: transparent;
   background: transparent;
 }
+#tools button[data-tool] {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+#tools button[data-tool] svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 #tools button:enabled:hover {
   background: var(--hover);
   border-color: transparent;
@@ -71,6 +86,15 @@ main {
   border: 0;
   padding: 8px 4px;
   background: transparent;
+}
+.page-navigation #full-page-toggle {
+  padding: 8px 12px;
+  background: var(--hover);
+  border-radius: 8px;
+}
+.page-navigation #full-page-toggle[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 .series-guide {
   color: var(--muted);
@@ -181,6 +205,13 @@ canvas {
   cursor: crosshair;
   background: white;
 }
+#full-page-preview {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  background: white;
+}
 .privacy-help {
   margin-top: 12px;
   max-width: 78ch;
@@ -241,6 +272,27 @@ aside .hint {
 }
 #status {
   margin: 12px 0 0;
+}
+.upload-progress {
+  margin-top: 12px;
+}
+.upload-progress label {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.upload-progress progress {
+  display: block;
+  width: 100%;
+  height: 10px;
+  accent-color: var(--accent);
+}
+.upload-progress progress::-webkit-progress-bar {
+  background: var(--hover);
+  border-radius: 999px;
+}
+.upload-progress progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 999px;
 }
 #thread {
   display: inline-block;

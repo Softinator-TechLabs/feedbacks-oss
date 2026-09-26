@@ -182,6 +182,14 @@ try {
       const review = await context.newPage();
       await review.goto(`chrome-extension://${extensionId}/editor.html`);
       await review.locator("#page-select option").last().waitFor({ state: "attached" });
+      await review.locator("#full-page-toggle:not([disabled])").waitFor();
+      await review.getByRole("button", { name: "Full page preview" }).click();
+      await review.locator("#full-page-preview:visible").waitFor({ timeout: 60000 });
+      results.publicSite.previewHeight = await review
+        .locator("#full-page-preview")
+        .evaluate((image) => image.naturalHeight);
+      assert.ok(results.publicSite.previewHeight > 1064);
+      await review.getByRole("button", { name: "Back to sections" }).click();
       await review.locator("#include-combined").check();
       await review.locator("#body").fill("Synthetic local full-page upload QA.");
       await review.locator("#send").click();
@@ -307,6 +315,35 @@ try {
   await seriesEditor.goto(`chrome-extension://${extensionId}/editor.html`);
   await seriesEditor.locator("#page-select option").last().waitFor({ state: "attached" });
   await seriesEditor.locator(".page-thumbnail img[src]").first().waitFor();
+  await seriesEditor.locator("#full-page-toggle:not([disabled])").waitFor();
+  await seriesEditor.getByRole("button", { name: "Full page preview" }).click();
+  await seriesEditor
+    .locator("#full-page-preview:visible")
+    .waitFor()
+    .catch(async (error) => {
+      throw Error(
+        `Preview did not open: ${await seriesEditor.locator("#status").textContent()} (${error.message})`,
+      );
+    });
+  results.seriesReview = {
+    previewHeight: await seriesEditor
+      .locator("#full-page-preview")
+      .evaluate((image) => image.naturalHeight),
+    previewWidth: await seriesEditor
+      .locator("#full-page-preview")
+      .evaluate((image) => image.naturalWidth),
+  };
+  assert.ok(results.seriesReview.previewHeight > 650);
+  assert.ok(results.seriesReview.previewWidth > 0);
+  await seriesEditor.setViewportSize({ width: 1440, height: 900 });
+  await seriesEditor.screenshot({
+    path: join(root, ".local/remaining-todos-qa/full-page-preview-desktop.png"),
+  });
+  await seriesEditor.setViewportSize({ width: 390, height: 844 });
+  await seriesEditor.screenshot({
+    path: join(root, ".local/remaining-todos-qa/full-page-preview-mobile.png"),
+  });
+  await seriesEditor.getByRole("button", { name: "Back to sections" }).click();
   await seriesEditor.setViewportSize({ width: 1440, height: 900 });
   await seriesEditor.screenshot({
     path: join(root, ".local/remaining-todos-qa/ordered-editor.png"),
@@ -318,6 +355,7 @@ try {
   });
   await seriesEditor.setViewportSize({ width: 1440, height: 900 });
   results.seriesReview = {
+    ...results.seriesReview,
     pageOptions: await seriesEditor.locator("#page-select option").count(),
     firstLabel: await seriesEditor.locator("#page-select option").first().textContent(),
   };
@@ -367,13 +405,32 @@ try {
     };
   });
   await seriesEditor.locator("#body").fill("Synthetic ordered capture acceptance.");
+  await seriesEditor.evaluate(() => {
+    window.qaUploadProgress = [];
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message?.type === "submitProgress" && Number.isInteger(message.completed))
+        window.qaUploadProgress.push({
+          completed: message.completed,
+          total: message.total,
+        });
+    });
+  });
   await seriesEditor.locator("#send").click();
   await seriesEditor.getByRole("button", { name: "Retry Send" }).waitFor();
   const interrupted = await draft();
   results.seriesReview.resumeIndex = interrupted?.uploadIndex;
   results.seriesReview.frozenAfterInterruption = interrupted?.frozen;
+  results.seriesReview.visibleProgress = await seriesEditor
+    .locator("#upload-label")
+    .textContent();
+  results.seriesReview.meter = await seriesEditor
+    .locator("#upload-meter")
+    .evaluate((meter) => meter.value);
   await seriesEditor.locator("#send").click();
   await seriesEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
+  results.seriesReview.uploadProgress = await seriesEditor.evaluate(
+    () => window.qaUploadProgress,
+  );
   const seriesThreadUrl = await seriesEditor.locator("#thread").getAttribute("href");
   const seriesThreadId = seriesThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
   if (!seriesThreadId) throw Error("Ordered screenshot submission lacks a thread link");
@@ -386,11 +443,19 @@ try {
   assert.equal(results.seriesReview.redactionPersisted, true);
   assert.equal(results.seriesReview.resumeIndex, 1);
   assert.equal(results.seriesReview.frozenAfterInterruption, true);
+  assert.equal(results.seriesReview.visibleProgress, "1 of 4 images uploaded · 25%");
+  assert.equal(results.seriesReview.meter, 25);
   assert.deepEqual(
     results.seriesReview.assetNames,
     seriesDraft.capturePages.map((item) => item.name),
   );
   assert.equal(results.seriesReview.draftCleared, true);
+  assert.ok(results.seriesReview.uploadProgress.some((entry) => entry.completed === 1));
+  assert.ok(
+    results.seriesReview.uploadProgress.some(
+      (entry) => entry.completed === seriesDraft.capturePages.length,
+    ),
+  );
 
   mode = "long";
   await toFixture();
@@ -424,6 +489,25 @@ try {
     steps: 4,
   });
   await removableEditor.mouse.up();
+  await removableEditor.getByRole("button", { name: "Full page preview" }).click();
+  await removableEditor.locator("#full-page-preview:visible").waitFor();
+  results.pageReview.previewMarkedPixels = await removableEditor
+    .locator("#full-page-preview")
+    .evaluate((image) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let marked = 0;
+      for (let index = 0; index < pixels.length; index += 4)
+        if (pixels[index] > 120 && pixels[index + 1] < 100 && pixels[index + 2] < 120)
+          marked++;
+      return marked;
+    });
+  assert.ok(results.pageReview.previewMarkedPixels > 12);
+  await removableEditor.getByRole("button", { name: "Back to sections" }).click();
   await removableEditor.locator("#include-combined").check();
   await removableEditor
     .locator("#body")
