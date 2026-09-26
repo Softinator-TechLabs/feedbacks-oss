@@ -276,11 +276,14 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
               </a>
             </p>
           </section>
-          <HelpAgentSetup
-            actor={actor}
-            projects={projects}
-            instructions={data.instructions}
-          />
+          <details className="help-owner-access">
+            <summary>Advanced: owner-level agent access</summary>
+            <HelpAgentSetup
+              actor={actor}
+              projects={projects}
+              instructions={data.instructions}
+            />
+          </details>
           <details id="more-help">
             <summary>More help</summary>
             <div dangerouslySetInnerHTML={{ __html: data.moreHtml }} />

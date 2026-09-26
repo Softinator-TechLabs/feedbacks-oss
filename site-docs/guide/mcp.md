@@ -4,8 +4,8 @@ MCP (Model Context Protocol) is a standard way for an assistant to discover tool
 
 ## Quick setup from Help
 
-1. Sign in to your Feedbacks server and open **Help → Connect your coding agent**.
-2. An owner can choose **Create key and copy setup**. This grants broad owner administration; for ordinary project work choose **limited access** in **Account → Connect internal agents** and select project IDs, scopes and expiry.
+1. Sign in to your Feedbacks server and open **Help → Connect a coding agent**.
+2. For ordinary project work choose **limited access** in **Account → Connect internal agents** and select project IDs, scopes and expiry. The Help page's **Advanced: owner-level agent access** disclosure can create a full owner-administration key; use that only when the agent truly needs it.
 3. Paste the copied setup prompt into the coding agent you trust. It contains a one-time secret; never paste it into a repository, public chat or screenshot.
 4. The agent should configure its actual MCP client, reconnect it, list available tools and perform only an allowed read as verification.
 

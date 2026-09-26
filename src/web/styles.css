@@ -1343,6 +1343,22 @@ legend {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
+.help-owner-access {
+  margin-top: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.help-owner-access > summary {
+  min-height: 44px;
+  padding: 11px 0;
+  cursor: pointer;
+  font-weight: 650;
+}
+.help-owner-access .help-agent {
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 0;
+  border-bottom: 0;
+}
 .help-agent p {
   margin: 0 0 14px;
 }
