@@ -8,7 +8,6 @@ export default defineConfig({
   base: "/docs/",
   cleanUrls: true,
   outDir: "../dist/site/docs",
-  lastUpdated: true,
   sitemap: { hostname: "https://feedbacks.softinator.ai" },
   head: [
     ["meta", { name: "theme-color", content: "#12243b" }],
