@@ -192,6 +192,14 @@ try {
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-security-policy"), /script-src 'self'/);
   }
+  for (const path of ["/docs/", "/docs/guide/github", "/docs/guide/mcp.md"]) {
+    const response = await request(`${website}${path}`);
+    assert.equal(response.status, 200, path);
+    assert.match(response.headers.get("content-type"), /text\/(html|markdown|plain)/);
+  }
+  const agentIndex = await request(`${website}/docs/llms.txt`);
+  assert.equal(agentIndex.status, 200);
+  assert.match(await agentIndex.text(), /Feedbacks documentation/);
   for (const path of ["/.env", "/.git/config", "/missing-page"]) {
     assert.equal((await request(`${website}${path}`)).status, 404);
   }
