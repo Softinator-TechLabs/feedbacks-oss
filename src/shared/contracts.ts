@@ -67,6 +67,26 @@ export const reviewFiltersSchema = z.object({
   tag: tagSchema.optional(),
 });
 export type ReviewFilters = z.infer<typeof reviewFiltersSchema>;
+export const anchorSchema = z.object({
+  selector: z.string().max(2000).optional(),
+  fingerprint: z.string().max(500).optional(),
+  recordIdentity: z.string().max(200).optional(),
+  confidence: z.enum(["element", "coordinate-only", "unmatched"]).optional(),
+  point: z.object({ x: z.number(), y: z.number() }).optional(),
+  rect: z
+    .object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() })
+    .optional(),
+  screenshotPoint: z.object({ x: z.number(), y: z.number() }).optional(),
+  pagePoint: z.object({ x: z.number(), y: z.number() }).optional(),
+  styles: z
+    .object({
+      fontFamily: z.string().max(200).optional(),
+      fontSize: z.string().max(50).optional(),
+      color: z.string().max(100).optional(),
+      backgroundColor: z.string().max(100).optional(),
+    })
+    .optional(),
+});
 export const contextSchema = z.object({
   url: z.string().url().max(4096),
   title: z.string().max(300).optional(),
@@ -80,32 +100,43 @@ export const contextSchema = z.object({
   requestedSize: z.object({ width: z.number(), height: z.number() }).optional(),
   captureDimensions: z.object({ width: z.number(), height: z.number() }).optional(),
   capturedAt: z.string().datetime().optional(),
-  anchor: z
-    .object({
-      selector: z.string().max(2000).optional(),
-      fingerprint: z.string().max(500).optional(),
-      recordIdentity: z.string().max(200).optional(),
-      confidence: z.enum(["element", "coordinate-only", "unmatched"]).optional(),
-      point: z.object({ x: z.number(), y: z.number() }).optional(),
-      rect: z
-        .object({
-          x: z.number(),
-          y: z.number(),
-          width: z.number(),
-          height: z.number(),
-        })
-        .optional(),
-      screenshotPoint: z.object({ x: z.number(), y: z.number() }).optional(),
-      styles: z
-        .object({
-          fontFamily: z.string().max(200).optional(),
-          fontSize: z.string().max(50).optional(),
-          color: z.string().max(100).optional(),
-          backgroundColor: z.string().max(100).optional(),
-        })
-        .optional(),
-    })
+  anchor: anchorSchema.optional(),
+  annotations: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        body: z.string().trim().min(1).max(4000),
+        anchor: anchorSchema,
+      }),
+    )
+    .max(100)
     .optional(),
+});
+const normalizedPointSchema = z.object({
+  x: z.number().finite().min(0).max(1),
+  y: z.number().finite().min(0).max(1),
+});
+export const screenshotMarkSchema = z.object({
+  tool: z.enum(["point", "pencil", "arrow", "rectangle", "text"]),
+  bounds: z.object({
+    x: z.number().finite().min(0).max(1),
+    y: z.number().finite().min(0).max(1),
+    width: z.number().finite().min(0).max(1),
+    height: z.number().finite().min(0).max(1),
+  }),
+  endpoints: z.array(normalizedPointSchema).min(1).max(2),
+  number: z.number().int().positive().max(100).optional(),
+  annotationId: id.optional(),
+  text: z.string().max(200).optional(),
+});
+export const captureRegionSchema = z.object({
+  startY: z.number().finite().min(0),
+  endY: z.number().finite().positive(),
+  pageWidth: z.number().finite().positive(),
+});
+export const captureSectionSchema = captureRegionSchema.extend({
+  imageTop: z.number().finite().min(0).max(1),
+  imageBottom: z.number().finite().min(0).max(1),
 });
 const tm = { threadId: id, revision };
 const policy = z.object({
@@ -488,6 +519,9 @@ export const inputSchemas = {
       .max(120)
       .regex(/^[a-z0-9][a-z0-9._-]*$/)
       .optional(),
+    captureRegion: captureRegionSchema.optional(),
+    captureSections: z.array(captureSectionSchema).min(1).optional(),
+    markings: z.array(screenshotMarkSchema).max(2000).optional(),
     idempotencyKey: z.string().min(8).max(200),
   }),
   "assets.uploadVideo": z.object({
@@ -549,6 +583,10 @@ const assetMetadataOutput = z.object({
   durationMs: z.number().int().positive().max(30000).optional(),
   createdAt: z.string(),
   url: z.string(),
+  filename: z.string().optional(),
+  captureRegion: captureRegionSchema.optional(),
+  captureSections: z.array(captureSectionSchema).optional(),
+  markings: z.array(screenshotMarkSchema).optional(),
   projectId: id.optional(),
   threadId: id.optional(),
 });

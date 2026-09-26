@@ -108,9 +108,12 @@ button:focus-visible {
 .preview {
   position: fixed;
   max-width: 280px;
-  padding: 10px;
+  max-height: min(45vh, 300px);
+  overflow: auto;
+  padding: 11px 13px;
   background: #fff;
-  border: 1px solid #aab7c2;
+  border: 1px solid #cfdae2;
+  border-radius: 9px;
   color: #202c37;
   font:
     13px/1.5 system-ui,
@@ -118,11 +121,15 @@ button:focus-visible {
   z-index: 2147483647;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  box-shadow: 0 10px 28px rgba(13, 36, 54, 0.18);
 }
 .target {
   position: fixed;
   pointer-events: none;
-  border: 2px solid #497eac;
+  border: 3px solid #347dbc;
+  border-radius: 6px;
+  background: rgba(52, 125, 188, 0.13);
+  box-shadow: 0 5px 20px rgba(14, 52, 80, 0.22);
   z-index: 2147483645;
 }
 .draft-pin {
@@ -136,7 +143,7 @@ button:focus-visible {
 .point-menu {
   position: fixed;
   pointer-events: auto;
-  width: 288px;
+  width: 328px;
   max-width: calc(100vw - 16px);
   padding: 12px;
   border: 1px solid #aab7c2;
@@ -147,6 +154,58 @@ button:focus-visible {
     14px/1.5 system-ui,
     sans-serif;
   z-index: 2147483647;
+}
+.point-menu strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.point-menu textarea {
+  display: block;
+  width: 100%;
+  min-height: 92px;
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  resize: vertical;
+  border: 1px solid #849aad;
+  border-radius: 6px;
+  background: #fff;
+  color: #202c37;
+  font: inherit;
+}
+.point-menu textarea:focus-visible {
+  outline: 2px solid #347dbc;
+  outline-offset: 2px;
+}
+.draft-section ol {
+  max-height: 180px;
+  overflow: auto;
+  padding-left: 22px;
+}
+.draft-section li {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.draft-section textarea {
+  display: block;
+  width: 100%;
+  min-height: 70px;
+  margin: 6px 0;
+  padding: 7px 9px;
+  border: 1px solid #849aad;
+  border-radius: 6px;
+  background: #fff;
+  color: #202c37;
+  font: inherit;
+}
+.draft-section li button {
+  margin-left: 8px;
+  min-height: 32px;
+  padding: 3px 8px;
+}
+.saved-draft-pin {
+  pointer-events: none;
+  z-index: 2147483646;
 }
 .point-menu button {
   min-height: 40px;
@@ -190,6 +249,16 @@ button:focus-visible {
     background: #171e25;
     color: #e5ebf0;
     border-color: #40515e;
+  }
+  .point-menu textarea {
+    background: #101820;
+    color: #e5ebf0;
+    border-color: #60788b;
+  }
+  .draft-section textarea {
+    background: #101820;
+    color: #e5ebf0;
+    border-color: #60788b;
   }
   button {
     background: #171e25;

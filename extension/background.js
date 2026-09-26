@@ -41,6 +41,90 @@ function captureUrl(value) {
   url.hash = "";
   return url.href;
 }
+const unit = (value, size) => Math.max(0, Math.min(1, value / Math.max(1, size)));
+function summarizeMarkings(shapes, width, height, annotations = []) {
+  return (shapes || []).flatMap((shape) => {
+    if (!["point", "pencil", "arrow", "rectangle", "text"].includes(shape.tool))
+      return [];
+    const points = (shape.points || []).filter(
+      (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+    );
+    if (!points.length) return [];
+    const xs = points.map((point) => unit(point.x, width));
+    const ys = points.map((point) => unit(point.y, height));
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    const number = Number.isInteger(shape.number) ? shape.number : undefined;
+    const endpoints = points.length === 1 ? [points[0]] : [points[0], points.at(-1)];
+    return [
+      {
+        tool: shape.tool,
+        bounds: { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y },
+        endpoints: endpoints.map((point) => ({
+          x: unit(point.x, width),
+          y: unit(point.y, height),
+        })),
+        ...(number ? { number } : {}),
+        ...(number && annotations[number - 1]
+          ? { annotationId: annotations[number - 1].id }
+          : {}),
+        ...(shape.tool === "text" && shape.text
+          ? { text: String(shape.text).slice(0, 200) }
+          : {}),
+      },
+    ];
+  });
+}
+function pagePixelSize(draft, page) {
+  const width = draft.context.captureDimensions?.width || draft.context.viewport.width;
+  const ratio =
+    (draft.context.captureDimensions?.height || draft.context.viewport.height) /
+    draft.context.viewport.height;
+  return { width, height: Math.max(1, Math.round((page.endY - page.startY) * ratio)) };
+}
+function combinedMarkings(draft) {
+  const heights = draft.capturePages.map((page) => pagePixelSize(draft, page).height);
+  const total = heights.reduce((sum, height) => sum + height, 0);
+  let top = 0;
+  return draft.capturePages.flatMap((page, index) => {
+    const { width, height } = pagePixelSize(draft, page);
+    const marks = summarizeMarkings(
+      draft.pageToolStates?.[index],
+      width,
+      height,
+      draft.context.annotations,
+    ).map((mark) => ({
+      ...mark,
+      bounds: {
+        ...mark.bounds,
+        y: (top + mark.bounds.y * height) / total,
+        height: (mark.bounds.height * height) / total,
+      },
+      endpoints: mark.endpoints.map((point) => ({
+        ...point,
+        y: (top + point.y * height) / total,
+      })),
+    }));
+    top += height;
+    return marks;
+  });
+}
+function combinedSections(draft) {
+  const heights = draft.capturePages.map((page) => pagePixelSize(draft, page).height);
+  const total = heights.reduce((sum, height) => sum + height, 0);
+  let top = 0;
+  return draft.capturePages.map((page, index) => {
+    const imageTop = top / total;
+    top += heights[index];
+    return {
+      startY: page.startY,
+      endY: page.endY,
+      pageWidth: draft.context.viewport.width,
+      imageTop,
+      imageBottom: top / total,
+    };
+  });
+}
 let lastVisibleCaptureAt = 0;
 async function captureVisibleTab(windowId) {
   // Chrome permits two visible-tab captures per second across this extension.
@@ -242,9 +326,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
     await review.activate(tab.id);
-    // Native menu remains a working full-page capture fallback in inaccessible frames.
-    const current = await chrome.tabs.get(tab.id);
-    await writeDraft(() => capture({ tab: current, frameId: 0, url: current.url }));
+    await chrome.tabs.sendMessage(tab.id, { type: "choosePoint" });
   } catch {
     await chrome.action.openPopup().catch(() => {});
   }
@@ -604,6 +686,20 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
         noImage: false,
         captureError: null,
         captureNotice: `${plan.pages.length} ordered ${plan.pages.length === 1 ? "screenshot" : "screenshots"}. Review each page before sending.`,
+        pageToolStates: pending.capturePages.map((page) =>
+          (before.context.annotations || []).flatMap((item, index) => {
+            const point = item.anchor?.pagePoint;
+            return point && point.y >= page.startY && point.y < page.endY
+              ? [
+                  {
+                    tool: "point",
+                    number: index + 1,
+                    points: [{ x: point.x * sx, y: (point.y - page.startY) * sy }],
+                  },
+                ]
+              : [];
+          }),
+        ),
       };
       await set({ draft });
       const persisted = await chrome.tabs.sendMessage(tab.id, {
@@ -670,11 +766,24 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       context: before.context,
       image: "data:image/png;base64," + btoa(binary),
       body: pending.body,
-      toolState:
-        pending.pointCapture && before.context.anchor?.screenshotPoint
+      toolState: before.context.annotations?.length
+        ? before.context.annotations.flatMap((item, index) => {
+            const point = item.anchor?.pagePoint;
+            const x = point?.x - before.context.scroll.x;
+            const y = point?.y - before.context.scroll.y;
+            return point &&
+              x >= 0 &&
+              y >= 0 &&
+              x <= before.context.viewport.width &&
+              y <= before.context.viewport.height
+              ? [{ tool: "point", number: index + 1, points: [{ x: x * sx, y: y * sy }] }]
+              : [];
+          })
+        : pending.pointCapture && before.context.anchor?.screenshotPoint
           ? [
               {
                 tool: "point",
+                number: 1,
                 points: [
                   {
                     x: before.context.anchor.screenshotPoint.x * sx,
@@ -1077,7 +1186,8 @@ async function submit(message) {
     if (!draft || draft.id !== message.id) throw Error("No pending draft.");
     if (!draft.frozen) {
       requireImageRevision(draft, message.imageRevision);
-      if (!draft.body.trim()) throw Error("Write a comment before sending.");
+      if (!draft.body.trim() && !draft.context.annotations?.length)
+        throw Error("Write a comment before sending.");
       const series = !!draft.capturePages?.length;
       if (
         !draft.noImage &&
@@ -1100,6 +1210,14 @@ async function submit(message) {
       draft = {
         ...draft,
         frozen: true,
+        approvedMarkings: series
+          ? undefined
+          : summarizeMarkings(
+              draft.toolState,
+              draft.context.captureDimensions?.width || draft.context.viewport.width,
+              draft.context.captureDimensions?.height || draft.context.viewport.height,
+              draft.context.annotations,
+            ),
         approvedImage: draft.noImage ? null : message.image,
         approvedDiagnostics:
           draft.includeDiagnostics && draft.diagnostics
@@ -1124,7 +1242,12 @@ async function submit(message) {
         "threads.create",
         {
           projectId: draft.projectId,
-          body: draft.body,
+          body:
+            draft.body.trim() ||
+            `${draft.context.annotations.length} annotated ${draft.context.annotations.length === 1 ? "point" : "points"}: ${draft.context.annotations[0].body}`.slice(
+              0,
+              12000,
+            ),
           context: draft.context,
           category: draft.category || "general",
           tags: draft.tags || [],
@@ -1143,6 +1266,12 @@ async function submit(message) {
           threadId: draft.thread.id,
           revision: draft.thread.revision,
           rendition: "annotated",
+          captureRegion: {
+            startY: draft.context.scroll?.y || 0,
+            endY: (draft.context.scroll?.y || 0) + draft.context.viewport.height,
+            pageWidth: draft.context.viewport.width,
+          },
+          markings: draft.approvedMarkings,
           idempotencyKey: draft.id + "-image",
         };
         await set({ draft });
@@ -1204,6 +1333,26 @@ async function submit(message) {
             revision: draft.thread.revision,
             rendition: "annotated",
             filename: draft.capturePages[index].name,
+            captureRegion: {
+              startY: draft.capturePages[index].startY,
+              endY: draft.capturePages[index].endY,
+              pageWidth: draft.context.viewport.width,
+            },
+            captureSections: [
+              {
+                startY: draft.capturePages[index].startY,
+                endY: draft.capturePages[index].endY,
+                pageWidth: draft.context.viewport.width,
+                imageTop: 0,
+                imageBottom: 1,
+              },
+            ],
+            markings: summarizeMarkings(
+              draft.pageToolStates?.[index],
+              pagePixelSize(draft, draft.capturePages[index]).width,
+              pagePixelSize(draft, draft.capturePages[index]).height,
+              draft.context.annotations,
+            ),
             idempotencyKey: `${draft.id}-page-${index + 1}`,
           };
           await set({ draft });
@@ -1265,6 +1414,8 @@ async function submit(message) {
             revision: draft.thread.revision,
             rendition: "annotated",
             filename: "full-page-combined.webp",
+            captureSections: combinedSections(draft),
+            markings: combinedMarkings(draft),
             idempotencyKey: `${draft.id}-combined`,
           };
           await set({ draft });
@@ -1353,7 +1504,8 @@ async function route(message, sender) {
       });
       if (selected?.error || !selected?.pointToken)
         throw Error(selected?.error || "Right-click the point again.");
-      return writeDraft(() => capture(sender, undefined, selected.pointToken));
+      await chrome.tabs.sendMessage(sender.tab.id, { type: "openInlinePoint" });
+      return { inline: true };
     }
     const session = await sessionFor(sender);
     if (message.type === "stopReview") return review.stop(sender.tab.id);
@@ -1363,6 +1515,7 @@ async function route(message, sender) {
           sender,
           undefined,
           typeof message.pointToken === "string" ? message.pointToken : null,
+          message.scope === "fullPage" ? "fullPage" : "visible",
         ),
       );
     if (message.type === "resize")

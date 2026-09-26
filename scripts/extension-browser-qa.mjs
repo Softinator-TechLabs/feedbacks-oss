@@ -125,7 +125,7 @@ try {
     return route.fulfill({
       status: 200,
       contentType: "text/html",
-      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a></main>${change}${clipped}`,
+      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px;position:relative}#lower{position:absolute;top:${Math.max(160, height - 260)}px;left:30px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a><button id="lower">Bottom action</button></main>${change}${clipped}`,
     });
   });
   const page = context.pages()[0] ?? (await context.newPage());
@@ -251,6 +251,178 @@ try {
     hasImage: Boolean(qaDraft?.image),
   };
   await send({ type: "discard" });
+
+  await toFixture();
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const attach = Element.prototype.attachShadow;
+        Element.prototype.attachShadow = function (options) {
+          const shadow = attach.call(this, options);
+          if (this.id === "feedbacks-review-root") globalThis.__feedbacksQaRoot = shadow;
+          return shadow;
+        };
+      },
+    });
+  }, id);
+  await send({ type: "activate", tabId: id });
+  await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await page.screenshot({
+    path: join(root, ".local/remaining-todos-qa/inline-comment-desktop.png"),
+  });
+  await page.keyboard.type("Make this heading shorter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await page
+    .getByRole("link", { name: "Broken same-origin link" })
+    .click({ button: "right" });
+  await page.keyboard.type("Repair this link");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  assert.equal(await draft(), undefined, "The editor must not open after each point");
+  const inlineCapture = await send({ type: "popupAction", tabId: id, action: "capture" });
+  const inlineDraft = await draft();
+  assert.equal(inlineCapture.captured, true);
+  assert.deepEqual(
+    inlineDraft.context.annotations.map(({ body }) => body),
+    ["Make this heading shorter", "Repair this link"],
+  );
+  assert.notEqual(
+    inlineDraft.context.annotations[0].anchor.selector,
+    inlineDraft.context.annotations[1].anchor.selector,
+  );
+  const inlineEditor = await context.newPage();
+  await inlineEditor.goto(`chrome-extension://${extensionId}/editor.html`);
+  await inlineEditor.getByText("Make this heading shorter").waitFor();
+  await inlineEditor.getByText("Repair this link").waitFor();
+  assert.equal(await inlineEditor.locator("#body").inputValue(), "");
+  const inlineCanvas = await inlineEditor.locator("#canvas").boundingBox();
+  assert.ok(inlineCanvas);
+  await inlineEditor.locator('[data-tool="arrow"]').click();
+  await inlineEditor.mouse.move(inlineCanvas.x + 110, inlineCanvas.y + 260);
+  await inlineEditor.mouse.down();
+  await inlineEditor.mouse.move(inlineCanvas.x + 210, inlineCanvas.y + 300);
+  await inlineEditor.mouse.up();
+  await inlineEditor.locator('[data-tool="pencil"]').click();
+  await inlineEditor.mouse.move(inlineCanvas.x + 250, inlineCanvas.y + 320);
+  await inlineEditor.mouse.down();
+  await inlineEditor.mouse.move(inlineCanvas.x + 300, inlineCanvas.y + 345, { steps: 4 });
+  await inlineEditor.mouse.up();
+  await inlineEditor.locator("#send").click();
+  await inlineEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
+  const inlineThreadUrl = await inlineEditor.locator("#thread").getAttribute("href");
+  const inlineThreadId = inlineThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
+  assert.ok(inlineThreadId);
+  const inlineThread = (await post("threads.get", { threadId: inlineThreadId }, auth))
+    .data;
+  assert.deepEqual(
+    inlineThread.context.annotations.map(({ body }) => body),
+    ["Make this heading shorter", "Repair this link"],
+  );
+  assert.equal(inlineThread.assets.length, 1);
+  assert.deepEqual(
+    inlineThread.assets[0].markings
+      .filter((mark) => mark.tool === "point")
+      .map((mark) => mark.annotationId),
+    inlineThread.context.annotations.map((item) => item.id),
+  );
+  assert.ok(inlineThread.assets[0].markings.some((mark) => mark.tool === "arrow"));
+  assert.ok(inlineThread.assets[0].markings.some((mark) => mark.tool === "pencil"));
+  assert.equal(inlineThread.assets[0].captureRegion.pageWidth, 900);
+  results.inlineReview = {
+    points: inlineThread.context.annotations.length,
+    selectorsDistinct: true,
+    screenshotSent: true,
+    overallNoteOptional: true,
+    markings: inlineThread.assets[0].markings.map((mark) => mark.tool),
+  };
+  await inlineEditor.close();
+  await page.bringToFront();
+  await send({ type: "activate", tabId: id });
+  const hoverComments = ["Make this heading shorter", "Repair this link"];
+  const inspectPin = (body) =>
+    worker.evaluate(
+      async ({ tabId, body }) => {
+        const [result] = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: (body) => {
+            const root = globalThis.__feedbacksQaRoot;
+            const pin = [...(root?.querySelectorAll("button.pin") || [])].find((item) =>
+              item.getAttribute("aria-label")?.includes(body),
+            );
+            if (!pin) return null;
+            const rect = pin.getBoundingClientRect();
+            return {
+              x: rect.x + rect.width / 2,
+              y: rect.y + rect.height / 2,
+              preview: root.querySelector(".preview")?.textContent,
+            };
+          },
+          args: [body],
+        });
+        return result.result;
+      },
+      { tabId: id, body },
+    );
+  for (const comment of hoverComments) {
+    let point;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      point = await inspectPin(comment);
+      if (point) break;
+      await page.waitForTimeout(200);
+    }
+    assert.ok(point, `Saved point is not visible on its element: ${comment}`);
+    await page.mouse.move(point.x, point.y);
+    assert.ok((await inspectPin(comment))?.preview?.includes(comment));
+  }
+  await page.screenshot({
+    path: join(root, ".local/remaining-todos-qa/inline-comment-hover.png"),
+  });
+  results.inlineReview.hoverComments = hoverComments;
+
+  mode = "long";
+  await toFixture();
+  await send({ type: "activate", tabId: id });
+  await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await page.keyboard.type("Top point");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await page.locator("#lower").scrollIntoViewIfNeeded();
+  await page.locator("#lower").click({ button: "right" });
+  await page.keyboard.type("Bottom point");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  const multiScroll = await send({
+    type: "popupAction",
+    tabId: id,
+    action: "capture-full",
+  });
+  const multiScrollDraft = await draft();
+  assert.equal(multiScroll.captured, true);
+  assert.equal(multiScrollDraft.captureScope, "fullPage");
+  assert.equal(multiScrollDraft.context.annotations.length, 2);
+  const markedPages = multiScrollDraft.pageToolStates.flatMap((states, pageIndex) =>
+    states.map((shape) => [pageIndex, shape.number]),
+  );
+  assert.ok(markedPages.some(([, number]) => number === 1));
+  assert.ok(markedPages.some(([, number]) => number === 2));
+  assert.notEqual(
+    markedPages.find(([, number]) => number === 1)[0],
+    markedPages.find(([, number]) => number === 2)[0],
+  );
+  results.inlineReview.multiScrollPages = markedPages;
+  await send({ type: "discard" });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await toFixture();
+  await send({ type: "activate", tabId: id });
+  await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await page.screenshot({
+    path: join(root, ".local/remaining-todos-qa/inline-comment-mobile.png"),
+  });
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 900, height: 650 });
 
   for (const scope of ["short", "long", "tall", "tooLong", "clipped"]) {
     mode = scope;
@@ -551,6 +723,19 @@ try {
   const combinedThread = (await post("threads.get", { threadId: combinedThreadId }, auth))
     .data;
   results.pageReview.assetNames = combinedThread.assets.map((asset) => asset.filename);
+  assert.ok(
+    combinedThread.assets.at(-1).markings.some((mark) => mark.tool === "rectangle"),
+    "Combined image must expose its drawn rectangle to MCP clients",
+  );
+  assert.deepEqual(
+    combinedThread.assets
+      .at(-1)
+      .captureSections.map(({ startY, endY }) => [startY, endY]),
+    pruned.capturePages.map(({ startY, endY }) => [startY, endY]),
+  );
+  results.pageReview.combinedMarkings = combinedThread.assets
+    .at(-1)
+    .markings.map((mark) => mark.tool);
   const combinedResponse = await fetch(
     `${access.url}${combinedThread.assets.at(-1).url}`,
     { headers: { Cookie: auth.cookie } },
@@ -696,6 +881,26 @@ try {
   await context.addCookies([
     { name: cookieName, value: cookieValue, url: access.url, sameSite: "Lax" },
   ]);
+  const inlineThreadPage = await context.newPage();
+  await inlineThreadPage.goto(`${access.url}/threads/${inlineThreadId}`);
+  await inlineThreadPage.getByRole("heading", { name: "Review on the page" }).waitFor();
+  assert.equal(await inlineThreadPage.locator(".review-evidence-pin").count(), 2);
+  await inlineThreadPage.locator(".review-evidence-pin").first().hover();
+  await inlineThreadPage
+    .locator(".review-evidence-popover")
+    .getByText("Make this heading shorter")
+    .waitFor();
+  await inlineThreadPage.screenshot({
+    path: join(root, ".local/remaining-todos-qa/thread-inline-desktop.png"),
+  });
+  await inlineThreadPage.setViewportSize({ width: 390, height: 844 });
+  await inlineThreadPage.locator(".review-point-list button").last().click();
+  assert.equal(await inlineThreadPage.locator(".review-evidence-pin").count(), 2);
+  await inlineThreadPage.screenshot({
+    path: join(root, ".local/remaining-todos-qa/thread-inline-mobile.png"),
+  });
+  results.inlineReview.webPins = 2;
+  results.inlineReview.mobilePointSelection = true;
   const threadPage = await context.newPage();
   await threadPage.goto(`${access.url}/threads/${seriesThreadId}`);
   await threadPage

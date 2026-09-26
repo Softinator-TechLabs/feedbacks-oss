@@ -728,3 +728,199 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.review-evidence {
+  margin-block: 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  min-width: 0;
+}
+.review-evidence-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.review-evidence-heading h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.review-evidence-heading p {
+  margin: 4px 0 0;
+  font-size: 0.86rem;
+}
+.review-evidence-heading label {
+  display: grid;
+  gap: 4px;
+  min-width: min(220px, 100%);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.review-evidence-heading select {
+  max-width: min(280px, 100%);
+}
+.review-evidence-figure {
+  margin: 0;
+  min-width: 0;
+}
+.review-evidence-image {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+}
+.review-evidence-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+.review-evidence-pin {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #17324d;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 6px #102a3c80;
+}
+.review-evidence-pin.baked {
+  background: #17324d38;
+  color: transparent;
+}
+.review-evidence-pin:hover,
+.review-evidence-pin:focus-visible,
+.review-evidence-pin.active {
+  background: #17324d;
+  color: white;
+  outline: 3px solid #f8cc70;
+  outline-offset: 2px;
+}
+.review-evidence-popover {
+  position: absolute;
+  z-index: 3;
+  width: min(230px, calc(100% - 16px));
+  max-height: 180px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  box-shadow: 0 8px 22px #102a3c38;
+  transform: translateY(22px);
+  pointer-events: none;
+}
+.review-evidence-popover.above {
+  transform: translateY(calc(-100% - 20px));
+}
+.review-evidence-popover strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.review-evidence-popover p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.review-evidence-figure figcaption,
+.review-mark-summary {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+.review-point-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+}
+.review-point-list li {
+  display: flex;
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.review-point-list li.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+.review-point-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #17324d;
+  color: white;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.review-point-list p {
+  margin: 0 0 5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.review-point-list button {
+  min-height: 30px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.82rem;
+  text-align: left;
+}
+.review-evidence video {
+  display: block;
+  max-width: 100%;
+  margin-top: 14px;
+}
+@media (max-width: 760px) {
+  .thread-content .review-evidence {
+    order: 1;
+    margin-block: 10px 14px;
+  }
+  .review-evidence-heading label,
+  .review-evidence-heading select {
+    width: 100%;
+    max-width: none;
+  }
+  .review-evidence-pin {
+    width: 36px;
+    height: 36px;
+  }
+}
+:root[data-theme="dark"] .review-evidence-pin,
+:root[data-theme="dark"] .review-point-number {
+  background: #cbddeb;
+  color: #17324d;
+  border-color: #171e26;
+}
+:root[data-theme="dark"] .review-evidence-pin.baked {
+  background: #cbddeb38;
+  color: transparent;
+}
+:root[data-theme="dark"] .review-evidence-pin.baked:is(:hover, :focus-visible, .active) {
+  background: #cbddeb;
+  color: #17324d;
+}
+:root[data-theme="dark"] .review-point-list button {
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+}

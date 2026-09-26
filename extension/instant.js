@@ -116,7 +116,15 @@
       "all:initial!important;position:fixed!important;z-index:2147483647!important;pointer-events:auto!important";
     shadow = host.attachShadow({ mode: "closed" });
     const style = document.createElement("style");
-    style.textContent = `:host{color-scheme:light}*{box-sizing:border-box}.menu{width:260px;padding:12px;background:#fff;color:#202c37;border:1px solid #bdc5cc;border-radius:10px;font:14px/1.5 system-ui}button{font:inherit;min-height:40px;border:1px solid #bdc5cc;border-radius:6px;padding:7px 12px;background:white;color:#17324d;cursor:pointer}button:first-of-type{background:#17324d;color:white}button:hover{filter:brightness(.92)}button:focus-visible{outline:2px solid #3875a9;outline-offset:2px}p{margin:8px 0 0;color:#596672}p:empty{display:none}`;
+    style.textContent = `:host{color-scheme:light}*{box-sizing:border-box}.target{position:fixed;pointer-events:none;border:3px solid #347dbc;border-radius:6px;background:rgba(52,125,188,.13);box-shadow:0 5px 20px rgba(14,52,80,.22)}.menu{width:260px;padding:12px;background:#fff;color:#202c37;border:1px solid #bdc5cc;border-radius:10px;font:14px/1.5 system-ui}button{font:inherit;min-height:40px;border:1px solid #bdc5cc;border-radius:6px;padding:7px 12px;background:white;color:#17324d;cursor:pointer}button:first-of-type{background:#17324d;color:white}button:hover{filter:brightness(.92)}button:focus-visible{outline:2px solid #3875a9;outline-offset:2px}p{margin:8px 0 0;color:#596672}p:empty{display:none}@media(prefers-color-scheme:dark){:host{color-scheme:dark}.menu{background:#171e25;color:#e5ebf0;border-color:#40515e}button{background:#171e25;color:#e5ebf0;border-color:#52616d}button:first-of-type{background:#c3d8e8;color:#142b3f}p{color:#b0bec9}}`;
+    const target = document.createElement("div");
+    target.className = "target";
+    Object.assign(target.style, {
+      left: `${r.x}px`,
+      top: `${r.y}px`,
+      width: `${r.width}px`,
+      height: `${r.height}px`,
+    });
     const menu = document.createElement("div");
     menu.className = "menu";
     menu.setAttribute("role", "dialog");
@@ -143,7 +151,10 @@
       try {
         const result = await send({ type: "instantStart" });
         // A saved context-only draft can retry; the chosen point owns its guard.
-        close(result?.captured === false && result.contextSaved === true);
+        close(
+          result?.inline === true ||
+            (result?.captured === false && result.contextSaved === true),
+        );
       } catch (e) {
         if (host) host.style.visibility = "visible";
         message.textContent = e.message;
@@ -155,7 +166,7 @@
       }
     };
     menu.append(add, cancel, message);
-    shadow.append(style, menu);
+    shadow.append(style, target, menu);
     document.documentElement.append(host);
     host.style.left = `${Math.max(8, Math.min(point.x + 12, innerWidth - 268))}px`;
     host.style.top = `${Math.max(8, Math.min(point.y + 12, innerHeight - 110))}px`;

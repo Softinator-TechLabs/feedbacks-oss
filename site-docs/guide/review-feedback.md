@@ -2,7 +2,9 @@
 
 ## Capture
 
-On a website, open the extension and choose **Capture this page**, or right-click a point and choose **Add feedback here**. Select the relevant element, review the screenshot, write a short request and send it. Optional **Capture full page** stitches a bounded top-level page; inspect the result before sending. A separate **Record a short tab video** flow records up to 30 seconds without audio.
+On a website, open the extension and choose **Capture this page**, or right-click an element. Feedbacks outlines the element and opens a small comment field beside it. Write a note, choose **Save point**, and repeat on other elements. Choose **Review screenshots** when you are done. The screenshot editor shows all numbered comments, drawing tools and an optional overall note. Each point keeps its own element context in the resulting thread. If points are on different scroll positions, the review captures ordered full-page sections. Inspect every section before sending. A separate **Record a short tab video** flow records up to 30 seconds without audio.
+
+Saved points reappear on the reviewed website when the element still matches. Hover or focus a pin to read its comment. In the thread, **Review on the page** places clickable numbered points on the screenshot alongside their full notes. On a phone, tap a point or **Show on screenshot** to jump to it. The screenshot selector lets you inspect each numbered page or the optional combined full-page overview; drawing marks are visible in the image.
 
 The extension uploads only when you send. Screenshots can include visible forms and frames, and video has no redaction tool. Review sensitive content first. [Extension permissions and setup](/guide/chrome-extension).
 

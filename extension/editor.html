@@ -121,7 +121,13 @@
         </details>
         <label for="project">Project</label
         ><select id="project"></select>
-        <label for="body">Comment</label
+        <ol
+          id="point-notes"
+          class="point-notes"
+          aria-label="Comments on selected elements"
+          hidden
+        ></ol>
+        <label id="body-label" for="body">Comment</label
         ><textarea
           id="body"
           rows="7"

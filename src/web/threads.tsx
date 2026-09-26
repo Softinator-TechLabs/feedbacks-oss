@@ -3,6 +3,7 @@ import { ThreadStatus } from "./thread-status.js";
 import { ThreadReview } from "./thread-review.js";
 import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
+import { ReviewEvidence } from "./review-evidence.js";
 import { usePageLocation, navigate, useUnsavedChanges } from "./navigation.js";
 import {
   readFilters,
@@ -963,7 +964,8 @@ export function ThreadDetail({
                 </div>
               )}
             </article>
-            {t.assets?.length > 0 && (
+            {!!t.context.annotations?.length && <ReviewEvidence thread={t} />}
+            {t.assets?.length > 0 && !t.context.annotations?.length && (
               <section className="attachments">
                 <h2 className="sr-only">Attachments</h2>
                 {otherAssets.map((asset, index) => (
