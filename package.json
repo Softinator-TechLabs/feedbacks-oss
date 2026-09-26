@@ -67,7 +67,7 @@
     "prettier": "3.6.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2",
+    "vite": "^8.3.0",
     "vitepress": "^2.0.0-alpha.20"
   },
   "description": "Visual website feedback with a browser extension, shared review workspace, HTTP API, MCP and CLI.",
