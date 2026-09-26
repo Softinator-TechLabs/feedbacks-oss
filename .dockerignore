@@ -18,6 +18,8 @@
 !plugins/**
 !site
 !site/**
+!site-docs
+!site-docs/**
 !public
 !public/widget.js
 !public/widget.css
