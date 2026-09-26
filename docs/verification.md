@@ -27,4 +27,4 @@ Keep source, local checks, exact-revision CI, package integrity, deployment and 
 
 ## CI behavior
 
-[CI](../.github/workflows/ci.yml) runs Node 22/24 checks, native PostgreSQL checks, dependency audit, container smoke, source export, SBOM generation and history secret scanning. Required check names remain stable. Workflow tokens have read-only contents permissions; pull requests do not receive deployment secrets. Deployment credentials and operator acceptance records remain private.
+[CI](../.github/workflows/ci.yml) runs Node 22/24 checks, native PostgreSQL checks, isolated Chromium extension acceptance, dependency audit, container smoke, source export, SBOM generation and history secret scanning. Workflow tokens have read-only contents permissions; pull requests do not receive deployment secrets. Deployment credentials and operator acceptance records remain private.
