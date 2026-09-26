@@ -10,10 +10,11 @@
 - Add human review rounds and a scoped MCP Issue draft for an agent using separately authorized GitHub access.
 - Reduce opt-in diagnostic URLs to origins and clarify that screenshots cover the visible browser area in extension 0.1.12.
 - In extension 0.1.19, fit optional combined full-page images to upload limits, repair oversized combined images on Retry Send, and show page-by-page annotation more clearly.
+- In extension 0.1.20, preview the full page as one scrollable image before sending, add annotation tool icons, and show confirmed image-upload progress by count and percentage.
 
 ## Initial preparation baseline
 
-Application 0.1.0 and Chrome extension 0.1.7 formed the initial preparation baseline; the current source extension is 0.1.19. The Chrome Web Store updates separately.
+Application 0.1.0 and Chrome extension 0.1.7 formed the initial preparation baseline; the current source extension is 0.1.20. The Chrome Web Store updates separately.
 
 - Apache-2.0 licensing, contributor and security reporting guidance, and source-only release archives.
 - Independent public website with self-hosting documentation and GitHub access.

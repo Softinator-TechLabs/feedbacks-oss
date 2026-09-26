@@ -1,3 +1,6 @@
+import { getPage } from "./page-store.js";
+import { combinedImageSize } from "./combined-image.js";
+
 const $ = (id) => document.getElementById(id);
 const send = async (message) => {
   const r = await chrome.runtime.sendMessage(message);
@@ -21,8 +24,33 @@ let draft,
   loadingBase = false;
 let originalTabId;
 let thumbnailObserver;
+let previewUrl;
+let previewBuild = 0;
 const thumbnailCache = new Map();
+function hideFullPagePreview() {
+  previewBuild++;
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = null;
+  $("preview-slot").replaceChildren();
+  $("preview-slot").hidden = true;
+  $("preview-guide").hidden = true;
+  $("tools").hidden = false;
+  $("full-page-toggle").textContent = "Full page preview";
+  $("full-page-toggle").setAttribute("aria-pressed", "false");
+  $("remove-current").hidden = !!draft?.frozen;
+  $("canvas").hidden = !base;
+  $("series-guide").hidden = (draft?.capturePages?.length || 0) < 2;
+}
+function uploadProgress(completed, total) {
+  if (!Number.isInteger(total) || total < 1) return;
+  const count = Math.min(total, Math.max(0, completed));
+  const percent = Math.round((count / total) * 100);
+  $("upload-progress").hidden = false;
+  $("upload-meter").value = percent;
+  $("upload-label").textContent = `${count} of ${total} images uploaded · ${percent}%`;
+}
 function completed(url) {
+  hideFullPagePreview();
   clearTimeout(saveTimer);
   dirty = false;
   baseLoad++;
@@ -62,19 +90,23 @@ function status(message, kind = "info") {
   if (!$("completion").hidden) $("completion-error").textContent = message;
 }
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === "submitProgress" && message.id === draft?.id)
+  if (message?.type === "submitProgress" && message.id === draft?.id) {
     status(message.message);
+    if (Number.isInteger(message.completed))
+      uploadProgress(message.completed, message.total);
+  }
 });
-function drawShape(s) {
+function drawShape(s, surface = ctx, width = canvas.width) {
+  const ctx = surface;
   ctx.strokeStyle = "#b92332";
   ctx.fillStyle = s.tool === "redact" ? "#202c37" : "#b92332";
-  ctx.lineWidth = Math.max(3, canvas.width / 450);
+  ctx.lineWidth = Math.max(3, width / 450);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   const a = s.points[0],
     b = s.points.at(-1);
   if (s.tool === "point") {
-    const radius = Math.max(12, canvas.width / 120);
+    const radius = Math.max(12, width / 120);
     ctx.beginPath();
     ctx.arc(a.x, a.y, radius, 0, Math.PI * 2);
     ctx.fillStyle = "#17324d";
@@ -89,7 +121,7 @@ function drawShape(s) {
     ctx.textAlign = "start";
     ctx.textBaseline = "alphabetic";
   } else if (s.tool === "text") {
-    ctx.font = `600 ${Math.max(22, canvas.width / 55)}px system-ui`;
+    ctx.font = `600 ${Math.max(22, width / 55)}px system-ui`;
     ctx.fillText(s.text, a.x, a.y);
   } else if (s.tool === "redact")
     ctx.fillRect(
@@ -106,7 +138,7 @@ function drawShape(s) {
     ctx.stroke();
     if (s.tool === "arrow") {
       const angle = Math.atan2(b.y - a.y, b.x - a.x),
-        len = Math.max(16, canvas.width / 65);
+        len = Math.max(16, width / 65);
       ctx.beginPath();
       ctx.moveTo(b.x - len * Math.cos(angle - 0.5), b.y - len * Math.sin(angle - 0.5));
       ctx.lineTo(b.x, b.y);
@@ -121,6 +153,81 @@ function render() {
   ctx.drawImage(base, 0, 0);
   for (const s of shapes) drawShape(s);
   if (current) drawShape(current);
+}
+async function showFullPagePreview() {
+  if (!draft?.capturePages || draft.capturePages.length < 2 || loadingBase) return;
+  const request = ++previewBuild;
+  const toggle = $("full-page-toggle");
+  toggle.disabled = true;
+  $("canvas-scroll").setAttribute("aria-busy", "true");
+  status("Preparing the full-page preview…");
+  try {
+    if (!draft.frozen) await persist();
+    const fresh = await send({ type: "draft" });
+    if (!fresh || fresh.id !== draft.id) throw Error("This draft changed. Reopen it.");
+    const kind = fresh.frozen ? "approved" : "source";
+    let width = 0;
+    let height = 0;
+    for (let index = 0; index < fresh.capturePages.length; index++) {
+      const blob = await getPage(fresh.id, index, kind);
+      if (!blob) throw Error(`Screenshot ${index + 1} is missing from this browser.`);
+      const bitmap = await createImageBitmap(blob);
+      if (width && bitmap.width !== width) {
+        bitmap.close();
+        throw Error("Screenshot widths differ. Review the numbered images instead.");
+      }
+      width = bitmap.width;
+      height += bitmap.height;
+      bitmap.close();
+    }
+    const size = combinedImageSize(width, height);
+    const overview = new OffscreenCanvas(size.width, size.height);
+    const surface = overview.getContext("2d");
+    if (!surface) throw Error("This browser cannot render the full-page preview.");
+    let sourceTop = 0;
+    for (let index = 0; index < fresh.capturePages.length; index++) {
+      if (request !== previewBuild) return;
+      const bitmap = await createImageBitmap(await getPage(fresh.id, index, kind));
+      const top = Math.round((sourceTop / height) * size.height);
+      sourceTop += bitmap.height;
+      const bottom = Math.round((sourceTop / height) * size.height);
+      surface.drawImage(bitmap, 0, top, size.width, bottom - top);
+      if (!fresh.frozen) {
+        surface.save();
+        surface.translate(0, top);
+        surface.scale(size.width / bitmap.width, (bottom - top) / bitmap.height);
+        for (const shape of fresh.pageToolStates?.[index] || [])
+          drawShape(shape, surface, bitmap.width);
+        surface.restore();
+      }
+      bitmap.close();
+    }
+    const blob = await overview.convertToBlob({ type: "image/webp", quality: 0.82 });
+    if (request !== previewBuild) return;
+    previewUrl = URL.createObjectURL(blob);
+    const image = document.createElement("img");
+    image.id = "full-page-preview";
+    image.alt = "Combined preview of all captured screenshot sections";
+    $("preview-slot").append(image);
+    image.src = previewUrl;
+    await image.decode();
+    if (request !== previewBuild) return;
+    $("preview-slot").hidden = false;
+    $("canvas").hidden = true;
+    $("tools").hidden = true;
+    $("series-guide").hidden = true;
+    $("preview-guide").hidden = false;
+    $("remove-current").hidden = true;
+    toggle.textContent = "Back to sections";
+    toggle.setAttribute("aria-pressed", "true");
+    status(`Full page preview ready · ${fresh.capturePages.length} sections.`);
+  } catch (error) {
+    hideFullPagePreview();
+    status(`Full-page preview could not open: ${error.message}`, "error");
+  } finally {
+    $("canvas-scroll").removeAttribute("aria-busy");
+    toggle.disabled = false;
+  }
 }
 function payload() {
   return {
@@ -252,6 +359,7 @@ async function removePage(index) {
   }
 }
 async function loadBase(fresh) {
+  hideFullPagePreview();
   if (draft && fresh && (fresh.imageRevision || 0) < (draft.imageRevision || 0)) return;
   const request = ++baseLoad;
   loadingBase = true;
@@ -471,6 +579,12 @@ async function changePage(index) {
 }
 $("page-prev").onclick = () => changePage(pageIndex - 1);
 $("page-next").onclick = () => changePage(pageIndex + 1);
+$("full-page-toggle").onclick = () => {
+  if ($("full-page-toggle").getAttribute("aria-pressed") === "true") {
+    hideFullPagePreview();
+    status(`Reviewing ${draft.capturePages[pageIndex].name}.`);
+  } else showFullPagePreview();
+};
 $("remove-current").onclick = () => removePage(pageIndex);
 $("page-select").onchange = () => changePage(Number($("page-select").value));
 for (const id of [
@@ -505,6 +619,7 @@ function lock(value) {
     el.disabled = value || !base;
   const pageLocked = loadingBase || redacting || sendingApproval;
   $("page-select").disabled = pageLocked;
+  $("full-page-toggle").disabled = pageLocked;
   $("page-prev").disabled = pageLocked || pageIndex === 0;
   $("page-next").disabled =
     pageLocked || pageIndex >= (draft?.capturePages?.length || 0) - 1;
@@ -538,6 +653,11 @@ $("send").onclick = async () => {
   sendingApproval = true;
   $("send").disabled = true;
   $("discard").disabled = true;
+  if (draft.capturePages?.length && !$("no-image").checked) {
+    $("upload-progress").hidden = false;
+    $("upload-meter").removeAttribute("value");
+    $("upload-label").textContent = "Preparing screenshots…";
+  }
   status("Sending approved feedback…");
   try {
     const approvalRevision = draft.imageRevision || 0;
@@ -585,6 +705,12 @@ $("send").onclick = async () => {
     sendingApproval = false;
     const fresh = await send({ type: "draft" }).catch(() => null);
     if (fresh) await loadBase(fresh);
+    if (fresh?.capturePages?.length && fresh.frozen && !fresh.noImage)
+      uploadProgress(
+        fresh.uploadIndex + (fresh.combinedUploaded ? 1 : 0),
+        fresh.capturePages.length + (fresh.includeCombined ? 1 : 0),
+      );
+    else $("upload-progress").hidden = true;
     lock(!draft || loadingBase || !!draft?.frozen);
     status(
       fresh
@@ -710,6 +836,11 @@ async function init() {
         ? `${draft.uploadIndex} numbered screenshots uploaded. Retry will finish the combined image and keep the same feedback thread.`
         : "Pending submission. Retry continues from the first unsent screenshot.",
     );
+    if (draft.capturePages?.length && !draft.noImage)
+      uploadProgress(
+        (draft.uploadIndex || 0) + (draft.combinedUploaded ? 1 : 0),
+        draft.capturePages.length + (draft.includeCombined ? 1 : 0),
+      );
   } else if (draft.captureError) {
     status(
       `${draft.captureError} Your target context is saved. Continue without an image, or retry capture on the original tab.`,

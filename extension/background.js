@@ -1064,9 +1064,9 @@ async function repairCombinedPage(draft) {
   await combineApprovedPages(draft);
   return getPage(draft.id, 0, "combined");
 }
-function submitProgress(draft, message) {
+function submitProgress(draft, message, completed, total) {
   chrome.runtime
-    .sendMessage({ type: "submitProgress", id: draft.id, message })
+    .sendMessage({ type: "submitProgress", id: draft.id, message, completed, total })
     .catch(() => {});
 }
 async function submit(message) {
@@ -1181,9 +1181,12 @@ async function submit(message) {
       draft.thread = result.thread;
     }
     if (draft.capturePages?.length && !draft.noImage) {
+      const totalImages = draft.capturePages.length + (draft.includeCombined ? 1 : 0);
       submitProgress(
         draft,
         `Uploading ${draft.capturePages.length} numbered screenshots…`,
+        draft.uploadIndex || 0,
+        totalImages,
       );
       for (
         let index = draft.uploadIndex || 0;
@@ -1210,6 +1213,8 @@ async function submit(message) {
           submitProgress(
             draft,
             `Uploading screenshot ${index + 1} of ${draft.capturePages.length}…`,
+            index,
+            totalImages,
           );
           result = await authenticated(
             "assets.upload",
@@ -1239,9 +1244,20 @@ async function submit(message) {
         draft.uploadIndex = index + 1;
         draft.pageUploadAttempt = null;
         await set({ draft });
+        submitProgress(
+          draft,
+          `Screenshot ${index + 1} uploaded.`,
+          draft.uploadIndex,
+          totalImages,
+        );
       }
       if (draft.includeCombined && !draft.combinedUploaded) {
-        submitProgress(draft, "Preparing the combined full-page image…");
+        submitProgress(
+          draft,
+          "Preparing the combined full-page image…",
+          draft.capturePages.length,
+          totalImages,
+        );
         const blob = await repairCombinedPage(draft);
         if (!draft.combinedUploadAttempt) {
           draft.combinedUploadAttempt = {
@@ -1255,7 +1271,12 @@ async function submit(message) {
         }
         let result;
         try {
-          submitProgress(draft, "Uploading the combined full-page image…");
+          submitProgress(
+            draft,
+            "Uploading the combined full-page image…",
+            draft.capturePages.length,
+            totalImages,
+          );
           result = await authenticated(
             "assets.upload",
             { ...draft.combinedUploadAttempt, imageBase64: await pageDataUrl(blob) },
@@ -1284,6 +1305,7 @@ async function submit(message) {
         draft.combinedUploaded = true;
         draft.combinedUploadAttempt = null;
         await set({ draft });
+        submitProgress(draft, "All images uploaded.", totalImages, totalImages);
       }
     }
     const url = `${draft.server}/threads/${draft.thread.id}`;
