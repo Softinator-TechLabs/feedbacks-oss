@@ -37,6 +37,30 @@ main {
 #tools button {
   font-size: 14px;
 }
+.page-navigation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  flex-wrap: wrap;
+}
+.page-navigation[hidden] {
+  display: none;
+}
+.page-navigation label {
+  width: auto;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.page-navigation select {
+  width: min(100%, 340px);
+}
+.page-navigation button {
+  border: 0;
+  padding: 8px 4px;
+  background: transparent;
+}
 #undo {
   margin-left: auto;
 }

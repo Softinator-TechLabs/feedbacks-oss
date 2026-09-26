@@ -9,12 +9,14 @@ const canvas = $("canvas"),
 let draft,
   base,
   shapes = [],
+  pageIndex = 0,
   tool = "pencil",
   current,
   saveTimer,
   saving = Promise.resolve(),
   dirty = false,
   redacting = false,
+  sendingApproval = false,
   baseLoad = 0,
   loadingBase = false;
 let originalTabId;
@@ -134,6 +136,7 @@ function payload() {
     projectId: $("project").value,
     noImage: $("no-image").checked,
     toolState: shapes,
+    pageIndex,
   };
 }
 function persist() {
@@ -176,12 +179,28 @@ async function loadBase(fresh) {
   $("send").disabled = true;
   base = null;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (draft?.id !== fresh?.id) pageIndex = 0;
   if (draft) draft.image = draft.approvedImage = null;
   draft = fresh;
-  $("capture-scope").textContent =
+  const pages = fresh?.capturePages || [];
+  if (pageIndex >= pages.length) pageIndex = 0;
+  $("page-navigation").hidden = pages.length < 2;
+  $("page-select").replaceChildren(
+    ...pages.map(
+      (page, index) =>
+        new Option(`${page.name} · ${page.startY}–${page.endY}px`, String(index)),
+    ),
+  );
+  $("page-select").value = String(pageIndex);
+  $("page-prev").disabled = pageIndex === 0;
+  $("page-next").disabled = pageIndex >= pages.length - 1;
+  const scopeCopy =
     fresh?.captureScope === "fullPage"
-      ? "Full-page screenshot. Sticky elements may repeat. Review the whole image before sending."
+      ? `${pages.length} ${pages.length === 1 ? "screenshot" : "screenshots"} in page order. Review and redact each image before sending. Sticky elements may repeat.`
       : "The screenshot covers the visible browser area. Review it before sending.";
+  $("capture-scope").textContent = fresh?.captureNotice
+    ? `${fresh.captureNotice} ${scopeCopy}`
+    : scopeCopy;
   $("retry-capture").textContent =
     fresh?.captureScope === "fullPage"
       ? "Retry visible-area capture"
@@ -195,7 +214,9 @@ async function loadBase(fresh) {
     completed();
     return;
   }
-  const pixels = fresh.approvedImage || fresh.image;
+  const pixels = pages.length
+    ? (await send({ type: "capturePage", id: fresh.id, index: pageIndex })).image
+    : fresh.approvedImage || fresh.image;
   if (pixels) {
     const decoded = new Image();
     decoded.src = pixels;
@@ -205,15 +226,19 @@ async function loadBase(fresh) {
     canvas.width = base.naturalWidth;
     canvas.height = base.naturalHeight;
   }
-  shapes = fresh.toolState || [];
+  shapes = pages.length
+    ? fresh.frozen
+      ? []
+      : fresh.pageToolStates?.[pageIndex] || []
+    : fresh.toolState || [];
   $("no-image").checked = !!fresh.noImage;
   $("retry-capture").hidden = !!pixels || !!fresh.frozen;
   canvas.hidden = !pixels;
   current = null;
   render();
   loadingBase = false;
-  lock(redacting || !!draft.frozen);
-  $("send").disabled = redacting;
+  lock(redacting || !!draft.frozen || sendingApproval);
+  $("send").disabled = redacting || sendingApproval;
 }
 async function permanentRedaction(rectangles, migrate = false) {
   redacting = true;
@@ -224,7 +249,12 @@ async function permanentRedaction(rectangles, migrate = false) {
   status("Permanently saving redaction…");
   try {
     if (!migrate) await persist();
-    const fresh = await send({ type: "redactDraft", id: draft.id, rectangles });
+    const fresh = await send({
+      type: "redactDraft",
+      id: draft.id,
+      rectangles,
+      pageIndex,
+    });
     await loadBase(fresh);
     dirty = false;
     status(
@@ -332,6 +362,30 @@ $("reset").onclick = () => {
     schedule();
   }
 };
+async function changePage(index) {
+  if (
+    !draft ||
+    loadingBase ||
+    redacting ||
+    sendingApproval ||
+    index < 0 ||
+    index >= (draft.capturePages?.length || 0) ||
+    index === pageIndex
+  )
+    return;
+  try {
+    if (!draft.frozen) await persist();
+    const fresh = await send({ type: "draft" });
+    pageIndex = index;
+    await loadBase(fresh);
+    status(`Reviewing ${fresh.capturePages[index].name}.`);
+  } catch (error) {
+    status(`Screenshot page could not be opened: ${error.message}`, "error");
+  }
+}
+$("page-prev").onclick = () => changePage(pageIndex - 1);
+$("page-next").onclick = () => changePage(pageIndex + 1);
+$("page-select").onchange = () => changePage(Number($("page-select").value));
 for (const id of [
   "body",
   "project",
@@ -359,6 +413,11 @@ function lock(value) {
   $("no-image").disabled = value || !base;
   for (const el of document.querySelectorAll("[data-tool],#undo,#reset,#annotation"))
     el.disabled = value || !base;
+  const pageLocked = loadingBase || redacting || sendingApproval;
+  $("page-select").disabled = pageLocked;
+  $("page-prev").disabled = pageLocked || pageIndex === 0;
+  $("page-next").disabled =
+    pageLocked || pageIndex >= (draft?.capturePages?.length || 0) - 1;
 }
 $("retry-capture").onclick = async () => {
   if (!draft || draft.frozen) return;
@@ -385,7 +444,8 @@ $("retry-capture").onclick = async () => {
   }
 };
 $("send").onclick = async () => {
-  if (!draft || redacting || loadingBase) return;
+  if (!draft || redacting || loadingBase || sendingApproval) return;
+  sendingApproval = true;
   $("send").disabled = true;
   $("discard").disabled = true;
   status("Sending approved feedback…");
@@ -403,15 +463,36 @@ $("send").onclick = async () => {
           "Redactions changed while saving. Review the current image before sending.",
         );
       render();
+      if (draft.capturePages?.length && !$("no-image").checked) {
+        const fresh = await send({ type: "draft" });
+        for (let index = 0; index < fresh.capturePages.length; index++) {
+          pageIndex = index;
+          await loadBase(fresh);
+          render();
+          status(`Approving ${fresh.capturePages[index].name}…`);
+          await send({
+            type: "approveCapturePage",
+            id: fresh.id,
+            imageRevision: approvalRevision,
+            index,
+            image: canvas.toDataURL("image/webp", 0.9),
+          });
+        }
+      }
     }
     const result = await send({
       type: "submit",
       id: draft.id,
       imageRevision: approvalRevision,
-      image: draft.frozen ? undefined : canvas.toDataURL("image/png"),
+      image:
+        draft.frozen || draft.capturePages?.length
+          ? undefined
+          : canvas.toDataURL("image/png"),
     });
+    sendingApproval = false;
     completed(result.url);
   } catch (e) {
+    sendingApproval = false;
     const fresh = await send({ type: "draft" }).catch(() => null);
     if (fresh) await loadBase(fresh);
     lock(!draft || loadingBase || !!draft?.frozen);

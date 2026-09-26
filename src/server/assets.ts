@@ -213,6 +213,7 @@ export async function prepareAssetUpload(i: any, config: Config, projectId: stri
   const data = {
     captureId,
     rendition: i.rendition,
+    ...(i.filename ? { filename: i.filename } : {}),
     width: metadata.width,
     height: metadata.height,
     bytes: output.length,

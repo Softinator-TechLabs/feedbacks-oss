@@ -14,6 +14,7 @@ let tab,
   refreshing = false,
   loadedConnection,
   noticeServer = "",
+  activeServer = "",
   pairingPending = false,
   serverEdited = false;
 $("installed-version").textContent = `Installed extension ${installedVersion}`;
@@ -22,6 +23,10 @@ if (managedUpdates)
   $("update-status").textContent = "Chrome manages updates for this installation.";
 const connectionKey = (state) =>
   JSON.stringify([state.server, state.connected, state.pending]);
+function showAccess(id, state, label) {
+  $(id).className = `is-${state}`;
+  $(id).textContent = label;
+}
 function hideUpdateNotice() {
   $("update-notice").hidden = true;
   $("available-version").textContent = "";
@@ -75,6 +80,7 @@ async function start(projectId) {
     const result = await send({ type: "activate", tabId: tab.id, projectId });
     $("connection").textContent = "Review is on";
     $("connection").className = "connected";
+    showAccess("tab-access", "ready", "Ready");
     $("routing").textContent =
       "Right-click a point on " + new URL(result.origin).hostname + ".";
     $("project-choice").hidden = result.choices.length < 2;
@@ -93,6 +99,7 @@ async function start(projectId) {
     $("pins").textContent = controls.showPins ? "Hide pins" : "Show pins";
     $("resolved").textContent = controls.showResolved ? "Hide resolved" : "Show resolved";
   } catch (e) {
+    showAccess("tab-access", "blocked", "Not ready");
     $("routing").textContent = e.message;
     $("review-controls").hidden = true;
     $("retry").hidden = false;
@@ -103,6 +110,7 @@ async function refresh() {
   refreshing = true;
   try {
     const state = await send({ type: "settings" });
+    activeServer = state.server;
     loadedConnection = connectionKey(state);
     pairingPending = state.pending;
     if (!serverEdited) $("server").value = state.serverDraft ?? state.server;
@@ -127,7 +135,24 @@ async function refresh() {
       : state.pending
         ? "Approve the connection in Feedbacks."
         : "Connect once to review your websites.";
-    const allSites = await chrome.permissions.contains({ origins: ["<all_urls>"] });
+    const [allSites, serverAllowed] = await Promise.all([
+      chrome.permissions.contains({ origins: ["<all_urls>"] }),
+      state.server
+        ? chrome.permissions.contains({ origins: [state.server + "/*"] })
+        : Promise.resolve(false),
+    ]);
+    showAccess(
+      "server-access",
+      !state.server ? "off" : serverAllowed ? "ready" : "blocked",
+      !state.server ? "Not set" : serverAllowed ? "Allowed" : "Needs access",
+    );
+    showAccess(
+      "site-access",
+      state.instantReview && allSites ? "ready" : "off",
+      state.instantReview && allSites ? "On" : "Off",
+    );
+    showAccess("tab-access", "off", "Not started");
+    $("restore-server-access").hidden = !state.connected || serverAllowed;
     $("instant").hidden = !state.connected || (state.instantReview && allSites);
     $("instant-help").hidden = $("instant").hidden;
     $("disable-instant").hidden = !state.instantReview;
@@ -180,6 +205,12 @@ async function connect(server) {
 }
 action("pair", () => connect($("server").value));
 action("pair-custom", () => connect($("server").value));
+action("restore-server-access", async () => {
+  if (!activeServer) throw Error("Connect to your Feedbacks server first.");
+  if (!(await chrome.permissions.request({ origins: [activeServer + "/*"] })))
+    throw Error("Chrome still needs access to your Feedbacks server.");
+  await refresh();
+});
 action("instant", async () => {
   // Permission request stays within the button gesture, before any other I/O.
   if (!(await chrome.permissions.request({ origins: ["<all_urls>"] })))

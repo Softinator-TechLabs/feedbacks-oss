@@ -75,7 +75,7 @@ async function listData(db: Database, a: Actor, rows: any[]): Promise<ListData> 
       [ids],
     ),
     db.query(
-      "SELECT id,thread_id,data FROM assets WHERE thread_id=ANY($1::uuid[]) AND status='validated' ORDER BY data->>'createdAt',id",
+      "SELECT id,thread_id,data FROM assets WHERE thread_id=ANY($1::uuid[]) AND status='validated' ORDER BY data->>'createdAt',data->>'filename',id",
       [ids],
     ),
     db.query(
@@ -161,7 +161,7 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
   const assets = list
     ? (list.assets.get(row.id) ?? [])
     : await db.query(
-        "SELECT id,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',id",
+        "SELECT id,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',data->>'filename',id",
         [row.id],
       );
   data.response = discussionResponse(
