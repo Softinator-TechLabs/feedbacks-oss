@@ -153,6 +153,8 @@ export type Project = {
   githubConnected?: boolean;
   githubStatusSync?: boolean;
   reviewEnabled?: boolean;
+  documentsEnabled?: boolean;
+  surveysEnabled?: boolean;
   revision: number;
   permissions: {
     role: string;

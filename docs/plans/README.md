@@ -10,6 +10,7 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 
 - [Optional full-page website capture](optional-full-page-capture.md)
 - [Ordered full-page screenshots](ordered-full-page-capture.md)
+- [Basic project view with optional tools](project-feature-visibility.md)
 - [Local diagnostic message masking](diagnostic-message-redaction.md)
 - [Optional page QA scan](optional-page-qa.md)
 - [Scheduled project QA and visual baselines](scheduled-project-qa.md)

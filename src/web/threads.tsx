@@ -916,7 +916,7 @@ export function ThreadDetail({
           </div>
         </div>
       </div>
-      {project?.permissions.canMaintain && (
+      {project?.permissions.canMaintain && project.githubConnected && (
         <GithubIssue thread={t} project={project} onSaved={setThread} />
       )}
       <ErrorNotice error={error} />

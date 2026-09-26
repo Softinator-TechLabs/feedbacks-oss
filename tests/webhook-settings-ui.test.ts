@@ -33,6 +33,23 @@ test("project maintainer sees webhook destination and delivery controls in setti
   assert.match(html, /Destination URL/);
   assert.match(html, /Save webhook/);
   assert.match(html, /Delivery history/);
+  assert.match(html, /Document review/);
+  assert.match(html, /Surveys and polls/);
+  assert.match(html, /GitHub Issues/);
+  assert.match(html, /Off for this project/);
+});
+
+test("connected GitHub is summarized in settings without prompting setup", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(ProjectSettings, {
+      project: { ...project, githubConnected: true, documentsEnabled: true },
+      actor,
+      onSaved: () => {},
+    }),
+  );
+  assert.match(html, /Connected to this project/);
+  assert.match(html, /Manage GitHub connection/);
+  assert.match(html, /name="documentsEnabled"[^>]*checked/);
 });
 
 test("project reviewer does not see webhook management", () => {

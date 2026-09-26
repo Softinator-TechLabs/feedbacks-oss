@@ -410,6 +410,8 @@ export function ProjectEditor({
           name: String(f.get("name")),
           captureMode,
           reviewEnabled: f.has("reviewEnabled"),
+          documentsEnabled: f.has("documentsEnabled"),
+          surveysEnabled: f.has("surveysEnabled"),
           origins: String(f.get("origins"))
             .split(/\n/)
             .map((v) => v.trim())
@@ -455,6 +457,26 @@ export function ProjectEditor({
       <p className="muted wide">
         For client sign-off. Keep this off when status and discussion are enough.
       </p>
+      <div className="wide project-optional-tools">
+        <strong>Optional tools</strong>
+        <p className="muted">Add these tabs only when this project needs them.</p>
+        <label className="check">
+          <input
+            name="documentsEnabled"
+            type="checkbox"
+            defaultChecked={project?.documentsEnabled ?? false}
+          />
+          Document review
+        </label>
+        <label className="check">
+          <input
+            name="surveysEnabled"
+            type="checkbox"
+            defaultChecked={project?.surveysEnabled ?? false}
+          />
+          Surveys and polls
+        </label>
+      </div>
       <label className="check wide">
         <input
           name="captureMode"
@@ -612,9 +634,26 @@ export function ProjectSettings({
           </ul>
         )}
       </section>
-      {project.permissions.canMaintain && <WebhookSettings projectId={project.id} />}
-      {project.permissions.canMaintain && <ScheduledQaSettings projectId={project.id} />}
-      {project.permissions.canMaintain && <GuestProjectLinks projectId={project.id} />}
+      <section className="section project-github-setting">
+        <h2>GitHub Issues</h2>
+        <p className="muted">
+          {project.githubConnected
+            ? "Connected to this project."
+            : "Off for this project."}{" "}
+          Create Issues from feedback only after connecting a repository.
+        </p>
+        <a href={`/projects/${project.id}/github`}>
+          {project.githubConnected ? "Manage GitHub connection" : "Set up GitHub"}
+        </a>
+      </section>
+      {project.permissions.canMaintain && (
+        <details className="project-advanced-settings">
+          <summary>Advanced settings</summary>
+          <WebhookSettings projectId={project.id} />
+          <ScheduledQaSettings projectId={project.id} />
+          <GuestProjectLinks projectId={project.id} />
+        </details>
+      )}
     </>
   );
 }
@@ -700,6 +739,8 @@ export function ProjectGithub({
                     origins: project.origins,
                     captureMode: project.captureMode,
                     reviewEnabled: project.reviewEnabled,
+                    documentsEnabled: project.documentsEnabled,
+                    surveysEnabled: project.surveysEnabled,
                     repositoryUrl: value,
                   }),
                 );
