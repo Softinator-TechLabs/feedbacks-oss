@@ -39,6 +39,10 @@ capture smoke also checked partial upload recovery and previously supported
 capture modes. `npm run check` and `npm run qa:extension-browser` passed after
 the implementation.
 
+Synthetic visual evidence: [desktop thread](../screenshots/inline-review/desktop.png),
+[mobile thread](../screenshots/inline-review/mobile.png), and
+[saved point on the original page](../screenshots/inline-review/original-page-hover.png).
+
 ## Compatibility
 
 `context.annotations` is optional. Existing readers continue to use `context.anchor` and `body`. Extension versions before this feature see a combined textual body and the first anchor. The per-point structured fields are additional untrusted review content.
