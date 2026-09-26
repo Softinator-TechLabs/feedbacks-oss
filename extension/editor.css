@@ -432,3 +432,21 @@ aside .hint {
 #diagnostics-entries [data-diagnostic-mask] {
   margin-bottom: 12px;
 }
+.point-notes {
+  padding: 0;
+  margin: 12px 0 20px;
+  list-style: none;
+}
+.point-notes li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border, #4b5d6b);
+}
+.point-notes strong {
+  display: block;
+  margin-bottom: 3px;
+}
+.point-notes p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

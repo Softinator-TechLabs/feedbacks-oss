@@ -14,11 +14,17 @@
     targetBox,
     pointMenu,
     draftPin,
+    draftPoints,
+    pointText,
+    reviewButton,
+    draftList,
     pointRequest = false,
     pointSignature,
     active = false,
     choosing = false,
     chosen = null,
+    annotations = [],
+    draftEditing = false,
     threads = [],
     showPins = true,
     showResolved = false,
@@ -194,6 +200,7 @@
           targetEvidence(el, chosen.point, chosen.evidence.fingerprint),
         );
     }
+    const saved = annotations.map(({ id, body, anchor }) => ({ id, body, anchor }));
     return {
       url: U.safeUrl(location.href),
       viewport: { width: innerWidth, height: innerHeight },
@@ -202,7 +209,8 @@
       preset: mode,
       ...(requested ? { requestedSize: { width: requested, height: innerHeight } } : {}),
       capturedAt: new Date().toISOString(),
-      anchor,
+      anchor: saved[0]?.anchor || anchor,
+      ...(saved.length ? { annotations: saved } : {}),
     };
   }
   function targetEvidence(el, point, evidenceFingerprint) {
@@ -218,6 +226,10 @@
       screenshotPoint: {
         x: r.x + point.x * r.width,
         y: r.y + point.y * r.height,
+      },
+      pagePoint: {
+        x: scrollX + r.x + point.x * r.width,
+        y: scrollY + r.y + point.y * r.height,
       },
       styles: {
         fontFamily: style.fontFamily.slice(0, 200),
@@ -277,6 +289,7 @@
     if (token && chosen?.token !== token) return;
     chosen?.instantDispose?.();
     chosen = null;
+    targetBox?.classList.add("hidden");
   }
   function choosePoint(el, x, y) {
     if (el?.nodeType !== 1 || !el.isConnected) return false;
@@ -300,7 +313,13 @@
       chosen.fingerprint || `evidence-v1:${crypto.randomUUID()}`,
     );
     pointSignature = signature();
-    targetBox.classList.add("hidden");
+    Object.assign(targetBox.style, {
+      left: `${r.x}px`,
+      top: `${r.y}px`,
+      width: `${r.width}px`,
+      height: `${r.height}px`,
+    });
+    targetBox.classList.remove("hidden");
     renderChosenPoint();
     return true;
   }
@@ -323,36 +342,166 @@
     )
       throw Error("The element moved. Right-click the point again.");
   }
+  function renderDraftPoints() {
+    if (draftEditing) return;
+    draftPoints.replaceChildren();
+    draftList.replaceChildren();
+    annotations.forEach((item, index) => {
+      const row = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = `${index + 1}. ${item.body}`;
+      row.append(label);
+      button(
+        "Edit",
+        () => {
+          draftEditing = true;
+          row.replaceChildren();
+          const edit = document.createElement("textarea");
+          edit.value = item.body;
+          edit.maxLength = 4000;
+          edit.rows = 2;
+          edit.setAttribute("aria-label", `Edit point ${index + 1}`);
+          row.append(edit);
+          button(
+            "Save",
+            () => {
+              if (!edit.value.trim()) {
+                edit.focus();
+                return;
+              }
+              item.body = edit.value.trim();
+              draftEditing = false;
+              renderDraftPoints();
+            },
+            row,
+          );
+          button(
+            "Cancel",
+            () => {
+              draftEditing = false;
+              renderDraftPoints();
+            },
+            row,
+          );
+          edit.focus();
+        },
+        row,
+      );
+      button(
+        "Remove",
+        () => {
+          annotations.splice(index, 1);
+          renderDraftPoints();
+        },
+        row,
+      );
+      draftList.append(row);
+      const point = item.anchor.pagePoint;
+      if (!point) return;
+      const x = point.x - scrollX,
+        y = point.y - scrollY;
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return;
+      const pin = document.createElement("span");
+      pin.className = "pin saved-draft-pin";
+      pin.textContent = String(index + 1);
+      pin.style.left = `${x}px`;
+      pin.style.top = `${y}px`;
+      pin.setAttribute("aria-label", `Draft point ${index + 1}: ${item.body}`);
+      draftPoints.append(pin);
+    });
+    reviewButton.hidden = annotations.length === 0;
+    meta.textContent = annotations.length
+      ? `${annotations.length} unsent ${annotations.length === 1 ? "comment" : "comments"} · Right-click to add another`
+      : `${threads.length} comments on this view · ${innerWidth} × ${innerHeight}`;
+  }
+  function savePoint() {
+    if (!chosen) throw Error("Right-click an element first.");
+    assertPoint(chosen.token);
+    const body = pointText.value.trim();
+    if (!body) {
+      pointMenu.querySelector(".point-tip").textContent =
+        "Write a comment for this point first.";
+      pointText.focus();
+      return;
+    }
+    if (annotations.length >= 100)
+      throw Error("Send this review before adding more points.");
+    annotations.push({
+      id: crypto.randomUUID(),
+      body,
+      anchor: {
+        ...chosen.evidence,
+        confidence: chosen.fingerprint ? "element" : "coordinate-only",
+      },
+    });
+    pointText.value = "";
+    pointMenu.querySelector(".point-tip").textContent =
+      "The outlined element and this comment stay together.";
+    closePointMenu();
+    clearChosenPoint();
+    renderDraftPoints();
+    notice.textContent = `Point ${annotations.length} saved. Right-click another element or review screenshots.`;
+    revealDrawer();
+  }
   async function capturePoint() {
-    if (pointRequest || !chosen) return;
-    const token = chosen.token;
-    assertPoint(token);
+    if (pointRequest || !annotations.length) return;
+    if (draftEditing)
+      throw Error("Save or cancel the point edit before reviewing screenshots.");
+    if (chosen && pointText.value.trim()) savePoint();
+    else if (chosen) {
+      pointText.value = "";
+      clearChosenPoint();
+    }
     pointRequest = true;
     closePointMenu();
-    notice.textContent = "Capturing this point…";
+    notice.textContent = "Capturing your review…";
     try {
-      await send({ type: "capture", pointToken: token });
-      notice.textContent = "Add your comment in the capture window, then Send.";
+      const outsideView = annotations.some(({ anchor }) => {
+        const point = anchor.pagePoint;
+        return (
+          point &&
+          (point.y < scrollY ||
+            point.y > scrollY + innerHeight ||
+            point.x < scrollX ||
+            point.x > scrollX + innerWidth)
+        );
+      });
+      await send({ type: "capture", scope: outsideView ? "fullPage" : "visible" });
+      notice.textContent = "Review the screenshot and send your comments.";
     } catch (error) {
-      pointMenu.classList.remove("hidden");
-      pointMenu.querySelector(".point-tip").textContent = error.message;
+      notice.textContent = error.message;
       throw error;
     } finally {
       pointRequest = false;
     }
   }
   function openPointMenu(el, x, y) {
-    if (pointRequest || captureActive || !choosePoint(el, x, y)) return;
+    if (pointRequest || captureActive) return;
+    if (chosen && pointText.value.trim()) {
+      pointMenu.classList.remove("hidden");
+      pointMenu.querySelector(".point-tip").textContent =
+        "Save or cancel your current point before selecting another.";
+      pointText.focus({ preventScroll: true });
+      return;
+    }
+    if (!choosePoint(el, x, y)) return;
     pointMenu.classList.remove("hidden");
     const r = pointMenu.getBoundingClientRect();
     pointMenu.style.left = `${Math.max(8, Math.min(x + 16, innerWidth - r.width - 8))}px`;
     pointMenu.style.top = `${Math.max(8, Math.min(y + 16, innerHeight - r.height - 8))}px`;
-    pointMenu.querySelector("button").focus({ preventScroll: true });
+    pointText.focus({ preventScroll: true });
   }
   function renderChosenPoint() {
     draftPin.classList.add("hidden");
     if (!chosen || chosen.record !== identity() || !chosen.element.isConnected) return;
     const r = F.rect(chosen.element);
+    Object.assign(targetBox.style, {
+      left: `${r.x}px`,
+      top: `${r.y}px`,
+      width: `${r.width}px`,
+      height: `${r.height}px`,
+    });
+    targetBox.classList.remove("hidden");
     const x = r.x + r.width * chosen.point.x,
       y = r.y + r.height * chosen.point.y;
     if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return;
@@ -408,7 +557,8 @@
     button(
       "Capture & annotate",
       async () => {
-        await send({ type: "capture" });
+        if (annotations.length) await capturePoint();
+        else await send({ type: "capture" });
       },
       row,
     ).className = "primary";
@@ -458,6 +608,7 @@
         clearTimeout(drawerTimer);
         host.remove();
         clearChosenPoint();
+        annotations = [];
         choosing = false;
         await send({ type: "stopReview" });
       },
@@ -485,11 +636,21 @@
     pointMenu.setAttribute("role", "dialog");
     pointMenu.setAttribute("aria-label", "Feedback at this point");
     root.append(pointMenu);
-    button("Add feedback here", capturePoint, pointMenu).className = "primary";
+    const pointHeading = document.createElement("strong");
+    pointHeading.textContent = "Comment on this element";
+    pointMenu.append(pointHeading);
+    pointText = document.createElement("textarea");
+    pointText.rows = 3;
+    pointText.maxLength = 4000;
+    pointText.placeholder = "What should change here?";
+    pointText.setAttribute("aria-label", "Comment on selected element");
+    pointMenu.append(pointText);
+    button("Save point", savePoint, pointMenu).className = "primary";
     button(
       "Cancel",
       () => {
         closePointMenu(true);
+        pointText.value = "";
         clearChosenPoint();
         renderPins();
       },
@@ -497,11 +658,22 @@
     );
     const tip = document.createElement("p");
     tip.className = "point-tip";
-    tip.textContent = "Screenshot included. Review before sending.";
+    tip.textContent = "The outlined element and this comment stay together.";
     pointMenu.append(tip);
+    draftPoints = document.createElement("div");
+    root.append(draftPoints);
+    const draftSection = document.createElement("section");
+    draftSection.className = "draft-section";
+    draftList = document.createElement("ol");
+    draftSection.append(draftList);
+    reviewButton = button("Review screenshots", capturePoint, draftSection);
+    reviewButton.className = "primary";
+    reviewButton.hidden = true;
+    bar.append(draftSection);
     const shortcutTip = document.createElement("p");
     shortcutTip.className = "meta";
-    shortcutTip.textContent = "Right-click a point to comment · Alt+click also works";
+    shortcutTip.textContent =
+      "Right-click an element, write beside it, and add as many points as needed.";
     bar.append(shortcutTip);
     document.documentElement.append(host);
   }
@@ -559,6 +731,7 @@
     targetBox.classList.add("hidden");
     const current = context();
     renderChosenPoint();
+    renderDraftPoints();
     const unmatched = [],
       other = [];
     let matched = 0;
@@ -568,64 +741,97 @@
         other.push(thread);
         continue;
       }
-      const a = thread.context.anchor;
-      let element;
-      if (
-        U.sameContext(thread.context, current) &&
-        a?.confidence === "element" &&
-        a.selector &&
-        /^(record-v3:|heading-v1:)/.test(a.fingerprint || "")
-      ) {
-        try {
-          const candidates = F.find(a.selector);
-          if (candidates.length === 1 && fingerprint(candidates[0]) === a.fingerprint)
-            element = candidates[0];
-        } catch {}
+      const linked = thread.context.annotations?.length
+        ? thread.context.annotations
+        : [{ anchor: thread.context.anchor, body: thread.body }];
+      for (const item of linked) {
+        const a = item.anchor;
+        let element;
+        if (
+          U.sameContext(thread.context, current) &&
+          a?.confidence === "element" &&
+          a.selector &&
+          /^(record-v3:|heading-v1:)/.test(a.fingerprint || "")
+        ) {
+          try {
+            const candidates = F.find(a.selector);
+            if (candidates.length === 1 && fingerprint(candidates[0]) === a.fingerprint)
+              element = candidates[0];
+          } catch {}
+        }
+        if (
+          !element &&
+          U.sameContext(thread.context, current) &&
+          a?.confidence === "coordinate-only" &&
+          a.selector &&
+          a.rect &&
+          a.pagePoint
+        ) {
+          try {
+            const candidates = F.find(a.selector);
+            if (candidates.length === 1) {
+              const candidate = candidates[0];
+              const r = F.rect(candidate);
+              const x = a.pagePoint.x - scrollX;
+              const y = a.pagePoint.y - scrollY;
+              if (
+                Math.abs(r.width - a.rect.width) <= 2 &&
+                Math.abs(r.height - a.rect.height) <= 2 &&
+                x >= r.left - 2 &&
+                x <= r.right + 2 &&
+                y >= r.top - 2 &&
+                y <= r.bottom + 2
+              )
+                element = candidate;
+            }
+          } catch {}
+        }
+        if (!element) {
+          unmatched.push(thread);
+          continue;
+        }
+        const r = F.rect(element);
+        matched++;
+        if (!showPins || !r.width || !r.height) continue;
+        const x = r.x + r.width * (a.point?.x ?? 0.5),
+          y = r.y + r.height * (a.point?.y ?? 0.5);
+        if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue;
+        const pin = button(
+          String(matched),
+          () => send({ type: "openThread", id: thread.id }),
+          pinLayer,
+        );
+        pin.className = "pin";
+        pin.style.pointerEvents = "auto";
+        pin.style.left = `${x}px`;
+        pin.style.top = `${y}px`;
+        pin.setAttribute(
+          "aria-label",
+          `${thread.author.name}: ${item.body.slice(0, 160)}`,
+        );
+        let preview;
+        const hide = () => {
+          preview?.remove();
+          preview = null;
+        };
+        const show = () => {
+          hide();
+          preview = document.createElement("div");
+          preview.className = "preview";
+          preview.textContent = `${thread.author.name}\n${item.body}`;
+          preview.style.left = `${Math.max(8, Math.min(x + 18, innerWidth - 290))}px`;
+          preview.style.top = `${Math.max(8, Math.min(y + 18, innerHeight - 150))}px`;
+          pinLayer.append(preview);
+        };
+        pin.onmouseenter = show;
+        pin.onfocus = show;
+        pin.onmouseleave = hide;
+        pin.onblur = hide;
       }
-      if (!element) {
-        unmatched.push(thread);
-        continue;
-      }
-      const r = F.rect(element);
-      matched++;
-      if (!showPins || !r.width || !r.height) continue;
-      const x = r.x + r.width * (a.point?.x ?? 0.5),
-        y = r.y + r.height * (a.point?.y ?? 0.5);
-      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue;
-      const pin = button(
-        String(matched),
-        () => send({ type: "openThread", id: thread.id }),
-        pinLayer,
-      );
-      pin.className = "pin";
-      pin.style.pointerEvents = "auto";
-      pin.style.left = `${x}px`;
-      pin.style.top = `${y}px`;
-      pin.setAttribute(
-        "aria-label",
-        `${thread.author.name}: ${thread.body.slice(0, 160)}`,
-      );
-      let preview;
-      const hide = () => {
-        preview?.remove();
-        preview = null;
-      };
-      const show = () => {
-        hide();
-        preview = document.createElement("div");
-        preview.className = "preview";
-        preview.textContent = `${thread.author.name}\n${thread.body.slice(0, 300)}`;
-        preview.style.left = `${Math.max(8, Math.min(x + 18, innerWidth - 290))}px`;
-        preview.style.top = `${Math.max(8, Math.min(y + 18, innerHeight - 150))}px`;
-        pinLayer.append(preview);
-      };
-      pin.onmouseenter = show;
-      pin.onfocus = show;
-      pin.onmouseleave = hide;
-      pin.onblur = hide;
     }
     renderCategories(unmatched, other);
-    meta.textContent = `${matched + unmatched.length} comments on this view · ${innerWidth} × ${innerHeight}`;
+    if (!annotations.length)
+      meta.textContent = `${matched + unmatched.length} comments on this view · ${innerWidth} × ${innerHeight}`;
   }
   function renderCategories(unmatched, other) {
     // Keep open details and keyboard focus stable during scroll/repaint.
@@ -721,7 +927,7 @@
         return;
       }
       if (!choosePoint(event.target, event.clientX, event.clientY)) return;
-      notice.textContent = "Point selected. Add your comment in the capture window.";
+      notice.textContent = "Point selected. Write your comment beside the element.";
       const r = F.rect(chosen.element);
       Object.assign(targetBox.style, {
         left: `${r.x}px`,
@@ -730,10 +936,7 @@
         height: `${r.height}px`,
       });
       targetBox.classList.remove("hidden");
-      capturePoint().catch((e) => {
-        notice.textContent = e.message;
-        revealDrawer();
-      });
+      openPointMenu(event.target, event.clientX, event.clientY);
     },
     true,
   );
@@ -743,6 +946,7 @@
       if (!active) return;
       if (event.key === "Escape") {
         closePointMenu(true);
+        pointText.value = "";
         choosing = false;
         clearChosenPoint();
         renderPins();
@@ -811,6 +1015,7 @@
       ![
         "activate",
         "instantCapturePoint",
+        "openInlinePoint",
         "choosePoint",
         "deactivate",
         "metrics",
@@ -883,6 +1088,17 @@
         chosen.instantDispose = p.dispose;
         return { pointToken: chosen.token };
       }
+      if (message.type === "openInlinePoint") {
+        if (!chosen?.element?.isConnected) throw Error("Right-click the element again.");
+        const r = F.rect(chosen.element);
+        pointMenu.classList.remove("hidden");
+        const x = r.x + r.width * chosen.point.x;
+        const y = r.y + r.height * chosen.point.y;
+        pointMenu.style.left = `${Math.max(8, Math.min(x + 16, innerWidth - 336))}px`;
+        pointMenu.style.top = `${Math.max(8, Math.min(y + 16, innerHeight - 245))}px`;
+        pointText.focus({ preventScroll: true });
+        return {};
+      }
       if (message.type === "choosePoint") {
         choosing = true;
         revealDrawer();
@@ -892,6 +1108,7 @@
       if (message.type === "deactivate") {
         activationGeneration++;
         clearChosenPoint();
+        annotations = [];
         active = false;
         globalThis.feedbacksReviewActive = false;
         clearInterval(timer);
@@ -902,6 +1119,8 @@
       if (message.type === "metrics")
         return { outerWidth, width: innerWidth, height: innerHeight };
       if (message.type === "feedbackSaved") {
+        annotations = [];
+        renderDraftPoints();
         if (chosen?.evidence.fingerprint === message.fingerprint) clearChosenPoint();
         if (active) {
           renderPins();

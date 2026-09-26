@@ -117,7 +117,7 @@ function drawShape(s, surface = ctx, width = canvas.width) {
     ctx.font = `600 ${radius * 1.35}px system-ui`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("1", a.x, a.y);
+    ctx.fillText(String(s.number || 1), a.x, a.y);
     ctx.textAlign = "start";
     ctx.textBaseline = "alphabetic";
   } else if (s.tool === "text") {
@@ -813,6 +813,22 @@ async function init() {
       $("project").add(new Option(p.name, p.id));
   $("project").value = draft.projectId;
   $("body").value = draft.body;
+  const pointNotes = $("point-notes");
+  pointNotes.replaceChildren();
+  const comments = draft.context.annotations || [];
+  pointNotes.hidden = comments.length === 0;
+  comments.forEach((item, index) => {
+    const row = document.createElement("li");
+    const heading = document.createElement("strong");
+    heading.textContent = `Point ${index + 1}`;
+    const note = document.createElement("p");
+    note.textContent = item.body;
+    row.append(heading, note);
+    pointNotes.append(row);
+  });
+  $("body-label").textContent = comments.length
+    ? "Overall comment (optional)"
+    : "Comment";
   $("category").value = draft.category || "general";
   $("tags").value = (draft.tags || []).join(", ");
   renderDiagnostics();
@@ -846,9 +862,10 @@ async function init() {
       `${draft.captureError} Your target context is saved. Continue without an image, or retry capture on the original tab.`,
       "error",
     );
-  } else if (draft.pointCapture) {
-    status("Point marked. Add your comment, review the screenshot, then Send.");
-    $("body").focus({ preventScroll: true });
+  } else if (draft.pointCapture || comments.length) {
+    status(
+      `${comments.length || 1} point ${comments.length === 1 ? "comment" : "comments"} saved. Review the screenshot, then Send.`,
+    );
   }
 }
 lock(true);

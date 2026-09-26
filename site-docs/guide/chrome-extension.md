@@ -16,7 +16,7 @@ The public Store extension starts without a preset server. An unpacked developer
 | ------------------------ | ------------------------------------------------------------------------------------------------- |
 | Active tab and scripting | Capture or mark the page only after you start a review.                                           |
 | Storage                  | Keep the paired server and an unfinished local draft.                                             |
-| Context menus            | Offer **Add feedback here** on right-click.                                                       |
+| Context menus            | Start an inline comment on the selected element; keep adding points before screenshot review.     |
 | Alarms                   | Poll a pairing request while it is pending.                                                       |
 | Selected server host     | Connect the extension to the server you entered.                                                  |
 | All websites (optional)  | Enable the instant right-click flow across HTTP(S) pages. Turn it on explicitly in the extension. |

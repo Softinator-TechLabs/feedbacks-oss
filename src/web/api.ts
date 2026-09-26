@@ -194,6 +194,18 @@ export type Context = {
     fingerprint?: string;
     styles?: Record<string, string>;
   };
+  annotations?: Array<{
+    id: string;
+    body: string;
+    anchor: {
+      selector?: string;
+      confidence?: string;
+      fingerprint?: string;
+      recordIdentity?: string;
+      screenshotPoint?: { x: number; y: number };
+      pagePoint?: { x: number; y: number };
+    };
+  }>;
 };
 export type ReviewDocument = {
   id: string;
@@ -281,6 +293,22 @@ export type Thread = {
     contentType: "image/webp" | "video/webm";
     durationMs?: number;
     filename?: string;
+    captureRegion?: { startY: number; endY: number; pageWidth: number };
+    captureSections?: Array<{
+      startY: number;
+      endY: number;
+      pageWidth: number;
+      imageTop: number;
+      imageBottom: number;
+    }>;
+    markings?: Array<{
+      tool: "point" | "pencil" | "arrow" | "rectangle" | "text";
+      bounds: { x: number; y: number; width: number; height: number };
+      endpoints: Array<{ x: number; y: number }>;
+      number?: number;
+      annotationId?: string;
+      text?: string;
+    }>;
   }>;
   view: {
     uniqueLikes: number;
