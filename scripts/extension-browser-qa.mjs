@@ -243,6 +243,53 @@ try {
     path: join(root, ".local/remaining-todos-qa/access-status.png"),
   });
   const id = await tabId();
+  const exposeReviewRoot = () =>
+    worker.evaluate(async (tabId) => {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const attach = Element.prototype.attachShadow;
+          Element.prototype.attachShadow = function (options) {
+            const shadow = attach.call(this, options);
+            if (this.id === "feedbacks-review-root")
+              globalThis.__feedbacksQaRoot = shadow;
+            return shadow;
+          };
+        },
+      });
+    }, id);
+  const saveInlinePoint = async (target, body) => {
+    await target.click({ button: "right" });
+    const result = await worker.evaluate(
+      async ({ tabId, body }) => {
+        const [entry] = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: (body) => {
+            const root = globalThis.__feedbacksQaRoot;
+            const menu = root?.querySelector(".point-menu");
+            const field = menu?.querySelector("textarea");
+            const save = [...(menu?.querySelectorAll("button") || [])].find(
+              (button) => button.textContent === "Save point",
+            );
+            if (!menu || menu.classList.contains("hidden") || !field || !save)
+              return { ready: false };
+            field.value = body;
+            field.dispatchEvent(new Event("input", { bubbles: true }));
+            save.click();
+            return {
+              ready: true,
+              count: root.querySelectorAll(".saved-draft-pin").length,
+            };
+          },
+          args: [body],
+        });
+        return entry.result;
+      },
+      { tabId: id, body },
+    );
+    assert.equal(result.ready, true, `Inline comment field did not open: ${body}`);
+    return result.count;
+  };
   results.qa = await send({ type: "popupAction", tabId: id, action: "qa-scan" });
   const qaDraft = await draft();
   results.qaDraft = {
@@ -253,19 +300,7 @@ try {
   await send({ type: "discard" });
 
   await toFixture();
-  await worker.evaluate(async (tabId) => {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        const attach = Element.prototype.attachShadow;
-        Element.prototype.attachShadow = function (options) {
-          const shadow = attach.call(this, options);
-          if (this.id === "feedbacks-review-root") globalThis.__feedbacksQaRoot = shadow;
-          return shadow;
-        };
-      },
-    });
-  }, id);
+  await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
   await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
   await page.screenshot({
@@ -383,16 +418,17 @@ try {
 
   mode = "long";
   await toFixture();
+  await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
-  await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
-  await page.keyboard.type("Top point");
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Enter");
+  assert.equal(
+    await saveInlinePoint(
+      page.getByRole("heading", { name: "Controlled page" }),
+      "Top point",
+    ),
+    1,
+  );
   await page.locator("#lower").scrollIntoViewIfNeeded();
-  await page.locator("#lower").click({ button: "right" });
-  await page.keyboard.type("Bottom point");
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Enter");
+  assert.equal(await saveInlinePoint(page.locator("#lower"), "Bottom point"), 1);
   await page.bringToFront();
   await worker.evaluate((tabId) => chrome.tabs.update(tabId, { active: true }), id);
   const multiScroll = await send({
