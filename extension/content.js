@@ -55,7 +55,12 @@
       revealDrawer(false);
     }, 1000);
   }
-  const invalidateCapture = () => {
+  const invalidateCapture = (event) => {
+    // Capture-phase listeners also see scroll/resize events from carousels and
+    // videos. Only movement of the reviewed viewport invalidates its pixels.
+    if (event.type === "scroll" && event.target !== document && event.target !== window)
+      return;
+    if (event.type === "resize" && event.target !== window) return;
     if (captureActive) captureEpoch++;
   };
   for (const event of ["scroll", "resize", "popstate", "hashchange", "pagehide"])
@@ -991,10 +996,8 @@
           url: U.safeUrl(location.href),
           viewportWidth: innerWidth,
           viewportHeight: innerHeight,
-          documentWidth: Math.max(
-            document.documentElement.scrollWidth,
-            document.body?.scrollWidth || 0,
-          ),
+          documentWidth: (document.scrollingElement || document.documentElement)
+            .scrollWidth,
           documentHeight: Math.max(
             document.documentElement.scrollHeight,
             document.body?.scrollHeight || 0,
@@ -1009,41 +1012,36 @@
           (message.x !== undefined && !Number.isSafeInteger(message.x))
         )
           throw Error("Invalid full-page capture step.");
-        const scrollingElement = document.scrollingElement || document.documentElement;
-        const originalBehavior = scrollingElement.style.scrollBehavior;
-        scrollingElement.style.scrollBehavior = "auto";
-        try {
-          scrollTo(message.x || 0, message.y);
-          await new Promise((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(resolve)),
-          );
-          const metrics = {
-            url: U.safeUrl(location.href),
-            viewportWidth: innerWidth,
-            viewportHeight: innerHeight,
-            documentWidth: Math.max(
-              document.documentElement.scrollWidth,
-              document.body?.scrollWidth || 0,
-            ),
-            documentHeight: Math.max(
-              document.documentElement.scrollHeight,
-              document.body?.scrollHeight || 0,
-            ),
-            x: scrollX,
-            y: scrollY,
-            signature: signature(),
-            captureEpoch: 0,
-          };
-          captureEpoch = 0;
-          return metrics;
-        } finally {
-          scrollingElement.style.scrollBehavior = originalBehavior;
-        }
+        scrollTo({ left: message.x || 0, top: message.y, behavior: "instant" });
+        await new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        );
+        const metrics = {
+          url: U.safeUrl(location.href),
+          viewportWidth: innerWidth,
+          viewportHeight: innerHeight,
+          documentWidth: (document.scrollingElement || document.documentElement)
+            .scrollWidth,
+          documentHeight: Math.max(
+            document.documentElement.scrollHeight,
+            document.body?.scrollHeight || 0,
+          ),
+          x: scrollX,
+          y: scrollY,
+          signature: signature(),
+          captureEpoch: 0,
+        };
+        captureEpoch = 0;
+        return metrics;
       }
       if (message.type === "restore") {
         captureActive = false;
         if (message.scroll && Number.isSafeInteger(message.scroll.y))
-          scrollTo(message.scroll.x || 0, message.scroll.y);
+          scrollTo({
+            left: message.scroll.x || 0,
+            top: message.scroll.y,
+            behavior: "instant",
+          });
         if (message.captured && message.pointToken) clearChosenPoint(message.pointToken);
         if (host) host.style.removeProperty("display");
         if (message.captured) renderPins();

@@ -40,6 +40,26 @@ function captureUrl(value) {
   url.hash = "";
   return url.href;
 }
+let lastVisibleCaptureAt = 0;
+async function captureVisibleTab(windowId) {
+  // Chrome permits two visible-tab captures per second across this extension.
+  const wait = 650 - (Date.now() - lastVisibleCaptureAt);
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  lastVisibleCaptureAt = Date.now();
+  try {
+    return await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+  } catch (error) {
+    if (
+      !String(error?.message || error).includes(
+        "MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND",
+      )
+    )
+      throw error;
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    lastVisibleCaptureAt = Date.now();
+    return chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+  }
+}
 let draftWrites = Promise.resolve();
 function writeDraft(work) {
   const result = draftWrites.then(work);
@@ -468,9 +488,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
         if (step.error) throw Error(step.error);
         verifyFullPageStep(metrics, step, y);
         await new Promise((resolve) => setTimeout(resolve, 550));
-        const pixels = await chrome.tabs.captureVisibleTab(tab.windowId, {
-          format: "png",
-        });
+        const pixels = await captureVisibleTab(tab.windowId);
         guard.assert();
         const after = await chrome.tabs.sendMessage(tab.id, {
           type: "captureCheck",
@@ -601,9 +619,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       return { captured: true, pages: pending.capturePages.length };
     }
     {
-      const pixels = await chrome.tabs.captureVisibleTab(tab.windowId, {
-        format: "png",
-      });
+      const pixels = await captureVisibleTab(tab.windowId);
       guard.assert();
       const after = await chrome.tabs.sendMessage(tab.id, {
         type: "captureCheck",

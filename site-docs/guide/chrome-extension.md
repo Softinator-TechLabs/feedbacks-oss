@@ -27,6 +27,8 @@ Browser-protected pages cannot be captured. Some inaccessible frames permit coor
 
 Choose **Capture full page** to scroll through the current tab. The editor shows the results in page order with numbered previews and pixel ranges. Open each preview to annotate or redact it, and use **Remove** to leave out a screenshot before sending. Each retained image keeps its own numbered filename. If the page changes during capture, the editor keeps the pages collected so far and marks the capture incomplete; you can review those pages or retry on the original tab.
 
+Keep the original website tab active until capture finishes. The extension scrolls it from top to bottom and restores your position afterward, including on pages with smooth scrolling or clipped carousels. If you already have an unfinished draft, review or discard it before starting a new capture of another page.
+
 Separate screenshots are recommended for AI review. You can also select **Also include one combined image** in the editor. Very tall images can be difficult for an LLM agent to inspect; if the browser cannot create a combined image within the server's per-image size, turn that option off and send the ordered screenshots. The capture has no fixed page-count cutoff, but a page or browser can still change while scrolling. No image leaves the browser until you select **Send feedback**.
 
 ## Video and updates

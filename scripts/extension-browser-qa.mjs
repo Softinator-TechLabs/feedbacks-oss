@@ -7,6 +7,8 @@ import { chromium } from "playwright";
 import sharp from "sharp";
 
 const root = process.cwd();
+const publicCaptureUrl =
+  process.env.FEEDBACKS_QA_PUBLIC_URL || "https://impeccable.style/";
 const profile = await mkdtemp(join(tmpdir(), "feedbacks-extension-browser-"));
 const extension = join(profile, "extension");
 await cp(join(root, "extension"), extension, { recursive: true });
@@ -64,7 +66,7 @@ try {
   if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1")
     await post(
       "projects.create",
-      { name: "Public capture QA", origins: ["https://impeccable.style"] },
+      { name: "Public capture QA", origins: [new URL(publicCaptureUrl).origin] },
       auth,
     );
   const request = (await post("pairing.request", { name: "Synthetic browser QA" })).data;
@@ -115,10 +117,14 @@ try {
       mode === "changing"
         ? '<script>let size=2100; window.qaTimer=setInterval(()=>{ size=size===2100?2300:2100; document.querySelector("main").style.height=size+"px" },75)</script>'
         : "";
+    const clipped =
+      mode === "clipped"
+        ? '<style>html{overflow-x:hidden;scroll-behavior:smooth}body{overflow-x:hidden;position:relative}.wide-carousel{position:absolute;top:100px;width:6000px}</style><div class="wide-carousel"><video></video></div><script>window.qaMotion=setInterval(()=>{document.querySelector("video").dispatchEvent(new Event("resize"));document.querySelector(".wide-carousel").dispatchEvent(new Event("scroll"))},100)</script>'
+        : "";
     return route.fulfill({
       status: 200,
       contentType: "text/html",
-      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a></main>${change}`,
+      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a></main>${change}${clipped}`,
     });
   });
   const page = context.pages()[0] ?? (await context.newPage());
@@ -145,8 +151,9 @@ try {
   const results = {};
 
   if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1") {
+    await page.setViewportSize({ width: 1920, height: 1064 });
     await page.bringToFront();
-    await page.goto("https://impeccable.style/", {
+    await page.goto(publicCaptureUrl, {
       waitUntil: "domcontentloaded",
       timeout: 30000,
     });
@@ -159,11 +166,16 @@ try {
     });
     const captured = await draft();
     results.publicSite = {
+      url: publicCaptureUrl,
       fullCaptured: full.captured,
       fullPages: captured?.capturePages?.length || 0,
       fullError: captured?.captureError,
     };
-    assert.equal(results.publicSite.fullCaptured, true);
+    assert.equal(
+      results.publicSite.fullCaptured,
+      true,
+      JSON.stringify(results.publicSite),
+    );
     assert.ok(results.publicSite.fullPages > 1);
     await send({ type: "discard" });
     await page.bringToFront();
@@ -178,6 +190,7 @@ try {
     assert.equal(results.publicSite.visibleCaptured, true);
     assert.equal(results.publicSite.visibleImage, true);
     await send({ type: "discard" });
+    await page.setViewportSize({ width: 900, height: 650 });
   }
 
   await toFixture();
@@ -195,11 +208,20 @@ try {
   };
   await send({ type: "discard" });
 
-  for (const scope of ["short", "long", "tall", "tooLong"]) {
+  for (const scope of ["short", "long", "tall", "tooLong", "clipped"]) {
     mode = scope;
     if (["tall", "tooLong"].includes(scope))
       await page.setViewportSize({ width: 1200, height: 800 });
     await toFixture();
+    if (scope === "clipped") {
+      const width = await page.evaluate(() => ({
+        root: document.scrollingElement.scrollWidth,
+        body: document.body.scrollWidth,
+        viewport: innerWidth,
+      }));
+      assert.equal(width.root, width.viewport);
+      assert.ok(width.body > width.viewport);
+    }
     await page.evaluate(() => scrollTo(0, 120));
     const before = await page.evaluate(() => scrollY);
     const result = await send({ type: "popupAction", tabId: id, action: "capture-full" });
@@ -214,7 +236,10 @@ try {
       notice: captured?.captureNotice,
       scrollRestored: Math.abs((await page.evaluate(() => scrollY)) - before) < 2,
     };
-    if (["long", "tall", "tooLong"].includes(scope) && captured?.capturePages?.length) {
+    if (
+      ["long", "tall", "tooLong", "clipped"].includes(scope) &&
+      captured?.capturePages?.length
+    ) {
       const first = await send({ type: "capturePage", id: captured.id, index: 0 });
       const last = await send({
         type: "capturePage",
@@ -440,13 +465,13 @@ try {
   results.diagnostics.submitted =
     !serialized.includes("PRIVATE-123") && serialized.includes("masked");
   results.diagnostics.draftCleared = !(await draft());
-  assert.equal(results.qa.captured, true);
+  assert.equal(results.qa.captured, true, JSON.stringify(results.qa));
   assert.deepEqual(results.qaDraft, {
     hasAltFinding: true,
     hasBrokenLink: true,
     hasImage: true,
   });
-  for (const scope of ["short", "long"]) {
+  for (const scope of ["short", "long", "clipped"]) {
     assert.equal(results[scope].captured, true);
     assert.equal(results[scope].scope, "fullPage");
     assert.equal(results[scope].hasImage, false);
