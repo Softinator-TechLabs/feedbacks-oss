@@ -377,6 +377,24 @@ try {
     submitted: true,
     draftCleared: true,
   });
+  const cookieSplit = auth.cookie.indexOf("=");
+  const cookieName = auth.cookie.slice(0, cookieSplit);
+  const cookieValue = auth.cookie.slice(cookieSplit + 1);
+  await context.addCookies([
+    { name: cookieName, value: cookieValue, url: access.url, sameSite: "Lax" },
+  ]);
+  const threadPage = await context.newPage();
+  await threadPage.goto(`${access.url}/threads/${seriesThreadId}`);
+  await threadPage
+    .getByText("Full-page capture · 4 numbered images")
+    .waitFor({ timeout: 15000 });
+  results.seriesReview.galleryImages = await threadPage
+    .locator(".capture-page-grid figure")
+    .count();
+  await threadPage.screenshot({
+    path: join(root, ".local/remaining-todos-qa/thread-gallery.png"),
+  });
+  assert.equal(results.seriesReview.galleryImages, 4);
   console.log(JSON.stringify(results));
 } finally {
   if (context) await context.close();

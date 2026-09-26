@@ -777,6 +777,10 @@ export function ThreadDetail({
         )}
       </>
     );
+  const capturePages = t.assets.filter((asset) =>
+    /^full-page-\d+-of-\d+\.webp$/.test(asset.filename || ""),
+  );
+  const otherAssets = t.assets.filter((asset) => !capturePages.includes(asset));
   return (
     <>
       <div className="page-heading thread-page-heading">
@@ -962,7 +966,7 @@ export function ThreadDetail({
             {t.assets?.length > 0 && (
               <section className="attachments">
                 <h2 className="sr-only">Attachments</h2>
-                {t.assets.map((asset, index) => (
+                {otherAssets.map((asset, index) => (
                   <figure key={asset.id}>
                     {asset.contentType === "video/webm" ? (
                       <video
@@ -991,6 +995,35 @@ export function ThreadDetail({
                     </figcaption>
                   </figure>
                 ))}
+                {capturePages.length > 0 && (
+                  <details className="capture-page-set" open={capturePages.length <= 4}>
+                    <summary>
+                      Full-page capture · {capturePages.length} numbered
+                      {capturePages.length === 1 ? " image" : " images"}
+                    </summary>
+                    <div className="capture-page-grid">
+                      {capturePages.map((asset) => (
+                        <figure key={asset.id}>
+                          <a
+                            href={asset.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Open ${asset.filename}`}
+                          >
+                            <img
+                              src={asset.url}
+                              alt={asset.filename}
+                              width={asset.width}
+                              height={asset.height}
+                              loading="lazy"
+                            />
+                          </a>
+                          <figcaption>{asset.filename}</figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  </details>
+                )}
               </section>
             )}
             <div className="feedback-reactions">

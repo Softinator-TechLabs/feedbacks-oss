@@ -12,6 +12,7 @@ Capture a long web page as a sequence of viewport-sized images instead of one do
 - Store each local image as a Blob in extension IndexedDB. Keep the draft record and per-page annotation state in trusted extension storage. Never store one giant base64 image.
 - Review, annotate and permanently redact pages individually. Freeze an approved image for each page before thread creation; send sequentially with a stable idempotency key per page. A failed upload resumes at the first unsent page.
 - Save the ordered filename with each private asset. Show it on the thread and in the GitHub Issue attachment list. Agents can fetch individual assets instead of decoding one huge combined image.
+- Group numbered pages in a compact thread gallery so a long capture does not turn the feedback detail into dozens of full-size images.
 - Keep practical per-image server limits and browser storage errors explicit. A failed capture clears incomplete local images, restores scroll and leaves a context-only draft with a visible-area retry.
 
 ## Acceptance criteria
@@ -29,4 +30,4 @@ Capture a long web page as a sequence of viewport-sized images instead of one do
 
 ## Verification receipt
 
-`npm run check`, `npm run test:postgres`, `npm audit --audit-level=high` and `npm run qa:extension-browser` passed on 2026-09-26. The isolated Chromium run captured a 22,000px page as 28 images and a 35,000px page as 44 images; the last page was cropped to its remaining pixels and the original scroll position was restored. A four-image series was navigated, its second page permanently redacted, and submission was interrupted at image two. Retry resumed from image two; readback returned the four ordered asset filenames and cleared the local draft. A changing page kept no captured image. The popup and editor were visually inspected in the isolated browser. Store-installed acceptance and publication remain unverified.
+`npm run check`, `npm run test:postgres`, `npm audit --audit-level=high` and `npm run qa:extension-browser` passed on 2026-09-26. The isolated Chromium run captured a 22,000px page as 28 images and a 35,000px page as 44 images; the last page was cropped to its remaining pixels and the original scroll position was restored. A four-image series was navigated, its second page permanently redacted, and submission was interrupted at image two. Retry resumed from image two; readback returned the four ordered asset filenames, the browser rendered four items in the compact thread gallery, and the local draft was cleared. A changing page kept no captured image. The popup, editor and thread gallery were visually inspected in the isolated browser. Store-installed acceptance and publication remain unverified.
