@@ -54,26 +54,35 @@
           <label for="page-select">Screenshot</label>
           <select id="page-select" aria-label="Choose screenshot page"></select>
           <button id="page-next" type="button">Next →</button>
+          <button id="remove-current" type="button">Remove screenshot</button>
         </nav>
-        <div
-          id="page-thumbnails"
-          class="page-thumbnails"
-          role="list"
-          aria-label="Captured screenshots"
-          hidden
-        ></div>
-        <label class="text-label" for="annotation" hidden
-          >Text to place
-          <input
-            id="annotation"
-            maxlength="200"
-            placeholder="Write a label, then click the screenshot"
-        /></label>
-        <div class="canvas-scroll">
-          <canvas
-            id="canvas"
-            aria-label="Screenshot. Select a tool and draw with the pointer."
-          ></canvas>
+        <p id="series-guide" class="series-guide" hidden>
+          Choose a section, then draw on it. Your marks also appear in the combined
+          full-page image.
+        </p>
+        <div id="image-review" class="image-review">
+          <div
+            id="page-thumbnails"
+            class="page-thumbnails"
+            role="list"
+            aria-label="Captured screenshots"
+            hidden
+          ></div>
+          <div class="image-stage">
+            <label class="text-label" for="annotation" hidden
+              >Text to place
+              <input
+                id="annotation"
+                maxlength="200"
+                placeholder="Write a label, then click the screenshot"
+            /></label>
+            <div class="canvas-scroll">
+              <canvas
+                id="canvas"
+                aria-label="Screenshot. Select a tool and draw with the pointer."
+              ></canvas>
+            </div>
+          </div>
         </div>
       </section>
       <aside>
@@ -133,8 +142,9 @@
             image</label
           >
           <p class="hint">
-            Separate, numbered screenshots are recommended for AI review. A very tall
-            combined image can be difficult for an LLM agent to read.
+            Marks on each numbered screenshot appear in this single image too. Long
+            combined images are scaled to fit; the numbered screenshots stay full size and
+            are easier for AI tools to review.
           </p>
         </div>
         <p class="hint">Your draft stays in this browser until you explicitly send it.</p>

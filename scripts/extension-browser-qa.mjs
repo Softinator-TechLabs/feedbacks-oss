@@ -84,6 +84,7 @@ try {
     channel: "chromium",
     headless: true,
     viewport: { width: 900, height: 650 },
+    deviceScaleFactor: Number(process.env.FEEDBACKS_QA_DPR || 1),
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
   const worker =
@@ -177,6 +178,41 @@ try {
       JSON.stringify(results.publicSite),
     );
     assert.ok(results.publicSite.fullPages > 1);
+    if (process.env.FEEDBACKS_QA_PUBLIC_SEND === "1") {
+      const review = await context.newPage();
+      await review.goto(`chrome-extension://${extensionId}/editor.html`);
+      await review.locator("#page-select option").last().waitFor({ state: "attached" });
+      await review.locator("#include-combined").check();
+      await review.locator("#body").fill("Synthetic local full-page upload QA.");
+      await review.locator("#send").click();
+      await review
+        .locator("#completion:not([hidden]), #send:has-text('Retry Send')")
+        .first()
+        .waitFor({ timeout: 180000 });
+      results.publicSite.sendStatus = await review.locator("#status").textContent();
+      results.publicSite.uploadIndex = (await draft())?.uploadIndex;
+      results.publicSite.frozen = (await draft())?.frozen;
+      results.publicSite.sent = await review.locator("#completion").isVisible();
+      if (results.publicSite.sent) {
+        const threadUrl = await review.locator("#thread").getAttribute("href");
+        const threadId = threadUrl?.match(/[0-9a-f-]{36}/)?.[0];
+        if (!threadId) throw Error("Public capture QA lacks a thread link");
+        const thread = (await post("threads.get", { threadId }, auth)).data;
+        results.publicSite.assets = thread.assets.map(({ filename, width, height }) => ({
+          filename,
+          width,
+          height,
+        }));
+      }
+      console.log(JSON.stringify({ publicSite: results.publicSite }));
+      assert.equal(results.publicSite.sent, true, results.publicSite.sendStatus);
+      assert.equal(results.publicSite.assets.length, captured.capturePages.length + 1);
+      const combined = results.publicSite.assets.at(-1);
+      assert.equal(combined.filename, "full-page-combined.webp");
+      assert.ok(combined.width * combined.height <= 40000000);
+      assert.ok(combined.height <= 12000);
+      await review.close();
+    }
     await send({ type: "discard" });
     await page.bringToFront();
     const visible = await send({
@@ -271,9 +307,16 @@ try {
   await seriesEditor.goto(`chrome-extension://${extensionId}/editor.html`);
   await seriesEditor.locator("#page-select option").last().waitFor({ state: "attached" });
   await seriesEditor.locator(".page-thumbnail img[src]").first().waitFor();
+  await seriesEditor.setViewportSize({ width: 1440, height: 900 });
   await seriesEditor.screenshot({
     path: join(root, ".local/remaining-todos-qa/ordered-editor.png"),
   });
+  await seriesEditor.setViewportSize({ width: 390, height: 844 });
+  await seriesEditor.screenshot({
+    path: join(root, ".local/remaining-todos-qa/ordered-editor-mobile.png"),
+    fullPage: true,
+  });
+  await seriesEditor.setViewportSize({ width: 1440, height: 900 });
   results.seriesReview = {
     pageOptions: await seriesEditor.locator("#page-select option").count(),
     firstLabel: await seriesEditor.locator("#page-select option").first().textContent(),
@@ -360,7 +403,8 @@ try {
   results.pageReview = {
     previews: await removableEditor.locator(".page-thumbnail").count(),
   };
-  await removableEditor.getByRole("button", { name: /^Remove screenshot 2:/ }).click();
+  await removableEditor.locator("#page-select").selectOption("1");
+  await removableEditor.locator("#remove-current").click();
   await removableEditor.locator(".page-thumbnail").last().waitFor();
   await removableEditor.waitForFunction(
     () => document.querySelectorAll(".page-thumbnail").length === 3,
@@ -370,10 +414,50 @@ try {
   results.pageReview.secondImageMatches =
     (await send({ type: "capturePage", id: pruned.id, index: 1 })).page.name ===
     "full-page-003-of-004.webp";
+  await removableEditor.locator("#page-select").selectOption("0");
+  await removableEditor.locator('[data-tool="rectangle"]').click();
+  const reviewImage = await removableEditor.locator("#canvas").boundingBox();
+  if (!reviewImage) throw Error("The screenshot is missing from the review editor");
+  await removableEditor.mouse.move(reviewImage.x + 32, reviewImage.y + 94);
+  await removableEditor.mouse.down();
+  await removableEditor.mouse.move(reviewImage.x + 115, reviewImage.y + 155, {
+    steps: 4,
+  });
+  await removableEditor.mouse.up();
   await removableEditor.locator("#include-combined").check();
   await removableEditor
     .locator("#body")
     .fill("Synthetic capture selection and combined image.");
+  await worker.evaluate(() => {
+    const original = globalThis.fetch;
+    let interrupt = true;
+    globalThis.fetch = async (...args) => {
+      if (
+        interrupt &&
+        String(args[0]).endsWith("/api/assets.upload") &&
+        JSON.parse(args[1]?.body || "{}").filename === "full-page-combined.webp"
+      ) {
+        interrupt = false;
+        throw Error("Synthetic combined upload interruption");
+      }
+      return original(...args);
+    };
+  });
+  await removableEditor.locator("#send").click();
+  await removableEditor.getByRole("button", { name: "Retry Send" }).waitFor();
+  const interruptedCombined = await draft();
+  results.pageReview.resumeAtCombined =
+    interruptedCombined?.frozen &&
+    interruptedCombined.uploadIndex === interruptedCombined.capturePages.length;
+  await removableEditor.evaluate(async (draftId) => {
+    const { putPage } = await import(chrome.runtime.getURL("page-store.js"));
+    const oversized = new OffscreenCanvas(1920, 15000);
+    const context = oversized.getContext("2d");
+    context.fillStyle = "#f6f7f8";
+    context.fillRect(0, 0, oversized.width, oversized.height);
+    const blob = await oversized.convertToBlob({ type: "image/webp", quality: 0.7 });
+    await putPage(draftId, 0, "combined", blob);
+  }, interruptedCombined.id);
   await removableEditor.locator("#send").click();
   await removableEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
   const combinedThreadUrl = await removableEditor.locator("#thread").getAttribute("href");
@@ -383,8 +467,29 @@ try {
   const combinedThread = (await post("threads.get", { threadId: combinedThreadId }, auth))
     .data;
   results.pageReview.assetNames = combinedThread.assets.map((asset) => asset.filename);
+  const combinedResponse = await fetch(
+    `${access.url}${combinedThread.assets.at(-1).url}`,
+    { headers: { Cookie: auth.cookie } },
+  );
+  assert.equal(combinedResponse.status, 200);
+  const composite = await sharp(Buffer.from(await combinedResponse.arrayBuffer()))
+    .extract({ left: 0, top: 0, width: 220, height: 250 })
+    .removeAlpha()
+    .raw()
+    .toBuffer();
+  let markedPixels = 0;
+  for (let pixel = 0; pixel < composite.length; pixel += 3)
+    if (
+      composite[pixel] > 120 &&
+      composite[pixel + 1] < 100 &&
+      composite[pixel + 2] < 120
+    )
+      markedPixels++;
+  results.pageReview.combinedMarkedPixels = markedPixels;
+  assert.ok(markedPixels > 12, "Combined image is missing the page annotation");
   assert.equal(results.pageReview.previews, removableDraft.capturePages.length);
   assert.equal(results.pageReview.secondImageMatches, true);
+  assert.equal(results.pageReview.resumeAtCombined, true);
   assert.deepEqual(results.pageReview.assetNames, [
     "full-page-001-of-004.webp",
     "full-page-003-of-004.webp",

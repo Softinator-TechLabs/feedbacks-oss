@@ -3,6 +3,7 @@ import "./utils.js";
 import { createReviewController } from "./review-session.js";
 import { createPairingCoordinator } from "./pairing.js";
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
+import { combinedImageSize, combinedImageNeedsResize } from "./combined-image.js";
 import {
   putPage,
   getPage,
@@ -1020,14 +1021,17 @@ async function combineApprovedPages(draft) {
     bitmap.close();
   }
   try {
-    const canvas = new OffscreenCanvas(width, height);
+    const output = combinedImageSize(width, height);
+    const canvas = new OffscreenCanvas(output.width, output.height);
     const ctx = canvas.getContext("2d");
     if (!ctx) throw Error("Canvas is unavailable.");
-    let top = 0;
+    let sourceTop = 0;
     for (let index = 0; index < draft.capturePages.length; index++) {
       const bitmap = await createImageBitmap(await getPage(draft.id, index, "approved"));
-      ctx.drawImage(bitmap, 0, top);
-      top += bitmap.height;
+      const top = Math.round((sourceTop / height) * output.height);
+      sourceTop += bitmap.height;
+      const bottom = Math.round((sourceTop / height) * output.height);
+      ctx.drawImage(bitmap, 0, top, output.width, bottom - top);
       bitmap.close();
     }
     let blob;
@@ -1043,6 +1047,27 @@ async function combineApprovedPages(draft) {
       "This browser could not combine the page into one image. Turn off the combined image and send the ordered screenshots instead.",
     );
   }
+}
+async function repairCombinedPage(draft) {
+  const blob = await getPage(draft.id, 0, "combined");
+  if (!blob) throw Error("The combined image is missing. Retry from this browser.");
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(blob);
+    if (!combinedImageNeedsResize(bitmap.width, bitmap.height)) return blob;
+  } catch {
+    // A previous browser version may have stored an image it cannot decode.
+    // Rebuild from the still-approved numbered pages rather than losing them.
+  } finally {
+    bitmap?.close();
+  }
+  await combineApprovedPages(draft);
+  return getPage(draft.id, 0, "combined");
+}
+function submitProgress(draft, message) {
+  chrome.runtime
+    .sendMessage({ type: "submitProgress", id: draft.id, message })
+    .catch(() => {});
 }
 async function submit(message) {
   if (sending) throw Error("Submission is already in progress.");
@@ -1156,6 +1181,10 @@ async function submit(message) {
       draft.thread = result.thread;
     }
     if (draft.capturePages?.length && !draft.noImage) {
+      submitProgress(
+        draft,
+        `Uploading ${draft.capturePages.length} numbered screenshots…`,
+      );
       for (
         let index = draft.uploadIndex || 0;
         index < draft.capturePages.length;
@@ -1178,6 +1207,10 @@ async function submit(message) {
         }
         let result;
         try {
+          submitProgress(
+            draft,
+            `Uploading screenshot ${index + 1} of ${draft.capturePages.length}…`,
+          );
           result = await authenticated(
             "assets.upload",
             { ...draft.pageUploadAttempt, imageBase64: await pageDataUrl(blob) },
@@ -1197,7 +1230,10 @@ async function submit(message) {
             };
             await set({ draft });
           }
-          throw error;
+          throw Object.assign(
+            Error(`Screenshot ${index + 1} could not upload: ${error.message}`),
+            { code: error.code },
+          );
         }
         draft.thread = result.thread;
         draft.uploadIndex = index + 1;
@@ -1205,8 +1241,8 @@ async function submit(message) {
         await set({ draft });
       }
       if (draft.includeCombined && !draft.combinedUploaded) {
-        const blob = await getPage(draft.id, 0, "combined");
-        if (!blob) throw Error("The combined image is missing. Retry from this browser.");
+        submitProgress(draft, "Preparing the combined full-page image…");
+        const blob = await repairCombinedPage(draft);
         if (!draft.combinedUploadAttempt) {
           draft.combinedUploadAttempt = {
             threadId: draft.thread.id,
@@ -1219,6 +1255,7 @@ async function submit(message) {
         }
         let result;
         try {
+          submitProgress(draft, "Uploading the combined full-page image…");
           result = await authenticated(
             "assets.upload",
             { ...draft.combinedUploadAttempt, imageBase64: await pageDataUrl(blob) },
@@ -1238,7 +1275,10 @@ async function submit(message) {
             };
             await set({ draft });
           }
-          throw error;
+          throw Object.assign(
+            Error(`Combined image could not upload: ${error.message}`),
+            { code: error.code },
+          );
         }
         draft.thread = result.thread;
         draft.combinedUploaded = true;
