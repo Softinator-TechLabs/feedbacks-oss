@@ -122,6 +122,8 @@ const projectInput = z
     captureMode: captureMode.optional(),
     repositoryUrl: z.string().url().max(1000).optional(),
     reviewEnabled: z.boolean().optional(),
+    documentsEnabled: z.boolean().optional(),
+    surveysEnabled: z.boolean().optional(),
   })
   .superRefine((project, ctx) => {
     if ((project.captureMode ?? "origins") === "origins" && !project.origins.length)
@@ -642,6 +644,8 @@ const projectOutput = z.object({
   githubConnected: z.boolean().optional(),
   githubStatusSync: z.boolean().optional(),
   reviewEnabled: z.boolean().default(false),
+  documentsEnabled: z.boolean().default(false),
+  surveysEnabled: z.boolean().default(false),
   revision,
   permissions: z.object({
     role: z.enum(["maintainer", "reviewer", "viewer"]),

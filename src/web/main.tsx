@@ -250,9 +250,9 @@ function App() {
             <nav aria-label="Project navigation">
               {[
                 ["", "Feedback"],
-                ["github", "GitHub"],
-                ["documents", "Documents"],
-                ["surveys", "Surveys"],
+                ...(project.githubConnected ? [["github", "GitHub"]] : []),
+                ...(project.documentsEnabled ? [["documents", "Documents"]] : []),
+                ...(project.surveysEnabled ? [["surveys", "Surveys"]] : []),
                 ["members", "Members"],
                 ["instructions", "Instructions"],
                 ["settings", "Settings"],
@@ -316,14 +316,35 @@ function App() {
             ) : section === "github" ? (
               <ProjectGithub project={project} onSaved={() => setVersion((v) => v + 1)} />
             ) : section === "documents" ? (
-              <Documents project={project} />
+              project.documentsEnabled ? (
+                <Documents project={project} />
+              ) : (
+                <p>
+                  Document review is off for this project.{" "}
+                  <a href={`/projects/${project.id}/settings`}>Project settings</a>
+                </p>
+              )
             ) : section === "surveys" ? (
-              <Surveys project={project} />
+              project.surveysEnabled ? (
+                <Surveys project={project} />
+              ) : (
+                <p>
+                  Surveys are off for this project.{" "}
+                  <a href={`/projects/${project.id}/settings`}>Project settings</a>
+                </p>
+              )
             ) : section.startsWith("documents/") ? (
-              <DocumentViewer
-                project={project}
-                documentId={section.slice("documents/".length)}
-              />
+              project.documentsEnabled ? (
+                <DocumentViewer
+                  project={project}
+                  documentId={section.slice("documents/".length)}
+                />
+              ) : (
+                <p>
+                  Document review is off for this project.{" "}
+                  <a href={`/projects/${project.id}/settings`}>Project settings</a>
+                </p>
+              )
             ) : section === "" ? (
               <ThreadList project={project} actor={actor} />
             ) : (

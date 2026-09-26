@@ -89,6 +89,27 @@ textarea::placeholder {
   accent-color: var(--accent);
   flex-shrink: 0;
 }
+.project-optional-tools {
+  display: grid;
+  gap: 2px;
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--border);
+}
+.project-optional-tools > p {
+  margin: 4px 0 6px;
+}
+.project-advanced-settings {
+  margin: 24px 0;
+  border-top: 1px solid var(--border);
+}
+.project-advanced-settings > summary {
+  cursor: pointer;
+  padding: 18px 0;
+  font-weight: 650;
+}
+.project-advanced-settings > .section {
+  margin-top: 12px;
+}
 .filters {
   display: flex;
   align-items: flex-end;
