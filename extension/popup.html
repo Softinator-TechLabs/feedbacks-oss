@@ -36,6 +36,19 @@
       >.
     </p>
     <button id="pair" class="primary">Connect to server</button>
+    <section class="access-status" aria-label="Chrome access">
+      <h2>Chrome access</h2>
+      <p><span>Feedbacks server</span><strong id="server-access">Checking</strong></p>
+      <p>
+        <span>This tab · right-click &amp; capture</span
+        ><strong id="tab-access">Checking</strong>
+      </p>
+      <p>
+        <span>Right-click on every site</span><strong id="site-access">Checking</strong>
+      </p>
+      <button id="restore-server-access" hidden>Allow server access</button>
+      <small>Capture on this tab uses your click. All-site access is optional.</small>
+    </section>
     <div id="project-choice" hidden>
       <label for="project">Save to</label>
       <select id="project" aria-describedby="routing"></select>

@@ -73,6 +73,56 @@ button {
   background: #23734c;
   margin-right: 8px;
 }
+.access-status {
+  margin: 16px 0 18px;
+}
+.access-status h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.access-status p {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 3px 0;
+  font-size: 13px;
+}
+.access-status p span {
+  min-width: 0;
+}
+.access-status strong {
+  flex: none;
+  font-weight: 600;
+}
+.access-status strong::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 1px;
+}
+.access-status .is-ready {
+  color: var(--success);
+}
+.access-status .is-off {
+  color: var(--muted);
+}
+.access-status .is-blocked {
+  color: var(--error);
+}
+.access-status small {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.access-status button {
+  margin-top: 8px;
+}
 #project-choice {
   margin-top: 18px;
 }

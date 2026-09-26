@@ -278,6 +278,7 @@ export type Thread = {
     rendition: string;
     contentType: "image/webp" | "video/webm";
     durationMs?: number;
+    filename?: string;
   }>;
   view: {
     uniqueLikes: number;

@@ -975,7 +975,9 @@ export function ThreadDetail({
                       <a href={asset.url} target="_blank" rel="noopener noreferrer">
                         <img
                           src={asset.url}
-                          alt={`${asset.rendition} attached to feedback`}
+                          alt={
+                            asset.filename || `${asset.rendition} attached to feedback`
+                          }
                           width={asset.width}
                           height={asset.height}
                           loading={index === 0 ? "eager" : "lazy"}
@@ -985,7 +987,7 @@ export function ThreadDetail({
                     <figcaption>
                       {asset.contentType === "video/webm"
                         ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
-                        : `${asset.width} × ${asset.height} · Open full image`}
+                        : `${asset.filename ? `${asset.filename} · ` : ""}${asset.width} × ${asset.height} · Open full image`}
                     </figcaption>
                   </figure>
                 ))}

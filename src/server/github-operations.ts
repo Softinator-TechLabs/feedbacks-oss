@@ -594,7 +594,7 @@ export async function githubOperation(
       checkRevision(row, i.revision);
       const thread = await fullThread(tx, a, row);
       const assets = await tx.query(
-        "SELECT id,object_key,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',id LIMIT 40",
+        "SELECT id,object_key,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',data->>'filename',id",
         [row.id],
       );
       return { thread, repo, assets };
@@ -607,7 +607,12 @@ export async function githubOperation(
         privateRepository && store?.signedGetUrl
           ? await store.signedGetUrl(asset.object_key, 7 * 24 * 60 * 60)
           : null;
-      attachments.push({ id: asset.id, contentType: asset.data.contentType, directUrl });
+      attachments.push({
+        id: asset.id,
+        contentType: asset.data.contentType,
+        filename: asset.data.filename,
+        directUrl,
+      });
     }
     const draft = quickIssueDraft(prepared.thread, config.appOrigin, attachments);
     return githubOperation(

@@ -46,7 +46,12 @@ export function issueDraft(thread: any, repositoryUrl: string | null) {
 export function quickIssueDraft(
   thread: any,
   origin: string,
-  attachments: { id: string; contentType: string; directUrl: string | null }[],
+  attachments: {
+    id: string;
+    contentType: string;
+    filename?: string;
+    directUrl: string | null;
+  }[],
 ) {
   const safe = (value: string) =>
     value
@@ -65,6 +70,11 @@ export function quickIssueDraft(
   const excerpt = quote.length > 6000 ? `${quote.slice(0, 5999)}…` : quote;
   const source = `${origin}/threads/${thread.id}`;
   let body = `## Feedback\n\n${excerpt}\n\n## Source\n\n${source}`;
+  const capturePages = attachments.filter((item) =>
+    /^full-page-\d+-of-\d+\.webp$/.test(item.filename || ""),
+  );
+  if (capturePages.length > 1)
+    body += `\n\nFull-page capture: ${capturePages.length} numbered images. Review them one at a time in filename order on the Feedbacks thread.`;
   if (attachments.length) {
     body += "\n\n## Images and videos\n\n";
     for (const [index, attachment] of attachments.entries()) {
@@ -73,7 +83,10 @@ export function quickIssueDraft(
       const links = [`[Open in Feedbacks](${authenticated})`];
       if (attachment.directUrl)
         links.push(`[Direct Wasabi link, valid 7 days](${attachment.directUrl})`);
-      const line = `- ${kind} ${index + 1}: ${links.join(" · ")}\n`;
+      const name = attachment.filename
+        ? safe(attachment.filename)
+        : `${kind} ${index + 1}`;
+      const line = `- ${name}: ${links.join(" · ")}\n`;
       if (body.length + line.length + 90 > 8000) {
         body += "\nMore attachments are available on the Feedbacks thread.\n";
         break;

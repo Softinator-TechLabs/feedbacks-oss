@@ -481,6 +481,11 @@ export const inputSchemas = {
     ...tm,
     imageBase64: z.string().max(13982000),
     rendition: z.enum(["screenshot", "annotated", "thumbnail"]).default("annotated"),
+    filename: z
+      .string()
+      .max(120)
+      .regex(/^[a-z0-9][a-z0-9._-]*$/)
+      .optional(),
     idempotencyKey: z.string().min(8).max(200),
   }),
   "assets.uploadVideo": z.object({

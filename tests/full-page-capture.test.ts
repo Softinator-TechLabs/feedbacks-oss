@@ -11,11 +11,18 @@ const page = {
 };
 
 test("full-page plan covers top, intermediate and bottom without exceeding viewport", () => {
-  assert.deepEqual(fullPagePlan(page), {
-    positions: [0, 800, 1300],
-    width: 1200,
-    height: 2100,
-  });
+  const plan = fullPagePlan(page);
+  assert.deepEqual(plan.positions, [0, 800, 1300]);
+  assert.equal(plan.width, 1200);
+  assert.equal(plan.height, 2100);
+  assert.deepEqual(
+    plan.pages.map(({ name, startY, endY, cropY }) => ({ name, startY, endY, cropY })),
+    [
+      { name: "full-page-001-of-003.webp", startY: 0, endY: 800, cropY: 0 },
+      { name: "full-page-002-of-003.webp", startY: 800, endY: 1600, cropY: 0 },
+      { name: "full-page-003-of-003.webp", startY: 1600, endY: 2100, cropY: 300 },
+    ],
+  );
   assert.deepEqual(fullPagePlan({ ...page, documentHeight: 500 }).positions, [0]);
   assert.equal(
     fullPagePlan({ ...page, documentHeight: 500 }).height,
@@ -23,19 +30,13 @@ test("full-page plan covers top, intermediate and bottom without exceeding viewp
   );
 });
 
-test("full-page plan refuses unsafe dimensions and tile counts", () => {
+test("full-page plan accepts long pages without an arbitrary page count cap", () => {
+  assert.equal(fullPagePlan({ ...page, documentHeight: 15000 }).positions.length, 19);
+  assert.equal(fullPagePlan({ ...page, documentHeight: 200000 }).pages.length, 250);
+});
+
+test("full-page plan refuses unsupported dimensions", () => {
   assert.throws(() => fullPagePlan({ ...page, documentWidth: 1300 }), /sideways/);
-  assert.throws(() => fullPagePlan({ ...page, documentHeight: 9000 }), /too many/);
-  assert.throws(
-    () =>
-      fullPagePlan({
-        ...page,
-        viewportWidth: 4000,
-        documentWidth: 4000,
-        documentHeight: 6000,
-      }),
-    /too large/,
-  );
   assert.throws(() => fullPagePlan({ ...page, documentHeight: NaN }), /dimensions/);
 });
 

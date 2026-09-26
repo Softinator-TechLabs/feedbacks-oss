@@ -3,7 +3,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
-async function popup({ server = "https://saved.example.test", managed = false } = {}) {
+async function popup({
+  server = "https://saved.example.test",
+  managed = false,
+  connected = false,
+  serverAllowed = false,
+  allSitesAllowed = false,
+  instantReview = false,
+} = {}) {
   const html = await readFile(
     new URL("../extension/popup.html", import.meta.url),
     "utf8",
@@ -28,12 +35,20 @@ async function popup({ server = "https://saved.example.test", managed = false } 
     updateChecks = 0;
   const state = {
     server,
-    connected: false,
+    connected,
     pending: false,
-    instantReview: false,
+    instantReview,
   };
   const context = vm.createContext({
     URL,
+    Option: class {
+      name: string;
+      id: string;
+      constructor(name: string, id: string) {
+        this.name = name;
+        this.id = id;
+      }
+    },
     crypto,
     console,
     document: { getElementById: (id: string) => nodes[id] },
@@ -49,7 +64,8 @@ async function popup({ server = "https://saved.example.test", managed = false } 
     releaseLinks: () => ({}),
     chrome: {
       permissions: {
-        contains: async () => false,
+        contains: async (input: any) =>
+          input.origins?.[0] === "<all_urls>" ? allSitesAllowed : serverAllowed,
         request: async (input: any) => {
           requested.push(JSON.parse(JSON.stringify(input)));
           return allowed;
@@ -74,9 +90,17 @@ async function popup({ server = "https://saved.example.test", managed = false } 
             data:
               message.type === "settings"
                 ? state
-                : message.type === "popupAction" && message.action === "qa-scan"
-                  ? { noFindings: true, checkedLinks: 4 }
-                  : {},
+                : message.type === "activate"
+                  ? {
+                      origin: "https://review.example.test",
+                      project: { id: "project-1", name: "Review" },
+                      choices: [{ id: "project-1", name: "Review" }],
+                    }
+                  : message.type === "popupAction" && message.action === "qa-scan"
+                    ? { noFindings: true, checkedLinks: 4 }
+                    : message.type === "popupAction" && message.action === "state"
+                      ? { showPins: true, showResolved: false }
+                      : {},
           };
         },
       },
@@ -186,6 +210,27 @@ test("full-page capture remains a separate user action", async () => {
       (message) => message.type === "popupAction" && message.action === "capture-full",
     ),
   );
+});
+
+test("popup separates current-tab access from optional all-site and server grants", async () => {
+  const allowed = await popup({
+    connected: true,
+    serverAllowed: true,
+    allSitesAllowed: true,
+    instantReview: true,
+  });
+  assert.equal(allowed.nodes["server-access"].textContent, "Allowed");
+  assert.equal(allowed.nodes["tab-access"].textContent, "Ready");
+  assert.equal(allowed.nodes["site-access"].textContent, "On");
+  assert.equal(allowed.nodes["server-access"].className, "is-ready");
+  assert.equal(allowed.nodes["restore-server-access"].hidden, true);
+
+  const revoked = await popup({ connected: true });
+  assert.equal(revoked.nodes["server-access"].textContent, "Needs access");
+  assert.equal(revoked.nodes["site-access"].textContent, "Off");
+  assert.equal(revoked.nodes["restore-server-access"].hidden, false);
+  await revoked.nodes["restore-server-access"].onclick();
+  assert.deepEqual(revoked.requested, [{ origins: ["https://saved.example.test/*"] }]);
 });
 
 test("QA scan keeps an empty result in the popup without creating feedback", async () => {

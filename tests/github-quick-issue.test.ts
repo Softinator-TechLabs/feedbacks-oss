@@ -19,6 +19,18 @@ test("one-click Issue keeps source and media links when feedback is long", () =>
         contentType: "video/webm",
         directUrl: "https://s3.example.test/video",
       },
+      {
+        id: randomUUID(),
+        contentType: "image/webp",
+        filename: "full-page-001-of-002.webp",
+        directUrl: null,
+      },
+      {
+        id: randomUUID(),
+        contentType: "image/webp",
+        filename: "full-page-002-of-002.webp",
+        directUrl: null,
+      },
     ],
   );
   assert.ok(draft.body.length <= 8000);
@@ -27,6 +39,8 @@ test("one-click Issue keeps source and media links when feedback is long", () =>
     new RegExp(`https://feedbacks\\.example\\.test/threads/${id}`),
   );
   assert.match(draft.body, /https:\/\/s3\.example\.test\/video/);
+  assert.match(draft.body, /Full-page capture: 2 numbered images/);
+  assert.match(draft.body, /full-page-002-of-002\.webp/);
 });
 
 for (const privateRepository of [true, false]) {

@@ -9,6 +9,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 The initial harness decision is recorded in [Decision 0001](../decisions/0001-repository-harness.md); current public capability gaps are tracked in [quality](../quality.md).
 
 - [Optional full-page website capture](optional-full-page-capture.md)
+- [Ordered full-page screenshots](ordered-full-page-capture.md)
 - [Local diagnostic message masking](diagnostic-message-redaction.md)
 - [Optional page QA scan](optional-page-qa.md)
 - [Scheduled project QA and visual baselines](scheduled-project-qa.md)

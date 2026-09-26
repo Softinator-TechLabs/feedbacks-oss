@@ -396,7 +396,8 @@ export function ScreenshotComparison({
             >
               {assets.map((asset, index) => (
                 <option key={asset.id} value={asset.id}>
-                  Image {index + 1} · {asset.rendition} · {asset.width} × {asset.height}
+                  {asset.filename || `Image ${index + 1}`} · {asset.rendition} ·{" "}
+                  {asset.width} × {asset.height}
                 </option>
               ))}
             </select>

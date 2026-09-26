@@ -3,6 +3,13 @@ import "./utils.js";
 import { createReviewController } from "./review-session.js";
 import { createPairingCoordinator } from "./pairing.js";
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
+import {
+  putPage,
+  getPage,
+  deletePage,
+  deleteDraftPages,
+  pageDataUrl,
+} from "./page-store.js";
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 import { formatPageQa } from "./page-qa.js";
 import {
@@ -347,7 +354,10 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
     }
     if (
       state.draft &&
-      (state.draft.id !== retryId || state.draft.frozen || state.draft.image)
+      (state.draft.id !== retryId ||
+        state.draft.frozen ||
+        state.draft.image ||
+        state.draft.capturePages?.length)
     )
       return await openDraft();
     const tab = await chrome.tabs.get(sender.tab.id);
@@ -391,6 +401,8 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
           ),
       image: null,
       approvedImage: null,
+      capturePages: [],
+      pageToolStates: [],
       body: state.draft?.body || body,
       toolState: [],
       imageRevision: (state.draft?.imageRevision || 0) + 1,
@@ -398,6 +410,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       createdAt: state.draft?.createdAt || Date.now(),
       captureError:
         "Capture did not complete. Retry capture or continue without an image.",
+      captureNotice: null,
       pointCapture: Boolean(pointToken),
       pointToken,
       captureScope: scope,
@@ -415,9 +428,11 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
     let canvas,
       sx,
       sy,
-      expectedSignature = before.signature;
+      expectedSignature = before.signature,
+      plan,
+      metrics;
     if (scope === "fullPage") {
-      const metrics = await chrome.tabs.sendMessage(tab.id, {
+      metrics = await chrome.tabs.sendMessage(tab.id, {
         type: "fullPageMetrics",
       });
       if (metrics.error || metrics.url !== before.context.url)
@@ -427,9 +442,12 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
         metrics.viewportHeight !== before.context.viewport.height
       )
         throw Error("The page size changed before capture. Retry the visible area.");
-      const plan = fullPagePlan(metrics);
-      let ctx, tileWidth, tileHeight;
-      for (const y of plan.positions) {
+      plan = fullPagePlan(metrics);
+    }
+    if (scope === "fullPage") {
+      let tileWidth, tileHeight;
+      for (const page of plan.pages) {
+        const y = page.scrollY;
         guard.assert();
         const step = await chrome.tabs.sendMessage(tab.id, {
           type: "fullPageScroll",
@@ -456,24 +474,47 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
           throw Error("The page moved during full-page capture. Retry the visible area.");
         const bitmap = await createImageBitmap(await (await fetch(pixels)).blob());
         try {
-          if (!canvas) {
+          if (!tileWidth) {
             tileWidth = bitmap.width;
             tileHeight = bitmap.height;
-            sx = tileWidth / metrics.viewportWidth;
-            sy = tileHeight / metrics.viewportHeight;
-            const stitchedHeight = Math.round(plan.height * sy);
-            if (Math.abs(sx - sy) > 0.03 || stitchedHeight * tileWidth > 20_000_000)
+            const sourceX = tileWidth / metrics.viewportWidth;
+            const sourceY = tileHeight / metrics.viewportHeight;
+            if (Math.abs(sourceX - sourceY) > 0.03)
               throw Error(
-                "This page is too large for full-page capture. Use the visible area.",
+                "The browser scale changed during capture. Retry the visible area.",
               );
-            canvas = new OffscreenCanvas(tileWidth, stitchedHeight);
-            ctx = canvas.getContext("2d");
+            sx = sourceX;
+            sy = sourceY;
           }
           if (bitmap.width !== tileWidth || bitmap.height !== tileHeight)
             throw Error(
               "The browser size changed during capture. Retry the visible area.",
             );
-          ctx.drawImage(bitmap, 0, Math.round(step.y * sy));
+          const cropTop = Math.round(page.cropY * sy);
+          const cropHeight = Math.max(1, Math.round((page.endY - page.startY) * sy));
+          const tile = new OffscreenCanvas(bitmap.width, cropHeight);
+          tile
+            .getContext("2d")
+            .drawImage(
+              bitmap,
+              0,
+              cropTop,
+              bitmap.width,
+              cropHeight,
+              0,
+              0,
+              bitmap.width,
+              cropHeight,
+            );
+          let blob = await tile.convertToBlob({ type: "image/webp", quality: 0.9 });
+          if (blob.size > 10 * 1024 * 1024)
+            blob = await tile.convertToBlob({ type: "image/webp", quality: 0.75 });
+          if (blob.size > 10 * 1024 * 1024)
+            throw Error(
+              `Screenshot ${page.index + 1} exceeds the server's per-image size. Narrow the browser window and retry.`,
+            );
+          await putPage(pending.id, page.index, "source", blob);
+          pending.capturePages.push(page);
         } finally {
           bitmap.close();
         }
@@ -486,7 +527,41 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       if (restored.error || restored.signature !== before.signature)
         throw Error("The page changed during full-page capture. Retry the visible area.");
       expectedSignature = restored.signature;
-    } else {
+      const still = await chrome.tabs.sendMessage(tab.id, {
+        type: "captureCheck",
+        pointToken,
+      });
+      if (still.signature !== expectedSignature || still.captureEpoch !== 0)
+        throw Error("The page moved during capture. Retry the visible area.");
+      guard.assert();
+      const draft = {
+        ...pending,
+        context: {
+          ...before.context,
+          captureDimensions: {
+            width: Math.round(metrics.viewportWidth * sx),
+            height: Math.round(metrics.viewportHeight * sy),
+          },
+        },
+        noImage: false,
+        captureError: null,
+        captureNotice: `${plan.pages.length} ordered ${plan.pages.length === 1 ? "screenshot" : "screenshots"}. Review each page before sending.`,
+      };
+      await set({ draft });
+      const persisted = await chrome.tabs.sendMessage(tab.id, {
+        type: "captureCheck",
+        pointToken,
+      });
+      if (persisted.signature !== expectedSignature || persisted.captureEpoch !== 0)
+        throw Error("The page moved during capture. Retry the visible area.");
+      guard.assert();
+      guard.dispose();
+      if (!retryId)
+        await chrome.tabs.create({ url: chrome.runtime.getURL("editor.html") });
+      captured = true;
+      return { captured: true, pages: plan.pages.length };
+    }
+    {
       const pixels = await chrome.tabs.captureVisibleTab(tab.windowId, {
         format: "png",
       });
@@ -518,9 +593,13 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       width: canvas.width,
       height: canvas.height,
     };
-    const bytes = new Uint8Array(
-      await (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer(),
-    );
+    let bytes;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      bytes = new Uint8Array(
+        await (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer(),
+      );
+      if (bytes.length <= 5 * 1024 * 1024) break;
+    }
     if (bytes.length > 5 * 1024 * 1024)
       throw Error(
         "This capture is too large for a safe local draft. Reduce the browser window size and capture again.",
@@ -574,6 +653,8 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
     return { captured: true };
   } catch (error) {
     if (pending) {
+      await deleteDraftPages(pending.id).catch(() => {});
+      pending.capturePages = [];
       const { draft } = await get();
       if (draft?.id === pending.id) {
         await set({
@@ -646,21 +727,76 @@ async function saveDraft(message) {
         : [],
     },
     includeDiagnostics: message.includeDiagnostics === true && !!draft.diagnostics,
-    noImage: !draft.image || !!message.noImage,
+    noImage: !(draft.image || draft.capturePages?.length) || !!message.noImage,
     toolState: message.toolState,
     projectId: message.projectId,
   };
+  if (draft.capturePages?.length) {
+    const pageIndex = message.pageIndex;
+    if (
+      !Number.isInteger(pageIndex) ||
+      pageIndex < 0 ||
+      pageIndex >= draft.capturePages.length
+    )
+      throw Error("Select a valid screenshot page.");
+    const pageToolStates = [...(draft.pageToolStates || [])];
+    pageToolStates[pageIndex] = message.toolState;
+    allowed.pageToolStates = pageToolStates;
+    allowed.approvedPageIndices = [];
+  }
   await set({ draft: { ...draft, ...allowed } });
   return { saved: true };
 }
+async function capturePage(message) {
+  const { draft } = await get();
+  if (!draft || draft.id !== message.id) throw Error("No pending draft.");
+  const index = message.index;
+  if (!Number.isInteger(index) || index < 0 || index >= (draft.capturePages?.length || 0))
+    throw Error("Select a valid screenshot page.");
+  const blob = await getPage(
+    draft.id,
+    index,
+    draft.frozen && !draft.noImage ? "approved" : "source",
+  );
+  return { image: await pageDataUrl(blob), page: draft.capturePages[index] };
+}
+async function approveCapturePage(message) {
+  const { draft } = await get();
+  if (!draft || draft.id !== message.id || draft.frozen)
+    throw Error("This draft cannot be approved.");
+  requireImageRevision(draft, message.imageRevision);
+  const index = message.index;
+  if (!Number.isInteger(index) || index < 0 || index >= (draft.capturePages?.length || 0))
+    throw Error("Select a valid screenshot page.");
+  if (!(await getPage(draft.id, index))) throw Error("The source screenshot is missing.");
+  if (!/^data:image\/(?:png|jpeg|webp);base64,/.test(message.image || ""))
+    throw Error("Approve an image from the editor first.");
+  const blob = await (await fetch(message.image)).blob();
+  if (!blob.size || blob.size > 10 * 1024 * 1024)
+    throw Error(`Screenshot ${index + 1} exceeds the server's per-image size.`);
+  await putPage(draft.id, index, "approved", blob);
+  const approvedPageIndices = [...new Set([...(draft.approvedPageIndices || []), index])];
+  await set({ draft: { ...draft, approvedPageIndices } });
+  return { approved: true };
+}
 async function redactDraft(message) {
   const { draft } = await get();
-  if (!draft || draft.id !== message.id || draft.frozen || !draft.image)
+  const series = !!draft?.capturePages?.length;
+  if (!draft || draft.id !== message.id || draft.frozen || (!draft.image && !series))
     throw Error("This draft cannot be redacted. Reload it before continuing.");
+  const index = message.pageIndex;
+  if (
+    series &&
+    (!Number.isInteger(index) || index < 0 || index >= draft.capturePages.length)
+  )
+    throw Error("Select a valid screenshot page.");
   const rectangles = message.rectangles;
   if (!Array.isArray(rectangles) || !rectangles.length || rectangles.length > 1000)
     throw Error("Choose a valid redaction area.");
-  const bitmap = await createImageBitmap(await (await fetch(draft.image)).blob());
+  const source = series
+    ? await getPage(draft.id, index)
+    : await (await fetch(draft.image)).blob();
+  const bitmap = await createImageBitmap(source);
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height),
     ctx = canvas.getContext("2d");
   let applied = false;
@@ -679,11 +815,29 @@ async function redactDraft(message) {
       );
       applied = true;
     }
-    const bytes = new Uint8Array(
-      await (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer(),
-    );
-    if (bytes.length > 5 * 1024 * 1024)
-      throw Error("The redacted draft exceeds local storage limits.");
+    const blob = await canvas.convertToBlob({
+      type: series ? "image/webp" : "image/png",
+      quality: 0.9,
+    });
+    if (blob.size > (series ? 10 : 5) * 1024 * 1024)
+      throw Error("The redacted screenshot exceeds the per-image size limit.");
+    if (series) {
+      await putPage(draft.id, index, "source", blob);
+      await deletePage(draft.id, index, "approved");
+      const updated = {
+        ...draft,
+        imageRevision: (draft.imageRevision || 0) + 1,
+        approvedPageIndices: [],
+        pageToolStates: (draft.pageToolStates || []).map((shapes, page) =>
+          page === index
+            ? (shapes || []).filter((shape) => shape.tool !== "redact")
+            : shapes,
+        ),
+      };
+      await set({ draft: updated });
+      return updated;
+    }
+    const bytes = new Uint8Array(await blob.arrayBuffer());
     let binary = "";
     for (let i = 0; i < bytes.length; i += 8192)
       binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
@@ -699,6 +853,7 @@ async function redactDraft(message) {
     if (!applied) throw error;
     try {
       await chrome.storage.local.remove("draft");
+      if (series) await deleteDraftPages(draft.id);
     } catch {
       throw Error(
         "Redaction could not be saved or discarded. Original pixels may remain in the local draft; remove the draft before continuing.",
@@ -727,9 +882,20 @@ async function submit(message) {
     if (!draft.frozen) {
       requireImageRevision(draft, message.imageRevision);
       if (!draft.body.trim()) throw Error("Write a comment before sending.");
-      if (!draft.noImage && !message.image?.startsWith("data:image/png;base64,"))
+      const series = !!draft.capturePages?.length;
+      if (
+        !draft.noImage &&
+        series &&
+        draft.capturePages.some((_, index) => !draft.approvedPageIndices?.includes(index))
+      )
+        throw Error("Review and approve every screenshot page before sending.");
+      if (
+        !draft.noImage &&
+        !series &&
+        !message.image?.startsWith("data:image/png;base64,")
+      )
         throw Error("Approve the annotated screenshot first.");
-      if (!draft.noImage && message.image.length > 7 * 1024 * 1024)
+      if (!draft.noImage && !series && message.image.length > 7 * 1024 * 1024)
         throw Error(
           "The annotated image is too large. Use Send without screenshot, or discard and capture a smaller window.",
         );
@@ -816,7 +982,58 @@ async function submit(message) {
       }
       draft.thread = result.thread;
     }
+    if (draft.capturePages?.length && !draft.noImage) {
+      for (
+        let index = draft.uploadIndex || 0;
+        index < draft.capturePages.length;
+        index++
+      ) {
+        const blob = await getPage(draft.id, index, "approved");
+        if (!blob)
+          throw Error(
+            `Approved screenshot ${index + 1} is missing. Retry from this browser.`,
+          );
+        if (!draft.pageUploadAttempt) {
+          draft.pageUploadAttempt = {
+            threadId: draft.thread.id,
+            revision: draft.thread.revision,
+            rendition: "annotated",
+            filename: draft.capturePages[index].name,
+            idempotencyKey: `${draft.id}-page-${index + 1}`,
+          };
+          await set({ draft });
+        }
+        let result;
+        try {
+          result = await authenticated(
+            "assets.upload",
+            { ...draft.pageUploadAttempt, imageBase64: await pageDataUrl(blob) },
+            draft.server,
+          );
+        } catch (error) {
+          if (error.code === "CONFLICT") {
+            draft.thread = await authenticated(
+              "threads.get",
+              { threadId: draft.thread.id },
+              draft.server,
+            );
+            draft.pageUploadAttempt = {
+              ...draft.pageUploadAttempt,
+              revision: draft.thread.revision,
+              idempotencyKey: crypto.randomUUID(),
+            };
+            await set({ draft });
+          }
+          throw error;
+        }
+        draft.thread = result.thread;
+        draft.uploadIndex = index + 1;
+        draft.pageUploadAttempt = null;
+        await set({ draft });
+      }
+    }
     const url = `${draft.server}/threads/${draft.thread.id}`;
+    if (draft.capturePages?.length) await deleteDraftPages(draft.id);
     await chrome.storage.local.remove("draft");
     chrome.tabs
       .sendMessage(draft.sourceTabId, {
@@ -1116,10 +1333,20 @@ async function route(message, sender) {
       return writeDraft(async () => (await get()).draft || null);
     case "saveDraft":
       return writeDraft(() => saveDraft(message));
+    case "capturePage":
+      return capturePage(message);
+    case "approveCapturePage":
+      return writeDraft(() => approveCapturePage(message));
     case "retryCapture":
       return writeDraft(async () => {
         const { draft } = await get();
-        if (!draft || draft.id !== message.id || draft.frozen || draft.image)
+        if (
+          !draft ||
+          draft.id !== message.id ||
+          draft.frozen ||
+          draft.image ||
+          draft.capturePages?.length
+        )
           throw Error("Only a context-only draft can retry capture.");
         const tab = await chrome.tabs.get(draft.sourceTabId);
         if (U.safeUrl(tab.url) !== draft.context.url)
@@ -1143,6 +1370,7 @@ async function route(message, sender) {
       if (sending) throw Error("Wait for submission to finish.");
       return writeDraft(async () => {
         const { draft } = await get();
+        if (draft?.capturePages?.length) await deleteDraftPages(draft.id);
         await chrome.storage.local.remove("draft");
         if (draft?.pointToken)
           await chrome.tabs

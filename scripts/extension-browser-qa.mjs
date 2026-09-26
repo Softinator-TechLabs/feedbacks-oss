@@ -97,7 +97,14 @@ try {
     const url = new URL(route.request().url());
     if (url.pathname === "/missing")
       return route.fulfill({ status: 404, body: "Missing" });
-    const height = mode === "short" ? 260 : 2100;
+    const height =
+      mode === "short"
+        ? 260
+        : mode === "tall"
+          ? 22000
+          : mode === "tooLong"
+            ? 35000
+            : 2100;
     const change =
       mode === "changing"
         ? '<script>let size=2100; setInterval(()=>{ size=size===2100?2300:2100; document.querySelector("main").style.height=size+"px" },75)</script>'
@@ -132,6 +139,10 @@ try {
   const results = {};
 
   await toFixture();
+  await mkdir(join(root, ".local/remaining-todos-qa"), { recursive: true });
+  await control.screenshot({
+    path: join(root, ".local/remaining-todos-qa/access-status.png"),
+  });
   const id = await tabId();
   results.qa = await send({ type: "popupAction", tabId: id, action: "qa-scan" });
   const qaDraft = await draft();
@@ -142,8 +153,10 @@ try {
   };
   await send({ type: "discard" });
 
-  for (const scope of ["short", "long"]) {
+  for (const scope of ["short", "long", "tall", "tooLong"]) {
     mode = scope;
+    if (["tall", "tooLong"].includes(scope))
+      await page.setViewportSize({ width: 1200, height: 800 });
     await toFixture();
     await page.evaluate(() => scrollTo(0, 120));
     const before = await page.evaluate(() => scrollY);
@@ -153,18 +166,122 @@ try {
       captured: result?.captured,
       scope: captured?.captureScope,
       hasImage: Boolean(captured?.image),
+      pageCount: captured?.capturePages?.length || 0,
+      firstName: captured?.capturePages?.[0]?.name,
+      lastName: captured?.capturePages?.at(-1)?.name,
+      notice: captured?.captureNotice,
       scrollRestored: Math.abs((await page.evaluate(() => scrollY)) - before) < 2,
     };
-    if (scope === "long" && captured?.image) {
-      const pixels = Buffer.from(captured.image.split(",")[1], "base64");
+    if (["long", "tall", "tooLong"].includes(scope) && captured?.capturePages?.length) {
+      const first = await send({ type: "capturePage", id: captured.id, index: 0 });
+      const last = await send({
+        type: "capturePage",
+        id: captured.id,
+        index: captured.capturePages.length - 1,
+      });
+      const pixels = Buffer.from(first.image.split(",")[1], "base64");
       const size = await sharp(pixels).metadata();
-      results.long.imageHeight = size.height;
+      results[scope].firstHeight = size.height;
+      results[scope].lastHeight = (
+        await sharp(Buffer.from(last.image.split(",")[1], "base64")).metadata()
+      ).height;
       await mkdir(join(root, ".local/remaining-todos-qa"), { recursive: true });
-      await writeFile(join(root, ".local/remaining-todos-qa/full-page-long.png"), pixels);
+      if (scope === "long")
+        await writeFile(
+          join(root, ".local/remaining-todos-qa/full-page-first.webp"),
+          pixels,
+        );
     }
     await send({ type: "discard" });
   }
 
+  mode = "long";
+  await page.setViewportSize({ width: 900, height: 650 });
+  await toFixture();
+  await send({ type: "popupAction", tabId: id, action: "capture-full" });
+  const seriesDraft = await draft();
+  const seriesEditor = await context.newPage();
+  await seriesEditor.goto(`chrome-extension://${extensionId}/editor.html`);
+  await seriesEditor.locator("#page-select option").last().waitFor({ state: "attached" });
+  await seriesEditor.screenshot({
+    path: join(root, ".local/remaining-todos-qa/ordered-editor.png"),
+  });
+  results.seriesReview = {
+    pageOptions: await seriesEditor.locator("#page-select option").count(),
+    firstLabel: await seriesEditor.locator("#page-select option").first().textContent(),
+  };
+  await seriesEditor.locator("#page-next").click();
+  await seriesEditor.waitForFunction(
+    () => document.querySelector("#page-select")?.value === "1",
+  );
+  results.seriesReview.secondSelected = await seriesEditor
+    .locator("#page-select")
+    .inputValue();
+  const beforeRedaction = await send({
+    type: "capturePage",
+    id: seriesDraft.id,
+    index: 1,
+  });
+  await seriesEditor.locator('[data-tool="redact"]').click();
+  const area = await seriesEditor.locator("#canvas").boundingBox();
+  if (!area) throw Error("The ordered screenshot is not visible in the editor");
+  await seriesEditor.mouse.move(area.x + 24, area.y + 24);
+  await seriesEditor.mouse.down();
+  await seriesEditor.mouse.move(area.x + 90, area.y + 65, { steps: 4 });
+  await seriesEditor.mouse.up();
+  await seriesEditor
+    .getByText("Redaction permanently saved.", { exact: false })
+    .waitFor();
+  const afterRedaction = await send({
+    type: "capturePage",
+    id: seriesDraft.id,
+    index: 1,
+  });
+  results.seriesReview.redactionPersisted =
+    beforeRedaction.image !== afterRedaction.image &&
+    (await draft()).imageRevision > seriesDraft.imageRevision;
+  await worker.evaluate(() => {
+    const original = globalThis.fetch;
+    let interrupt = true;
+    globalThis.fetch = async (...args) => {
+      if (
+        interrupt &&
+        String(args[0]).endsWith("/api/assets.upload") &&
+        JSON.parse(args[1]?.body || "{}").filename === "full-page-002-of-004.webp"
+      ) {
+        interrupt = false;
+        throw Error("Synthetic upload interruption");
+      }
+      return original(...args);
+    };
+  });
+  await seriesEditor.locator("#body").fill("Synthetic ordered capture acceptance.");
+  await seriesEditor.locator("#send").click();
+  await seriesEditor.getByRole("button", { name: "Retry Send" }).waitFor();
+  const interrupted = await draft();
+  results.seriesReview.resumeIndex = interrupted?.uploadIndex;
+  results.seriesReview.frozenAfterInterruption = interrupted?.frozen;
+  await seriesEditor.locator("#send").click();
+  await seriesEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
+  const seriesThreadUrl = await seriesEditor.locator("#thread").getAttribute("href");
+  const seriesThreadId = seriesThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
+  if (!seriesThreadId) throw Error("Ordered screenshot submission lacks a thread link");
+  const seriesThread = (await post("threads.get", { threadId: seriesThreadId }, auth))
+    .data;
+  results.seriesReview.assetNames = seriesThread.assets.map((asset) => asset.filename);
+  results.seriesReview.draftCleared = !(await draft());
+  assert.equal(results.seriesReview.pageOptions, seriesDraft.capturePages.length);
+  assert.equal(results.seriesReview.secondSelected, "1");
+  assert.equal(results.seriesReview.redactionPersisted, true);
+  assert.equal(results.seriesReview.resumeIndex, 1);
+  assert.equal(results.seriesReview.frozenAfterInterruption, true);
+  assert.deepEqual(
+    results.seriesReview.assetNames,
+    seriesDraft.capturePages.map((item) => item.name),
+  );
+  assert.equal(results.seriesReview.draftCleared, true);
+
+  await page.setViewportSize({ width: 900, height: 650 });
   mode = "changing";
   await toFixture();
   const beforeChanging = await page.evaluate(() => scrollY);
@@ -233,10 +350,23 @@ try {
   for (const scope of ["short", "long"]) {
     assert.equal(results[scope].captured, true);
     assert.equal(results[scope].scope, "fullPage");
-    assert.equal(results[scope].hasImage, true);
+    assert.equal(results[scope].hasImage, false);
+    assert.ok(results[scope].pageCount >= 1);
     assert.equal(results[scope].scrollRestored, true);
   }
-  assert.ok(results.long.imageHeight > 650);
+  assert.ok(results.long.pageCount > 1);
+  assert.equal(results.tall.captured, true);
+  assert.equal(results.tall.scope, "fullPage");
+  assert.equal(results.tall.hasImage, false);
+  assert.ok(results.tall.pageCount > 8);
+  assert.ok(results.tall.firstHeight <= 800);
+  assert.match(results.tall.notice, /ordered screenshots/);
+  assert.equal(results.tall.scrollRestored, true);
+  assert.equal(results.tooLong.captured, true);
+  assert.equal(results.tooLong.scope, "fullPage");
+  assert.equal(results.tooLong.hasImage, false);
+  assert.ok(results.tooLong.pageCount > results.tall.pageCount);
+  assert.equal(results.tooLong.scrollRestored, true);
   assert.equal(results.changing.captured, false);
   assert.equal(results.changing.hasImage, false);
   assert.equal(results.changing.scrollRestored, true);
