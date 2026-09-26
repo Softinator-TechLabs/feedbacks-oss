@@ -3,6 +3,7 @@
 !.env.example
 .local/
 node_modules/
+.gradle/
 dist/
 build/
 coverage/

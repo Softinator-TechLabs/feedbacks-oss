@@ -1,10 +1,10 @@
 plugins {
-    id("com.android.library")
+    id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
 android {
-    namespace = "org.feedbacks.mobile"
+    namespace = "org.feedbacks.mobile.smoke"
     compileSdk = 35
 
     compileOptions {
@@ -17,6 +17,12 @@ android {
     }
 
     defaultConfig {
+        applicationId = "org.feedbacks.mobile.smoke"
         minSdk = 26
+        targetSdk = 35
     }
+}
+
+dependencies {
+    implementation(project(":feedbacks-android"))
 }
