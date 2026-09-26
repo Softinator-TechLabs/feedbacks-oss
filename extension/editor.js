@@ -61,6 +61,10 @@ function status(message, kind = "info") {
   $("status").dataset.kind = kind;
   if (!$("completion").hidden) $("completion-error").textContent = message;
 }
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "submitProgress" && message.id === draft?.id)
+    status(message.message);
+});
 function drawShape(s) {
   ctx.strokeStyle = "#b92332";
   ctx.fillStyle = s.tool === "redact" ? "#202c37" : "#b92332";
@@ -223,15 +227,6 @@ function renderThumbnails(fresh) {
     open.append(image, label, range);
     open.onclick = () => changePage(index);
     card.append(open);
-    if (!fresh.frozen) {
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "remove-page";
-      remove.textContent = "Remove";
-      remove.setAttribute("aria-label", `Remove screenshot ${index + 1}: ${page.name}`);
-      remove.onclick = () => removePage(index);
-      card.append(remove);
-    }
     list.append(card);
     thumbnailObserver.observe(card);
   }
@@ -269,6 +264,8 @@ async function loadBase(fresh) {
   draft = fresh;
   const pages = fresh?.capturePages || [];
   if (pageIndex >= pages.length) pageIndex = 0;
+  $("image-review").classList.toggle("has-pages", pages.length > 1);
+  $("series-guide").hidden = pages.length < 2;
   renderThumbnails(fresh);
   $("combine-option").hidden = pages.length < 2;
   $("include-combined").checked = !!fresh?.includeCombined && pages.length > 1;
@@ -282,12 +279,13 @@ async function loadBase(fresh) {
   $("page-select").value = String(pageIndex);
   $("page-prev").disabled = pageIndex === 0;
   $("page-next").disabled = pageIndex >= pages.length - 1;
+  $("remove-current").hidden = !!fresh?.frozen;
   const scopeCopy =
     fresh?.captureScope === "fullPage"
       ? `${pages.length} ${pages.length === 1 ? "screenshot" : "screenshots"} in page order. Review and redact each image before sending. Sticky elements may repeat.`
       : "The screenshot covers the visible browser area. Review it before sending.";
   $("capture-scope").textContent = fresh?.captureNotice
-    ? `${fresh.captureNotice} ${scopeCopy}`
+    ? `${fresh.captureNotice} Sticky elements may repeat.`
     : scopeCopy;
   $("retry-capture").textContent =
     fresh?.captureScope === "fullPage"
@@ -473,6 +471,7 @@ async function changePage(index) {
 }
 $("page-prev").onclick = () => changePage(pageIndex - 1);
 $("page-next").onclick = () => changePage(pageIndex + 1);
+$("remove-current").onclick = () => removePage(pageIndex);
 $("page-select").onchange = () => changePage(Number($("page-select").value));
 for (const id of [
   "body",
@@ -497,7 +496,7 @@ $("discard").onclick = async () => {
 };
 function lock(value) {
   for (const el of document.querySelectorAll(
-    "input,select,textarea,[data-tool],[data-diagnostic-mask],#undo,#reset,.remove-page",
+    "input,select,textarea,[data-tool],[data-diagnostic-mask],#undo,#reset,#remove-current",
   ))
     el.disabled = value;
   $("no-image").disabled = value || !base;
@@ -707,7 +706,9 @@ async function init() {
   if (draft.frozen) {
     $("send").textContent = "Retry Send";
     status(
-      "Pending submission. Retry uses the same approved content and idempotency keys.",
+      draft.capturePages?.length && draft.uploadIndex === draft.capturePages.length
+        ? `${draft.uploadIndex} numbered screenshots uploaded. Retry will finish the combined image and keep the same feedback thread.`
+        : "Pending submission. Retry continues from the first unsent screenshot.",
     );
   } else if (draft.captureError) {
     status(
