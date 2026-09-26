@@ -148,8 +148,25 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
           });
           await page.goto(`${access.url}${href}`, { waitUntil: "load" });
           await page.getByRole("heading", { name: /Feedback/ }).waitFor();
+          await page.locator("#thread-github").waitFor();
           await page.evaluate(() => scrollTo(0, 0));
           images[`thread-${device}-${theme}`] = await page.screenshot({
+            type: "png",
+            animations: "disabled",
+          });
+          await page.goto(`${access.url}/projects/${access.projectId}/github`, {
+            waitUntil: "load",
+          });
+          await page.getByRole("heading", { name: "GitHub", exact: true }).waitFor();
+          await page.evaluate(() => scrollTo(0, 0));
+          images[`github-${device}-${theme}`] = await page.screenshot({
+            type: "png",
+            animations: "disabled",
+          });
+          await page.goto(`${access.url}/help`, { waitUntil: "load" });
+          await page.getByRole("heading", { name: "Find your guide" }).waitFor();
+          await page.evaluate(() => scrollTo(0, 0));
+          images[`help-${device}-${theme}`] = await page.screenshot({
             type: "png",
             animations: "disabled",
           });

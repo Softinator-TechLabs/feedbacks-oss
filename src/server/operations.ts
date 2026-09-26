@@ -64,7 +64,15 @@ export class Operations {
     if (name === "qa.compare")
       return compareQaImages(this.db, actor, this.store, parsed.data as any);
     if (name.startsWith("github."))
-      return githubOperation(this.db, actor, name, parsed.data, this.config, this.github);
+      return githubOperation(
+        this.db,
+        actor,
+        name,
+        parsed.data,
+        this.config,
+        this.github,
+        this.store,
+      );
     if (name === "context.export" && !(parsed.data as any).snapshotId)
       await reserveExportRequest(this.db, actor, (parsed.data as any).projectId);
     let preview: { objectKey: string; maxDimension: number } | undefined;

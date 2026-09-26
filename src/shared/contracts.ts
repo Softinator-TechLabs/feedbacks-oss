@@ -246,6 +246,11 @@ export const inputSchemas = {
     body: z.string().trim().min(1).max(8000),
     idempotencyKey: z.string().min(8).max(200),
   }),
+  "github.issueCreateQuick": z.object({
+    threadId: id,
+    revision,
+    idempotencyKey: z.string().min(8).max(200),
+  }),
   "github.issueReconcile": z.object({
     threadId: id,
     revision,
@@ -763,6 +768,13 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     statusSyncEnabled: z.boolean(),
     repositoryUrl: z.string().nullable(),
     installUrl: z.string().nullable(),
+    installation: z.enum([
+      "not_configured",
+      "no_repository",
+      "installed",
+      "not_installed",
+      "unavailable",
+    ]),
   }),
   "github.issueState": z.object({
     status: z.enum(["none", "pending", "linked"]),
@@ -782,6 +794,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     errorCode: z.string().nullable(),
   }),
   "github.issueCreate": threadOutput,
+  "github.issueCreateQuick": threadOutput,
   "github.issueReconcile": threadOutput,
   "github.issueAbandon": z.object({ abandoned: z.boolean() }),
   "github.issueRefresh": threadOutput,

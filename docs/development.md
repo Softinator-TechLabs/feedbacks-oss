@@ -2,17 +2,18 @@
 
 Follow the README for local setup. The development database binds only to `127.0.0.1:5432`. Keep its example password local and never reuse it in production. Docker Compose loads `.env`; Node development scripts explicitly load it too.
 
-| Command                  | Purpose                                                        |
-| ------------------------ | -------------------------------------------------------------- |
-| `npm run dev:server`     | API + built application on port 3000, reload on source changes |
-| `npm run dev:web`        | Vite application client on port 5173; API proxy to port 3000   |
-| `npm run dev:site`       | Standalone website on port 4174                                |
-| `npm run typecheck`      | Server and React TypeScript checks                             |
-| `npm test`               | Isolated PGlite domain/transport tests and focused unit tests  |
-| `npm run test:postgres`  | Native PostgreSQL cursor/migration concurrency tests           |
-| `npm run build`          | Server, application, website and extension distributions       |
-| `npm run check`          | Contributor quality gate                                       |
-| `npm run release:source` | Build a source-only archive with no Git history                |
+| Command                  | Purpose                                                          |
+| ------------------------ | ---------------------------------------------------------------- |
+| `npm run dev:server`     | API + built application on port 3000, reload on source changes   |
+| `npm run dev:web`        | Vite application client on port 5173; API proxy to port 3000     |
+| `npm run dev:site`       | Standalone website on port 4174                                  |
+| `npm run dev:docs`       | VitePress documentation preview (local search works after build) |
+| `npm run typecheck`      | Server and React TypeScript checks                               |
+| `npm test`               | Isolated PGlite domain/transport tests and focused unit tests    |
+| `npm run test:postgres`  | Native PostgreSQL cursor/migration concurrency tests             |
+| `npm run build`          | Server, application, website and extension distributions         |
+| `npm run check`          | Contributor quality gate                                         |
+| `npm run release:source` | Build a source-only archive with no Git history                  |
 
 ## Disposable agent sandbox
 

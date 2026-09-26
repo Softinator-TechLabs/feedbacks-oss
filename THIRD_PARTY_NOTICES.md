@@ -4,6 +4,8 @@ Feedbacks' own source is covered by `LICENSE` and `NOTICE`. Dependencies retain 
 
 The principal runtime packages are React/React DOM, Express, pg, Zod, Argon2, Sharp, tldts, the AWS SDK and the Model Context Protocol SDK. Development tools include TypeScript, Vite, tsx, Prettier, PGlite and Playwright (Apache-2.0). Native dependencies such as libvips have their own notices in the relevant packages. Use `npm sbom --sbom-format cyclonedx` after `npm ci` for the installed dependency inventory; this does not replace reviewing license text.
 
+The public documentation build uses VitePress (MIT) and its local search. VitePress and its build dependencies are installed only while building the static website. The static output includes VitePress client assets and self-hosted font files; their package licenses remain in the npm dependency tree. The S3 request presigner is part of the AWS SDK family and runs only on the application server.
+
 Existing reference research is recorded in [reference provenance](docs/reference-provenance.md). It records inspected examples, not a claim of copied code or permission to reuse proprietary features. New source reuse requires its exact origin, revision, license and required notices here.
 
 The extension icons are the project's own Feedbacks mark. The public website uses self-hosted Manrope under SIL OFL 1.1 and an image generated for a fictional webpage. Font license text is retained in `site/public/fonts/OFL-Manrope.txt`; [website asset provenance](docs/website-assets.md) records sources and the image prompt. No customer logos or production screenshots are included.

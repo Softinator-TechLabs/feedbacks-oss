@@ -140,6 +140,8 @@ function HelpAgentSetup({
 }
 
 export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }) {
+  const [copiedCommand, setCopiedCommand] = useState(false);
+  const mcpCommand = `codex mcp add feedbacks --url ${location.origin}/mcp --bearer-token-env-var FEEDBACKS_TOKEN`;
   const { data, error } = useLoad(async () => {
     const r = await fetch("/api/help", {
       credentials: "same-origin",
@@ -194,27 +196,85 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
               Capture a page, mark the exact spot and keep the discussion in one place.
             </p>
           </div>
-          <section className="help-install" aria-labelledby="help-install-title">
-            <div>
-              <h2 id="help-install-title">Get the Chrome extension</h2>
-              <p>Install from Chrome Web Store for automatic Store updates.</p>
+          <div className="help-start">
+            <section className="help-install" aria-labelledby="help-install-title">
+              <h2 id="help-install-title">Start reviewing in Chrome</h2>
+              <ol>
+                <li>Install and pin the Feedbacks extension.</li>
+                <li>
+                  Enter <code>{location.origin}</code> as your server.
+                </li>
+                <li>Sign in and approve the pairing request.</li>
+              </ol>
               <a
                 className="button primary"
                 href={chromeWebStoreUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Get it from Chrome Web Store
+                Get the Chrome extension ↗
               </a>
+            </section>
+            <section className="help-docs" aria-labelledby="help-docs-title">
+              <div className="help-docs-heading">
+                <div>
+                  <h2 id="help-docs-title">Find your guide</h2>
+                  <p>Short answers here; full steps in searchable docs.</p>
+                </div>
+                <a href="https://feedbacks.softinator.ai/docs/">Search docs ↗</a>
+              </div>
+              <nav className="help-docs-list" aria-label="Feedbacks guides">
+                <a href="https://feedbacks.softinator.ai/docs/guide/getting-started">
+                  <strong>Getting started</strong>
+                  <span>Join a workspace and review your first request</span>
+                </a>
+                <a href="https://feedbacks.softinator.ai/docs/guide/chrome-extension">
+                  <strong>Chrome extension</strong>
+                  <span>Pair, grant permissions and capture a page</span>
+                </a>
+                <a href="https://feedbacks.softinator.ai/docs/guide/mcp">
+                  <strong>AI agents and MCP</strong>
+                  <span>Understand MCP and connect a coding agent</span>
+                </a>
+                <a href="https://feedbacks.softinator.ai/docs/guide/github">
+                  <strong>GitHub Issues</strong>
+                  <span>Install the App and create an Issue</span>
+                </a>
+                <a href="https://feedbacks.softinator.ai/docs/guide/self-host">
+                  <strong>Developer installation</strong>
+                  <span>Run locally or self-host a team server</span>
+                </a>
+              </nav>
+            </section>
+          </div>
+          <section className="help-connect" aria-labelledby="help-connect-title">
+            <div>
+              <h2 id="help-connect-title">Connect a coding agent</h2>
+              <p>
+                Create a scoped key in Account, then give the key to your MCP client
+                privately. This command contains no secret.
+              </p>
             </div>
-            <ol>
-              <li>Choose Add to Chrome on the Store page.</li>
-              <li>
-                Pin and open Feedbacks. Enter <code>{location.origin}</code> as your
-                server.
-              </li>
-              <li>Connect, sign in and approve the pairing request.</li>
-            </ol>
+            <div className="help-mcp-command">
+              <code>{mcpCommand}</code>
+              <button
+                type="button"
+                onClick={() =>
+                  void navigator.clipboard
+                    .writeText(mcpCommand)
+                    .then(() => setCopiedCommand(true))
+                    .catch(() => setCopiedCommand(false))
+                }
+              >
+                {copiedCommand ? "Copied" : "Copy command"}
+              </button>
+            </div>
+            <p className="muted">
+              Supply <code>FEEDBACKS_TOKEN</code> privately to Codex.{" "}
+              <a href="https://feedbacks.softinator.ai/docs/guide/mcp">
+                Read the MCP setup guide →
+              </a>
+            </p>
           </section>
           <HelpAgentSetup
             actor={actor}

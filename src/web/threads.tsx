@@ -912,6 +912,9 @@ export function ThreadDetail({
           </div>
         </div>
       </div>
+      {project?.permissions.canMaintain && (
+        <GithubIssue thread={t} project={project} onSaved={setThread} />
+      )}
       <ErrorNotice error={error} />
       {projectError && (
         <section>
@@ -1346,9 +1349,6 @@ export function ThreadDetail({
                         <button disabled={a.busy}>Register Issue</button>
                       </form>
                     </>
-                  )}
-                  {project && (
-                    <GithubIssue thread={t} project={project} onSaved={setThread} />
                   )}
                 </details>
                 <details className="section compact-details" id="thread-figma-reference">

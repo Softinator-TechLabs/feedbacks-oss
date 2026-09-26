@@ -16,7 +16,8 @@ for (const file of files) {
     )
   )
     errors.push(`${file}: private deployment reference`);
-  if (/\.md$/.test(file)) {
+  // VitePress validates its base-relative Markdown links during build.
+  if (/\.md$/.test(file) && !file.startsWith("site-docs/")) {
     for (const match of text.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
       const link = match[1].split("#")[0];
       if (!link || /^[a-z]+:/i.test(link)) continue;
@@ -73,6 +74,11 @@ for (const file of [
   "dist/web/index.html",
   "dist/site/index.html",
   "dist/site/privacy.html",
+  "dist/site/docs/index.html",
+  "dist/site/docs/guide/mcp.html",
+  "dist/site/docs/guide/github.html",
+  "dist/site/docs/guide/mcp.md",
+  "dist/site/docs/llms.txt",
   "dist/server/index.js",
 ])
   await lstat(join(root, file));

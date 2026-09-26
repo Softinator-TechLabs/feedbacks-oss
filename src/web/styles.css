@@ -299,6 +299,177 @@ small {
   color: var(--accent);
   font-weight: 700;
 }
+.github-project-page {
+  max-width: 980px;
+  display: grid;
+  gap: 20px;
+}
+.github-project-page .page-heading {
+  margin-bottom: 0;
+}
+.github-connection-card {
+  padding: clamp(20px, 3vw, 30px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--soft-surface);
+  box-shadow: 0 14px 42px rgb(0 0 0 / 5%);
+}
+.github-connection-card h2 {
+  margin: 0 0 6px;
+}
+.github-connection-heading,
+.github-connection-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.github-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 18px 0;
+  padding: 0;
+  list-style: none;
+}
+.github-steps li {
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.github-steps li.done {
+  color: var(--accent);
+  font-weight: 650;
+}
+.github-steps li.done::before {
+  content: "✓ ";
+}
+@media (max-width: 560px) {
+  .github-steps {
+    grid-template-columns: 1fr;
+    gap: 3px;
+    margin: 14px 0;
+  }
+  .github-steps li {
+    padding: 4px 0;
+    background: transparent;
+  }
+}
+.github-repository-form {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.github-repository-form .field {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+.github-repository-form button,
+.github-connection-actions button {
+  width: auto;
+  flex: 0 0 auto;
+}
+.github-connection-actions {
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+.help-start {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 18px;
+  align-items: stretch;
+}
+.help-docs {
+  min-width: 0;
+  padding: clamp(22px, 3vw, 30px);
+  border-radius: 16px;
+  background: var(--soft-surface);
+}
+.help-docs-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+.help-docs-heading h2 {
+  margin: 0 0 4px;
+}
+.help-docs-heading p {
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+.help-docs-heading > a {
+  flex: 0 0 auto;
+  font-weight: 650;
+}
+.help-docs-list {
+  display: grid;
+}
+.help-docs-list a {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.85fr) minmax(0, 1.15fr);
+  gap: 8px 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+}
+.help-docs-list a:last-child {
+  border-bottom: 0;
+}
+.help-docs-list a:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.help-docs-list span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+.help-connect {
+  margin-top: 26px;
+  padding: 24px 0 26px;
+  border-bottom: 1px solid var(--border);
+}
+.help-connect h2 {
+  font-size: 1.3rem;
+  margin: 0 0 4px;
+}
+.help-connect p {
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+.help-connect > .muted {
+  margin: 10px 0 0;
+  font-size: 0.84rem;
+}
+.help-mcp-command {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--soft-surface);
+}
+.help-mcp-command > code {
+  flex: 1 1 350px;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+.help-mcp-command button {
+  width: auto;
+}
+@media (max-width: 800px) {
+  .help-start {
+    grid-template-columns: 1fr;
+  }
+}
 .project-list {
   background: #fff;
   border: 1px solid var(--border);
@@ -1109,37 +1280,56 @@ legend {
   margin: 0;
 }
 .help-install {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
-  gap: 36px;
-  padding: 32px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: clamp(22px, 3vw, 30px);
+  background: #17324d;
+  color: #fff;
+  border-radius: 16px;
 }
 .help-install h2,
 .help-agent h2 {
   font-size: 1.35rem;
   margin: 0 0 8px;
 }
-.help-install p,
 .help-agent p {
   color: var(--muted);
 }
+.help-install p {
+  color: #d7e3ec;
+}
 .help-install .button {
-  margin-top: 8px;
+  margin-top: auto;
+  align-self: flex-start;
+}
+.help-install a.button.primary,
+:root[data-theme="dark"] .help-install a.button.primary {
+  background: #fff;
+  color: #17324d;
+  border-color: #fff;
+}
+.help-install a.button.primary:hover,
+:root[data-theme="dark"] .help-install a.button.primary:hover {
+  background: #e6f0f6;
+  color: #17324d;
+  border-color: #e6f0f6;
 }
 .help-install ol {
-  margin: 0;
-  padding-left: 22px;
-  align-self: center;
+  margin: 4px 0 26px;
+  padding-left: 23px;
 }
 .help-install li {
-  padding-left: 6px;
-  margin: 0 0 12px;
+  padding-left: 3px;
+  margin: 0 0 7px;
+  color: #e3edf4;
 }
 .help-install li:last-child {
   margin-bottom: 0;
+}
+.help-install li::marker {
+  color: #a8d5f0;
+  font-weight: 750;
 }
 .help-install code {
   overflow-wrap: anywhere;
@@ -1547,16 +1737,17 @@ legend {
   .help-intro h1 {
     font-size: 1.8rem;
   }
-  .help-install,
+  .help-start,
   .help-agent {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 16px;
   }
-  .help-install {
-    padding: 22px;
+  .help-docs-list a {
+    grid-template-columns: 1fr;
+    gap: 1px;
   }
   .help-install .button {
-    width: 100%;
+    align-self: stretch;
   }
   .help-agent-actions {
     align-items: stretch;

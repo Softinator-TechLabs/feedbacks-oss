@@ -330,6 +330,52 @@
 .thread-content .thread-navigation {
   margin-top: 16px;
 }
+.github-issue-control {
+  margin: 12px 0 20px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--soft-surface);
+}
+.github-issue-summary,
+.github-issue-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.github-issue-summary {
+  justify-content: space-between;
+}
+.github-issue-summary strong {
+  margin-right: 8px;
+}
+.github-issue-summary .muted {
+  font-size: 0.85rem;
+}
+.github-issue-actions {
+  margin-top: 10px;
+}
+.github-issue-actions button {
+  width: auto;
+}
+.github-issue-control > form {
+  max-width: 680px;
+  margin-top: 16px;
+}
+.github-issue-control .section {
+  margin-top: 12px;
+}
+.github-status-sync {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.github-status-sync summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.86rem;
+}
 .thread-icon-button,
 .thread-header-actions .status-options > summary,
 .thread-header-actions .thread-review > summary,

@@ -106,6 +106,17 @@ export class GithubApp {
     return true;
   }
 
+  async repositoryPrivate(repo: GithubRepo) {
+    const token = await this.installationToken(repo, "read");
+    const result = await this.request(
+      `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}`,
+      token,
+    );
+    if (typeof result.data.private !== "boolean")
+      fail("GITHUB_UNAVAILABLE", "GitHub did not report repository visibility", 503);
+    return result.data.private as boolean;
+  }
+
   async createIssue(repo: GithubRepo, title: string, body: string) {
     const token = await this.installationToken(repo, "write");
     const created = await this.request(

@@ -20,7 +20,8 @@
     "mcp": "tsx src/cli/mcp.ts",
     "cli": "tsx src/cli/feedbacks.ts",
     "dev:site": "vite --config vite.site.config.ts",
-    "build:site": "npm run site:comparisons:check && vite build --config vite.site.config.ts",
+    "build:site": "npm run site:comparisons:check && vite build --config vite.site.config.ts && vitepress build site-docs && node scripts/export-docs.mjs",
+    "dev:docs": "vitepress dev site-docs",
     "site:comparisons": "node scripts/generate-comparisons.mjs",
     "site:comparisons:check": "node scripts/generate-comparisons.mjs --check",
     "format": "prettier --write .",
@@ -41,6 +42,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
+    "@aws-sdk/s3-request-presigner": "^3.1141.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "argon2": "^0.45.1",
     "express": "^5.2.1",
@@ -64,7 +66,8 @@
     "prettier": "3.6.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitepress": "^2.0.0-alpha.20"
   },
   "description": "Visual website feedback with a browser extension, shared review workspace, HTTP API, MCP and CLI.",
   "license": "Apache-2.0",
