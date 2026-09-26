@@ -57,6 +57,8 @@ Persist the pending comment, image bytes, project ID, thread receipt and idempot
 
 ### Android
 
+This repository also contains a compile-only [Android host](../sdk/android-host/build.gradle.kts) that links the library without starting pairing, capture or submission. With JDK 17 and Android SDK 35 installed, run `./gradlew :feedbacks-android-host:assembleDebug --no-daemon` from the repository root. CI runs the same build. It checks source compatibility; device behavior still needs a real host app and device.
+
 Include `sdk/android` as a Gradle library module in a host build that supplies Android and Kotlin plugin versions. Minimum Android API is 26 because the capture helper uses `PixelCopy`. Do network work off the main thread:
 
 ```kotlin
