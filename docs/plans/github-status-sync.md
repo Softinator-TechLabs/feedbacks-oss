@@ -1,6 +1,6 @@
 # Plan: optional GitHub Issue status sync
 
-Status: merged; mobile and live GitHub verification pending. Owner: Feedbacks maintainers. Date: 2026-09-25.
+Status: merged; mobile layout inspected, live GitHub verification pending. Owner: Feedbacks maintainers. Date: 2026-09-26.
 
 ## Outcome and scope
 
@@ -17,7 +17,7 @@ The existing GitHub App creates and verifies Issues and reads their state; `thre
 - [x] Add focused tests for pull, push, conflict, uncertainty, idempotence and disconnect.
 - [x] Expose controls and error state in project settings and thread details.
 - [x] Regenerate operation catalog, run local checks and inspect desktop controls.
-- [ ] Inspect mobile controls; browser viewport emulation was blocked by the browser's security check.
+- [x] Inspect mobile controls in the disposable signed-in app at 390 pixels, in light and dark themes.
 
 ## Compatibility and recovery
 
@@ -26,7 +26,7 @@ Migration 17 adds a per-thread sync cursor; it does not rewrite existing threads
 ## Completion receipt
 
 Source revision: PR #44 merged as `1fc1ee1`.
-Checks and results: focused GitHub status sync tests passed again on 2026-09-25. The original branch ran native PostgreSQL, build, harness/docs, typecheck and release checks; its unrelated HTTP/MCP timeout passed in isolation. Desktop settings inspection passed. Mobile viewport inspection remains pending.
+Checks and results: focused GitHub status sync tests passed again on 2026-09-25. The original branch ran native PostgreSQL, build, harness/docs, typecheck and release checks; its unrelated HTTP/MCP timeout passed in isolation. Desktop settings inspection passed. On 2026-09-26, synthetic app captures covered light and dark mobile views; at 390 pixels the sync checkbox was visible and within the viewport, with no horizontal document overflow.
 Artifacts: generated operation catalog and local build outputs.
 Deployment and live verification: source merged into the deployed app; a real connected GitHub repository has not been exercised.
-Remaining risks or follow-up: inspect mobile controls and verify live polling, conflict and external write recovery against an authorized test repository.
+Remaining risks or follow-up: verify live polling, conflict and external write recovery against an authorized test repository.

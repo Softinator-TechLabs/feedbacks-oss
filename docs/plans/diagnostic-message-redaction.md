@@ -1,6 +1,6 @@
 # Plan: local diagnostic message masking
 
-Status: merged; Chrome masking acceptance and Store publication pending. Owner: Feedbacks maintainers. Date: 2026-09-24.
+Status: isolated Chromium acceptance passed; Store-installed acceptance and publication pending. Owner: Feedbacks maintainers. Date: 2026-09-26.
 
 ## Outcome and scope
 
@@ -15,7 +15,8 @@ The [extension guide](../extension.md) describes whole-entry exclusion, but unus
 - [x] Inspect local diagnostics capture and submission boundaries.
 - [x] Implement selected-text masking and focused bounds tests.
 - [x] Check draft transformation and built package.
-- [ ] Exercise selection, persistence and submission in Chrome.
+- [x] Exercise selection, persistence and submission in isolated Chromium.
+- [ ] Confirm optional permission flow and masking in the Store-installed Chrome extension after publication.
 - [x] Update documentation and verification receipt.
 
 ## Compatibility and recovery
@@ -29,7 +30,7 @@ Existing drafts remain readable. Masking is one-way within the local draft; capt
 ## Completion receipt
 
 Source revision: PR [#29](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/29), merged as `1a9c015`.
-Checks and results: `npm run check` passed on 2026-09-24; masking and frozen-draft tests passed. Browser smoke remains pending.
+Checks and results: `npm run check` passed on 2026-09-24; masking and frozen-draft tests passed. On 2026-09-26, `npm run qa:extension-browser` selected a substring in the real editor, masked it, reloaded the editor, sent the opt-in diagnostic to a disposable local sandbox and read the saved thread back without the original substring.
 Artifacts: masking is included in extension source version 0.1.15 and its versioned ZIP.
-Deployment and live verification: the public Chrome Web Store listing still served 0.1.11 on 2026-09-25. A real Chrome mask, persistence and submission check is still required for 0.1.15.
+Deployment and live verification: the controlled browser test uses the extension runtime files with test-only host grants in a temporary copy. It does not exercise the Store-installed permission prompt. The public Chrome Web Store listing served 0.1.11 on 2026-09-26; the uploaded 0.1.15 package has not been observed live.
 Remaining risks or follow-up: reviewers must still inspect entries and choose sharing explicitly. Masking does not make diagnostics trusted data.
