@@ -1,3 +1,4 @@
+import { reviewDefaults, updateReviewDefaults } from "./review-preferences.js";
 import { diagnosticCollector, cleanDiagnostics } from "./diagnostics.js";
 import "./utils.js";
 import { createReviewController } from "./review-session.js";
@@ -1769,6 +1770,19 @@ async function route(message, sender) {
     if (sender.tab && sender.frameId === 0 && message.type === "freezeInstantView")
       throw Error("Open Feedbacks to start reviewing this page.");
     const session = await sessionFor(sender);
+    if (message.type === "diagnostics") return runDiagnostics(sender, message.action);
+    if (message.type === "openPageThreads") {
+      const current = await chrome.tabs.get(sender.tab.id);
+      const target = pageOverviewTarget(
+        session.server,
+        session.projectId,
+        current.url,
+        current.width || 1200,
+        "page",
+      );
+      await chrome.tabs.create({ url: target.url });
+      return {};
+    }
     if (message.type === "openRecorder") return recordings.open(sender);
     if (message.type === "recordingControl")
       return recordings.control(sender, message.action);
@@ -2005,6 +2019,7 @@ async function route(message, sender) {
         serverDraft: state.serverDraft,
         allowLocal: !!state.allowLocal,
         reviewShortcuts: state.reviewShortcuts !== false,
+        reviewDefaults: reviewDefaults(state.reviewDefaults),
         connected: !!state.accounts?.[server]?.token,
         pending: !!state.pair,
         projectId: state.projectId,
@@ -2013,16 +2028,33 @@ async function route(message, sender) {
         captureError: state.captureError || state.pairError || "",
       };
     case "saveReviewPreferences": {
-      const reviewShortcuts = message.reviewShortcuts !== false;
-      await set({ reviewShortcuts });
-      await Promise.all(
-        Object.keys(state.sessions || {}).map((tabId) =>
-          chrome.tabs
-            .sendMessage(Number(tabId), { type: "reviewPreferences", reviewShortcuts })
-            .catch(() => {}),
-        ),
-      );
-      return {};
+      const work = preferencesWrite
+        .catch(() => {})
+        .then(async () => {
+          const latest = await get();
+          const reviewShortcuts =
+            typeof message.reviewShortcuts === "boolean"
+              ? message.reviewShortcuts
+              : latest.reviewShortcuts !== false;
+          const defaults =
+            message.reviewDefaults === undefined
+              ? reviewDefaults(latest.reviewDefaults)
+              : updateReviewDefaults(latest.reviewDefaults, message.reviewDefaults);
+          await set({ reviewShortcuts, reviewDefaults: defaults });
+          await Promise.all(
+            Object.keys(latest.sessions || {}).map((tabId) =>
+              chrome.tabs
+                .sendMessage(Number(tabId), {
+                  type: "reviewPreferences",
+                  reviewShortcuts,
+                })
+                .catch(() => {}),
+            ),
+          );
+          return {};
+        });
+      preferencesWrite = work;
+      return work;
     }
     case "projects":
       return authenticated("projects.list");
@@ -2170,16 +2202,7 @@ async function route(message, sender) {
     }
     case "diagnostics": {
       const tab = await chrome.tabs.get(message.tabId);
-      if (!tab.active || !["start", "stop", "status"].includes(message.action))
-        throw Error("Select the review page first.");
-      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        world: "MAIN",
-        func: diagnosticCollector,
-        args: [message.action, session.reviewId],
-      });
-      return { active: results[0]?.result?.active === true };
+      return runDiagnostics({ tab, frameId: 0, url: tab.url }, message.action);
     }
     case "activate": {
       const result = await review.activate(message.tabId, message.projectId);
@@ -2247,9 +2270,15 @@ async function route(message, sender) {
       if (message.action === "choose")
         return chrome.tabs.sendMessage(tab.id, { type: "choosePoint" });
       if (
-        ["pins", "resolved", "state", "show-controls", "navigation"].includes(
-          message.action,
-        )
+        [
+          "pins",
+          "resolved",
+          "state",
+          "show-controls",
+          "navigation",
+          "highlight",
+          "clicks",
+        ].includes(message.action)
       )
         return chrome.tabs.sendMessage(tab.id, {
           type: "popupControls",
@@ -2364,3 +2393,18 @@ chrome.tabs.onUpdated.addListener((id, change, tab) => {
     })().catch(() => {});
   }
 });
+
+let preferencesWrite = Promise.resolve();
+async function runDiagnostics(sender, action) {
+  const tab = await chrome.tabs.get(sender.tab.id);
+  if (!tab.active || !["start", "stop", "status"].includes(action))
+    throw Error("Select the review page first.");
+  const session = await sessionFor(sender);
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    world: "MAIN",
+    func: diagnosticCollector,
+    args: [action, session.reviewId],
+  });
+  return { active: results[0]?.result?.active === true };
+}

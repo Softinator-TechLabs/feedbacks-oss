@@ -66,3 +66,11 @@ Open **Settings** beside the version in the popup, or choose **Options** from Ch
 Drag the dock’s grip to move it, or focus the grip and use arrow keys. **Collapse** keeps the small Feedbacks/Exit dock; **Hide** removes it until you open the Chrome extension again. **Exit** stops review. Draft points stay on the same page for when you resume. The primary capture is the visible view with each point’s saved original image. **More review tools → Capture full page** (P) is optional and creates additional images.
 
 The popup’s **Team feedback** shows project totals for the exact page, its hostname, or the page at the current mobile/tablet/desktop size. Open the link to see the matching threads on your configured server. Individual point resolution needs the updated server and an extension token with `threads.annotationStatus`; older connections can use the web thread or reconnect.
+
+## Review defaults and page controls
+
+Open **Settings → Review defaults** to choose navigation locking, element highlighting, click indicators, pin visibility and resolved points for new reviews. Recording has separate navigation, highlighting and click-indicator defaults. Controls on the page change the current session; your earlier controls return after recording.
+
+The floating Page Controls includes pins, resolved points, **Page comments** and **Start diagnostics**. Page comments opens the configured server with threads filtered to this page across screen sizes. Diagnostics stay local until you inspect and select entries to share with a capture; Stop discards the collection.
+
+**Full page** and **Record video** are directly available in the extension popup. They can create more media for an agent to process and may increase token use. Visible capture remains the primary action.

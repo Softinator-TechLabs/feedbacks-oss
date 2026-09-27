@@ -11,7 +11,7 @@ for (const file of files) {
   const text = await readFile(join(root, file), "utf8");
   if (
     file !== "scripts/check-release.mjs" &&
-    /feedbacks\.softinator\.org|\/Users\/|vaultOrganizationId|vaultProjectId|runtimeSecretKey|softinator-feedbacks-prod/.test(
+    /feedbacks\.softinator\.org|globaljournals\.org|\/Users\/|vaultOrganizationId|vaultProjectId|runtimeSecretKey|softinator-feedbacks-prod/.test(
       text,
     )
   )

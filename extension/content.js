@@ -51,6 +51,13 @@
     highlightButton,
     clickIndicators = true,
     beforeRecording,
+    defaults = {},
+    clicksButton,
+    pinsButton,
+    resolvedButton,
+    diagnosticsButton,
+    diagnosticsActive = false,
+    diagnosticsBusy = false,
     loadingPins,
     occlusionPins = [],
     occlusionFrame,
@@ -91,6 +98,7 @@
   }
   function revealDrawer(open = true) {
     if (!bar) return;
+    if (open && bar.classList.contains("hidden")) void updateDiagnostics("status");
     if (open) reviewDock.hidden = false;
     bar.classList.toggle("hidden", !open);
     drawerHandle.setAttribute("aria-expanded", String(open));
@@ -134,15 +142,55 @@
       highlightButton.textContent = value ? "Highlight on" : "Highlight off";
     if (!value) hoverBox?.classList.add("hidden");
   }
+  function setClicks(value) {
+    clickIndicators = value;
+    if (!clicksButton) return;
+    clicksButton.textContent = value ? "Click indicators on" : "Click indicators off";
+    clicksButton.setAttribute("aria-pressed", String(value));
+  }
+  function syncPinControls() {
+    if (pinsButton) {
+      pinsButton.textContent = showPins ? "Hide pins" : "Show pins";
+      pinsButton.setAttribute("aria-pressed", String(!showPins));
+    }
+    if (resolvedButton) {
+      resolvedButton.textContent = showResolved ? "Hide resolved" : "Show resolved";
+      resolvedButton.setAttribute("aria-pressed", String(showResolved));
+    }
+  }
+  async function updateDiagnostics(action) {
+    if (!diagnosticsButton || diagnosticsBusy || !active) return;
+    diagnosticsBusy = true;
+    diagnosticsButton.disabled = true;
+    try {
+      const result = await send({ type: "diagnostics", action });
+      diagnosticsActive = result.active === true;
+      diagnosticsButton.textContent = diagnosticsActive
+        ? "Stop diagnostics"
+        : "Start diagnostics";
+      diagnosticsButton.setAttribute("aria-pressed", String(diagnosticsActive));
+      if (action !== "status")
+        notice.textContent = diagnosticsActive
+          ? "Diagnostics stay local. Capture within 5 minutes to review and share."
+          : "Diagnostics stopped and discarded.";
+    } catch (error) {
+      if (action !== "status") notice.textContent = error.message;
+    } finally {
+      diagnosticsBusy = false;
+      diagnosticsButton.disabled = false;
+    }
+  }
   function renderRecording(state = recordingState) {
     const recording = ["recording", "paused"].includes(state);
     if (recording && !beforeRecording) {
-      beforeRecording = { highlightEnabled, navigationLocked };
-      setHighlight(false);
-      setNavigationLock(false);
+      beforeRecording = { highlightEnabled, navigationLocked, clickIndicators };
+      setHighlight(defaults.recordingHighlightEnabled === true);
+      setNavigationLock(defaults.recordingNavigationLocked === true);
+      setClicks(defaults.recordingClickIndicators !== false);
     } else if (!recording && beforeRecording) {
       setHighlight(beforeRecording.highlightEnabled);
       setNavigationLock(beforeRecording.navigationLocked);
+      setClicks(beforeRecording.clickIndicators);
       beforeRecording = null;
     }
     recordingState = state;
@@ -1064,7 +1112,19 @@
     const path = document.createElementNS(icon.namespaceURI, "path");
     path.setAttribute("d", "M4 4h16v12H10l-6 4V4Zm4 4h8M8 12h5");
     icon.append(path);
-    drawerHandle.append(icon);
+    const grip = document.createElementNS(icon.namespaceURI, "svg");
+    grip.setAttribute("viewBox", "0 0 8 20");
+    grip.setAttribute("aria-hidden", "true");
+    grip.classList.add("drag-grip");
+    for (const x of [2, 6])
+      for (const y of [5, 10, 15]) {
+        const dot = document.createElementNS(icon.namespaceURI, "circle");
+        dot.setAttribute("cx", String(x));
+        dot.setAttribute("cy", String(y));
+        dot.setAttribute("r", "1");
+        grip.append(dot);
+      }
+    drawerHandle.append(grip, icon);
     movableControls(drawerHandle);
     drawerHandle.setAttribute("aria-expanded", "false");
     drawerHandle.setAttribute("aria-controls", "feedbacks-drawer");
@@ -1095,6 +1155,10 @@
     button("Exit", exitReview, barHeading).title =
       "Stop review (R). Draft points stay on this page.";
     bar.append(barHeading);
+    const dragHint = document.createElement("p");
+    dragHint.className = "drag-hint";
+    dragHint.textContent = "Drag the dotted handle to move · Arrow keys when focused";
+    bar.append(dragHint);
     meta = document.createElement("p");
     meta.className = "meta";
     bar.append(meta);
@@ -1104,9 +1168,11 @@
     button("Screenshot", () => capturePoint(), row).className = "primary";
     row.lastChild.title = "Capture the visible view and each point’s original (S)";
     button("Full page", () => capturePoint("fullPage"), row).title =
-      "Optional: scroll and capture the whole page (P). Adds more images.";
+      "Optional: scroll and capture the whole page (P). More images can increase agent processing and token use.";
     recordingControls = document.createElement("div");
     recordingControls.className = "row recording-controls";
+    recordingControls.title =
+      "Long recordings can increase agent processing and token use.";
     bar.append(recordingControls);
     renderRecording();
     const navigationRow = document.createElement("div");
@@ -1128,21 +1194,18 @@
     highlightButton.title =
       "Outline the element under your pointer. Off by default while recording.";
     setHighlight(highlightEnabled);
-    const clicks = button(
+    clicksButton = button(
       "Click indicators on",
-      (b) => {
-        clickIndicators = !clickIndicators;
-        b.textContent = clickIndicators ? "Click indicators on" : "Click indicators off";
-        b.setAttribute("aria-pressed", String(clickIndicators));
-      },
+      () => setClicks(!clickIndicators),
       navigationRow,
     );
-    clicks.title = "Show clicks in recordings. Does not change website interaction.";
-    clicks.setAttribute("aria-pressed", String(clickIndicators));
+    clicksButton.title =
+      "Show clicks in recordings. Does not change website interaction.";
+    setClicks(clickIndicators);
     const pinRow = document.createElement("div");
     pinRow.className = "row pin-controls";
     bar.append(pinRow);
-    button(
+    pinsButton = button(
       "Hide pins",
       (b) => {
         showPins = !showPins;
@@ -1151,8 +1214,8 @@
         renderPins();
       },
       pinRow,
-    ).setAttribute("aria-pressed", "false");
-    button(
+    );
+    resolvedButton = button(
       "Show resolved",
       async (b) => {
         showResolved = !showResolved;
@@ -1161,7 +1224,20 @@
         await loadPins();
       },
       pinRow,
-    ).setAttribute("aria-pressed", "false");
+    );
+    syncPinControls();
+    const feedbackRow = document.createElement("div");
+    feedbackRow.className = "row feedback-controls";
+    bar.append(feedbackRow);
+    button("Page comments", () => send({ type: "openPageThreads" }), feedbackRow).title =
+      "Open your team’s threads for this page, across all screen sizes";
+    diagnosticsButton = button(
+      "Start diagnostics",
+      () => updateDiagnostics(diagnosticsActive ? "stop" : "start"),
+      feedbackRow,
+    );
+    diagnosticsButton.title =
+      "Console and network diagnostics. Collected locally for up to 5 minutes; review before sharing. Stop discards the collection.";
     sizes = document.createElement("div");
     sizes.className = "row";
     sizes.style.marginTop = "8px";
@@ -1850,6 +1926,8 @@
         if (!active) throw Error("Open Feedbacks to connect this page.");
         if (message.action === "show-controls") revealDrawer(true);
         if (message.action === "navigation") setNavigationLock(!navigationLocked);
+        if (message.action === "highlight") setHighlight(!highlightEnabled);
+        if (message.action === "clicks") setClicks(!clickIndicators);
         if (message.action === "pins") {
           showPins = !showPins;
           renderPins();
@@ -1858,10 +1936,13 @@
           showResolved = !showResolved;
           await loadPins();
         }
+        syncPinControls();
         return {
           showPins,
           showResolved,
           navigationLocked,
+          highlightEnabled,
+          clickIndicators,
           comments: threads.length,
           drafts: annotations.length,
           viewport: { width: innerWidth, height: innerHeight },
@@ -1874,6 +1955,19 @@
       if (message.type === "activate") {
         reviewShortcuts = message.reviewShortcuts !== false;
         const wasActive = active && host?.isConnected;
+        if (!wasActive || project?.id !== message.project.id) {
+          // A retiring recorder belongs to the previous review. Its later idle
+          // notification must not restore that review's controls over these defaults.
+          beforeRecording = null;
+          recordingState = "idle";
+          defaults = message.reviewDefaults || {};
+          setNavigationLock(defaults.navigationLocked !== false);
+          setHighlight(defaults.highlightEnabled !== false);
+          setClicks(defaults.clickIndicators !== false);
+          showPins = defaults.showPins !== false;
+          showResolved = defaults.showResolved === true;
+          syncPinControls();
+        }
         if (wasActive) reviewDock.hidden = false;
         activationGeneration++;
         reviewId = message.reviewId;

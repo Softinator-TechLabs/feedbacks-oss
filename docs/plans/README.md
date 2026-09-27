@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Review defaults and accessible page controls](review-defaults-controls.md)
+
 - [Five-minute review recordings](five-minute-recording.md)
 
 - [Immediate comments and compact review controls](instant-review-controls.md)

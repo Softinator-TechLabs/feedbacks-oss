@@ -45,3 +45,30 @@ test("Feedbacks comparison describes current optional video and GitHub workflows
   assert.ok(page.includes("optional GitHub App"));
   assert.ok(page.includes("short tab video"));
 });
+
+test("comparison evidence separates unknown, replay and recording capabilities", async () => {
+  const { matrixFeatures, matrixGroups } = await import("../site/comparison-matrix.mjs");
+  assert.equal(matrixGroups.length, 5);
+  assert.ok(matrixFeatures.length >= 36);
+  assert.equal(new Set(matrixFeatures.map(([key]) => key)).size, matrixFeatures.length);
+  for (const [key] of matrixFeatures)
+    assert.ok(matrixRows.feedbacks[key], `Feedbacks: ${key}`);
+  assert.equal(matrixRows.feedbacks.replay.status, "no");
+  assert.equal(matrixRows["marker-io"].replay.status, "yes");
+  assert.equal(matrixRows["marker-io"].video, undefined);
+  for (const [slug, row] of Object.entries(matrixRows)) {
+    for (const [key, evidence] of Object.entries(row)) {
+      assert.match(evidence.url, /^https:\/\//, `${slug}.${key}`);
+      assert.equal(evidence.reviewed, "27 September 2026", `${slug}.${key}`);
+      if (slug !== "feedbacks") assert.notEqual(evidence.status, "no", `${slug}.${key}`);
+    }
+  }
+  const page = await readFile(resolve(compareDirectory, "index.html"), "utf8");
+  assert.equal((page.match(/<table\b/g) ?? []).length, matrixGroups.length);
+  for (const group of matrixGroups) {
+    assert.ok(page.includes(`id="matrix-${group.id}"`));
+    assert.ok(page.includes(`href="#matrix-${group.id}"`));
+  }
+  assert.ok(page.includes("Not verified"));
+  assert.ok(page.includes("does not mean the tool lacks it"));
+});

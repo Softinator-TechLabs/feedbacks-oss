@@ -145,7 +145,7 @@
 }
 .compare-matrix table {
   width: 100%;
-  min-width: 1230px;
+  min-width: calc(168px + var(--matrix-columns) * 116px);
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -216,7 +216,7 @@
 .compare-matrix td a {
   display: inline-flex;
   min-width: 35px;
-  min-height: 27px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   color: #173b32;
@@ -236,7 +236,7 @@
   color: #a23e31;
 }
 .compare-matrix td.matrix-unknown {
-  color: #77716a;
+  color: #625c55;
 }
 .compare-matrix td:not(.matrix-yes, .matrix-no, .matrix-unknown) a {
   color: #564e47;
@@ -434,7 +434,7 @@
     max-width: 16ch;
   }
   .compare-matrix table {
-    min-width: 1130px;
+    min-width: calc(148px + var(--matrix-columns) * 112px);
   }
   .compare-matrix thead th:first-child,
   .compare-matrix tbody th {
@@ -497,4 +497,39 @@
   .compare-row p + p {
     margin-top: 10px;
   }
+}
+
+.comparison-overview {
+  margin: 24px 0 36px;
+}
+.comparison-overview h2 {
+  font-size: clamp(28px, 3vw, 38px);
+  margin-bottom: 16px;
+}
+.comparison-overview > p {
+  max-width: 78ch;
+}
+.matrix-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 20px 0;
+}
+.matrix-jump a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
+.compare-matrix {
+  scroll-margin-top: 24px;
+}
+.matrix-intro p {
+  max-width: 44ch;
+}
+.compare-matrix td.matrix-unknown a {
+  color: #625c55;
+  font-weight: 400;
+  font-size: 11px;
 }

@@ -155,6 +155,14 @@ async function start(projectId) {
       ? "Navigation locked"
       : "Navigation allowed";
     $("navigation").setAttribute("aria-pressed", String(controls.navigationLocked));
+    $("highlight").textContent = controls.highlightEnabled
+      ? "Highlight on"
+      : "Highlight off";
+    $("highlight").setAttribute("aria-pressed", String(controls.highlightEnabled));
+    $("clicks").textContent = controls.clickIndicators
+      ? "Click indicators on"
+      : "Click indicators off";
+    $("clicks").setAttribute("aria-pressed", String(controls.clickIndicators));
     $("resolved").textContent = controls.showResolved ? "Hide resolved" : "Show resolved";
   } catch (e) {
     showAccess("tab-access", "blocked", "Not ready");
@@ -310,6 +318,8 @@ for (const id of [
   "pins",
   "show-controls",
   "navigation",
+  "highlight",
+  "clicks",
   "resolved",
   "mobile",
   "tablet",
@@ -344,6 +354,16 @@ for (const id of [
         ? "Navigation locked"
         : "Navigation allowed";
       $(id).setAttribute("aria-pressed", String(result.navigationLocked));
+    }
+    if (id === "highlight") {
+      $(id).textContent = result.highlightEnabled ? "Highlight on" : "Highlight off";
+      $(id).setAttribute("aria-pressed", String(result.highlightEnabled));
+    }
+    if (id === "clicks") {
+      $(id).textContent = result.clickIndicators
+        ? "Click indicators on"
+        : "Click indicators off";
+      $(id).setAttribute("aria-pressed", String(result.clickIndicators));
     }
     if (id === "resolved")
       $(id).textContent = result.showResolved ? "Hide resolved" : "Show resolved";

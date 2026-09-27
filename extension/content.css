@@ -474,9 +474,12 @@ button:focus-visible {
 }
 
 .review-dock .drawer-handle {
-  width: 44px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 54px;
   height: 44px;
-  padding: 10px;
+  padding: 8px;
   position: relative;
 }
 .drawer-handle svg {
@@ -510,8 +513,16 @@ button:focus-visible {
 .pin-controls {
   margin-top: 8px;
 }
-.navigation-controls button {
-  width: 100%;
+.navigation-controls button,
+.pin-controls button,
+.feedback-controls button {
+  flex: 1 1 calc(50% - 6px);
+  padding: 6px 8px;
+  font-size: 12px;
+  min-height: 36px;
+}
+.feedback-controls {
+  margin-top: 8px;
 }
 .point-evidence {
   display: flex;
@@ -556,5 +567,26 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .recording-click {
     animation: none;
+  }
+}
+
+.drawer-handle svg.drag-grip {
+  width: 8px;
+  height: 20px;
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.65;
+}
+.review-dock .review-drag:active {
+  cursor: grabbing;
+}
+.drag-hint {
+  margin: 5px 0 8px;
+  font-size: 11px;
+  color: #596672;
+}
+@media (prefers-color-scheme: dark) {
+  .drag-hint {
+    color: #b8c6d0;
   }
 }
