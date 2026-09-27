@@ -1,6 +1,6 @@
 # Plan: visual capture editing
 
-Status: verification in progress. Date: 2026-09-27.
+Status: completed in source; release deployment pending. Date: 2026-09-27.
 
 ## Outcome and scope
 
@@ -13,7 +13,7 @@ Make video trimming directly manipulable and preserve readable full-page screens
 - [x] Add dual video trim handles, scrubbing, selected-range playback and keyboard controls; keep precise fields secondary.
 - [x] Add screenshot highlighter, steps, blur, stamps and movable/resizable local images, plus local exports.
 - [x] Preserve source coordinates by limiting crop to explicitly labeled local exports.
-- [ ] Finish focused browser/pixel checks, integration checks and independent review.
+- [x] Finish focused browser/pixel checks, integration checks and independent review.
 - [ ] Build, integrate and verify the released package.
 
 ## Compatibility and recovery
@@ -23,3 +23,5 @@ No new dependencies or extension permissions. New visual marks are flattened int
 ## Verification
 
 Timeline tests cover bounded, non-crossing handles and time labels. Browser checks cover actual recording, drag/play boundaries, sequential typing in precise fields, crop re-editing and export. Screenshot checks cover 26-section original-resolution preview, annotated copy/download pixels and PDF page counts. Final integration and release receipts are recorded after those checks complete.
+
+The full Node 22 check passed (132 tests, four configured skips), as did the separate native PostgreSQL check and complete extension browser regression. Pixel tests verified 26 narrow sections, PNG/JPEG/WebP, clipboard, PDF page counts and permanent redaction of imported image pixels across reload/move/resize/reset/export. A public long-page capture produced 19 original-resolution sections and a 17,611px preview with successful upload/readback in the disposable local server. Independent review has no outstanding blocking findings. CI and production package/deployment verification remain release gates.
