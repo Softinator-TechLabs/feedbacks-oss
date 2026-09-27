@@ -290,8 +290,8 @@ export async function prepareVideoUpload(i: any, config: Config, projectId: stri
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(raw))
     fail("INVALID_VIDEO", "Expected base64 WebM video");
   const output = Buffer.from(raw, "base64");
-  if (output.length < 16 || output.length > 8 * 1024 * 1024)
-    fail("INVALID_VIDEO", "Video must be 16 bytes to 8 MiB", 413);
+  if (output.length < 16 || output.length > 40 * 1024 * 1024)
+    fail("INVALID_VIDEO", "Video must be 16 bytes to 40 MiB", 413);
   // Require a WebM EBML header, a video track, and media in the segment.
   if (!isWebmRecording(output)) fail("INVALID_VIDEO", "Expected a WebM recording");
   const id = randomUUID(),

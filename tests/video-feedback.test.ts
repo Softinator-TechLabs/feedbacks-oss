@@ -51,9 +51,29 @@ test("video feedback stays in the authorized project and rejects invalid media",
       context: { url: "https://other.test/", viewport: { width: 1280, height: 720 } },
       idempotencyKey: "video-thread",
     });
-    const webm = Buffer.from(
+    let webm = Buffer.from(
       "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAHmEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHWTbuMU6uEElTDZ1OsggEjTbuMU6uEHFO7a1OsggHQ7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsCrXsYMPQkBNgIxMYXZmNjEuNy4xMDBXQYxMYXZmNjEuNy4xMDBEiYhAj0AAAAAAABZUrmvIrgEAAAAAAAA/14EBc8WIb6rqfHTPUF6cgQAitZyDdW5kiIEAhoVWX1ZQOIOBASPjg4Q7msoA4JCwgRC6gRCagQJVsIRVuYEBElTDZ/tzc59jwIBnyJlFo4dFTkNPREVSRIeMTGF2ZjYxLjcuMTAwc3PWY8CLY8WIb6rqfHTPUF5nyKFFo4dFTkNPREVSRIeUTGF2YzYxLjE5LjEwMSBsaWJ2cHhnyKFFo4hEVVJBVElPTkSHkzAwOjAwOjAxLjAwMDAwMDAwMAAfQ7Z1qOeBAKOjgQAAgBACAJ0BKhAAEAAARwiFhYiZhIgCAgAMDWAA/v+rUIAcU7trkbuPs4EAt4r3gQHxggGj8IED",
       "base64",
+    );
+    // Valid EBML Void padding exercises the previous 8 MiB media and 14 MiB
+    // HTTP limits without introducing a binary fixture into the repository.
+    const voidSize = Buffer.alloc(4);
+    voidSize.writeUInt32BE(0x10000000 | (12 * 1024 * 1024));
+    webm = Buffer.concat([
+      webm,
+      Buffer.from([0xec]),
+      voidSize,
+      Buffer.alloc(12 * 1024 * 1024),
+    ]);
+    await assert.rejects(
+      ops.executeOperation(owner, "assets.uploadVideo", {
+        threadId: thread.id,
+        revision: thread.revision,
+        videoBase64: "invalid",
+        durationMs: 300001,
+        idempotencyKey: "over-duration",
+      }),
+      { code: "VALIDATION" },
     );
     await assert.rejects(
       ops.executeOperation(owner, "assets.uploadVideo", {
@@ -89,7 +109,7 @@ test("video feedback stays in the authorized project and rejects invalid media",
       threadId: thread.id,
       revision: thread.revision,
       videoBase64: webm.toString("base64"),
-      durationMs: 1000,
+      durationMs: 300000,
       idempotencyKey: "valid-video",
     });
     assert.equal(upload.asset.contentType, "video/webm");
@@ -105,7 +125,7 @@ test("video feedback stays in the authorized project and rejects invalid media",
       threadId: thread.id,
       revision: thread.revision,
       videoBase64: webm.toString("base64"),
-      durationMs: 1000,
+      durationMs: 300000,
       idempotencyKey: "valid-video",
     });
     assert.equal(replay.asset.id, upload.asset.id);
@@ -116,7 +136,23 @@ test("video feedback stays in the authorized project and rejects invalid media",
     });
     server = createApp(ops.config, db, store).listen(0, "127.0.0.1");
     await new Promise<void>((resolve) => server!.once("listening", resolve));
-    const url = `http://127.0.0.1:${(server.address() as any).port}${upload.asset.url}`;
+    const origin = `http://127.0.0.1:${(server.address() as any).port}`;
+    const uploadedOverHttp = await fetch(`${origin}/api/assets.uploadVideo`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${paired.token}`,
+      },
+      body: JSON.stringify({
+        threadId: thread.id,
+        revision: thread.revision,
+        videoBase64: webm.toString("base64"),
+        durationMs: 300000,
+        idempotencyKey: "valid-video",
+      }),
+    });
+    assert.equal(uploadedOverHttp.status, 200, await uploadedOverHttp.text());
+    const url = `${origin}${upload.asset.url}`;
     const denied = await fetch(url);
     assert.equal(denied.status, 401);
     const response = await fetch(url, {

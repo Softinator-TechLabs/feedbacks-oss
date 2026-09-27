@@ -89,6 +89,31 @@ export function createRecordingControls({ chrome, sessionFor }) {
       return {};
     },
     stop: retire,
+    bindTarget(recorderTabId, target) {
+      const entry = sessions.get(target.sourceTabId);
+      if (
+        !entry ||
+        entry.recorderTabId !== recorderTabId ||
+        entry.reviewId !== target.reviewId
+      )
+        throw Error("Open a new recorder from the review page.");
+      entry.target ||= structuredClone(target);
+      return structuredClone(entry.target);
+    },
+    target(recorderTabId, requested) {
+      const entry = sessions.get(requested?.sourceTabId);
+      if (
+        !entry?.target ||
+        entry.recorderTabId !== recorderTabId ||
+        JSON.stringify(entry.target) !== JSON.stringify(requested)
+      )
+        throw Error("The recording context changed. Open a new recorder.");
+      return structuredClone(entry.target);
+    },
+    async restore(tabId) {
+      const entry = sessions.get(tabId);
+      if (entry) await notify(tabId, entry.state);
+    },
     state(sourceTabId, reviewId) {
       if (reviewId && sessions.get(sourceTabId)?.reviewId !== reviewId)
         retire(sourceTabId);

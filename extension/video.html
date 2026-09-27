@@ -10,11 +10,16 @@
   <body>
     <header><strong>Feedbacks</strong><span>Tab video feedback</span></header>
     <main>
-      <h1>Record a short tab video</h1>
+      <h1>Record a tab video</h1>
       <p id="target"></p>
       <p class="hint">
-        Choose your website tab in Chrome's picker. No audio · up to 30 seconds.
+        Up to 5 minutes · compressed WebM. Choose your website tab in Chrome’s picker.
       </p>
+      <fieldset id="audio-options" class="audio-options">
+        <legend>Audio</legend>
+        <label><input id="tab-audio" type="checkbox" /> Tab audio</label>
+        <label><input id="microphone" type="checkbox" /> Microphone</label>
+      </fieldset>
       <div class="controls">
         <button id="start" class="primary" disabled>Start recording</button>
         <button id="pause" hidden>Pause recording</button>
@@ -25,10 +30,13 @@
       <details class="hint">
         <summary>Recording &amp; privacy</summary>
         <p>
-          Recording stops at 30 seconds or 8 MiB. Review or discard it before sending,
-          especially if you selected another tab. Only your selected project can access an
-          uploaded recording. Your server operator controls retention; Feedbacks has no
-          automatic deletion timer.
+          Recording stops at 5 minutes or 40 MiB. Audio is off unless selected. Enable
+          Share tab audio in Chrome’s picker for website sound. Microphone access uses a
+          separate permission prompt. Navigation in the selected tab continues recording;
+          use this recorder to pause or stop if page controls are unavailable. Review or
+          discard it before sending, especially if you selected another tab. Only your
+          selected project can access an uploaded recording. Your server operator controls
+          retention; Feedbacks has no automatic deletion timer.
         </p>
       </details>
       <video
@@ -38,6 +46,60 @@
         hidden
         aria-label="Recording preview"
       ></video>
+      <details id="editing" hidden>
+        <summary>Trim &amp; crop</summary>
+        <p class="hint">
+          Edit the original locally. Export takes about as long as the selected clip.
+          Cancel keeps your last preview.
+        </p>
+        <div class="edit-fields">
+          <label
+            >Start (seconds)<input
+              id="trim-start"
+              type="number"
+              min="0"
+              step="0.001"
+              value="0"
+          /></label>
+          <label
+            >End (seconds)<input
+              id="trim-end"
+              type="number"
+              min="0.01"
+              max="300"
+              step="0.001"
+          /></label>
+        </div>
+        <p class="hint">Drag a crop on this frame, or enter percentages below.</p>
+        <canvas
+          id="crop-preview"
+          aria-label="Crop preview. Use the percentage fields to adjust with a keyboard."
+        ></canvas>
+        <div class="edit-fields crop-fields">
+          <label
+            >Left (%)<input id="crop-left" type="number" min="0" max="99" value="0"
+          /></label>
+          <label
+            >Top (%)<input id="crop-top" type="number" min="0" max="99" value="0"
+          /></label>
+          <label
+            >Width (%)<input id="crop-width" type="number" min="1" max="100" value="100"
+          /></label>
+          <label
+            >Height (%)<input
+              id="crop-height"
+              type="number"
+              min="1"
+              max="100"
+              value="100"
+          /></label>
+        </div>
+        <div class="controls">
+          <button id="apply-edit">Apply edits</button>
+          <button id="cancel-edit" hidden>Cancel export</button>
+          <button id="reset-edit">Restore original</button>
+        </div>
+      </details>
       <section id="review" hidden>
         <label for="comment">Comment for this project</label>
         <textarea

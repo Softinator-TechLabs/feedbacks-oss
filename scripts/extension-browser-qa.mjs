@@ -8,7 +8,7 @@ import sharp from "sharp";
 
 const root = process.cwd();
 const publicCaptureUrl =
-  process.env.FEEDBACKS_QA_PUBLIC_URL || "https://impeccable.style/";
+  process.env.FEEDBACKS_QA_PUBLIC_URL || "https://globaljournals.org/";
 const profile = await mkdtemp(join(tmpdir(), "feedbacks-extension-browser-"));
 const extension = join(profile, "extension");
 await cp(join(root, "extension"), extension, { recursive: true });
@@ -2050,6 +2050,17 @@ try {
   await recorderPage.waitForLoadState();
   await recorderPage.locator("#start:enabled").waitFor();
   await recorderPage.evaluate(() => {
+    const tone = () => {
+      const audio = new AudioContext();
+      const oscillator = audio.createOscillator();
+      const destination = audio.createMediaStreamDestination();
+      oscillator.connect(destination);
+      oscillator.start();
+      const track = destination.stream.getAudioTracks()[0];
+      track.addEventListener("ended", () => audio.close());
+      return destination.stream;
+    };
+    navigator.mediaDevices.getUserMedia = async () => tone();
     navigator.mediaDevices.getDisplayMedia = async () => {
       const canvas = document.createElement("canvas");
       canvas.width = 320;
@@ -2063,6 +2074,7 @@ try {
       };
       draw();
       const stream = canvas.captureStream(10);
+      stream.addTrack(tone().getAudioTracks()[0]);
       const timer = setInterval(draw, 100);
       const track = stream.getVideoTracks()[0];
       track.getSettings = () => ({ displaySurface: "browser" });
@@ -2070,8 +2082,23 @@ try {
       return stream;
     };
   });
+  await recorderPage.locator("#tab-audio").check();
+  await recorderPage.locator("#microphone").check();
   await recorderPage.locator("#start").click();
   await page.waitForTimeout(400);
+  assert.match(
+    await recorderPage.locator("#timer").textContent(),
+    /(300|29[0-9]) seconds remaining/,
+  );
+  // Cross MV3's idle timeout while the recorder is in the background.
+  await page.waitForTimeout(32000);
+  await page.reload();
+  await page.waitForTimeout(1500);
+  assert.equal(
+    (await sendFromReview({ type: "recordingControl", action: "pause" })).ok,
+    true,
+  );
+  await sendFromReview({ type: "recordingControl", action: "resume" });
   assert.equal(
     (await sendFromReview({ type: "recordingControl", action: "pause" })).ok,
     true,
@@ -2089,9 +2116,68 @@ try {
   assert.ok(
     (await recorderPage.locator("#preview").getAttribute("src")).startsWith("blob:"),
   );
+  await recorderPage.locator("#editing summary").click();
+  await recorderPage.locator("#trim-start").fill("0.1");
+  await recorderPage.locator("#trim-end").fill("0.5");
+  await recorderPage.locator("#crop-width").fill("50");
+  await recorderPage.locator("#apply-edit").click();
+  await recorderPage
+    .locator("#status")
+    .filter({ hasText: "Edits applied" })
+    .waitFor({ timeout: 20000 })
+    .catch(async (error) => {
+      throw Error(
+        `${error.message}: ${await recorderPage.locator("#status").textContent()}`,
+      );
+    });
+  await recorderPage.locator("#preview").evaluate(
+    (video) =>
+      new Promise((resolve) => {
+        if (video.readyState >= 1) resolve();
+        else video.onloadedmetadata = resolve;
+      }),
+  );
+  assert.equal(
+    await recorderPage.locator("#preview").evaluate((video) => video.videoWidth),
+    160,
+  );
+  await recorderPage.locator("#reset-edit").click();
+  await recorderPage.locator("#preview").evaluate(
+    (video) =>
+      new Promise((resolve) => {
+        if (video.readyState >= 1) resolve();
+        else video.onloadedmetadata = resolve;
+      }),
+  );
+  assert.equal(
+    await recorderPage.locator("#preview").evaluate((video) => video.videoWidth),
+    320,
+  );
+  await recorderPage.evaluate(() => {
+    document.getElementById("editing").open = false;
+    window.scrollTo(0, 0);
+  });
+  await recorderPage.setViewportSize({ width: 1440, height: 1200 });
+  await recorderPage.screenshot({
+    path: join(root, ".local/remaining-todos-qa/video-desktop.png"),
+  });
+  await recorderPage.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await recorderPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+  );
+  await recorderPage.screenshot({
+    path: join(root, ".local/remaining-todos-qa/video-mobile.png"),
+  });
   await recorderPage.close();
   await page.bringToFront();
-  results.recordingControls = { pauseResumeStop: true, preview: true };
+  results.recordingControls = {
+    pauseResumeStop: true,
+    preview: true,
+    navigation: true,
+    cropExport: true,
+    originalRestored: true,
+  };
   console.log(JSON.stringify(results));
 } finally {
   if (context) await context.close();

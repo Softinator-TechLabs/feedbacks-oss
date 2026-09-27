@@ -47,6 +47,10 @@
     navigationButton,
     recordingControls,
     recordingState = "idle",
+    highlightEnabled = true,
+    highlightButton,
+    clickIndicators = true,
+    beforeRecording,
     loadingPins,
     occlusionPins = [],
     occlusionFrame,
@@ -123,7 +127,24 @@
     notice.textContent = "Navigation locked. Use Navigation allowed to follow links.";
     revealDrawer();
   }
+  function setHighlight(value) {
+    highlightEnabled = value;
+    highlightButton?.setAttribute("aria-pressed", String(value));
+    if (highlightButton)
+      highlightButton.textContent = value ? "Highlight on" : "Highlight off";
+    if (!value) hoverBox?.classList.add("hidden");
+  }
   function renderRecording(state = recordingState) {
+    const recording = ["recording", "paused"].includes(state);
+    if (recording && !beforeRecording) {
+      beforeRecording = { highlightEnabled, navigationLocked };
+      setHighlight(false);
+      setNavigationLock(false);
+    } else if (!recording && beforeRecording) {
+      setHighlight(beforeRecording.highlightEnabled);
+      setNavigationLock(beforeRecording.navigationLocked);
+      beforeRecording = null;
+    }
     recordingState = state;
     if (!recordingControls) return;
     recordingControls.replaceChildren();
@@ -1099,6 +1120,25 @@
     navigationButton.title =
       "Prevent page links and forms from leaving this review. Menu toggles still work.";
     setNavigationLock(navigationLocked);
+    highlightButton = button(
+      "Highlight on",
+      () => setHighlight(!highlightEnabled),
+      navigationRow,
+    );
+    highlightButton.title =
+      "Outline the element under your pointer. Off by default while recording.";
+    setHighlight(highlightEnabled);
+    const clicks = button(
+      "Click indicators on",
+      (b) => {
+        clickIndicators = !clickIndicators;
+        b.textContent = clickIndicators ? "Click indicators on" : "Click indicators off";
+        b.setAttribute("aria-pressed", String(clickIndicators));
+      },
+      navigationRow,
+    );
+    clicks.title = "Show clicks in recordings. Does not change website interaction.";
+    clicks.setAttribute("aria-pressed", String(clickIndicators));
     const pinRow = document.createElement("div");
     pinRow.className = "row pin-controls";
     bar.append(pinRow);
@@ -1514,6 +1554,25 @@
       categoryLists.append(details);
     }
   }
+  F.listen(
+    "pointerdown",
+    (event) => {
+      if (
+        !active ||
+        !clickIndicators ||
+        recordingState !== "recording" ||
+        event.composedPath().includes(host)
+      )
+        return;
+      const ring = document.createElement("span");
+      ring.className = "recording-click";
+      ring.style.left = `${event.clientX}px`;
+      ring.style.top = `${event.clientY}px`;
+      root.append(ring);
+      setTimeout(() => ring.remove(), 650);
+    },
+    { capture: true, passive: true },
+  );
   // Window capture runs before site handlers on document. Only explicit review
   // mode intercepts right-click; Shift+right-click bypasses the review menu.
   F.listen(
@@ -1655,6 +1714,7 @@
         hoverFrame = null;
         if (
           !active ||
+          !highlightEnabled ||
           freezePending ||
           captureActive ||
           hoverTarget?.nodeType !== 1 ||

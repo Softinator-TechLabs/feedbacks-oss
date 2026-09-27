@@ -17,7 +17,6 @@ import { pageOverviewTarget } from "./page-overview.js";
 import { createRecordingControls } from "./recording-controls.js";
 import {
   videoTarget,
-  videoCreateInput,
   videoFingerprint,
   replayableVideoCreate,
   clearVideoCreateForTab,
@@ -293,7 +292,7 @@ async function api(server, operation, input, token) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(input),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(operation === "assets.uploadVideo" ? 180000 : 30000),
   });
   let result;
   try {
@@ -2054,7 +2053,10 @@ async function route(message, sender) {
       const tab = await chrome.tabs.get(message.sourceTabId);
       const session = await sessionFor({ tab, frameId: 0, url: tab.url });
       const projects = await authenticated("projects.list");
-      const target = await videoTarget(tab, session, U.safeUrl);
+      const target = recordings.bindTarget(
+        sender.tab?.id,
+        await videoTarget(tab, session, U.safeUrl),
+      );
       return {
         project: projects.items.find((project) => project.id === session.projectId),
         ...target,
@@ -2077,21 +2079,15 @@ async function route(message, sender) {
         chrome.storage.session,
         await videoFingerprint(account.token),
         async () => {
-          const tab = await chrome.tabs.get(message.sourceTabId);
-          const session = await sessionFor({ tab, frameId: 0, url: tab.url });
-          if (
-            message.server !== session.server ||
-            message.target?.server !== session.server
-          )
-            throw Error("The connection changed. Open Feedbacks again.");
-          return videoCreateInput(
-            message.target,
-            tab,
-            session,
-            U.safeUrl,
-            message.body,
-            message.idempotencyKey,
-          );
+          // A recording spans navigation. Use the worker-owned starting context,
+          // bound to this recorder and review; current server grants still apply.
+          const target = recordings.target(sender.tab.id, message.target);
+          return {
+            projectId: target.projectId,
+            body: message.body,
+            context: { url: target.url, viewport: target.viewport },
+            idempotencyKey: message.idempotencyKey,
+          };
         },
         (input) => authenticated("threads.create", input, message.server),
         sender.tab.id,
@@ -2321,13 +2317,26 @@ chrome.tabs.onRemoved.addListener(async (id) => {
   delete sessions[id];
   await set({ sessions });
 });
-chrome.tabs.onUpdated.addListener((id, change) => {
+chrome.tabs.onUpdated.addListener((id, change, tab) => {
   if (
     change.status === "loading" ||
     (change.url && !change.url.startsWith(chrome.runtime.getURL("video.html")))
   ) {
-    recordings.stop(id);
+    // The native tab stream continues across navigation. Page controls can be
+    // restored on the original origin; never activate review on another origin.
     clearVideoCreateForTab(chrome.storage.session, id).catch(() => {});
     deleteDraftPages(`point-${id}`).catch(() => {});
+  }
+  if (
+    change.status === "complete" &&
+    ["recording", "paused"].includes(recordings.state(id))
+  ) {
+    void (async () => {
+      const { sessions = {} } = await get();
+      const session = sessions[id];
+      if (!session || new URL(tab.url).origin !== session.origin) return;
+      await review.activate(id, session.projectId);
+      await recordings.restore(id);
+    })().catch(() => {});
   }
 });

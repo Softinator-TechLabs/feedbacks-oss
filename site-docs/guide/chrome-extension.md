@@ -49,7 +49,7 @@ Separate screenshots are recommended for AI review. You can also select **Also i
 
 ## Video and updates
 
-**Record a short tab video** opens Chrome's tab picker. Stop after at most 30 seconds, preview the clip, add a comment and send it. The clip is stored privately with the thread. Recordings above 8 MiB are discarded. Chrome Web Store installs update through Chrome; after an update, refresh pages you are reviewing. An unpacked build requires **Reload** in `chrome://extensions`.
+**Record a short tab video** opens Chrome's tab picker. Stop after at most five minutes, preview the clip, add a comment and send it. The clip is stored privately with the thread. Tab audio and microphone are separate options, off by default. Recordings above 40 MiB are discarded. Trim and crop locally from the preview before sending; Restore original undoes edits. Navigation continues recording in the selected tab. Chrome Web Store installs update through Chrome; after an update, refresh pages you are reviewing. An unpacked build requires **Reload** in `chrome://extensions`.
 
 Read [access and privacy](/guide/access-privacy) before capturing sensitive pages. For complete extension behavior, see the [source guide](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/extension.md).
 

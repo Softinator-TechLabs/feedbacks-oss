@@ -19,7 +19,7 @@ try {
     "0.0.0.0",
     () => console.info(`Feedbacks listening on port ${config.port}`),
   );
-  server.requestTimeout = 30000;
+  server.requestTimeout = 180000;
   server.headersTimeout = 15000;
   let maintenanceRunning = false;
   const maintenance = setInterval(() => {

@@ -70,6 +70,25 @@ test("recording controls stay with their source tab and stop on disconnect", asy
   assert.equal(controller.state(10), "idle");
   assert.equal(state, undefined);
   connect(port);
+  const target = {
+    sourceTabId: 10,
+    reviewId: "review-a",
+    projectId: "project-a",
+    url: "https://site.test/start",
+  };
+  controller.bindTarget(20, target);
+  assert.deepEqual(controller.target(20, target), target);
+  assert.throws(() => controller.target(21, target), /context changed/);
+  assert.throws(
+    () => controller.target(20, { ...target, projectId: "project-b" }),
+    /context changed/,
+  );
+  controller.bindTarget(20, { ...target, url: "https://site.test/next" });
+  assert.deepEqual(
+    controller.target(20, target),
+    target,
+    "navigation retains starting context",
+  );
   state({ state: "recording" });
   assert.equal(controller.state(10), "recording");
   assert.equal(notices.at(-1)[0], 10);
