@@ -9,8 +9,11 @@
   </head>
   <body>
     <header>
-      <strong>Feedbacks</strong><span>Review capture</span
-      ><button id="discard">Discard draft</button>
+      <strong>Feedbacks</strong><span>Review capture</span>
+      <div id="review-actions" class="review-actions">
+        <button id="discard">Discard draft</button>
+        <button id="send-header" class="primary" disabled>Send feedback</button>
+      </div>
     </header>
     <section id="completion" hidden aria-labelledby="completion-title">
       <svg viewBox="0 0 32 32" width="40" height="40" fill="none" aria-hidden="true">
@@ -186,7 +189,7 @@
           </p>
         </div>
         <p class="hint">Your draft stays in this browser until you explicitly send it.</p>
-        <button id="send" class="primary">Send feedback</button>
+        <button id="send" class="primary" disabled>Send feedback</button>
         <div id="upload-progress" class="upload-progress" hidden>
           <label id="upload-label" for="upload-meter">Preparing screenshots…</label>
           <progress id="upload-meter" max="100"></progress>

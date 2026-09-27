@@ -41,6 +41,12 @@ function hideFullPagePreview() {
   $("canvas").hidden = !base;
   $("series-guide").hidden = (draft?.capturePages?.length || 0) < 2;
 }
+function setSendState(disabled, label) {
+  for (const id of ["send", "send-header"]) {
+    $(id).disabled = disabled;
+    if (label) $(id).textContent = label;
+  }
+}
 function uploadProgress(completed, total) {
   if (!Number.isInteger(total) || total < 1) return;
   const count = Math.min(total, Math.max(0, completed));
@@ -48,6 +54,7 @@ function uploadProgress(completed, total) {
   $("upload-progress").hidden = false;
   $("upload-meter").value = percent;
   $("upload-label").textContent = `${count} of ${total} images uploaded · ${percent}%`;
+  if (sendingApproval) setSendState(true, `Sending ${percent}%`);
 }
 function completed(url) {
   hideFullPagePreview();
@@ -62,7 +69,7 @@ function completed(url) {
   draft = null;
   $("body").value = "";
   $("editor-workspace").hidden = true;
-  $("discard").hidden = true;
+  $("review-actions").hidden = true;
   $("completion").hidden = false;
   $("completion-title").textContent = url ? "Feedback sent" : "No pending capture";
   $("completion-copy").textContent = url
@@ -415,7 +422,7 @@ async function loadBase(fresh) {
   const request = ++baseLoad;
   loadingBase = true;
   lock(true);
-  $("send").disabled = true;
+  setSendState(true);
   base = null;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (draft?.id !== fresh?.id) pageIndex = 0;
@@ -459,7 +466,7 @@ async function loadBase(fresh) {
   if (!fresh) {
     shapes = [];
     lock(true);
-    $("send").disabled = true;
+    setSendState(true);
     loadingBase = false;
     completed();
     return;
@@ -488,14 +495,15 @@ async function loadBase(fresh) {
   render();
   loadingBase = false;
   lock(redacting || !!draft.frozen || sendingApproval);
-  $("send").disabled = redacting || sendingApproval;
+  setSendState(redacting || sendingApproval);
 }
 async function permanentRedaction(rectangles, migrate = false) {
   redacting = true;
   dirty = true;
   clearTimeout(saveTimer);
   lock(true);
-  $("send").disabled = $("discard").disabled = true;
+  setSendState(true);
+  $("discard").disabled = true;
   status("Permanently saving redaction…");
   try {
     if (!migrate) await persist();
@@ -518,7 +526,7 @@ async function permanentRedaction(rectangles, migrate = false) {
   } finally {
     redacting = false;
     lock(!draft || !!draft.frozen || loadingBase);
-    $("send").disabled = !draft || loadingBase;
+    setSendState(!draft || loadingBase);
     $("discard").disabled = false;
   }
 }
@@ -686,7 +694,7 @@ $("retry-capture").onclick = async () => {
   try {
     await persist();
     lock(true);
-    $("send").disabled = true;
+    setSendState(true);
     status("Retrying capture on the original review tab…");
     const result = await send({ type: "retryCapture", id: draft.id });
     await loadBase(await send({ type: "draft" }));
@@ -700,14 +708,14 @@ $("retry-capture").onclick = async () => {
     status(error.message, "error");
   } finally {
     lock(!draft || !!draft.frozen || loadingBase);
-    $("send").disabled = !draft || loadingBase;
+    setSendState(!draft || loadingBase);
     $("retry-capture").disabled = false;
   }
 };
-$("send").onclick = async () => {
+$("send").onclick = $("send-header").onclick = async () => {
   if (!draft || redacting || loadingBase || sendingApproval) return;
   sendingApproval = true;
-  $("send").disabled = true;
+  setSendState(true, "Sending…");
   $("discard").disabled = true;
   if (draft.capturePages?.length && !$("no-image").checked) {
     $("upload-progress").hidden = false;
@@ -777,9 +785,9 @@ $("send").onclick = async () => {
         : `${e.message} No local draft remains. Check Feedbacks for any completed submission.`,
       "error",
     );
-    $("send").disabled = !draft || loadingBase;
-    $("send").textContent = "Retry Send";
+    setSendState(!draft || loadingBase, "Retry Send");
     $("discard").disabled = false;
+    $("status").scrollIntoView({ block: "nearest" });
   }
 };
 addEventListener("beforeunload", (e) => {
@@ -878,9 +886,12 @@ async function init() {
   pointNotes.hidden = comments.length === 0;
   comments.forEach((item, index) => {
     const row = document.createElement("li");
+    const heading = document.createElement("div");
+    heading.className = "point-note-heading";
     const label = document.createElement("label");
     label.htmlFor = `point-note-${index}`;
     label.textContent = `Point ${index + 1}`;
+    heading.append(label);
     const imageIndex = (draft.capturePages || []).findIndex(
       (page) => page.annotationId === item.id,
     );
@@ -894,7 +905,7 @@ async function init() {
         );
         if (index >= 0) changePage(index);
       };
-      label.append(original);
+      heading.append(original);
     }
     const note = document.createElement("textarea");
     note.id = `point-note-${index}`;
@@ -903,7 +914,7 @@ async function init() {
     note.maxLength = 4000;
     note.required = true;
     note.addEventListener("input", schedule);
-    row.append(label, note);
+    row.append(heading, note);
     pointNotes.append(row);
   });
   $("body-label").textContent = comments.length
@@ -924,10 +935,10 @@ async function init() {
   $("capture-size").textContent =
     `${draft.context.viewport.width} × ${draft.context.viewport.height} · Capture details`;
   lock(!!draft.frozen);
-  $("send").disabled = false;
+  setSendState(false);
   if (draft.frozen) {
     showPublishedThread(draft);
-    $("send").textContent = "Retry Send";
+    setSendState(!draft || loadingBase, "Retry Send");
     status(
       draft.thread
         ? `Feedback thread already published. Retry Send to finish pending images without creating a second thread. ${draft.server}/threads/${draft.thread.id}`
@@ -952,8 +963,8 @@ async function init() {
   }
 }
 lock(true);
-$("send").disabled = true;
+setSendState(true);
 init().catch((e) => {
   status(e.message, "error");
-  $("send").disabled = true;
+  setSendState(true);
 });

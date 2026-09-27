@@ -1013,7 +1013,7 @@ try {
     (await draft()).toolState.some((mark) => mark.tool === "arrow"),
     `Arrow annotation was not saved: ${JSON.stringify((await draft()).toolState.map((mark) => mark.tool))}`,
   );
-  await inlineEditor.locator("#send").click();
+  await inlineEditor.locator("#send-header").click();
   await inlineEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
   const inlineThreadUrl = await inlineEditor.locator("#thread").getAttribute("href");
   const inlineThreadId = inlineThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
@@ -1319,6 +1319,39 @@ try {
   const multiEditor = await context.newPage();
   await multiEditor.goto(`chrome-extension://${extensionId}/editor.html`);
   await multiEditor.locator("#full-page-toggle:not([disabled])").waitFor();
+  const editorViewport = multiEditor.viewportSize();
+  for (const width of [1280, 390, 320]) {
+    await multiEditor.setViewportSize({ width, height: 800 });
+    await multiEditor.evaluate(() => scrollTo(0, document.body.scrollHeight));
+    const headerState = await multiEditor.evaluate(() => {
+      const button = document.getElementById("send-header");
+      const rect = button.getBoundingClientRect();
+      return {
+        visible: rect.top >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth,
+        reachable:
+          document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) ===
+          button,
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    });
+    assert.deepEqual(headerState, { visible: true, reachable: true, overflow: false });
+    const pointHeading = multiEditor.locator(".point-note-heading").first();
+    await pointHeading.scrollIntoViewIfNeeded();
+    const label = await pointHeading.locator("label").boundingBox();
+    const original = await pointHeading.locator("button").boundingBox();
+    assert.ok(
+      original.x >= label.x + label.width + 11 ||
+        original.y >= label.y + label.height + 7,
+      "Point label and original-image action need a visible gap, including when wrapped",
+    );
+    if (width !== 320)
+      await multiEditor.screenshot({
+        path: join(root, `.local/remaining-todos-qa/editor-actions-${width}.png`),
+      });
+  }
+  await multiEditor.setViewportSize(editorViewport);
+  await multiEditor.evaluate(() => scrollTo(0, 0));
+
   await multiEditor.getByRole("button", { name: "Full page preview" }).click();
   await multiEditor.locator("#full-page-preview:visible").waitFor();
   const continuousHeight = multiScrollDraft.capturePages
@@ -1504,11 +1537,16 @@ try {
         window.qaUploadProgress.push({
           completed: message.completed,
           total: message.total,
+          actionsLocked: ["send", "send-header"].every(
+            (id) => document.getElementById(id).disabled,
+          ),
         });
     });
   });
   await seriesEditor.locator("#send").click();
-  await seriesEditor.getByRole("button", { name: "Retry Send" }).waitFor();
+  await seriesEditor.locator("#send:has-text('Retry Send')").waitFor();
+  assert.equal(await seriesEditor.locator("#send-header").textContent(), "Retry Send");
+  assert.equal(await seriesEditor.locator("#send-header").isEnabled(), true);
   const interrupted = await draft();
   assert.ok(
     interrupted?.thread?.id,
@@ -1530,11 +1568,13 @@ try {
   results.seriesReview.meter = await seriesEditor
     .locator("#upload-meter")
     .evaluate((meter) => meter.value);
-  await seriesEditor.locator("#send").click();
+  await seriesEditor.locator("#send-header").click();
   await seriesEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
   results.seriesReview.uploadProgress = await seriesEditor.evaluate(
     () => window.qaUploadProgress,
   );
+  assert.ok(results.seriesReview.uploadProgress.every((entry) => entry.actionsLocked));
+  assert.equal(await seriesEditor.locator("#send-header").isVisible(), false);
   const seriesThreadUrl = await seriesEditor.locator("#thread").getAttribute("href");
   const seriesThreadId = seriesThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
   if (!seriesThreadId) throw Error("Ordered screenshot submission lacks a thread link");
@@ -1632,7 +1672,7 @@ try {
     };
   });
   await removableEditor.locator("#send").click();
-  await removableEditor.getByRole("button", { name: "Retry Send" }).waitFor();
+  await removableEditor.locator("#send:has-text('Retry Send')").waitFor();
   const interruptedCombined = await draft();
   assert.match(
     await removableEditor.locator("#status").textContent(),

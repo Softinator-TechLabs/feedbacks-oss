@@ -20,6 +20,8 @@ and explicit review before sharing.
 - [x] Simplify the connected popup while keeping setup and errors reachable.
 - [x] Exercise desktop/mobile menus, delayed/failed captures, keyboard input,
       navigation, recording pause/resume/stop and compact layout.
+- [x] Keep Send beside Discard in a sticky editor header, synchronize upload/retry
+      states, and separate point labels from original-image actions.
 - [x] Run release checks and package the verified extension.
 
 ## Boundaries
