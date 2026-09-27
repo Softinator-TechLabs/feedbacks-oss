@@ -544,7 +544,12 @@ try {
       (
         await chrome.scripting.executeScript({
           target: { tabId },
-          func: () => globalThis.__pointFirstPaint,
+          func: async () => {
+            // The menu is synchronous; its first-paint probe runs next frame.
+            // Fast workers can read the visible menu before that frame occurs.
+            if (!globalThis.__pointFirstPaint) await new Promise(requestAnimationFrame);
+            return globalThis.__pointFirstPaint;
+          },
         })
       )[0].result,
     id,
