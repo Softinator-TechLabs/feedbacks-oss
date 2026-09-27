@@ -564,8 +564,8 @@ export const inputSchemas = {
   }),
   "assets.uploadVideo": z.object({
     ...tm,
-    videoBase64: z.string().max(11184835),
-    durationMs: z.number().int().positive().max(30000),
+    videoBase64: z.string().max(55924080),
+    durationMs: z.number().int().positive().max(300000),
     idempotencyKey: z.string().min(8).max(200),
   }),
   "assets.get": z.object({
@@ -618,7 +618,7 @@ const assetMetadataOutput = z.object({
   height: z.number().optional(),
   bytes: z.number(),
   contentType: z.enum(["image/webp", "video/webm"]),
-  durationMs: z.number().int().positive().max(30000).optional(),
+  durationMs: z.number().int().positive().max(300000).optional(),
   createdAt: z.string(),
   url: z.string(),
   filename: z.string().optional(),

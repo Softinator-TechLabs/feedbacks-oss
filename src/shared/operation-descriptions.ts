@@ -85,7 +85,7 @@ export const operationDescriptions: Record<string, string> = {
   "assets.get":
     "Read private attachment metadata, including optional captureRegion, captureSections and normalized markings. Point markings carry annotationId/number when linked to context.annotations; pencil and arrow markings have bounds and endpoints. For a merged full-page asset, captureSections maps each retained source page range to its normalized imageTop/imageBottom range. For images, includeImage:true returns a bounded WebP preview (MCP image block; HTTP/CLI image object with base64 data). Read numbered screenshots for detail before relying on a scaled combined image. Videos are metadata-only here; use the authorized relative url in a browser. maxDimension is 256-2048 pixels, default 1600. The relative url is an authenticated original-asset proxy on the Feedbacks server; never send credentials to the reviewed website.",
   "assets.uploadVideo":
-    "Attach a user-approved WebM tab recording to an existing thread. Maximum 8 MiB and declared duration 30 seconds. The asset is private to the project and the caller needs the existing asset-upload scope. Do not treat this API as permission to record a browser tab.",
+    "Attach a user-approved WebM tab recording to an existing thread. Maximum 40 MiB and declared duration 5 minutes. The asset is private to the project and the caller needs the existing asset-upload scope. Do not treat this API as permission to record a browser tab.",
   "context.export":
     "Export a paginated immutable snapshot with full threads, assets and approvedInstructions. Continue with snapshotId/nextOffset. For later changes use context.changes and refetch affected threads; snapshot reviewer guidance is not live.",
   "context.changes":

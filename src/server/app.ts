@@ -114,7 +114,15 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       next(error);
     }
   });
-  app.use(express.json({ limit: "14mb", strict: true }));
+  // WebM is bounded at 40 MiB; its base64 transport needs up to 54 MiB.
+  // Keep the existing smaller limit for all other HTTP operations.
+  const smallJson = express.json({ limit: "14mb", strict: true });
+  const mediaJson = express.json({ limit: "56mb", strict: true });
+  app.use((req, res, next) =>
+    (req.path === "/api/assets.uploadVideo" || req.path === "/mcp"
+      ? mediaJson
+      : smallJson)(req, res, next),
+  );
   const bearer = (req: Request) =>
     req.get("Authorization")?.match(/^Bearer ([A-Za-z0-9_-]+)$/)?.[1];
   const cookie = (req: Request) =>

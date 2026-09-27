@@ -2,6 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
+import {
+  VIDEO_MAX_BYTES,
+  VIDEO_MAX_MS,
+  recordingOptions,
+  exportVideo,
+} from "../extension/video-media.js";
 
 test("lost create acknowledgement retries the original comment and review target", async () => {
   const html = await readFile(
@@ -26,9 +32,17 @@ test("lost create acknowledgement retries the original comment and review target
   };
   const context = vm.createContext({
     Blob,
+    VIDEO_MAX_BYTES,
+    VIDEO_MAX_MS,
+    recordingOptions,
+    exportVideo,
     URL,
     crypto,
     console,
+    setInterval() {
+      return 1;
+    },
+    clearInterval() {},
     location: { href: "chrome-extension://test/video.html?sourceTabId=10" },
     document: { getElementById: (id: string) => nodes[id] },
     window: { addEventListener() {} },
@@ -51,7 +65,10 @@ test("lost create acknowledgement retries the original comment and review target
     },
   });
   vm.runInContext(
-    await readFile(new URL("../extension/video.js", import.meta.url), "utf8"),
+    (await readFile(new URL("../extension/video.js", import.meta.url), "utf8")).replace(
+      /^import[\s\S]*?from "\.\/video-media.js";\n/,
+      "",
+    ),
     context,
   );
   await new Promise((resolve) => setImmediate(resolve));
@@ -78,6 +95,18 @@ test("ending review while the native picker is open stops its eventual stream", 
     "status",
     "target",
     "send",
+    "tab-audio",
+    "microphone",
+    "editing",
+    "audio-options",
+    "apply-edit",
+    "cancel-edit",
+    "reset-edit",
+    "crop-preview",
+    "crop-left",
+    "crop-top",
+    "crop-width",
+    "crop-height",
   ])
     nodes[id] = { textContent: "", disabled: false, removeAttribute() {} };
   let disconnect!: () => void, resolvePicker!: (stream: any) => void;
@@ -85,10 +114,17 @@ test("ending review while the native picker is open stops its eventual stream", 
     constructed = 0;
   const context = vm.createContext({
     URL,
+    VIDEO_MAX_BYTES,
+    VIDEO_MAX_MS,
+    recordingOptions,
+    exportVideo,
     crypto,
     Blob,
     console,
-    clearInterval,
+    setInterval() {
+      return 1;
+    },
+    clearInterval() {},
     location: { href: "chrome-extension://test/video.html?sourceTabId=10" },
     document: { getElementById: (id: string) => nodes[id] },
     window: { addEventListener() {} },
@@ -124,7 +160,10 @@ test("ending review while the native picker is open stops its eventual stream", 
     },
   });
   vm.runInContext(
-    await readFile(new URL("../extension/video.js", import.meta.url), "utf8"),
+    (await readFile(new URL("../extension/video.js", import.meta.url), "utf8")).replace(
+      /^import[\s\S]*?from "\.\/video-media.js";\n/,
+      "",
+    ),
     context,
   );
   await new Promise((resolve) => setImmediate(resolve));

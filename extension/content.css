@@ -536,3 +536,25 @@ button:focus-visible {
 .notice:empty {
   display: none;
 }
+
+.recording-click {
+  position: fixed;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 3px solid #e79d34;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: feedbacks-click 0.6s ease-out forwards;
+}
+@keyframes feedbacks-click {
+  to {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recording-click {
+    animation: none;
+  }
+}
