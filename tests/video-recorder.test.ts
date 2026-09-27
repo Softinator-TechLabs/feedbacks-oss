@@ -31,6 +31,14 @@ test("lost create acknowledgement retries the original comment and review target
     routeFingerprint: "route-a",
   };
   const context = vm.createContext({
+    createVideoTimeline: () => ({
+      load() {},
+      clear() {},
+      lock() {},
+      reset() {},
+      applied() {},
+      original() {},
+    }),
     Blob,
     VIDEO_MAX_BYTES,
     VIDEO_MAX_MS,
@@ -98,6 +106,8 @@ test("ending review while the native picker is open stops its eventual stream", 
     "tab-audio",
     "microphone",
     "editing",
+    "crop-editing",
+    "edit-state",
     "audio-options",
     "apply-edit",
     "cancel-edit",
@@ -113,6 +123,14 @@ test("ending review while the native picker is open stops its eventual stream", 
   let stopped = 0,
     constructed = 0;
   const context = vm.createContext({
+    createVideoTimeline: () => ({
+      load() {},
+      clear() {},
+      lock() {},
+      reset() {},
+      applied() {},
+      original() {},
+    }),
     URL,
     VIDEO_MAX_BYTES,
     VIDEO_MAX_MS,

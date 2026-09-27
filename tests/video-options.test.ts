@@ -96,6 +96,14 @@ for (const tabAudio of [false, true])
         }
       }
       const context = vm.createContext({
+        createVideoTimeline: () => ({
+          load() {},
+          clear() {},
+          lock() {},
+          reset() {},
+          applied() {},
+          original() {},
+        }),
         Blob,
         URL,
         crypto,

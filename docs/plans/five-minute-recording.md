@@ -1,6 +1,6 @@
 # Five-minute review recordings
 
-Status: in progress. Date: 2026-09-27.
+Status: completed. Date: 2026-09-27.
 
 ## Outcome
 
@@ -13,7 +13,7 @@ Keep the recorder's initial project and source context while navigating. Preview
 - [x] Inspect recorder, upload contracts, lifecycle and existing browser tests.
 - [x] Implement media controls, local editing and coherent duration/upload limits.
 - [x] Verify real MediaRecorder output with synthetic media, source-page controls and failure paths.
-- [ ] Check desktop/mobile UI, documentation, CI, package and deployment.
+- [x] Check desktop/mobile UI, documentation, CI, package and deployment.
 
 ## Decisions and risks
 
@@ -23,4 +23,4 @@ WebM VP9/Opus, with VP8 fallback, fits Chrome desktop. AVIF is a still-image for
 
 Local `npm run check`: 130 tests, 126 passed, four explicitly skipped; formatting, architecture/docs, types, builds, sandbox smoke and release checks passed. Focused checks cover every audio-source combination, five-minute active-time cutoff, source cleanup, invalid crop bounds, recording-context binding, duration validation and a video HTTP request larger than the old 14 MiB transport limit. Real Chromium MediaRecorder checks cover pause/resume, navigation, crop export and restoring the original. Independent review found and verified a millisecond rounding repair for crop-only edits.
 
-CI, deployment and package readback pending. Windows/Ubuntu native media-picker and microphone-device testing remains unperformed.
+All six CI jobs passed for PR #80. Deployment at b266084 and the public v0.1.27 ZIP were verified; every ZIP entry matched the tested local build. Windows/Ubuntu native media-picker and microphone-device testing remains unperformed.

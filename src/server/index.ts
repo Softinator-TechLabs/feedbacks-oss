@@ -1,3 +1,4 @@
+import { drainThreadDeletionQueue } from "./thread-deletion.js";
 import { configFromEnv } from "./config.js";
 import { postgres } from "./db.js";
 import { migrate } from "./migrations.js";
@@ -14,13 +15,26 @@ try {
   const config = configFromEnv();
   const db = postgres(config.databaseUrl, config.databasePoolMax);
   await migrate(db);
-  const server = createApp(config, db, assetStore(config)).listen(
-    config.port,
-    "0.0.0.0",
-    () => console.info(`Feedbacks listening on port ${config.port}`),
+  const store = assetStore(config);
+  const server = createApp(config, db, store).listen(config.port, "0.0.0.0", () =>
+    console.info(`Feedbacks listening on port ${config.port}`),
   );
   server.requestTimeout = 180000;
   server.headersTimeout = 15000;
+  let cleanupRunning = false;
+  const cleanup = () => {
+    if (cleanupRunning) return;
+    cleanupRunning = true;
+    void drainThreadDeletionQueue(db, store)
+      .catch(() =>
+        console.error("Thread storage cleanup failed; persisted work will retry."),
+      )
+      .finally(() => {
+        cleanupRunning = false;
+      });
+  };
+  cleanup();
+  const cleanupTimer = setInterval(cleanup, 10000).unref();
   let maintenanceRunning = false;
   const maintenance = setInterval(() => {
     if (maintenanceRunning) return;
@@ -45,6 +59,7 @@ try {
     if (stopping) return;
     stopping = true;
     clearInterval(maintenance);
+    clearInterval(cleanupTimer);
     const deadline = setTimeout(() => process.exit(1), 10000).unref();
     server.close(async () => {
       try {

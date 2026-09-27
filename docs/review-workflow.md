@@ -103,3 +103,11 @@ Manually registered links are labeled by provider and remain **reported**, not r
 A signed-in project maintainer can open **Figma design reference** in a thread's Details and register one Figma file URL. The link can point to a selected Figma node. Replace or remove it there as design work changes. The reference is visible to project members who can read the thread; Figma controls access to the file itself.
 
 Registering the reference saves only the Figma file URL in Feedbacks. It does not import a design, copy the thread or screenshots into Figma, verify Figma permissions, or resolve the feedback. If a designer needs source material in Figma, review what can be shared and move it explicitly using their authorized Figma workflow.
+
+## Archive and delete feedback
+
+Open **Archive** above the feedback list to find archived threads. The thread header has **Archive thread** / **Unarchive thread** actions with an explanation before confirmation. Archive preserves screenshots, recordings, files, points, discussions, reviews and guest links.
+
+Signed-in human project maintainers can select threads on the current list page and choose **Delete selected**, or choose **Delete thread** in a thread header. The confirmation lists the selected feedback and consequences. Deletion permanently removes thread-owned records, points, replies, reviews, attachments and guest discussion links; shared project documents and external GitHub issues remain. A changed thread requires reloading and reviewing the selection before deleting it. A pending GitHub issue creation must be reconciled first.
+
+The **Deleted feedback** panel shows current-object storage cleanup receipts. Failed or pending cleanup survives server restarts; cleanup continues automatically after the page closes or the server restarts. **Retry file cleanup** checks failed work immediately. Each batch processes up to 12 objects. Archived feedback can be restored; deleted feedback cannot be restored in the app. Older storage versions, retention-locked copies, backups and already delivered external copies follow the operator's retention policy.

@@ -1,3 +1,8 @@
+import {
+  DeleteThreadsButton,
+  ThreadDeletionCleanup,
+  ArchiveThreadButton,
+} from "./thread-deletion.js";
 import React, { useEffect, useRef, useState } from "react";
 import { ThreadStatus } from "./thread-status.js";
 import { ThreadReview } from "./thread-review.js";
@@ -39,7 +44,6 @@ import {
   Field,
   Loading,
   Notice,
-  ConfirmButton,
   useAction,
   useLoad,
 } from "./ui.js";
@@ -74,7 +78,9 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
   } = filters;
   const [creating, setCreating] = useState(false),
     [filtersOpen, setFiltersOpen] = useState(false),
-    [version, setVersion] = useState(0);
+    [version, setVersion] = useState(0),
+    [selected, setSelected] = useState<Set<string>>(new Set());
+  useEffect(() => setSelected(new Set()), [project.id, query]);
   const activeFilterCount = [
     search,
     url,
@@ -123,7 +129,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     <>
       <div className="page-heading thread-list-heading">
         <div>
-          <h1>Feedback</h1>
+          <h1>{filters.archived ? "Archived feedback" : "Feedback"}</h1>
           <p>
             {data
               ? `${data.total} ${data.total === 1 ? "thread" : "threads"}`
@@ -140,6 +146,19 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           )}
         </div>
         <div className="thread-list-quick-actions">
+          <button
+            type="button"
+            aria-pressed={!!filters.archived}
+            onClick={() =>
+              apply({
+                ...readFilters(""),
+                archived: !filters.archived,
+                showResolved: !!!filters.archived,
+              })
+            }
+          >
+            {filters.archived ? "Back to inbox" : "Archive"}
+          </button>
           {actor.owner && (
             <button
               className="thread-priority-button"
@@ -195,6 +214,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
             apply(readFilters(p.toString()));
           }}
         >
+          {filters.archived && <input type="hidden" name="archived" value="true" />}
           <Field label="Search feedback">
             <input
               name="search"
@@ -309,6 +329,44 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           }}
         />
       </section>
+      {actor.kind === "human" && project.permissions.canMaintain && (
+        <>
+          <ThreadDeletionCleanup projectId={project.id} version={version} />
+          {!!data?.items.length && (
+            <div
+              className="thread-bulk-actions"
+              role="group"
+              aria-label="Select feedback for deletion"
+            >
+              <label className="thread-select-all">
+                <input
+                  type="checkbox"
+                  checked={data.items.every((item) => selected.has(item.id))}
+                  onChange={(event) =>
+                    setSelected(
+                      event.target.checked
+                        ? new Set(data.items.map((item) => item.id))
+                        : new Set(),
+                    )
+                  }
+                />
+                Select this page
+              </label>
+              <span>
+                {data.items.filter((item) => selected.has(item.id)).length} selected
+              </span>
+              <DeleteThreadsButton
+                projectId={project.id}
+                threads={data.items.filter((item) => selected.has(item.id))}
+                onDeleted={() => {
+                  setSelected(new Set());
+                  setVersion((value) => value + 1);
+                }}
+              />
+            </div>
+          )}
+        </>
+      )}
       <ErrorNotice error={error} />
       {error && <button onClick={() => setVersion((v) => v + 1)}>Retry loading</button>}
       {!data && !error ? (
@@ -325,6 +383,23 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
               return (
                 <div className="thread-row" key={t.id}>
                   <div className="thread-row-leading">
+                    {actor.kind === "human" && project.permissions.canMaintain && (
+                      <label className="thread-select">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select feedback: ${t.body.slice(0, 80)}`}
+                          checked={selected.has(t.id)}
+                          onChange={(event) =>
+                            setSelected((current) => {
+                              const next = new Set(current);
+                              if (event.target.checked) next.add(t.id);
+                              else next.delete(t.id);
+                              return next;
+                            })
+                          }
+                        />
+                      </label>
+                    )}
                     {project.permissions.canMaintain && (
                       <ThreadQuickPriority
                         thread={t}
@@ -871,6 +946,16 @@ export function ThreadDetail({
             }
           }}
         >
+          {project?.permissions.canMaintain && (
+            <>
+              <ArchiveThreadButton thread={t} onSaved={setThread} />
+              <DeleteThreadsButton
+                projectId={t.projectId}
+                threads={[t]}
+                onDeleted={() => navigate(`/projects/${t.projectId}`)}
+              />
+            </>
+          )}
           {project?.permissions.canWrite && (
             <ThreadStatus
               key={`status:${t.id}`}
@@ -1589,16 +1674,6 @@ export function ThreadDetail({
                     </div>
                   ))}
                 </details>
-                {project?.permissions.canMaintain && (
-                  <ConfirmButton
-                    disabled={a.busy}
-                    onConfirm={() =>
-                      void mutate("threads.archive", { archived: !t.archived })
-                    }
-                  >
-                    {t.archived ? "Unarchive thread" : "Archive thread"}
-                  </ConfirmButton>
-                )}
               </aside>
             </div>
           </div>

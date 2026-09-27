@@ -312,7 +312,17 @@ export type Thread = {
       imageBottom: number;
     }>;
     markings?: Array<{
-      tool: "point" | "pencil" | "arrow" | "rectangle" | "text";
+      tool:
+        | "point"
+        | "pencil"
+        | "arrow"
+        | "rectangle"
+        | "text"
+        | "highlighter"
+        | "steps"
+        | "blur"
+        | "sticker"
+        | "image";
       bounds: { x: number; y: number; width: number; height: number };
       endpoints: Array<{ x: number; y: number }>;
       number?: number;

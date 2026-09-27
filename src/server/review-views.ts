@@ -27,7 +27,7 @@ export const priorityScore = `(
 // One predicate/order for the inbox and cross-page keyboard navigation.
 export function threadQuery(projectId: string, i: ReviewFilters) {
   const args: unknown[] = [projectId];
-  let filter = "project_id=$1 AND COALESCE((data->>'archived')::boolean,false)=false";
+  let filter = `project_id=$1 AND COALESCE((data->>'archived')::boolean,false)=${i.archived === true ? "true" : "false"}`;
   if (i.search) {
     args.push(`%${i.search}%`);
     filter += ` AND (data->>'body' ILIKE $${args.length} OR EXISTS(SELECT 1 FROM replies r WHERE r.thread_id=threads.id AND r.data->>'body' ILIKE $${args.length}))`;

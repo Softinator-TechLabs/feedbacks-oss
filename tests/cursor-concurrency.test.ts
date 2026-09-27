@@ -13,6 +13,10 @@ import { feedback } from "../src/server/feedback.js";
 import { GithubApp } from "../src/server/github-app.js";
 import { pollGithubStatusSync } from "../src/server/github-status-worker.js";
 import sharp from "sharp";
+import {
+  cleanupDeletedObjects,
+  drainThreadDeletionQueue,
+} from "../src/server/thread-deletion.js";
 
 // Opt-in native PostgreSQL: PGlite intentionally serializes its one connection and
 // cannot reproduce different transactions committing in reversed cursor order.
@@ -65,7 +69,7 @@ test(
         (await db.query("SELECT version FROM migrations ORDER BY version")).map(
           (r) => r.version,
         ),
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
       );
       const owner = await ops.auth.bootstrap(
         "owner@example.test",
@@ -248,6 +252,138 @@ test(
         (await db.one("SELECT count(*)::integer AS count FROM assets")).count,
         1,
       );
+
+      // Both workers discover the same due object before either claims it.
+      // Real PostgreSQL must allow only one lease owner into private storage.
+      const deleteOps = new Operations(
+        db,
+        {
+          remove: async () => {
+            throw new Error("synthetic storage unavailable");
+          },
+        } as any,
+        {} as any,
+      );
+      const currentThird = await ops.executeOperation(owner, "threads.get", {
+        threadId: third.id,
+      });
+      const deletion = await deleteOps.executeOperation(owner, "threads.delete", {
+        projectId: p.id,
+        threads: [{ threadId: third.id, revision: currentThird.revision }],
+        idempotencyKey: "native-concurrent-deletion",
+        confirmation: "DELETE",
+      });
+      assert.equal(deletion.cleanup.state, "failed");
+      await db.query(
+        "UPDATE thread_deletion_objects SET next_at=now()-interval '1 second' WHERE deletion_id=$1",
+        [deletion.id],
+      );
+      let discovered = 0;
+      let releaseDiscovery!: () => void;
+      const discoveryBarrier = new Promise<void>((resolve) => {
+        releaseDiscovery = resolve;
+      });
+      const competingDb = new Database({
+        query: async (sql: string, params?: any[]) => {
+          const result = await pool!.query(sql, params);
+          if (
+            sql.startsWith(
+              "SELECT deletion_id,object_key FROM thread_deletion_objects WHERE state",
+            )
+          ) {
+            discovered++;
+            if (discovered === 2) releaseDiscovery();
+            await discoveryBarrier;
+          }
+          return result;
+        },
+      });
+      let enteredStorage!: () => void;
+      const storageStarted = new Promise<void>((resolve) => {
+        enteredStorage = resolve;
+      });
+      let releaseStorage!: () => void;
+      const storageBarrier = new Promise<void>((resolve) => {
+        releaseStorage = resolve;
+      });
+      let removeCalls = 0,
+        activeRemovals = 0,
+        maxActiveRemovals = 0;
+      const leasedStore = {
+        remove: async () => {
+          removeCalls++;
+          activeRemovals++;
+          maxActiveRemovals = Math.max(maxActiveRemovals, activeRemovals);
+          enteredStorage();
+          try {
+            await storageBarrier;
+            throw new Error("synthetic retryable failure");
+          } finally {
+            activeRemovals--;
+          }
+        },
+      } as any;
+      const drains = [
+        drainThreadDeletionQueue(competingDb, leasedStore),
+        drainThreadDeletionQueue(competingDb, leasedStore),
+      ];
+      await storageStarted;
+      try {
+        // The losing worker completes while the winner is still in storage.
+        await Promise.race(drains);
+        assert.equal(discovered, 2);
+        assert.equal(removeCalls, 1);
+        const duringClaim = await cleanupDeletedObjects(db, leasedStore, deletion.id);
+        assert.equal(duringClaim.cleanup.remaining, 1);
+        assert.equal(removeCalls, 1, "manual retry must respect the active worker lease");
+        const leased = await db.one(
+          "SELECT attempts,lease_id FROM thread_deletion_objects WHERE deletion_id=$1",
+          [deletion.id],
+        );
+        assert.equal(
+          leased.attempts,
+          2,
+          "only the initial failure and winning worker increment attempts",
+        );
+        assert.ok(leased.lease_id);
+      } finally {
+        releaseStorage();
+      }
+      await Promise.all(drains);
+      const failedCleanup = await db.one(
+        "SELECT state,lease_id,next_at>now() AS backed_off FROM thread_deletion_objects WHERE deletion_id=$1",
+        [deletion.id],
+      );
+      assert.deepEqual(failedCleanup, {
+        state: "failed",
+        lease_id: null,
+        backed_off: true,
+      });
+      await drainThreadDeletionQueue(db, leasedStore);
+      assert.equal(
+        removeCalls,
+        1,
+        "scheduled worker must honor persisted failure backoff",
+      );
+      const recovered = await cleanupDeletedObjects(
+        db,
+        {
+          remove: async () => {
+            removeCalls++;
+            activeRemovals++;
+            maxActiveRemovals = Math.max(maxActiveRemovals, activeRemovals);
+            activeRemovals--;
+          },
+        } as any,
+        deletion.id,
+      );
+      assert.equal(recovered.cleanup.state, "complete");
+      assert.equal(
+        removeCalls,
+        2,
+        "explicit retry bypasses backoff after the old lease is released",
+      );
+      assert.equal(maxActiveRemovals, 1);
 
       // Pause the worker after it has decided to record a failed read, but
       // before its status-row lock. A maintainer can reserve a PATCH here.

@@ -13,6 +13,7 @@ export function readFilters(query: string): ReviewFilters {
     sort:
       sort === "newest" || sort === "likes" || sort === "priority" ? sort : "activity",
     showResolved: p.get("showResolved") === "true",
+    ...(p.get("archived") === "true" ? { archived: true } : {}),
   };
   for (const key of ["url", "domain", "hostname", "tag"] as const) {
     const value = p.get(key)?.trim();

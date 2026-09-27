@@ -334,8 +334,8 @@ export async function feedback(
       args,
     );
     const websiteRows = await db.query(
-      "SELECT DISTINCT data->'context'->>'domain' AS domain,data->'context'->>'hostname' AS hostname FROM threads WHERE project_id=$1 AND data->'context'->'document' IS NULL AND COALESCE((data->>'archived')::boolean,false)=false",
-      [i.projectId],
+      "SELECT DISTINCT data->'context'->>'domain' AS domain,data->'context'->>'hostname' AS hostname FROM threads WHERE project_id=$1 AND data->'context'->'document' IS NULL AND COALESCE((data->>'archived')::boolean,false)=$2",
+      [i.projectId, i.archived === true],
     );
     const data = rows.length ? await listData(db, a, rows) : undefined;
     return {

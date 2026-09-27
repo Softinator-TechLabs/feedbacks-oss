@@ -33,7 +33,7 @@ While review is on and you are not typing: **M** mobile, **T** tablet, **D** des
 
 ## Keep every point's original view
 
-Right-clicking captures that visible view locally before the comment editor opens. **Save point** keeps the note and its original screenshot together, including a temporary menu or a different screen size. The pin follows the same element when it moves on a responsive page. When an element is hidden, covered, removed or offscreen, the bottom-right **Feedbacks** handle shows how many points are outside this view. Open the list to edit them or view their original images.
+Right-clicking opens the comment editor immediately while capturing that visible view locally. A Capturing indicator changes to an original-image thumbnail when ready. **Save point** keeps the note and its original screenshot together, including a temporary menu or a different screen size. The pin follows the same element when it moves on a responsive page. When an element is hidden, covered, removed or offscreen, the bottom-right **Feedbacks** handle shows how many points are outside this view. Open the list to edit them or view their original images.
 
 When you choose **Review screenshots**, the final editor includes both the new page capture and each point's labeled original image. Even a visible-area capture retains original views from points elsewhere on the page. Choose **View original image** beside a note to annotate or redact its screenshot. A failed screenshot is labeled **No original image**; its text is retained. Once the final editor is open, edit the notes there. Nothing is shared until **Send feedback**.
 
@@ -47,9 +47,15 @@ Keep the original website tab active until capture finishes. The extension scrol
 
 Separate screenshots are recommended for AI review. You can also select **Also include one combined image**. This copy is scaled to the server's image limits when the page is long; numbered screenshots keep their full resolution. Very tall images can be difficult for an LLM agent to inspect. During Send, the progress bar reports how many images the server has confirmed and the corresponding percentage, not network-byte progress. If an upload fails, **Retry Send** resumes the same draft and thread from the first unsent image. The capture has no fixed page-count cutoff, but a page or browser can still change while scrolling. No image leaves the browser until you select **Send feedback**.
 
+## Edit, copy and download
+
+The full-page preview keeps sections at original resolution. Choose Fit width, 100% or 200% to inspect them. Use Copy image or Download to export the annotated current screenshot or full page as PNG, JPEG, WebP or PDF. PDF puts each section on a separate page; oversized raster exports offer PDF or individual images instead of shrinking the result.
+
+Use highlighter, numbered steps, text, blur, simple stamps or an inserted local image to explain a change. Drag an inserted image to move it and its corner to resize. Crop export affects only local copies/downloads; sent feedback keeps the complete screenshot and point locations. Use Redact, rather than reversible blur, to remove private pixels.
+
 ## Video and updates
 
-**Record a short tab video** opens Chrome's tab picker. Stop after at most five minutes, preview the clip, add a comment and send it. The clip is stored privately with the thread. Tab audio and microphone are separate options, off by default. Recordings above 40 MiB are discarded. Trim and crop locally from the preview before sending; Restore original undoes edits. Navigation continues recording in the selected tab. Chrome Web Store installs update through Chrome; after an update, refresh pages you are reviewing. An unpacked build requires **Reload** in `chrome://extensions`.
+**Record a short tab video** opens Chrome's tab picker. Stop after at most five minutes, preview the clip, add a comment and send it. The clip is stored privately with the thread. Tab audio and microphone are separate options, off by default. Recordings above 40 MiB are discarded. Drag either timeline handle to trim, scrub to inspect a frame and choose Play selection to preview the range. Crop frame is available below. Apply edits before sending; Restore original undoes edits. Navigation continues recording in the selected tab. Chrome Web Store installs update through Chrome; after an update, refresh pages you are reviewing. An unpacked build requires **Reload** in `chrome://extensions`.
 
 Read [access and privacy](/guide/access-privacy) before capturing sensitive pages. For complete extension behavior, see the [source guide](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/extension.md).
 

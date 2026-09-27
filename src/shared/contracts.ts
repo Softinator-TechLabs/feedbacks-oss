@@ -59,6 +59,7 @@ export const reviewFiltersSchema = z.object({
   search: z.string().max(200).default(""),
   sort: z.enum(["newest", "activity", "likes", "priority"]).default("activity"),
   showResolved: z.boolean().default(false),
+  archived: z.boolean().optional(),
   url: z.string().url().max(4096).optional(),
   domain: z.string().trim().min(1).max(253).optional(),
   hostname: z.string().trim().min(1).max(253).optional(),
@@ -133,7 +134,18 @@ const normalizedPointSchema = z.object({
   y: z.number().finite().min(0).max(1),
 });
 export const screenshotMarkSchema = z.object({
-  tool: z.enum(["point", "pencil", "arrow", "rectangle", "text"]),
+  tool: z.enum([
+    "point",
+    "pencil",
+    "arrow",
+    "rectangle",
+    "text",
+    "highlighter",
+    "steps",
+    "blur",
+    "sticker",
+    "image",
+  ]),
   bounds: z.object({
     x: z.number().finite().min(0).max(1),
     y: z.number().finite().min(0).max(1),
@@ -542,6 +554,21 @@ export const inputSchemas = {
       .default("incorporated_in"),
   }),
   "threads.archive": z.object({ ...tm, archived: z.boolean() }),
+  "threads.delete": z.object({
+    projectId: id,
+    threads: z
+      .array(z.object(tm))
+      .min(1)
+      .max(50)
+      .refine(
+        (items) => new Set(items.map((item) => item.threadId)).size === items.length,
+        "Select distinct threads",
+      ),
+    idempotencyKey: z.string().min(8).max(200),
+    confirmation: z.literal("DELETE"),
+  }),
+  "threads.deletions": z.object({ projectId: id }),
+  "threads.retryDeletion": z.object({ projectId: id, deletionId: id }),
   "views.get": z.object({ projectId: id, context: contextSchema }),
   "views.like": z.object({
     projectId: id,
@@ -637,6 +664,18 @@ const assetOutput = assetMetadataOutput.extend({
       height: z.number().int().positive(),
     })
     .optional(),
+});
+const deletionOutput = z.object({
+  id,
+  projectId: id,
+  deletedCount: z.number().int(),
+  createdAt: z.string(),
+  cleanup: z.object({
+    state: z.enum(["pending", "failed", "complete"]),
+    total: z.number().int(),
+    remaining: z.number().int(),
+    failed: z.number().int(),
+  }),
 });
 export const threadOutput = z
   .object({
@@ -1202,6 +1241,9 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "threads.figmaReference": threadOutput,
   "threads.evidence": threadOutput,
   "threads.archive": threadOutput,
+  "threads.delete": deletionOutput,
+  "threads.deletions": z.object({ items: z.array(deletionOutput) }),
+  "threads.retryDeletion": deletionOutput,
   "views.get": viewOutput,
   "views.like": viewOutput,
   "assets.get": assetOutput,
@@ -1296,6 +1338,7 @@ export const agentOperations = businessOperations.filter(
   (name) =>
     name !== "members.archive" &&
     name !== "threads.review" &&
+    !["threads.delete", "threads.deletions", "threads.retryDeletion"].includes(name) &&
     name !== "threads.figmaReference" &&
     !name.startsWith("webhooks.") &&
     name !== "documents.upload" &&
@@ -1308,6 +1351,7 @@ export const ownerTokenScopes = [
   "context.policy",
 ];
 const readOperations = new Set<string>([
+  "threads.deletions",
   "auth.me",
   "projects.list",
   "projects.get",

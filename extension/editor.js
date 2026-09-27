@@ -1,5 +1,12 @@
 import { getPage } from "./page-store.js";
-import { combinedImageSize } from "./combined-image.js";
+import {
+  drawShape,
+  paintScreenshot,
+  prepareShapes,
+  clearPreparedShapes,
+  shapeRectangle,
+} from "./screenshot-render.js";
+import { exportDimensions, screenshotsPdf } from "./screenshot-export.js";
 
 const $ = (id) => document.getElementById(id);
 const send = async (message) => {
@@ -24,17 +31,29 @@ let draft,
   loadingBase = false;
 let originalTabId;
 let thumbnailObserver;
-let previewUrl;
+let previewUrls = [];
+let selectedImage = null;
+let exportCrop = null;
+let imageDrag = null;
+let exporting = false;
+let importing = false;
 let previewBuild = 0;
 const thumbnailCache = new Map();
 function hideFullPagePreview() {
   previewBuild++;
-  if (previewUrl) URL.revokeObjectURL(previewUrl);
-  previewUrl = null;
+  for (const url of previewUrls) URL.revokeObjectURL(url);
+  previewUrls = [];
   $("preview-slot").replaceChildren();
   $("preview-slot").hidden = true;
+  $("export-scope").value = "current";
   $("preview-guide").hidden = true;
   $("tools").hidden = false;
+  document.querySelector(".text-label").hidden = tool !== "text";
+  $("image-options").hidden = tool !== "image";
+  $("sticker-options").hidden = tool !== "sticker";
+  $("blur-help").hidden = tool !== "blur";
+  $("crop-options").hidden = tool !== "crop" && !exportCrop;
+  $("clear-crop").hidden = !exportCrop;
   $("full-page-toggle").textContent = "Full page preview";
   $("full-page-toggle").setAttribute("aria-pressed", "false");
   $("remove-current").hidden = !!draft?.frozen;
@@ -108,64 +127,33 @@ chrome.runtime.onMessage.addListener((message) => {
       uploadProgress(message.completed, message.total);
   }
 });
-function drawShape(s, surface = ctx, width = canvas.width) {
-  const ctx = surface;
-  ctx.strokeStyle = s.origin === "element" ? "#2370b5" : "#b92332";
-  ctx.fillStyle = s.tool === "redact" ? "#202c37" : "#b92332";
-  ctx.lineWidth =
-    s.origin === "element" ? Math.max(2, width / 700) : Math.max(3, width / 450);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  const a = s.points[0],
-    b = s.points.at(-1);
-  if (s.tool === "point") {
-    const radius = Math.max(12, width / 120);
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = "#17324d";
-    ctx.fill();
-    ctx.strokeStyle = "#ffffff";
-    ctx.stroke();
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `600 ${radius * 1.35}px system-ui`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(String(s.number || 1), a.x, a.y);
-    ctx.textAlign = "start";
-    ctx.textBaseline = "alphabetic";
-  } else if (s.tool === "text") {
-    ctx.font = `600 ${Math.max(22, width / 55)}px system-ui`;
-    ctx.fillText(s.text, a.x, a.y);
-  } else if (s.tool === "redact")
-    ctx.fillRect(
-      Math.min(a.x, b.x),
-      Math.min(a.y, b.y),
-      Math.max(2, Math.abs(b.x - a.x)),
-      Math.max(2, Math.abs(b.y - a.y)),
-    );
-  else if (s.tool === "rectangle") ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
-  else {
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    for (const p of s.points.slice(1)) ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    if (s.tool === "arrow") {
-      const angle = Math.atan2(b.y - a.y, b.x - a.x),
-        len = Math.max(16, width / 65);
-      ctx.beginPath();
-      ctx.moveTo(b.x - len * Math.cos(angle - 0.5), b.y - len * Math.sin(angle - 0.5));
-      ctx.lineTo(b.x, b.y);
-      ctx.lineTo(b.x - len * Math.cos(angle + 0.5), b.y - len * Math.sin(angle + 0.5));
-      ctx.stroke();
-    }
-  }
-}
-function render() {
+function render(clean = false) {
   if (!base) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(base, 0, 0);
-  for (const s of shapes) drawShape(s);
-  if (current) drawShape(current);
+  paintScreenshot(ctx, base, shapes, canvas.width, canvas.height);
+  if (current)
+    drawShape(
+      current.tool === "crop" ? { ...current, tool: "rectangle" } : current,
+      ctx,
+      canvas.width,
+    );
+  if (!clean && exportCrop) {
+    ctx.save();
+    ctx.strokeStyle = "#2370b5";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 4]);
+    ctx.strokeRect(exportCrop.x, exportCrop.y, exportCrop.width, exportCrop.height);
+    ctx.restore();
+  }
+  if (!clean && selectedImage && shapes.includes(selectedImage)) {
+    const r = shapeRectangle(selectedImage);
+    ctx.save();
+    ctx.strokeStyle = "#2370b5";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(r.x, r.y, r.width, r.height);
+    ctx.fillStyle = "#2370b5";
+    ctx.fillRect(r.x + r.width - 8, r.y + r.height - 8, 16, 16);
+    ctx.restore();
+  }
 }
 async function showFullPagePreview() {
   if (!draft?.capturePages || draft.capturePages.length < 2 || loadingBase) return;
@@ -182,61 +170,42 @@ async function showFullPagePreview() {
     const pageIndices = fresh.capturePages
       .map((page, index) => index)
       .filter((index) => !fresh.capturePages[index].annotationId);
-    let width = 0;
-    let height = 0;
-    for (const index of pageIndices) {
-      const blob = await getPage(fresh.id, index, kind);
-      if (!blob) throw Error(`Screenshot ${index + 1} is missing from this browser.`);
-      const bitmap = await createImageBitmap(blob);
-      if (width && bitmap.width !== width) {
-        bitmap.close();
-        throw Error("Screenshot widths differ. Review the numbered images instead.");
-      }
-      width = bitmap.width;
-      height += bitmap.height;
-      bitmap.close();
-    }
-    const size = combinedImageSize(width, height);
-    const overview = new OffscreenCanvas(size.width, size.height);
-    const surface = overview.getContext("2d");
-    if (!surface) throw Error("This browser cannot render the full-page preview.");
-    let sourceTop = 0;
+    // Keep each section at source resolution. A single tall bitmap would force
+    // narrow mobile captures through the combined upload attachment's size cap.
+    const fragment = document.createDocumentFragment();
     for (const index of pageIndices) {
       if (request !== previewBuild) return;
-      const bitmap = await createImageBitmap(await getPage(fresh.id, index, kind));
-      const top = Math.round((sourceTop / height) * size.height);
-      sourceTop += bitmap.height;
-      const bottom = Math.round((sourceTop / height) * size.height);
-      surface.drawImage(bitmap, 0, top, size.width, bottom - top);
-      if (!fresh.frozen) {
-        surface.save();
-        surface.translate(0, top);
-        surface.scale(size.width / bitmap.width, (bottom - top) / bitmap.height);
-        for (const shape of fresh.pageToolStates?.[index] || [])
-          drawShape(shape, surface, bitmap.width);
-        surface.restore();
-      }
-      bitmap.close();
+      const output = await screenshotSurface(fresh, index, kind);
+      const blob = await output.convertToBlob({ type: "image/png" });
+      if (request !== previewBuild) return;
+      const url = URL.createObjectURL(blob);
+      previewUrls.push(url);
+      const image = document.createElement("img");
+      image.className = "full-page-section";
+      image.alt = `Full page, screenshot ${index + 1}`;
+      image.width = output.width;
+      image.height = output.height;
+      image.src = url;
+      fragment.append(image);
+      output.width = output.height = 0;
     }
-    const blob = await overview.convertToBlob({ type: "image/webp", quality: 0.82 });
-    if (request !== previewBuild) return;
-    previewUrl = URL.createObjectURL(blob);
-    const image = document.createElement("img");
-    image.id = "full-page-preview";
-    image.alt = "Combined preview of all captured screenshot sections";
-    $("preview-slot").append(image);
-    image.src = previewUrl;
-    await image.decode();
-    if (request !== previewBuild) return;
+    $("preview-slot").replaceChildren(fragment);
+    $("export-scope").value = "full";
+    $("zoom").onchange();
     $("preview-slot").hidden = false;
     $("canvas").hidden = true;
     $("tools").hidden = true;
+    document.querySelector(".text-label").hidden = true;
+    for (const id of ["image-options", "sticker-options", "blur-help", "crop-options"])
+      $(id).hidden = true;
     $("series-guide").hidden = true;
     $("preview-guide").hidden = false;
     $("remove-current").hidden = true;
     toggle.textContent = "Back to sections";
     toggle.setAttribute("aria-pressed", "true");
-    status(`Full page preview ready · ${fresh.capturePages.length} sections.`);
+    status(
+      `Full page preview ready · ${pageIndices.length} sections at original resolution.`,
+    );
   } catch (error) {
     hideFullPagePreview();
     status(`Full-page preview could not open: ${error.message}`, "error");
@@ -245,6 +214,268 @@ async function showFullPagePreview() {
     toggle.disabled = false;
   }
 }
+async function screenshotSurface(
+  fresh,
+  index,
+  kind = fresh.frozen ? "approved" : "source",
+) {
+  const blob = await getPage(fresh.id, index, kind);
+  if (!blob) throw Error(`Screenshot ${index + 1} is missing from this browser.`);
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const output = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const marks = fresh.frozen ? [] : fresh.pageToolStates?.[index] || [];
+    await prepareShapes(marks);
+    paintScreenshot(output.getContext("2d"), bitmap, marks, bitmap.width, bitmap.height);
+    return output;
+  } finally {
+    bitmap.close();
+  }
+}
+async function exportPlan() {
+  if (!base || !draft || redacting || loadingBase || sendingApproval)
+    throw Error("Wait for the screenshot to finish loading.");
+  if ($("export-scope").value === "full" && draft.capturePages?.length) {
+    if (!draft.frozen) await persist();
+    const fresh = await send({ type: "draft" });
+    if (!fresh || fresh.id !== draft.id) throw Error("This draft changed. Reopen it.");
+    const kind = fresh.frozen ? "approved" : "source",
+      pages = [];
+    // Inspect one source at a time before allocating a combined export canvas.
+    for (const [index, page] of fresh.capturePages.entries()) {
+      if (page.annotationId) continue;
+      const blob = await getPage(fresh.id, index, kind);
+      if (!blob) throw Error(`Screenshot ${index + 1} is missing from this browser.`);
+      const bitmap = await createImageBitmap(blob);
+      pages.push({
+        width: bitmap.width,
+        height: bitmap.height,
+        render: () => screenshotSurface(fresh, index, kind),
+      });
+      bitmap.close();
+    }
+    return pages;
+  }
+  const crop = exportCrop && { ...exportCrop };
+  return [
+    {
+      width: crop?.width || canvas.width,
+      height: crop?.height || canvas.height,
+      render: async () => {
+        const output = new OffscreenCanvas(canvas.width, canvas.height);
+        paintScreenshot(
+          output.getContext("2d"),
+          base,
+          shapes,
+          canvas.width,
+          canvas.height,
+        );
+        if (!crop) return output;
+        const cropped = new OffscreenCanvas(crop.width, crop.height);
+        cropped
+          .getContext("2d")
+          .drawImage(
+            output,
+            crop.x,
+            crop.y,
+            crop.width,
+            crop.height,
+            0,
+            0,
+            crop.width,
+            crop.height,
+          );
+        output.width = output.height = 0;
+        return cropped;
+      },
+    },
+  ];
+}
+async function exportBlob(type) {
+  const plan = await exportPlan();
+  if (!plan.length)
+    throw Error("There are no full-page sections. Choose Current screenshot.");
+  if (type === "application/pdf") {
+    const pages = [];
+    for (const page of plan) {
+      const surface = await page.render();
+      try {
+        const blob = await surface.convertToBlob({ type: "image/jpeg", quality: 0.98 });
+        pages.push({
+          width: surface.width,
+          height: surface.height,
+          bytes: new Uint8Array(await blob.arrayBuffer()),
+        });
+      } finally {
+        surface.width = surface.height = 0;
+      }
+    }
+    return screenshotsPdf(pages);
+  }
+  const width = plan[0].width;
+  if (plan.some((page) => page.width !== width))
+    throw Error("Screenshot widths differ. Download PDF or individual screenshots.");
+  const height = plan.reduce((sum, page) => sum + page.height, 0);
+  exportDimensions(width, height, type);
+  const output = new OffscreenCanvas(width, height),
+    surface = output.getContext("2d");
+  try {
+    surface.fillStyle = "white";
+    surface.fillRect(0, 0, width, height);
+    let top = 0;
+    for (const page of plan) {
+      const image = await page.render();
+      surface.drawImage(image, 0, top);
+      top += image.height;
+      image.width = image.height = 0;
+    }
+    const blob = await output.convertToBlob({ type, quality: 0.98 });
+    if (blob.type !== type)
+      throw Error("This browser cannot export that format. Choose PNG.");
+    return blob;
+  } finally {
+    output.width = output.height = 0;
+  }
+}
+for (const button of document.querySelectorAll("[data-export]"))
+  button.onclick = async () => {
+    if (exporting || importing || sendingApproval || redacting || loadingBase) return;
+    exporting = true;
+    const format = button.dataset.export;
+    try {
+      lock(true);
+      setSendState(true);
+      $("discard").disabled = true;
+      status(
+        format === "copy"
+          ? "Copying the annotated screenshot…"
+          : "Preparing the annotated download…",
+      );
+      if (format === "copy") {
+        if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined")
+          throw Error("Image clipboard access is unavailable. Download PNG instead.");
+        // Start clipboard.write in the click gesture; the PNG promise resolves later.
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": exportBlob("image/png") }),
+        ]);
+        status("Annotated screenshot copied to the clipboard.");
+      } else {
+        const type = format === "pdf" ? "application/pdf" : `image/${format}`;
+        const blob = await exportBlob(type),
+          url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `feedbacks-${$("export-scope").value === "full" ? "full-page" : `screenshot-${pageIndex + 1}`}.${format === "jpeg" ? "jpg" : format}`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        status(
+          `${format.toUpperCase()} download ready${format === "pdf" ? " · one screenshot per PDF page" : " · original resolution"}.`,
+        );
+      }
+    } catch (error) {
+      status(error.message, "error");
+    } finally {
+      exporting = false;
+      lock(!!draft?.frozen);
+      setSendState(!draft || loadingBase || redacting || sendingApproval || importing);
+      $("discard").disabled = false;
+    }
+  };
+$("zoom").onchange = () => {
+  $("canvas-scroll").dataset.zoom = $("zoom").value;
+  const zoom = Number($("zoom").value);
+  canvas.style.width = zoom ? `${canvas.width * zoom}px` : "";
+  for (const image of $("preview-slot").querySelectorAll("img"))
+    image.style.width = zoom ? `${Number(image.getAttribute("width")) * zoom}px` : "";
+};
+$("clear-crop").onclick = () => {
+  exportCrop = null;
+  $("clear-crop").hidden = true;
+  $("crop-options").hidden = tool !== "crop";
+  render();
+};
+$("add-image").onclick = () => $("image-file").click();
+$("remove-image").onclick = () => {
+  if (!selectedImage) {
+    status("Click an inserted image to select it first.");
+    return;
+  }
+  shapes = shapes.filter((shape) => shape !== selectedImage);
+  selectedImage = null;
+  render();
+  schedule();
+};
+$("image-file").onchange = async () => {
+  const file = $("image-file").files[0];
+  $("image-file").value = "";
+  if (!file || !base || draft?.frozen) return;
+  const request = baseLoad;
+  importing = true;
+  lock(true);
+  setSendState(true);
+  $("discard").disabled = true;
+  try {
+    if (
+      !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
+      file.size > 4 * 1024 * 1024
+    )
+      throw Error("Choose a PNG, JPEG or WebP image up to 4 MB.");
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1024 / bitmap.width, 1024 / bitmap.height);
+    const image = new OffscreenCanvas(
+      Math.max(1, Math.round(bitmap.width * scale)),
+      Math.max(1, Math.round(bitmap.height * scale)),
+    );
+    image.getContext("2d").drawImage(bitmap, 0, 0, image.width, image.height);
+    bitmap.close();
+    const blob = await image.convertToBlob({ type: "image/png" });
+    const source = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(Error("Image could not be read."));
+      reader.readAsDataURL(blob);
+    });
+    if (
+      source.length +
+        shapes
+          .filter((s) => s.tool === "image")
+          .reduce((sum, s) => sum + s.source.length, 0) >
+      3 * 1024 * 1024
+    )
+      throw Error(
+        "Inserted images exceed this screenshot's 3 MB draft limit. Choose a smaller image.",
+      );
+    const fit = Math.min(
+      1,
+      (canvas.width * 0.45) / image.width,
+      (canvas.height * 0.45) / image.height,
+    );
+    const x = Math.round(canvas.width * 0.1),
+      y = Math.round(canvas.height * 0.1);
+    const shape = {
+      tool: "image",
+      source,
+      points: [
+        { x, y },
+        { x: x + image.width * fit, y: y + image.height * fit },
+      ],
+    };
+    await prepareShapes([shape]);
+    if (request !== baseLoad || draft?.frozen) return;
+    shapes.push(shape);
+    selectedImage = shape;
+    render();
+    schedule();
+    status("Image inserted. Drag to move; drag the bottom-right handle to resize.");
+  } catch (error) {
+    status(error.message, "error");
+  } finally {
+    importing = false;
+    lock(!!draft?.frozen);
+    setSendState(!draft || loadingBase || redacting || sendingApproval || exporting);
+    $("discard").disabled = false;
+  }
+};
 function payload() {
   const annotations = (draft.context.annotations || []).map((item, index) => ({
     id: item.id,
@@ -482,12 +713,18 @@ async function loadBase(fresh) {
     base = decoded;
     canvas.width = base.naturalWidth;
     canvas.height = base.naturalHeight;
+    $("zoom").onchange();
   }
+  selectedImage = null;
+  exportCrop = null;
+  $("crop-options").hidden = true;
   shapes = pages.length
     ? fresh.frozen
       ? []
       : fresh.pageToolStates?.[pageIndex] || []
     : fresh.toolState || [];
+  clearPreparedShapes();
+  await prepareShapes(shapes);
   $("no-image").checked = !!fresh.noImage;
   $("retry-capture").hidden = (!fresh.captureError && !!pixels) || !!fresh.frozen;
   canvas.hidden = !pixels;
@@ -555,19 +792,76 @@ chrome.storage.onChanged.addListener((changes, area) => {
 function point(e) {
   const r = canvas.getBoundingClientRect();
   return {
-    x: ((e.clientX - r.x) * canvas.width) / r.width,
-    y: ((e.clientY - r.y) * canvas.height) / r.height,
+    x: Math.max(0, Math.min(canvas.width, ((e.clientX - r.x) * canvas.width) / r.width)),
+    y: Math.max(
+      0,
+      Math.min(canvas.height, ((e.clientY - r.y) * canvas.height) / r.height),
+    ),
   };
 }
 canvas.onpointerdown = (e) => {
-  if (!draft || draft.frozen || redacting || loadingBase || $("no-image").checked) return;
+  if (
+    !draft ||
+    draft.frozen ||
+    exporting ||
+    redacting ||
+    loadingBase ||
+    $("no-image").checked
+  )
+    return;
   if (tool === "text" && !$("annotation").value.trim()) {
     status("Write the text label first.");
     $("annotation").focus();
     return;
   }
+  if (tool === "image") {
+    const p = point(e);
+    selectedImage = [...shapes].reverse().find((shape) => {
+      if (shape.tool !== "image") return false;
+      const r = shapeRectangle(shape);
+      return (
+        p.x >= r.x - 12 &&
+        p.x <= r.x + r.width + 12 &&
+        p.y >= r.y - 12 &&
+        p.y <= r.y + r.height + 12
+      );
+    });
+    if (selectedImage) {
+      const r = shapeRectangle(selectedImage);
+      imageDrag = {
+        point: p,
+        rect: r,
+        resize:
+          e.shiftKey ||
+          (Math.abs(p.x - r.x - r.width) < 20 && Math.abs(p.y - r.y - r.height) < 20),
+      };
+      canvas.setPointerCapture(e.pointerId);
+    }
+    render();
+    return;
+  }
+  selectedImage = null;
+  if (
+    tool === "steps" &&
+    shapes.some((shape) => shape.tool === "steps" && shape.number >= 100)
+  ) {
+    status(
+      "This screenshot already has 100 steps. Undo or reset steps before adding more.",
+    );
+    return;
+  }
   current = {
     tool,
+    ...(tool === "steps"
+      ? {
+          number:
+            Math.max(
+              0,
+              ...shapes.filter((s) => s.tool === "steps").map((s) => s.number || 0),
+            ) + 1,
+        }
+      : {}),
+    ...(tool === "sticker" ? { text: $("sticker-choice").value } : {}),
     points: [point(e)],
     ...(tool === "text" ? { text: $("annotation").value.trim() } : {}),
   };
@@ -575,6 +869,39 @@ canvas.onpointerdown = (e) => {
   render();
 };
 canvas.onpointermove = (e) => {
+  if (imageDrag && selectedImage) {
+    const p = point(e),
+      r = imageDrag.rect;
+    if (imageDrag.resize) {
+      const scale = Math.max(
+        0.1,
+        Math.min(
+          (canvas.width - r.x) / r.width,
+          (canvas.height - r.y) / r.height,
+          (p.x - r.x) / r.width,
+        ),
+      );
+      selectedImage.points = [
+        { x: r.x, y: r.y },
+        { x: r.x + r.width * scale, y: r.y + r.height * scale },
+      ];
+    } else {
+      const x = Math.max(
+        0,
+        Math.min(canvas.width - r.width, r.x + p.x - imageDrag.point.x),
+      );
+      const y = Math.max(
+        0,
+        Math.min(canvas.height - r.height, r.y + p.y - imageDrag.point.y),
+      );
+      selectedImage.points = [
+        { x, y },
+        { x: x + r.width, y: y + r.height },
+      ];
+    }
+    render();
+    return;
+  }
   if (!current || redacting || loadingBase) return;
   if (tool === "pencil") {
     if (current.points.length < 10000) current.points.push(point(e));
@@ -582,7 +909,35 @@ canvas.onpointermove = (e) => {
   render();
 };
 canvas.onpointerup = () => {
+  if (imageDrag) {
+    imageDrag = null;
+    schedule();
+    return;
+  }
   if (!current || redacting || loadingBase) return;
+  if (current.tool === "crop") {
+    const r = shapeRectangle(current);
+    exportCrop = {
+      x: Math.max(0, Math.floor(r.x)),
+      y: Math.max(0, Math.floor(r.y)),
+      width: Math.floor(Math.min(r.width, canvas.width - r.x)),
+      height: Math.floor(Math.min(r.height, canvas.height - r.y)),
+    };
+    current = null;
+    if (exportCrop.width < 1 || exportCrop.height < 1) {
+      exportCrop = null;
+      render();
+      return;
+    }
+    $("export-scope").value = "current";
+    $("crop-options").hidden = false;
+    $("clear-crop").hidden = false;
+    render();
+    status(
+      "Export crop selected. Copy and downloads use this area; sent feedback keeps the complete screenshot.",
+    );
+    return;
+  }
   if (current.tool === "redact") {
     const rectangle = redactionRectangle(current);
     current = null;
@@ -595,19 +950,36 @@ canvas.onpointerup = () => {
   schedule();
 };
 canvas.onpointercancel = () => {
+  if (imageDrag && selectedImage) {
+    const r = imageDrag.rect;
+    selectedImage.points = [
+      { x: r.x, y: r.y },
+      { x: r.x + r.width, y: r.y + r.height },
+    ];
+  }
+  imageDrag = null;
   current = null;
   render();
 };
 for (const b of document.querySelectorAll("[data-tool]"))
   b.onclick = () => {
     tool = b.dataset.tool;
+    selectedImage = null;
+    $("image-options").hidden = tool !== "image";
+    $("sticker-options").hidden = tool !== "sticker";
+    $("blur-help").hidden = tool !== "blur";
+    $("crop-options").hidden = tool !== "crop" && !exportCrop;
+    $("clear-crop").hidden = !exportCrop;
+    render();
     document.querySelector(".text-label").hidden = tool !== "text";
+    $("tools").querySelector(".more-tools").open = false;
     if (tool === "text") $("annotation").focus();
     for (const sibling of document.querySelectorAll("[data-tool]"))
       sibling.setAttribute("aria-pressed", String(sibling === b));
   };
 $("undo").onclick = () => {
   if (!draft?.frozen && !redacting) {
+    selectedImage = null;
     shapes.pop();
     render();
     schedule();
@@ -625,6 +997,8 @@ async function changePage(index) {
     !draft ||
     loadingBase ||
     redacting ||
+    exporting ||
+    importing ||
     sendingApproval ||
     index < 0 ||
     index >= (draft.capturePages?.length || 0) ||
@@ -666,6 +1040,7 @@ $("no-image").addEventListener("change", () => {
   $("include-combined").disabled = $("no-image").checked;
 });
 $("discard").onclick = async () => {
+  if (exporting || importing || redacting || sendingApproval) return;
   if (!confirm("Discard this local draft and its screenshot?")) return;
   clearTimeout(saveTimer);
   await saving.catch(() => {});
@@ -673,15 +1048,23 @@ $("discard").onclick = async () => {
   window.close();
 };
 function lock(value) {
+  value = value || importing || exporting;
   for (const el of document.querySelectorAll(
-    "input,select,textarea,[data-tool],[data-diagnostic-mask],#undo,#reset,#remove-current",
+    "input,select,textarea,[data-tool],[data-md-format],[data-diagnostic-mask],#undo,#reset,#remove-current,#clear-crop",
   ))
     el.disabled = value;
   $("no-image").disabled = value || !base;
   $("include-combined").disabled = value || !base || $("no-image").checked;
   for (const el of document.querySelectorAll("[data-tool],#undo,#reset,#annotation"))
     el.disabled = value || !base;
-  const pageLocked = loadingBase || redacting || sendingApproval;
+  const pageLocked =
+    loadingBase || redacting || sendingApproval || exporting || importing;
+  for (const el of document.querySelectorAll("[data-export]"))
+    el.disabled = pageLocked || !base || exporting;
+  $("add-image").disabled = value || !base;
+  $("remove-image").disabled = value || !base;
+  $("export-scope").disabled = pageLocked;
+  $("zoom").disabled = false;
   $("page-select").disabled = pageLocked;
   $("full-page-toggle").disabled = pageLocked;
   $("page-prev").disabled = pageLocked || pageIndex === 0;
@@ -689,7 +1072,7 @@ function lock(value) {
     pageLocked || pageIndex >= (draft?.capturePages?.length || 0) - 1;
 }
 $("retry-capture").onclick = async () => {
-  if (!draft || draft.frozen) return;
+  if (!draft || draft.frozen || exporting || importing) return;
   $("retry-capture").disabled = true;
   try {
     await persist();
@@ -713,7 +1096,8 @@ $("retry-capture").onclick = async () => {
   }
 };
 $("send").onclick = $("send-header").onclick = async () => {
-  if (!draft || redacting || loadingBase || sendingApproval) return;
+  if (!draft || redacting || loadingBase || sendingApproval || exporting || importing)
+    return;
   sendingApproval = true;
   setSendState(true, "Sending…");
   $("discard").disabled = true;
@@ -736,13 +1120,13 @@ $("send").onclick = $("send-header").onclick = async () => {
         throw Error(
           "Redactions changed while saving. Review the current image before sending.",
         );
-      render();
+      render(true);
       if (draft.capturePages?.length && !$("no-image").checked) {
         const fresh = await send({ type: "draft" });
         for (let index = 0; index < fresh.capturePages.length; index++) {
           pageIndex = index;
           await loadBase(fresh);
-          render();
+          render(true);
           status(`Approving ${fresh.capturePages[index].name}…`);
           await send({
             type: "approveCapturePage",

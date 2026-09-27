@@ -223,5 +223,23 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       );
       await tx.query("INSERT INTO migrations(version) VALUES(17)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=18"))) {
+      await tx.query(`CREATE TABLE thread_deletions(
+        id uuid PRIMARY KEY,project_id uuid NOT NULL REFERENCES projects(id),actor_id uuid NOT NULL REFERENCES users(id),
+        request_key text NOT NULL,input_hash text NOT NULL,thread_ids jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(actor_id,request_key)
+      )`);
+      await tx.query(`CREATE TABLE thread_deletion_objects(
+        deletion_id uuid NOT NULL REFERENCES thread_deletions(id),object_key text NOT NULL,
+        state text NOT NULL DEFAULT 'pending' CHECK(state IN ('pending','failed','complete')),lease_id uuid,lease_until timestamptz,attempts integer NOT NULL DEFAULT 0,next_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY(deletion_id,object_key)
+      )`);
+      await tx.query(
+        "CREATE INDEX thread_deletions_project ON thread_deletions(project_id,created_at DESC)",
+      );
+      await tx.query(
+        "CREATE INDEX thread_deletion_objects_due ON thread_deletion_objects(next_at) WHERE state!='complete'",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(18)");
+    }
   });
 }
