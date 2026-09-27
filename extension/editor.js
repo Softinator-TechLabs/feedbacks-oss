@@ -41,6 +41,12 @@ function hideFullPagePreview() {
   $("canvas").hidden = !base;
   $("series-guide").hidden = (draft?.capturePages?.length || 0) < 2;
 }
+function setSendState(disabled, label) {
+  for (const id of ["send", "send-header"]) {
+    $(id).disabled = disabled;
+    if (label) $(id).querySelector("span").textContent = label;
+  }
+}
 function uploadProgress(completed, total) {
   if (!Number.isInteger(total) || total < 1) return;
   const count = Math.min(total, Math.max(0, completed));
@@ -48,6 +54,7 @@ function uploadProgress(completed, total) {
   $("upload-progress").hidden = false;
   $("upload-meter").value = percent;
   $("upload-label").textContent = `${count} of ${total} images uploaded · ${percent}%`;
+  if (sendingApproval) setSendState(true, `Sending ${percent}%`);
 }
 function completed(url) {
   hideFullPagePreview();
@@ -62,7 +69,7 @@ function completed(url) {
   draft = null;
   $("body").value = "";
   $("editor-workspace").hidden = true;
-  $("discard").hidden = true;
+  $("review-actions").hidden = true;
   $("completion").hidden = false;
   $("completion-title").textContent = url ? "Feedback sent" : "No pending capture";
   $("completion-copy").textContent = url
@@ -89,6 +96,11 @@ function status(message, kind = "info") {
   $("status").dataset.kind = kind;
   if (!$("completion").hidden) $("completion-error").textContent = message;
 }
+function showPublishedThread(draft) {
+  const link = $("published-thread");
+  link.hidden = !draft?.thread;
+  if (draft?.thread) link.href = `${draft.server}/threads/${draft.thread.id}`;
+}
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "submitProgress" && message.id === draft?.id) {
     status(message.message);
@@ -98,9 +110,10 @@ chrome.runtime.onMessage.addListener((message) => {
 });
 function drawShape(s, surface = ctx, width = canvas.width) {
   const ctx = surface;
-  ctx.strokeStyle = "#b92332";
+  ctx.strokeStyle = s.origin === "element" ? "#2370b5" : "#b92332";
   ctx.fillStyle = s.tool === "redact" ? "#202c37" : "#b92332";
-  ctx.lineWidth = Math.max(3, width / 450);
+  ctx.lineWidth =
+    s.origin === "element" ? Math.max(2, width / 700) : Math.max(3, width / 450);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   const a = s.points[0],
@@ -166,9 +179,12 @@ async function showFullPagePreview() {
     const fresh = await send({ type: "draft" });
     if (!fresh || fresh.id !== draft.id) throw Error("This draft changed. Reopen it.");
     const kind = fresh.frozen ? "approved" : "source";
+    const pageIndices = fresh.capturePages
+      .map((page, index) => index)
+      .filter((index) => !fresh.capturePages[index].annotationId);
     let width = 0;
     let height = 0;
-    for (let index = 0; index < fresh.capturePages.length; index++) {
+    for (const index of pageIndices) {
       const blob = await getPage(fresh.id, index, kind);
       if (!blob) throw Error(`Screenshot ${index + 1} is missing from this browser.`);
       const bitmap = await createImageBitmap(blob);
@@ -185,7 +201,7 @@ async function showFullPagePreview() {
     const surface = overview.getContext("2d");
     if (!surface) throw Error("This browser cannot render the full-page preview.");
     let sourceTop = 0;
-    for (let index = 0; index < fresh.capturePages.length; index++) {
+    for (const index of pageIndices) {
       if (request !== previewBuild) return;
       const bitmap = await createImageBitmap(await getPage(fresh.id, index, kind));
       const top = Math.round((sourceTop / height) * size.height);
@@ -230,11 +246,18 @@ async function showFullPagePreview() {
   }
 }
 function payload() {
+  const annotations = (draft.context.annotations || []).map((item, index) => ({
+    id: item.id,
+    body: $("point-notes").querySelectorAll("textarea")[index]?.value.trim() || "",
+  }));
+  if (annotations.some((item) => !item.body))
+    throw Error("Each point needs a comment before this draft can be saved.");
   return {
     type: "saveDraft",
     id: draft.id,
     imageRevision: draft.imageRevision || 0,
     body: $("body").value,
+    annotations,
     category: $("category").value,
     tags: $("tags").value,
     includeDiagnostics: $("include-diagnostics").checked,
@@ -256,7 +279,14 @@ function payload() {
 function persist() {
   clearTimeout(saveTimer);
   if (!draft || draft.frozen) return saving;
-  const message = payload();
+  let message;
+  try {
+    message = payload();
+  } catch (error) {
+    dirty = true;
+    status(error.message, "error");
+    return Promise.reject(error);
+  }
   saving = saving
     .catch(() => {})
     .then(() => send(message))
@@ -275,6 +305,30 @@ function schedule() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => persist().catch(() => {}), 250);
 }
+const markdownFormats = {
+  bold: ["**", "**", "bold text"],
+  italic: ["*", "*", "italic text"],
+  link: ["[", "](https://example.com)", "link text"],
+  list: ["- ", "", "list item"],
+  code: ["`", "`", "code"],
+};
+document.querySelectorAll("[data-md-format]").forEach((button) => {
+  button.addEventListener("mousedown", (event) => event.preventDefault());
+  button.addEventListener("click", () => {
+    const textarea = $("body");
+    const [prefix, suffix, placeholder] = markdownFormats[button.dataset.mdFormat];
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const content = textarea.value.slice(start, end) || placeholder;
+    textarea.setRangeText(`${prefix}${content}${suffix}`, start, end, "select");
+    textarea.focus();
+    textarea.setSelectionRange(
+      start + prefix.length,
+      start + prefix.length + content.length,
+    );
+    schedule();
+  });
+});
 function redactionRectangle(shape) {
   const a = shape.points[0],
     b = shape.points.at(-1);
@@ -328,9 +382,13 @@ function renderThumbnails(fresh) {
     const image = document.createElement("img");
     image.alt = "";
     const label = document.createElement("strong");
-    label.textContent = `Screenshot ${index + 1}`;
+    label.textContent = page.annotationId
+      ? `Point ${page.pointNumber} · Original view`
+      : `Screenshot ${index + 1}`;
     const range = document.createElement("small");
-    range.textContent = `${page.startY}–${page.endY}px`;
+    range.textContent = page.annotationId
+      ? `${page.viewportWidth}px wide · At time of comment`
+      : `${page.startY}–${page.endY}px`;
     open.append(image, label, range);
     open.onclick = () => changePage(index);
     card.append(open);
@@ -364,7 +422,7 @@ async function loadBase(fresh) {
   const request = ++baseLoad;
   loadingBase = true;
   lock(true);
-  $("send").disabled = true;
+  setSendState(true);
   base = null;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (draft?.id !== fresh?.id) pageIndex = 0;
@@ -375,13 +433,20 @@ async function loadBase(fresh) {
   $("image-review").classList.toggle("has-pages", pages.length > 1);
   $("series-guide").hidden = pages.length < 2;
   renderThumbnails(fresh);
-  $("combine-option").hidden = pages.length < 2;
-  $("include-combined").checked = !!fresh?.includeCombined && pages.length > 1;
+  const continuousPages = pages.filter((page) => !page.annotationId);
+  $("combine-option").hidden = continuousPages.length < 2;
+  $("full-page-toggle").hidden = continuousPages.length < 2;
+  $("include-combined").checked = !!fresh?.includeCombined && continuousPages.length > 1;
   $("page-navigation").hidden = pages.length < 2;
   $("page-select").replaceChildren(
     ...pages.map(
       (page, index) =>
-        new Option(`${page.name} · ${page.startY}–${page.endY}px`, String(index)),
+        new Option(
+          page.annotationId
+            ? `Point ${page.pointNumber} · Original ${page.viewportWidth}px view`
+            : `${page.name} · ${page.startY}–${page.endY}px`,
+          String(index),
+        ),
     ),
   );
   $("page-select").value = String(pageIndex);
@@ -392,9 +457,7 @@ async function loadBase(fresh) {
     fresh?.captureScope === "fullPage"
       ? `${pages.length} ${pages.length === 1 ? "screenshot" : "screenshots"} in page order. Review and redact each image before sending. Sticky elements may repeat.`
       : "The screenshot covers the visible browser area. Review it before sending.";
-  $("capture-scope").textContent = fresh?.captureNotice
-    ? `${fresh.captureNotice} Sticky elements may repeat.`
-    : scopeCopy;
+  $("capture-scope").textContent = fresh?.captureNotice ? fresh.captureNotice : scopeCopy;
   $("retry-capture").textContent =
     fresh?.captureScope === "fullPage"
       ? "Retry full-page capture"
@@ -403,7 +466,7 @@ async function loadBase(fresh) {
   if (!fresh) {
     shapes = [];
     lock(true);
-    $("send").disabled = true;
+    setSendState(true);
     loadingBase = false;
     completed();
     return;
@@ -432,14 +495,15 @@ async function loadBase(fresh) {
   render();
   loadingBase = false;
   lock(redacting || !!draft.frozen || sendingApproval);
-  $("send").disabled = redacting || sendingApproval;
+  setSendState(redacting || sendingApproval);
 }
 async function permanentRedaction(rectangles, migrate = false) {
   redacting = true;
   dirty = true;
   clearTimeout(saveTimer);
   lock(true);
-  $("send").disabled = $("discard").disabled = true;
+  setSendState(true);
+  $("discard").disabled = true;
   status("Permanently saving redaction…");
   try {
     if (!migrate) await persist();
@@ -462,7 +526,7 @@ async function permanentRedaction(rectangles, migrate = false) {
   } finally {
     redacting = false;
     lock(!draft || !!draft.frozen || loadingBase);
-    $("send").disabled = !draft || loadingBase;
+    setSendState(!draft || loadingBase);
     $("discard").disabled = false;
   }
 }
@@ -630,7 +694,7 @@ $("retry-capture").onclick = async () => {
   try {
     await persist();
     lock(true);
-    $("send").disabled = true;
+    setSendState(true);
     status("Retrying capture on the original review tab…");
     const result = await send({ type: "retryCapture", id: draft.id });
     await loadBase(await send({ type: "draft" }));
@@ -644,14 +708,14 @@ $("retry-capture").onclick = async () => {
     status(error.message, "error");
   } finally {
     lock(!draft || !!draft.frozen || loadingBase);
-    $("send").disabled = !draft || loadingBase;
+    setSendState(!draft || loadingBase);
     $("retry-capture").disabled = false;
   }
 };
-$("send").onclick = async () => {
+$("send").onclick = $("send-header").onclick = async () => {
   if (!draft || redacting || loadingBase || sendingApproval) return;
   sendingApproval = true;
-  $("send").disabled = true;
+  setSendState(true, "Sending…");
   $("discard").disabled = true;
   if (draft.capturePages?.length && !$("no-image").checked) {
     $("upload-progress").hidden = false;
@@ -705,6 +769,7 @@ $("send").onclick = async () => {
     sendingApproval = false;
     const fresh = await send({ type: "draft" }).catch(() => null);
     if (fresh) await loadBase(fresh);
+    showPublishedThread(fresh);
     if (fresh?.capturePages?.length && fresh.frozen && !fresh.noImage)
       uploadProgress(
         fresh.uploadIndex + (fresh.combinedUploaded ? 1 : 0),
@@ -714,13 +779,15 @@ $("send").onclick = async () => {
     lock(!draft || loadingBase || !!draft?.frozen);
     status(
       fresh
-        ? `${e.message} Your draft is kept here. Review it before retrying Send.`
+        ? fresh.thread
+          ? `${e.message} The feedback thread is already published; some images are pending. Retry Send to finish them. Thread: ${fresh.server}/threads/${fresh.thread.id}`
+          : `${e.message} Your draft is kept here. Review it before retrying Send.`
         : `${e.message} No local draft remains. Check Feedbacks for any completed submission.`,
       "error",
     );
-    $("send").disabled = !draft || loadingBase;
-    $("send").textContent = "Retry Send";
+    setSendState(!draft || loadingBase, "Retry Send");
     $("discard").disabled = false;
+    $("status").scrollIntoView({ block: "nearest" });
   }
 };
 addEventListener("beforeunload", (e) => {
@@ -819,10 +886,34 @@ async function init() {
   pointNotes.hidden = comments.length === 0;
   comments.forEach((item, index) => {
     const row = document.createElement("li");
-    const heading = document.createElement("strong");
-    heading.textContent = `Point ${index + 1}`;
-    const note = document.createElement("p");
-    note.textContent = item.body;
+    const heading = document.createElement("div");
+    heading.className = "point-note-heading";
+    const label = document.createElement("label");
+    label.htmlFor = `point-note-${index}`;
+    label.textContent = `Point ${index + 1}`;
+    heading.append(label);
+    const imageIndex = (draft.capturePages || []).findIndex(
+      (page) => page.annotationId === item.id,
+    );
+    if (imageIndex >= 0) {
+      const original = document.createElement("button");
+      original.type = "button";
+      original.textContent = "View original image";
+      original.onclick = () => {
+        const index = draft.capturePages.findIndex(
+          (page) => page.annotationId === item.id,
+        );
+        if (index >= 0) changePage(index);
+      };
+      heading.append(original);
+    }
+    const note = document.createElement("textarea");
+    note.id = `point-note-${index}`;
+    note.value = item.body;
+    note.rows = 2;
+    note.maxLength = 4000;
+    note.required = true;
+    note.addEventListener("input", schedule);
     row.append(heading, note);
     pointNotes.append(row);
   });
@@ -844,13 +935,16 @@ async function init() {
   $("capture-size").textContent =
     `${draft.context.viewport.width} × ${draft.context.viewport.height} · Capture details`;
   lock(!!draft.frozen);
-  $("send").disabled = false;
+  setSendState(false);
   if (draft.frozen) {
-    $("send").textContent = "Retry Send";
+    showPublishedThread(draft);
+    setSendState(!draft || loadingBase, "Retry Send");
     status(
-      draft.capturePages?.length && draft.uploadIndex === draft.capturePages.length
-        ? `${draft.uploadIndex} numbered screenshots uploaded. Retry will finish the combined image and keep the same feedback thread.`
-        : "Pending submission. Retry continues from the first unsent screenshot.",
+      draft.thread
+        ? `Feedback thread already published. Retry Send to finish pending images without creating a second thread. ${draft.server}/threads/${draft.thread.id}`
+        : draft.capturePages?.length && draft.uploadIndex === draft.capturePages.length
+          ? `${draft.uploadIndex} numbered screenshots uploaded. Retry will finish the combined image and keep the same feedback thread.`
+          : "Pending submission. Retry continues from the first unsent screenshot.",
     );
     if (draft.capturePages?.length && !draft.noImage)
       uploadProgress(
@@ -869,8 +963,8 @@ async function init() {
   }
 }
 lock(true);
-$("send").disabled = true;
+setSendState(true);
 init().catch((e) => {
   status(e.message, "error");
-  $("send").disabled = true;
+  setSendState(true);
 });

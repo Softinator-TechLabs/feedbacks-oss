@@ -17,19 +17,16 @@ test("one-click Issue keeps source and media links when feedback is long", () =>
       {
         id: randomUUID(),
         contentType: "video/webm",
-        directUrl: "https://s3.example.test/video",
       },
       {
         id: randomUUID(),
         contentType: "image/webp",
         filename: "full-page-001-of-002.webp",
-        directUrl: null,
       },
       {
         id: randomUUID(),
         contentType: "image/webp",
         filename: "full-page-002-of-002.webp",
-        directUrl: null,
       },
     ],
   );
@@ -38,7 +35,8 @@ test("one-click Issue keeps source and media links when feedback is long", () =>
     draft.body,
     new RegExp(`https://feedbacks\\.example\\.test/threads/${id}`),
   );
-  assert.match(draft.body, /https:\/\/s3\.example\.test\/video/);
+  assert.doesNotMatch(draft.body, /s3\.example\.test|\/api\/assets\//);
+  assert.match(draft.body, /#asset-[a-f0-9-]+/);
   assert.match(draft.body, /Full-page capture: 2 numbered images/);
   assert.match(draft.body, /full-page-002-of-002\.webp/);
 });
@@ -65,6 +63,7 @@ for (const privateRepository of [true, false]) {
       if (path.endsWith("/access_tokens"))
         return Response.json({ token: "installation-token" });
       if (path.endsWith("/issues") && init?.method === "POST") {
+        assert.equal(path, "/repos/acme/site/issues");
         Object.assign(created, JSON.parse(String(init.body)));
         return Response.json({ number: 13 }, { status: 201 });
       }
@@ -140,6 +139,11 @@ for (const privateRepository of [true, false]) {
         revision: project.revision,
       });
       assert.equal(connected.githubConnected, true);
+      await ops.executeOperation(owner, "github.repositoryConnect", {
+        projectId: project.id,
+        revision: connected.revision,
+        repositoryUrl: "https://github.com/another/service",
+      });
       const connection = await ops.executeOperation(owner, "github.connection", {
         projectId: project.id,
       });
@@ -162,26 +166,46 @@ for (const privateRepository of [true, false]) {
           code: "FORBIDDEN",
         },
       );
-      const result = await ops.executeOperation(owner, "github.issueCreateQuick", input);
+      await assert.rejects(
+        ops.executeOperation(owner, "github.issueCreateQuick", input),
+        { code: "GITHUB_REPOSITORY_REQUIRED" },
+      );
+      const selected = { ...input, repositoryUrl: "https://github.com/acme/site" };
+      const result = await ops.executeOperation(
+        owner,
+        "github.issueCreateQuick",
+        selected,
+      );
       assert.match(created.title ?? "", /Checkout breaks/);
       assert.match(
         created.body ?? "",
-        /https:\/\/feedbacks\.example\.test\/api\/assets\//,
+        new RegExp(
+          `https://feedbacks\\.example\\.test/threads/${thread.id}#asset-${assetId}`,
+        ),
       );
       assert.match(created.body ?? "", /https:\/\/feedbacks\.example\.test\/threads\//);
       assert.doesNotMatch(created.body ?? "", /<script>|@team/);
-      if (privateRepository) {
-        assert.match(created.body ?? "", /https:\/\/s3\.example\.test\/signed\//);
-        assert.deepEqual(signedKeys, ["private/test-image.webp"]);
-      } else {
-        assert.doesNotMatch(created.body ?? "", /s3\.example\.test/);
-        assert.deepEqual(signedKeys, []);
-      }
+      assert.doesNotMatch(
+        created.body ?? "",
+        /s3\.example\.test|\/api\/assets\/|valid 7 days/,
+      );
+      assert.deepEqual(signedKeys, []);
       assert.equal(
         result.externalIssues[0].url,
         "https://github.com/acme/site/issues/13",
       );
-      const replay = await ops.executeOperation(owner, "github.issueCreateQuick", input);
+      const replay = await ops.executeOperation(
+        owner,
+        "github.issueCreateQuick",
+        selected,
+      );
+      await assert.rejects(
+        ops.executeOperation(owner, "github.issueCreateQuick", {
+          ...input,
+          repositoryUrl: "https://github.com/another/service",
+        }),
+        { code: "IDEMPOTENCY_CONFLICT" },
+      );
       assert.equal(replay.externalIssues[0].url, result.externalIssues[0].url);
       installationAvailable = false;
       const revoked = await ops.executeOperation(owner, "github.connection", {

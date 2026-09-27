@@ -22,6 +22,14 @@ Project lists also show a status selector on each row. Changing it saves immedia
 
 The saved status remains visible while a request is pending or fails. Failed updates retain their selection and details for retry. A conflicting revision must be loaded before retrying; the app does not silently overwrite another member's changes. Status history still records the actor and time. Resolving a thread does not claim delivery evidence or change its response obligation.
 
+## Resolve or remove individual points
+
+Each published point has its own decision. Members with resolution permission can **Resolve point** or **Reopen point** without closing its thread. Maintainers can **Remove point** and **Restore point**. Removal excludes it from active pins/counts but preserves its original note, element metadata, screenshot and audit history. Marks baked into a historical image remain visible. Removed points stay available under the thread’s Removed filter.
+
+Resolving or declining a thread closes all its visible points without overwriting their individual decisions. Reopening restores the earlier decisions. Individual resolution does not automatically close a thread. Stale revisions require reloading, and every point decision records its author and time.
+
+The extension shows open/resolved/closed point and thread totals for the selected page, hostname or device class. Totals cover all matching threads rather than the current pagination window. Links open the configured server with those filters. The list shows a direct website link, annotation count and counts of screenshots, videos and other files, excluding generated thumbnail copies.
+
 ## Record a review decision
 
 Review rounds are off by default. A project maintainer can enable **Require a separate review decision** in project settings when formal sign-off is needed. A project writer can then choose **Approve this round** or **Request changes**, with an optional note. The decision records the reviewer, time and round. **Open another round** increments the round number and preserves earlier decisions. Turning review off again hides the decision control and preserves its history in thread details. An approval does not resolve the thread or assert that work is deployed. Agent keys cannot record a human sign-off. The thread revision prevents concurrent decisions from overwriting one another.

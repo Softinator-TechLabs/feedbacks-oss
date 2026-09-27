@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -97,6 +98,7 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
     let blockedRequests = 0;
     for (const [width, height, device] of [
       [1280, 800, "desktop"],
+      [1059, 949, "medium"],
       [390, 844, "mobile"],
     ])
       for (const theme of ["light", "dark"]) {
@@ -145,6 +147,18 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
           await threadLink.waitFor();
           const href = await threadLink.getAttribute("href");
           if (!href) throw Error("Synthetic feedback row is missing");
+          assert.equal(
+            await page.locator(".thread-row-evidence a").first().getAttribute("target"),
+            "_blank",
+          );
+          assert.match(
+            await page.locator(".thread-row-evidence").first().innerText(),
+            /annotations/,
+          );
+          assert.equal(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+            true,
+          );
           await page.evaluate(() => scrollTo(0, 0));
           images[`queue-${device}-${theme}`] = await page.screenshot({
             type: "png",
@@ -152,6 +166,8 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
           });
           await page.goto(`${access.url}${href}`, { waitUntil: "load" });
           await page.getByRole("heading", { name: /Feedback/ }).waitFor();
+          await page.locator("#thread-discussion").waitFor();
+          assert.equal(await page.locator("#thread-github").count(), 0);
           await page.evaluate(() => scrollTo(0, 0));
           images[`thread-${device}-${theme}`] = await page.screenshot({
             type: "png",
@@ -167,12 +183,42 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
             animations: "disabled",
           });
           await page.goto(`${access.url}/help`, { waitUntil: "load" });
-          await page.getByRole("heading", { name: "Find your guide" }).waitFor();
+          await page.getByRole("heading", { name: "Help & setup" }).waitFor();
           await page.evaluate(() => scrollTo(0, 0));
           images[`help-${device}-${theme}`] = await page.screenshot({
             type: "png",
             animations: "disabled",
           });
+          await page
+            .getByRole("button", { name: "Create key and copy setup", exact: true })
+            .waitFor();
+          assert.equal(
+            await page
+              .getByRole("button", { name: "Create key and copy setup", exact: true })
+              .isVisible(),
+            true,
+          );
+          for (const [route, heading] of [
+            ["members", "Project members"],
+            ["instructions", "Context for Coding Agent"],
+            ["settings", "Project settings"],
+          ]) {
+            await page.goto(`${access.url}/projects/${access.projectId}/${route}`, {
+              waitUntil: "load",
+            });
+            await page.getByRole("heading", { name: heading, exact: true }).waitFor();
+            assert.equal(
+              await page.evaluate(
+                () => document.documentElement.scrollWidth <= innerWidth,
+              ),
+              true,
+              `${route} must fit ${device}`,
+            );
+            images[`${route}-${device}-${theme}`] = await page.screenshot({
+              type: "png",
+              animations: "disabled",
+            });
+          }
           await context.close();
         } catch (error) {
           await context.close();

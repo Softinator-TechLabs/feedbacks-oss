@@ -1,6 +1,6 @@
 # Multi-repository GitHub projects
 
-Status: implemented locally. Date: 2026-09-27.
+Status: implementation complete; release verification pending. Date: 2026-09-27.
 
 ## Outcome
 
@@ -22,3 +22,9 @@ The existing `repositoryUrl` plus `githubConnected` pair remains the primary con
 ## Boundary
 
 Making the existing private GitHub App public is a separate GitHub account setting. This change does not alter App visibility or grant repository access in another organization. The owner must approve each installation and select repositories there.
+
+## Integration verification
+
+- Reconciled with the latest review controls and durable thread evidence links.
+- Keep the App installation management link available after connecting the first repository, so another owning organization can be selected.
+- Check both reviewed and one-click Issue creation with an explicit repository; a retry cannot switch the destination.

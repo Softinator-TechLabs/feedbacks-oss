@@ -34,6 +34,11 @@ test("lost create acknowledgement retries the original comment and review target
     window: { addEventListener() {} },
     chrome: {
       runtime: {
+        connect: () => ({
+          onMessage: { addListener() {} },
+          onDisconnect: { addListener() {} },
+          postMessage() {},
+        }),
         sendMessage: async (message: any) => {
           if (message.type === "videoContext") return { ok: true, data: target };
           if (message.type === "videoCreate") {
@@ -58,4 +63,85 @@ test("lost create acknowledgement retries the original comment and review target
   assert.equal(sent.length, 2);
   assert.deepEqual(sent[1], sent[0]);
   assert.equal(nodes.comment.readOnly, true);
+});
+
+test("ending review while the native picker is open stops its eventual stream", async () => {
+  const nodes: Record<string, any> = {};
+  for (const id of [
+    "start",
+    "stop",
+    "pause",
+    "preview",
+    "review",
+    "discard",
+    "timer",
+    "status",
+    "target",
+    "send",
+  ])
+    nodes[id] = { textContent: "", disabled: false, removeAttribute() {} };
+  let disconnect!: () => void, resolvePicker!: (stream: any) => void;
+  let stopped = 0,
+    constructed = 0;
+  const context = vm.createContext({
+    URL,
+    crypto,
+    Blob,
+    console,
+    clearInterval,
+    location: { href: "chrome-extension://test/video.html?sourceTabId=10" },
+    document: { getElementById: (id: string) => nodes[id] },
+    window: { addEventListener() {} },
+    navigator: {
+      mediaDevices: {
+        getDisplayMedia: () =>
+          new Promise((resolve) => {
+            resolvePicker = resolve;
+          }),
+      },
+    },
+    MediaRecorder: class {
+      constructor() {
+        constructed++;
+      }
+    },
+    chrome: {
+      runtime: {
+        connect: () => ({
+          onMessage: { addListener() {} },
+          onDisconnect: {
+            addListener(fn: () => void) {
+              disconnect = fn;
+            },
+          },
+          postMessage() {},
+        }),
+        sendMessage: async () => ({
+          ok: true,
+          data: { project: { name: "Project" }, viewport: { width: 900, height: 650 } },
+        }),
+      },
+    },
+  });
+  vm.runInContext(
+    await readFile(new URL("../extension/video.js", import.meta.url), "utf8"),
+    context,
+  );
+  await new Promise((resolve) => setImmediate(resolve));
+  const starting = nodes.start.onclick();
+  disconnect();
+  resolvePicker({
+    getTracks: () => [
+      {
+        stop() {
+          stopped++;
+        },
+      },
+    ],
+  });
+  await starting;
+  assert.equal(stopped, 1);
+  assert.equal(constructed, 0);
+  assert.equal(nodes.start.disabled, true);
+  assert.match(nodes.status.textContent, /Review ended/);
 });

@@ -1,4 +1,8 @@
 header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--canvas);
   min-height: 60px;
   padding: 10px 24px;
   display: flex;
@@ -11,12 +15,31 @@ header strong {
   color: var(--accent);
   letter-spacing: -0.025em;
 }
-header span {
+header > span {
   color: var(--muted);
   font-size: 14px;
 }
-header button {
+.review-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-left: auto;
+}
+.send-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.send-action svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 main {
   display: grid;
@@ -245,6 +268,12 @@ h1 {
   margin-bottom: 24px;
   color: var(--muted);
 }
+#capture-origin + .capture-details {
+  margin-top: 10px;
+}
+.capture-details #capture-scope {
+  margin: 8px 0 0;
+}
 .capture-details summary {
   padding: 0;
   font-size: 13px;
@@ -258,6 +287,24 @@ h1 {
 }
 #body {
   min-height: 190px;
+  margin-bottom: 24px;
+}
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 7px 0;
+}
+.markdown-toolbar button {
+  min-height: 30px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.markdown-toolbar span {
+  color: #9fb0bd;
+  font-size: 12px;
+  margin-left: 4px;
 }
 aside .check {
   margin: 16px 0 4px;
@@ -272,6 +319,15 @@ aside .hint {
 }
 #status {
   margin: 12px 0 0;
+}
+#published-thread {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--accent, #b9d5ec);
+  text-underline-offset: 3px;
+}
+#published-thread[hidden] {
+  display: none;
 }
 .upload-progress {
   margin-top: 12px;
@@ -364,7 +420,23 @@ aside .hint {
   }
 }
 @media (max-width: 480px) {
-  header span {
+  header {
+    flex-wrap: wrap;
+  }
+  header strong {
+    font-size: 18px;
+  }
+  .review-actions {
+    gap: 8px;
+  }
+  .review-actions button {
+    padding: 8px;
+    font-size: 12px;
+  }
+  .send-action {
+    gap: 6px;
+  }
+  header > span {
     display: none;
   }
   aside {
@@ -438,15 +510,24 @@ aside .hint {
   list-style: none;
 }
 .point-notes li {
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border, #4b5d6b);
 }
-.point-notes strong {
-  display: block;
-  margin-bottom: 3px;
+.point-note-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 8px;
 }
-.point-notes p {
+.point-note-heading label:not(.check) {
   margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+}
+.point-note-heading button {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.point-notes textarea {
+  min-height: 74px;
+  resize: vertical;
 }

@@ -11,11 +11,19 @@ Feedbacks can create a verified Issue in selected GitHub repositories across mul
 
 Only a project maintainer can connect or disconnect. Use a repository whose access policy matches the feedback you will put in Issues.
 
+### More than one GitHub organization or repository
+
+A GitHub App installation belongs to a GitHub **account** (a personal account or one organization). Selecting three repositories in Softinator-TechLabs grants access only to those three repositories in that organization. To use another organization, [install the same App there separately](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app) and choose its repositories. The Feedbacks server requests a token for the exact repository when it creates an Issue; it does not reuse an installation token from another organization.
+
+If your App is **private**, GitHub permits installation only on the account that owns it. To install it in other organizations, the App owner must [change its visibility](https://docs.github.com/en/apps/maintaining-github-apps/modifying-a-github-app-registration) in the App's **Advanced → Danger zone → Make public** settings. This makes the installation page available to other accounts; each installation still needs an owner to choose and approve repositories. GitHub warns that a public App installed on other accounts cannot be made private again until those installations are removed. Review the App's requested permissions and availability before making that change. You do not need to create one App per organization.
+
+A Feedbacks project can connect multiple repositories across these installations. Use **Manage App installations** to install the same App on another organization, then **Add another repository** in the project. Separate Feedbacks projects keep independent repository selections. When a thread has more than one possible destination, choose the repository before creating its Issue.
+
 ## Create an Issue from feedback
 
 Open a thread. If the project has multiple connected repositories, choose the exact Issue destination first. **Create Issue** then creates an Issue from the original feedback, links it back to the thread and records a verified URL. Use **Review/edit first** when the text needs adjustment. The button is a deliberate maintainer action; incoming comments never create Issues on their own. API and MCP callers must pass `repositoryUrl` when there is more than one connected repository.
 
-For image or video attachments, the Issue includes a durable Feedbacks URL that checks current project access. When the repository is **private** and storage supports signing, it also includes a direct Wasabi/S3 download URL valid for seven days. Anyone who sees that temporary URL can open the media until expiry. Public repositories receive no direct storage URL. Storage objects remain private and no raw object key or storage credential is copied to GitHub.
+For each image or video, the Issue includes a link to that attachment inside the Feedbacks thread. These links do not expire. The web app reuses your existing sign-in and checks current project access before loading the media. Storage objects remain private; expiring Wasabi/S3 URLs and raw asset API URLs are not copied into new Issues.
 
 Only one native Issue request is allowed per thread. If a GitHub write has an uncertain result, Feedbacks pauses creation rather than risk a duplicate. Inspect GitHub and use the recovery controls to verify and link the actual Issue, or clear the request after confirming no Issue exists and waiting for the settlement period.
 

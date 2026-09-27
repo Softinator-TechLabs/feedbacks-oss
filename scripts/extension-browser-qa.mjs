@@ -122,10 +122,14 @@ try {
       mode === "clipped"
         ? '<style>html{overflow-x:hidden;scroll-behavior:smooth}body{overflow-x:hidden;position:relative}.wide-carousel{position:absolute;top:100px;width:6000px}</style><div class="wide-carousel"><video></video></div><script>window.qaMotion=setInterval(()=>{document.querySelector("video").dispatchEvent(new Event("resize"));document.querySelector(".wide-carousel").dispatchEvent(new Event("scroll"))},100)</script>'
         : "";
+    const hover =
+      mode === "hover"
+        ? '<style>#hover-menu{display:none;position:absolute;top:48px;left:20px;width:320px;padding:20px;background:#eef;border:2px solid #356}#hover-host:hover #hover-menu{display:block}</style><nav id="hover-host" style="position:absolute;top:160px;left:20px;width:420px;height:80px;background:#ddd">About<div id="hover-menu">Research ethics menu</div></nav>'
+        : "";
     return route.fulfill({
       status: 200,
       contentType: "text/html",
-      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px;position:relative}#lower{position:absolute;top:${Math.max(160, height - 260)}px;left:30px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a><button id="lower">Bottom action</button></main>${change}${clipped}`,
+      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px;position:relative}#lower{position:absolute;top:${Math.max(160, height - 260)}px;left:30px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a>${hover}<button id="lower">Bottom action</button></main>${change}${clipped}`,
     });
   });
   const page = context.pages()[0] ?? (await context.newPage());
@@ -239,27 +243,125 @@ try {
 
   await toFixture();
   await mkdir(join(root, ".local/remaining-todos-qa"), { recursive: true });
+  await control.reload();
+  await control.locator("#review-controls:visible").waitFor();
+  const fullCaptureButton = await control.locator("#capture").boundingBox();
+  assert.ok(
+    fullCaptureButton && fullCaptureButton.y + fullCaptureButton.height < 600,
+    "Primary capture actions should fit without scrolling in a compact popup",
+  );
+  assert.equal(await control.locator(".access-status").getAttribute("open"), null);
   await control.screenshot({
     path: join(root, ".local/remaining-todos-qa/access-status.png"),
   });
+  assert.equal(
+    await control.locator("#capture-full").isVisible(),
+    false,
+    "Full page is secondary",
+  );
+  const optionsOpened = context.waitForEvent("page");
+  await control.locator("#settings").click();
+  const options = await optionsOpened;
+  await options.waitForURL(`chrome-extension://${extensionId}/options.html`);
+  await options.locator("#connection-status").filter({ hasText: "Connected" }).waitFor();
+  assert.equal(await options.locator("#server").inputValue(), access.url);
+  await options.locator("#review-shortcuts").uncheck();
+  await options.locator("#message").filter({ hasText: "saved" }).waitFor();
+  assert.equal((await send({ type: "settings" })).reviewShortcuts, false);
+  await options.locator("#review-shortcuts").check();
+  await options.evaluate(() => scrollTo(0, 0));
+  await options.screenshot({
+    path: join(root, ".local/remaining-todos-qa/settings.png"),
+    fullPage: true,
+  });
+  const shortcutsOpened = context.waitForEvent("page");
+  await options.locator("#customize-shortcuts").click();
+  const shortcuts = await shortcutsOpened;
+  await shortcuts.waitForURL("chrome://extensions/shortcuts");
+  await shortcuts.close();
+  const accessOpened = context.waitForEvent("page");
+  await options.locator("#manage-access").click();
+  const permissions = await accessOpened;
+  await permissions.waitForURL(`chrome://extensions/?id=${extensionId}`);
+  await permissions.close();
+  await options.setViewportSize({ width: 390, height: 844 });
+  await options.evaluate(() => scrollTo(0, 0));
+  assert.equal(
+    await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+  );
+  await options.screenshot({
+    path: join(root, ".local/remaining-todos-qa/settings-mobile.png"),
+    fullPage: true,
+  });
+  await options.close();
+  await page.bringToFront();
   const id = await tabId();
   const exposeReviewRoot = () =>
     worker.evaluate(async (tabId) => {
       await chrome.scripting.executeScript({
         target: { tabId },
         func: () => {
+          window.addEventListener(
+            "pointerdown",
+            (event) => {
+              if (event.button !== 2) return;
+              const start = performance.now();
+              requestAnimationFrame(() => {
+                const root = globalThis.__feedbacksQaRoot;
+                globalThis.__pointFirstPaint = {
+                  elapsed: performance.now() - start,
+                  visible:
+                    !root.querySelector(".point-menu").classList.contains("hidden") &&
+                    getComputedStyle(root.host).display !== "none",
+                };
+              });
+            },
+            { capture: true },
+          );
           const attach = Element.prototype.attachShadow;
           Element.prototype.attachShadow = function (options) {
             const shadow = attach.call(this, options);
             if (this.id === "feedbacks-review-root")
               globalThis.__feedbacksQaRoot = shadow;
+            else globalThis.__feedbacksInstantRoot = shadow;
             return shadow;
           };
         },
       });
     }, id);
+  const inspectReview = () =>
+    worker.evaluate(async (tabId) => {
+      const [entry] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const root = globalThis.__feedbacksQaRoot;
+          return {
+            ready: !!root?.querySelector(".point-menu:not(.hidden)"),
+            frozen: !!root?.querySelector(".freeze-frame:not(.hidden)"),
+            points: root?.querySelectorAll(".draft-section li").length || 0,
+            meta: root?.querySelector(".bar .meta")?.textContent || "",
+            notice: root?.querySelector(".notice")?.textContent || "",
+            tip: root?.querySelector(".point-tip")?.textContent || "",
+          };
+        },
+      });
+      return entry.result;
+    }, id);
+  const waitReview = async (predicate) => {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const state = await inspectReview();
+      if (predicate(state)) return state;
+      await page.waitForTimeout(100);
+    }
+    throw Error(
+      `Review UI did not reach expected state: ${JSON.stringify(await inspectReview())}`,
+    );
+  };
   const saveInlinePoint = async (target, body) => {
+    const before = (await inspectReview()).points;
     await target.click({ button: "right" });
+    await waitReview((state) => state.ready);
     const result = await worker.evaluate(
       async ({ tabId, body }) => {
         const [entry] = await chrome.scripting.executeScript({
@@ -288,7 +390,7 @@ try {
       { tabId: id, body },
     );
     assert.equal(result.ready, true, `Inline comment field did not open: ${body}`);
-    return result.count;
+    return (await waitReview((state) => state.points === before + 1)).points;
   };
   results.qa = await send({ type: "popupAction", tabId: id, action: "qa-scan" });
   const qaDraft = await draft();
@@ -299,22 +401,533 @@ try {
   };
   await send({ type: "discard" });
 
+  mode = "hover";
+  await toFixture();
+  await exposeReviewRoot();
+  await send({ type: "activate", tabId: id });
+  const sendFromReview = (message) =>
+    worker.evaluate(
+      async ({ tabId, message }) =>
+        (
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: (message) => chrome.runtime.sendMessage(message),
+            args: [message],
+          })
+        )[0].result,
+      { tabId: id, message },
+    );
+  // Default navigation lock leaves menus usable but prevents leaving the page.
+  await page.getByRole("link", { name: "Broken same-origin link" }).click();
+  assert.equal(new URL(page.url()).pathname, "/review");
+  const formBlocked = await page.evaluate(() => {
+    const form = document.createElement("form");
+    document.body.append(form);
+    const event = new Event("submit", { bubbles: true, cancelable: true });
+    form.dispatchEvent(event);
+    form.remove();
+    return event.defaultPrevented;
+  });
+  assert.equal(formBlocked, true);
+  const unlocked = await send({ type: "popupAction", tabId: id, action: "navigation" });
+  assert.equal(unlocked.navigationLocked, false);
+  const defaultAllowed = await page
+    .getByRole("link", { name: "Broken same-origin link" })
+    .evaluate((link) => {
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+      let allowed;
+      window.addEventListener(
+        "click",
+        (e) => {
+          allowed = !e.defaultPrevented;
+          e.preventDefault();
+        },
+        { once: true },
+      );
+      link.dispatchEvent(event);
+      return allowed;
+    });
+  assert.equal(defaultAllowed, true);
+  await send({ type: "popupAction", tabId: id, action: "navigation" });
+
+  const dockResult = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const root = globalThis.__feedbacksQaRoot;
+        const dock = root.querySelector(".review-dock");
+        const grip = root.querySelector(".review-drag");
+        const before = dock.getBoundingClientRect().left;
+        grip.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
+        );
+        const moved = dock.getBoundingClientRect().left < before;
+        root.querySelector(".drawer-handle").click();
+        const bounds = root.querySelector(".bar").getBoundingClientRect();
+        const fits = bounds.top >= 0 && bounds.bottom <= innerHeight;
+        [...root.querySelectorAll(".review-bar-heading button")]
+          .find((b) => b.textContent === "Hide")
+          .click();
+        return {
+          moved,
+          fits,
+          hidden: dock.hidden,
+          label: root.querySelector(".drawer-handle").getAttribute("aria-label"),
+        };
+      },
+    });
+    return entry.result;
+  }, id);
+  assert.equal(dockResult.moved, true);
+  assert.equal(dockResult.fits, true);
+  assert.equal(dockResult.hidden, true);
+  assert.doesNotMatch(dockResult.label, /FeedbacksS/);
+  await send({ type: "popupAction", tabId: id, action: "show-controls" });
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const root = globalThis.__feedbacksQaRoot;
+        if (root.querySelector(".review-dock").hidden)
+          throw Error("Dock did not restore");
+        root.querySelector(".drawer-handle").click();
+      },
+    });
+  }, id);
+  await send({ type: "saveReviewPreferences", reviewShortcuts: false });
+  const disabledWidth = await page.evaluate(() => innerWidth);
+  await page.keyboard.press("t");
+  assert.equal(await page.evaluate(() => innerWidth), disabledWidth);
+  await send({ type: "saveReviewPreferences", reviewShortcuts: true });
+  await page.locator("#hover-host").hover();
+  const liveHover = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () =>
+        !globalThis.__feedbacksQaRoot
+          .querySelector(".hover-target")
+          .classList.contains("hidden"),
+    });
+    return entry.result;
+  }, id);
+  assert.equal(
+    liveHover,
+    true,
+    "Review should highlight a hovered element before selection",
+  );
+  const menuBounds = await page.locator("#hover-menu").boundingBox();
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+        chrome.runtime.sendMessage = async (message, ...rest) => {
+          if (message.type === "freezeView")
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+          return send(message, ...rest);
+        };
+      },
+    });
+  }, id);
+  await page.locator("#hover-menu").evaluate((menu) => {
+    // A transitioning menu must retain its selected visual state during capture.
+    menu.style.transition = "opacity .2s ease, transform .2s ease";
+    window.qaMenuMotion = menu.animate(
+      [{ transform: "translateY(0px)" }, { transform: "translateY(16px)" }],
+      { duration: 1300, iterations: Infinity, direction: "alternate" },
+    );
+  });
+  await page.mouse.click(menuBounds.x + 20, menuBounds.y + 20, { button: "right" });
+  await waitReview((state) => state.ready);
+  const firstPaint = await worker.evaluate(
+    async (tabId) =>
+      (
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: async () => {
+            // The menu is synchronous; its first-paint probe runs next frame.
+            // Fast workers can read the visible menu before that frame occurs.
+            if (!globalThis.__pointFirstPaint) await new Promise(requestAnimationFrame);
+            return globalThis.__pointFirstPaint;
+          },
+        })
+      )[0].result,
+    id,
+  );
+  assert.equal(
+    firstPaint.visible,
+    true,
+    "Comment field must paint before a delayed original capture finishes",
+  );
+  await page.mouse.move(700, 500);
+  await page.keyboard.type("t");
+  await waitReview((state) => state.frozen);
+  assert.equal(
+    (await inspectReview()).frozen,
+    true,
+    "Capture a menu during its entrance animation",
+  );
+  await page.evaluate(() => {
+    window.qaMenuMotion.cancel();
+    document.body.dispatchEvent(new Event("scroll"));
+    const video = document.createElement("video");
+    document.body.append(video);
+    video.dispatchEvent(new Event("resize"));
+    video.remove();
+  });
+  assert.equal(
+    (await inspectReview()).ready,
+    true,
+    "Nested scroll and video resize must not close the comment editor",
+  );
+  await page.mouse.move(700, 500);
+  assert.equal(await page.locator("#hover-menu").isVisible(), false);
+  assert.equal(
+    (await inspectReview()).frozen,
+    true,
+    "The selected hover state should stay visible while writing the point",
+  );
+  const typingWidth = await page.evaluate(() => innerWidth);
+  await page.keyboard.type("Keep this menu visible for review");
+  assert.equal(
+    await page.evaluate(() => innerWidth),
+    typingWidth,
+    "Typing t in a comment must not switch to tablet size",
+  );
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const menu = globalThis.__feedbacksQaRoot.querySelector(".point-menu");
+        [...menu.querySelectorAll("button")]
+          .find((button) => button.textContent === "Save point")
+          .click();
+      },
+    });
+  }, id);
+  await waitReview((state) => state.points === 1);
+  // The menu closed: its pin must not float over unrelated page content.
+  await page.waitForTimeout(200);
+  const hiddenDraft = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const root = globalThis.__feedbacksQaRoot;
+        const result = {
+          pins: root.querySelectorAll(".saved-draft-pin").length,
+          handle: root.querySelector(".drawer-handle").getAttribute("aria-label"),
+        };
+        root.querySelector(".drawer-handle").click();
+        const row = root.querySelector(".draft-section li");
+        [...row.querySelectorAll("button")]
+          .find((button) => button.textContent === "Edit")
+          .click();
+        return {
+          ...result,
+          editing: !!row.querySelector("textarea"),
+          visible: !!row.querySelector("textarea")?.getBoundingClientRect().width,
+        };
+      },
+    });
+    return entry.result;
+  }, id);
+  assert.equal(hiddenDraft.pins, 0);
+  assert.match(hiddenDraft.handle, /1 outside this view/);
+  assert.equal(hiddenDraft.editing, true);
+  assert.equal(
+    hiddenDraft.visible,
+    true,
+    "Draft editor must actually be visible, not just exist in hidden DOM",
+  );
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const root = globalThis.__feedbacksQaRoot;
+        const row = root.querySelector(".draft-section li");
+        row.querySelector("textarea").value = "Edited before screenshot";
+        [...row.querySelectorAll("button")]
+          .find((button) => button.textContent === "Save")
+          .click();
+      },
+    });
+  }, id);
+  assert.match((await inspectReview()).meta, /not sent/i);
+  assert.equal((await inspectReview()).points, 1);
+  assert.equal(
+    (await inspectReview()).frozen,
+    false,
+    "The frozen view should clear after saving",
+  );
+  results.hoverPoint = {
+    saved: true,
+    frozenWhileWriting: true,
+    liveHover,
+    draftPinEdited: true,
+    typingWidth,
+  };
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  await send({ type: "activate", tabId: id });
+  await waitReview((state) => state.points === 1);
+  results.hoverPoint.restoredAfterReviewToggle = true;
+  // Preserve the selected menu's original pixels even when a later visible
+  // screenshot contains only the closed page.
+  await send({ type: "popupAction", tabId: id, action: "capture" });
+  const menuDraft = await draft();
+  assert.equal(menuDraft.capturePages.length, 2);
+  assert.equal(menuDraft.capturePages[1].pointNumber, 1);
+  assert.equal(
+    menuDraft.pageToolStates[0].filter((shape) => shape.tool === "point").length,
+    0,
+  );
+  assert.equal(
+    menuDraft.pageToolStates[1].filter((shape) => shape.tool === "point").length,
+    1,
+  );
+  const originalMenu = await send({ type: "capturePage", id: menuDraft.id, index: 1 });
+  const menuPixel = await sharp(Buffer.from(originalMenu.image.split(",")[1], "base64"))
+    .extract({
+      left: Math.round(menuBounds.x + 8),
+      top: Math.round(menuBounds.y + 8),
+      width: 1,
+      height: 1,
+    })
+    .raw()
+    .toBuffer();
+  assert.ok(
+    menuPixel[2] > menuPixel[0],
+    "Original hover menu background should survive closure",
+  );
+  results.hoverPoint.originalImageRetained = true;
+  await send({ type: "discard" });
+  await page.bringToFront();
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  mode = "hover";
+  await toFixture();
+  await exposeReviewRoot();
+  // Canceled captures must never restore UI over a newer point's pixels.
+  await send({ type: "activate", tabId: id });
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+        chrome.runtime.sendMessage = async (message, ...rest) => {
+          if (message.type !== "freezeView") return send(message, ...rest);
+          globalThis.__captureToken = message.key;
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+          return { ok: false, error: "Synthetic capture failure" };
+        };
+      },
+    });
+  }, id);
+  const selectedToken = () =>
+    worker.evaluate(
+      async (tabId) =>
+        (
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => globalThis.__captureToken,
+          })
+        )[0].result,
+      id,
+    );
+  const cancelPoint = () =>
+    worker.evaluate(async (tabId) => {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          [...globalThis.__feedbacksQaRoot.querySelectorAll(".point-menu button")]
+            .find((b) => b.textContent === "Cancel")
+            .click();
+        },
+      });
+    }, id);
+  await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await waitReview((state) => state.ready);
+  await page.waitForTimeout(50);
+  const oldToken = await selectedToken();
+  await worker.evaluate(
+    async ({ id, token }) =>
+      chrome.tabs.sendMessage(id, { type: "preparePointImage", pointToken: token }),
+    { id, token: oldToken },
+  );
+  await cancelPoint();
+  await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await waitReview((state) => state.ready);
+  await page.waitForTimeout(50);
+  const currentToken = await selectedToken();
+  assert.notEqual(oldToken, currentToken);
+  const retainedHidden = await worker.evaluate(
+    async ({ id, oldToken, currentToken }) => {
+      await chrome.tabs.sendMessage(id, {
+        type: "preparePointImage",
+        pointToken: currentToken,
+      });
+      await chrome.tabs.sendMessage(id, {
+        type: "pointImageCaptured",
+        pointToken: oldToken,
+      });
+      const [{ result }] = await chrome.scripting.executeScript({
+        target: { tabId: id },
+        func: () => globalThis.__feedbacksQaRoot.host.style.opacity,
+      });
+      await chrome.tabs.sendMessage(id, {
+        type: "pointImageCaptured",
+        pointToken: currentToken,
+      });
+      return result;
+    },
+    { id, oldToken, currentToken },
+  );
+  assert.equal(retainedHidden, "0");
+  await page.keyboard.type("Keep my comment after image failure");
+  await waitReview((state) => state.tip.includes("Synthetic capture failure"));
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        [...globalThis.__feedbacksQaRoot.querySelectorAll(".point-menu button")]
+          .find((b) => b.textContent === "Save point")
+          .click();
+      },
+    });
+  }, id);
+  await waitReview((state) => state.points === 1);
+  const failedDraft = await worker.evaluate(
+    async (tabId) =>
+      (
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () =>
+            globalThis.__feedbacksQaRoot.querySelector(".draft-section").textContent,
+        })
+      )[0].result,
+    id,
+  );
+  assert.match(failedDraft, /Keep my comment after image failure/);
+  assert.match(failedDraft, /No original image/);
+  results.captureFailure = { textRetained: true, canceledCaptureCannotRevealNewUI: true };
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  await toFixture();
+  await exposeReviewRoot();
+  await send({ type: "enableInstant", tabId: id });
+  await page.locator("#hover-host").hover();
+  await page.locator("#hover-menu").click({ button: "right" });
+  const autoStarted = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () =>
+        Boolean(globalThis.feedbacksReviewActive || globalThis.__feedbacksInstantRoot),
+    });
+    return entry.result;
+  }, id);
+  assert.equal(
+    autoStarted,
+    false,
+    "All-site access must not start review on right-click",
+  );
+  results.allSitePregrant = { autoStarted };
+  await send({ type: "disableInstant" });
+  mode = "long";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
   await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await waitReview((state) => state.ready);
   await page.screenshot({
     path: join(root, ".local/remaining-todos-qa/inline-comment-desktop.png"),
   });
-  await page.keyboard.type("Make this heading shorter");
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Enter");
-  await page
-    .getByRole("link", { name: "Broken same-origin link" })
-    .click({ button: "right" });
-  await page.keyboard.type("Repair this link");
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Enter");
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const menu = globalThis.__feedbacksQaRoot.querySelector(".point-menu");
+        menu.querySelector("textarea").value = "Make this heading shorter";
+        [...menu.querySelectorAll("button")]
+          .find((button) => button.textContent === "Save point")
+          .click();
+      },
+    });
+  }, id);
+  await waitReview((state) => state.points === 1);
+  const pinLocation = () =>
+    worker.evaluate(async (tabId) => {
+      const [entry] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const root = globalThis.__feedbacksQaRoot;
+          const pin = root.querySelector(".saved-draft-pin");
+          if (!pin) return null;
+          const r = pin.getBoundingClientRect();
+          return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+        },
+      });
+      return entry.result;
+    }, id);
+  const desktopPoint = await pinLocation();
+  await page.mouse.move(desktopPoint.x, desktopPoint.y);
+  await page.waitForTimeout(200);
+  const hoverState = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const preview = globalThis.__feedbacksQaRoot.querySelector(".draft-preview");
+        return {
+          text: preview?.textContent,
+          visible: !!preview?.getBoundingClientRect().width,
+        };
+      },
+    });
+    return entry.result;
+  }, id);
+  assert.equal(hoverState.visible, true);
+  assert.match(hoverState.text, /Draft, not sent/);
+  assert.match(hoverState.text, /Edit point/);
+  await page.screenshot({
+    path: join(root, ".local/remaining-todos-qa/draft-pin-popover.png"),
+  });
+  await page.setViewportSize({ width: 390, height: 650 });
+  await page.waitForTimeout(300);
+  const mobilePoint = await pinLocation();
+  assert.ok(
+    mobilePoint.x < desktopPoint.x,
+    "Point should follow the heading after responsive reflow",
+  );
+  assert.ok(mobilePoint.x < 390);
+  await page.setViewportSize({ width: 900, height: 650 });
+  await page.waitForTimeout(200);
+  // Bare T works away from fields; T inside a website input must not resize.
+  await page.evaluate(() => {
+    const input = document.createElement("input");
+    input.id = "typing-fixture";
+    document.body.append(input);
+    input.focus({ preventScroll: true });
+  });
+  await page.keyboard.type("mtdwspr");
+  assert.equal(await page.evaluate(() => innerWidth), 900);
+  assert.equal(await page.locator("#typing-fixture").inputValue(), "mtdwspr");
+  await page.evaluate(() => document.querySelector("#typing-fixture").remove());
+  await page.keyboard.press("r");
+  await page.locator("#feedbacks-review-root").waitFor({ state: "detached" });
+  await page.keyboard.press("t");
+  assert.equal(await page.evaluate(() => innerWidth), 900);
+  await send({ type: "activate", tabId: id });
+  await waitReview((state) => state.points === 1);
+  results.responsiveDraft = {
+    desktopPoint,
+    mobilePoint,
+    hoverPopover: true,
+    websiteTypingSafe: true,
+    stopKey: true,
+  };
+  assert.equal(
+    await saveInlinePoint(
+      page.getByRole("link", { name: "Broken same-origin link" }),
+      "Repair this link",
+    ),
+    2,
+  );
   assert.equal(await draft(), undefined, "The editor must not open after each point");
   const inlineCapture = await send({ type: "popupAction", tabId: id, action: "capture" });
   const inlineDraft = await draft();
@@ -327,24 +940,80 @@ try {
     inlineDraft.context.annotations[0].anchor.selector,
     inlineDraft.context.annotations[1].anchor.selector,
   );
+  for (const candidate of context
+    .pages()
+    .filter((candidate) =>
+      candidate.url().startsWith(`chrome-extension://${extensionId}/editor.html`),
+    ))
+    await candidate.close();
   const inlineEditor = await context.newPage();
   await inlineEditor.goto(`chrome-extension://${extensionId}/editor.html`);
-  await inlineEditor.getByText("Make this heading shorter").waitFor();
-  await inlineEditor.getByText("Repair this link").waitFor();
+  await inlineEditor.locator("#point-notes textarea").first().waitFor();
+  assert.deepEqual(
+    await inlineEditor
+      .locator("#point-notes textarea")
+      .evaluateAll((nodes) => nodes.map((node) => node.value)),
+    ["Make this heading shorter", "Repair this link"],
+  );
+  await inlineEditor
+    .locator("#point-notes textarea")
+    .first()
+    .fill("Make this heading **clearer**");
+  await inlineEditor.waitForFunction(
+    async () =>
+      (await chrome.storage.local.get("draft")).draft?.context.annotations?.[0]?.body ===
+      "Make this heading **clearer**",
+  );
+  await inlineEditor.waitForTimeout(600);
+  assert.equal(
+    (await draft()).context.annotations[0].body,
+    "Make this heading **clearer**",
+  );
+  await inlineEditor.reload();
+  await inlineEditor.waitForFunction(() => {
+    const canvas = document.getElementById("canvas");
+    return canvas?.width > 0 && !document.getElementById("send")?.disabled;
+  });
+  assert.equal(
+    await inlineEditor.locator("#point-notes textarea").first().inputValue(),
+    "Make this heading **clearer**",
+  );
   assert.equal(await inlineEditor.locator("#body").inputValue(), "");
-  const inlineCanvas = await inlineEditor.locator("#canvas").boundingBox();
-  assert.ok(inlineCanvas);
   await inlineEditor.locator('[data-tool="arrow"]').click();
-  await inlineEditor.mouse.move(inlineCanvas.x + 110, inlineCanvas.y + 260);
+  await inlineEditor.locator("#canvas").scrollIntoViewIfNeeded();
+  const arrowCanvas = await inlineEditor.locator("#canvas").boundingBox();
+  assert.ok(arrowCanvas);
+  await inlineEditor.mouse.move(
+    arrowCanvas.x + arrowCanvas.width * 0.2,
+    arrowCanvas.y + arrowCanvas.height * 0.3,
+  );
   await inlineEditor.mouse.down();
-  await inlineEditor.mouse.move(inlineCanvas.x + 210, inlineCanvas.y + 300);
+  await inlineEditor.mouse.move(
+    arrowCanvas.x + arrowCanvas.width * 0.4,
+    arrowCanvas.y + arrowCanvas.height * 0.4,
+  );
   await inlineEditor.mouse.up();
   await inlineEditor.locator('[data-tool="pencil"]').click();
-  await inlineEditor.mouse.move(inlineCanvas.x + 250, inlineCanvas.y + 320);
+  await inlineEditor.locator("#canvas").scrollIntoViewIfNeeded();
+  const pencilCanvas = await inlineEditor.locator("#canvas").boundingBox();
+  assert.ok(pencilCanvas);
+  await inlineEditor.mouse.move(
+    pencilCanvas.x + pencilCanvas.width * 0.5,
+    pencilCanvas.y + pencilCanvas.height * 0.5,
+  );
   await inlineEditor.mouse.down();
-  await inlineEditor.mouse.move(inlineCanvas.x + 300, inlineCanvas.y + 345, { steps: 4 });
+  await inlineEditor.mouse.move(
+    pencilCanvas.x + pencilCanvas.width * 0.6,
+    pencilCanvas.y + pencilCanvas.height * 0.6,
+    { steps: 4 },
+  );
   await inlineEditor.mouse.up();
-  await inlineEditor.locator("#send").click();
+  await inlineEditor.waitForTimeout(500);
+  assert.ok(
+    (await draft()).toolState.some((mark) => mark.tool === "arrow"),
+    `Arrow annotation was not saved: ${JSON.stringify((await draft()).toolState.map((mark) => mark.tool))}`,
+  );
+  await inlineEditor.locator("#send-header").click();
   await inlineEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
   const inlineThreadUrl = await inlineEditor.locator("#thread").getAttribute("href");
   const inlineThreadId = inlineThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
@@ -353,9 +1022,15 @@ try {
     .data;
   assert.deepEqual(
     inlineThread.context.annotations.map(({ body }) => body),
-    ["Make this heading shorter", "Repair this link"],
+    ["Make this heading **clearer**", "Repair this link"],
   );
-  assert.equal(inlineThread.assets.length, 1);
+  assert.equal(inlineThread.context.annotations[0].anchor.tagName, "h1");
+  assert.ok(inlineThread.context.annotations[0].anchor.rect.width > 0);
+  assert.equal(
+    typeof inlineThread.context.annotations[0].anchor.styles.borderStyle,
+    "string",
+  );
+  assert.equal(inlineThread.assets.length, 3);
   assert.deepEqual(
     inlineThread.assets[0].markings
       .filter((mark) => mark.tool === "point")
@@ -364,6 +1039,12 @@ try {
   );
   assert.ok(inlineThread.assets[0].markings.some((mark) => mark.tool === "arrow"));
   assert.ok(inlineThread.assets[0].markings.some((mark) => mark.tool === "pencil"));
+  assert.deepEqual(
+    inlineThread.assets[0].markings
+      .filter((mark) => mark.origin === "element")
+      .map((mark) => mark.annotationId),
+    inlineThread.context.annotations.map((item) => item.id),
+  );
   assert.equal(inlineThread.assets[0].captureRegion.pageWidth, 900);
   results.inlineReview = {
     points: inlineThread.context.annotations.length,
@@ -374,8 +1055,9 @@ try {
   };
   await inlineEditor.close();
   await page.bringToFront();
+  assert.match((await inspectReview()).notice, /Feedback sent/i);
   await send({ type: "activate", tabId: id });
-  const hoverComments = ["Make this heading shorter", "Repair this link"];
+  const hoverComments = ["Make this heading **clearer**", "Repair this link"];
   const inspectPin = (body) =>
     worker.evaluate(
       async ({ tabId, body }) => {
@@ -392,6 +1074,9 @@ try {
               x: rect.x + rect.width / 2,
               y: rect.y + rect.height / 2,
               preview: root.querySelector(".preview")?.textContent,
+              link: root.querySelector(".preview a")?.getAttribute("href"),
+              resolve: !!root.querySelector(".preview button.resolve-thread"),
+              visible: getComputedStyle(pin).visibility !== "hidden",
             };
           },
           args: [body],
@@ -409,11 +1094,159 @@ try {
     }
     assert.ok(point, `Saved point is not visible on its element: ${comment}`);
     await page.mouse.move(point.x, point.y);
-    assert.ok((await inspectPin(comment))?.preview?.includes(comment));
+    const hovered = await inspectPin(comment);
+    assert.ok(hovered?.preview?.includes(comment));
+    assert.match(hovered.preview, /just now|ago/);
+    assert.equal(hovered.link, `${access.url}/threads/${inlineThreadId}`);
+    assert.equal(hovered.resolve, true);
+  }
+  const firstPoint = await inspectPin(hoverComments[0]);
+  await page.evaluate(({ x, y }) => {
+    const menu = document.createElement("div");
+    menu.id = "qa-covering-menu";
+    menu.style.cssText = `position:fixed;left:${x - 40}px;top:${y - 40}px;width:80px;height:80px;background:white;z-index:1000`;
+    document.body.append(menu);
+  }, firstPoint);
+  await page.mouse.move(firstPoint.x + 1, firstPoint.y + 1);
+  // MutationObserver and the paint/occlusion frames may span more than 50 ms
+  // on a busy CI browser. Wait for the actual state, not one assumed frame.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if ((await inspectPin(hoverComments[0]))?.visible === false) break;
+    await page.waitForTimeout(50);
+  }
+  assert.equal((await inspectPin(hoverComments[0]))?.visible, false);
+  await page.locator("#qa-covering-menu").evaluate((menu) => menu.remove());
+  await page.mouse.move(firstPoint.x + 2, firstPoint.y + 2);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if ((await inspectPin(hoverComments[0]))?.visible === true) break;
+    await page.waitForTimeout(50);
+  }
+  assert.equal((await inspectPin(hoverComments[0]))?.visible, true);
+  await page.mouse.move(800, 400);
+  await page.waitForTimeout(200);
+  await page.mouse.move(firstPoint.x, firstPoint.y);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if ((await inspectPin(hoverComments[0]))?.resolve) break;
+    await page.waitForTimeout(50);
   }
   await page.screenshot({
     path: join(root, ".local/remaining-todos-qa/inline-comment-hover.png"),
   });
+  const resolveClick = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const control = globalThis.__feedbacksQaRoot.querySelector(
+          ".preview button.resolve-thread",
+        );
+        const before = {
+          found: !!control,
+          disabled: control?.disabled,
+          action: typeof control?.onclick,
+        };
+        control?.click();
+        return before;
+      },
+    });
+    return entry.result;
+  }, id);
+  assert.equal(resolveClick.found, true);
+  assert.equal(resolveClick.disabled, false);
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const current = (await post("threads.get", { threadId: inlineThreadId }, auth)).data;
+    if (
+      current.annotationStates?.[inlineThread.context.annotations[0].id]?.state ===
+      "resolved"
+    )
+      break;
+    await page.waitForTimeout(100);
+  }
+  assert.equal(
+    (await post("threads.get", { threadId: inlineThreadId }, auth)).data.annotationStates[
+      inlineThread.context.annotations[0].id
+    ].state,
+    "resolved",
+  );
+  assert.equal(
+    (await post("threads.get", { threadId: inlineThreadId }, auth)).data.work.state,
+    "open",
+    "Resolving one pin must leave the thread and other points open",
+  );
+  const overview = await send({ type: "pageOverview", tabId: id, scope: "page" });
+  assert.ok(overview.summary.points.resolved >= 1);
+  assert.equal(new URL(overview.url).searchParams.get("url"), page.url());
+  assert.equal(new URL(overview.url).pathname, `/projects/${inlineThread.projectId}`);
+  const teammate = (
+    await post(
+      "members.create",
+      {
+        name: "Team reviewer",
+        email: "reviewer@example.test",
+        password: "Synthetic-Reviewer-Pass-123",
+        grants: [{ projectId: inlineThread.projectId, role: "reviewer" }],
+      },
+      auth,
+    )
+  ).data;
+  assert.ok(teammate.id);
+  const teammateLogin = await post("auth.login", {
+    email: "reviewer@example.test",
+    password: "Synthetic-Reviewer-Pass-123",
+  });
+  const teammateAuth = {
+    cookie: teammateLogin.cookie,
+    csrf: teammateLogin.data.csrf,
+  };
+  const teammatePairing = (await post("pairing.request", { name: "Team browser" })).data;
+  await post("pairing.approve", { pairingId: teammatePairing.pairingId }, teammateAuth);
+  const teammateToken = (
+    await post("pairing.poll", {
+      pairingId: teammatePairing.pairingId,
+      deviceSecret: teammatePairing.deviceSecret,
+    })
+  ).data.token;
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  await worker.evaluate(
+    ({ server, token }) =>
+      chrome.storage.local.set({
+        accounts: { [server]: { token } },
+      }),
+    { server: access.url, token: teammateToken },
+  );
+  await send({ type: "activate", tabId: id });
+  await send({ type: "popupAction", tabId: id, action: "resolved" });
+  let teammatePin;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    teammatePin = await inspectPin(hoverComments[0]);
+    if (teammatePin?.visible) break;
+    await page.waitForTimeout(100);
+  }
+  assert.ok(teammatePin?.visible, "A teammate should see the published point");
+  await page.mouse.move(teammatePin.x, teammatePin.y);
+  assert.equal((await inspectPin(hoverComments[0])).resolve, false);
+  assert.equal(
+    (await inspectPin(hoverComments[0])).link,
+    `${access.url}/threads/${inlineThreadId}`,
+  );
+  results.inlineReview.teammateCanRead = true;
+  await page.setViewportSize({ width: 390, height: 650 });
+  await page.waitForTimeout(200);
+  const publishedMobile = await inspectPin(hoverComments[0]);
+  assert.ok(
+    publishedMobile?.visible,
+    "A uniquely matched shared pin follows its element across screen sizes",
+  );
+  assert.ok(publishedMobile.x < 390);
+  results.inlineReview.sharedResponsive = true;
+  await page.setViewportSize({ width: 900, height: 650 });
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  await worker.evaluate(
+    ({ server, token }) =>
+      chrome.storage.local.set({
+        accounts: { [server]: { token } },
+      }),
+    { server: access.url, token: paired.token },
+  );
   results.inlineReview.hoverComments = hoverComments;
 
   mode = "long";
@@ -428,7 +1261,40 @@ try {
     1,
   );
   await page.locator("#lower").scrollIntoViewIfNeeded();
-  assert.equal(await saveInlinePoint(page.locator("#lower"), "Bottom point"), 1);
+  assert.equal(await saveInlinePoint(page.locator("#lower"), "Bottom point"), 2);
+  await send({ type: "popupAction", tabId: id, action: "capture" });
+  const multiVisible = await draft();
+  assert.equal(multiVisible.capturePages.length, 3);
+  assert.deepEqual(
+    multiVisible.capturePages.map((item) => item.pointNumber || 0),
+    [0, 1, 2],
+  );
+  assert.equal(
+    multiVisible.pageToolStates[0].some(
+      (shape) => shape.tool === "point" && shape.number === 1,
+    ),
+    false,
+  );
+  assert.equal(
+    multiVisible.pageToolStates[1].some(
+      (shape) => shape.tool === "point" && shape.number === 1,
+    ),
+    true,
+  );
+  assert.equal(multiVisible.context.pointEvidence, undefined);
+  assert.equal(multiVisible.context.liveAnnotations, undefined);
+  results.inlineReview.offscreenOriginalRetained = true;
+  await send({ type: "discard" });
+  await page.bringToFront();
+  // New editor tabs change the native capture area in headless Chromium.
+  await page.setViewportSize({ width: 900, height: 563 });
+  await page.evaluate(() => scrollTo(0, 0));
+  await saveInlinePoint(
+    page.getByRole("heading", { name: "Controlled page" }),
+    "Top point",
+  );
+  await page.locator("#lower").scrollIntoViewIfNeeded();
+  await saveInlinePoint(page.locator("#lower"), "Bottom point");
   await page.bringToFront();
   await worker.evaluate((tabId) => chrome.tabs.update(tabId, { active: true }), id);
   const multiScroll = await send({
@@ -437,7 +1303,7 @@ try {
     action: "capture-full",
   });
   const multiScrollDraft = await draft();
-  assert.equal(multiScroll.captured, true);
+  assert.equal(multiScroll.captured, true, JSON.stringify(multiScroll));
   assert.equal(multiScrollDraft.captureScope, "fullPage");
   assert.equal(multiScrollDraft.context.annotations.length, 2);
   const markedPages = multiScrollDraft.pageToolStates.flatMap((states, pageIndex) =>
@@ -450,12 +1316,61 @@ try {
     markedPages.find(([, number]) => number === 2)[0],
   );
   results.inlineReview.multiScrollPages = markedPages;
+  const multiEditor = await context.newPage();
+  await multiEditor.goto(`chrome-extension://${extensionId}/editor.html`);
+  await multiEditor.locator("#full-page-toggle:not([disabled])").waitFor();
+  const editorViewport = multiEditor.viewportSize();
+  for (const width of [1280, 390, 320]) {
+    await multiEditor.setViewportSize({ width, height: 800 });
+    await multiEditor.evaluate(() => scrollTo(0, document.body.scrollHeight));
+    const headerState = await multiEditor.evaluate(() => {
+      const button = document.getElementById("send-header");
+      const rect = button.getBoundingClientRect();
+      return {
+        visible: rect.top >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth,
+        reachable: button.contains(
+          document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2),
+        ),
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    });
+    assert.deepEqual(headerState, { visible: true, reachable: true, overflow: false });
+    const pointHeading = multiEditor.locator(".point-note-heading").first();
+    await pointHeading.scrollIntoViewIfNeeded();
+    const label = await pointHeading.locator("label").boundingBox();
+    const original = await pointHeading.locator("button").boundingBox();
+    assert.ok(
+      original.x >= label.x + label.width + 11 ||
+        original.y >= label.y + label.height + 7,
+      "Point label and original-image action need a visible gap, including when wrapped",
+    );
+    if (width !== 320)
+      await multiEditor.screenshot({
+        path: join(root, `.local/remaining-todos-qa/editor-actions-${width}.png`),
+      });
+  }
+  await multiEditor.setViewportSize(editorViewport);
+  await multiEditor.evaluate(() => scrollTo(0, 0));
+
+  await multiEditor.getByRole("button", { name: "Full page preview" }).click();
+  await multiEditor.locator("#full-page-preview:visible").waitFor();
+  const continuousHeight = multiScrollDraft.capturePages
+    .filter((item) => !item.annotationId)
+    .reduce((sum, item) => sum + item.pixelHeight, 0);
+  assert.equal(
+    await multiEditor.locator("#full-page-preview").evaluate((img) => img.naturalHeight),
+    continuousHeight,
+  );
+  results.inlineReview.combinedExcludesOriginals = true;
+  await multiEditor.close();
   await send({ type: "discard" });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await toFixture();
+  await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
   await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await waitReview((state) => state.ready);
   await page.screenshot({
     path: join(root, ".local/remaining-todos-qa/inline-comment-mobile.png"),
   });
@@ -622,12 +1537,32 @@ try {
         window.qaUploadProgress.push({
           completed: message.completed,
           total: message.total,
+          actionsLocked: ["send", "send-header"].every(
+            (id) => document.getElementById(id).disabled,
+          ),
         });
     });
   });
   await seriesEditor.locator("#send").click();
-  await seriesEditor.getByRole("button", { name: "Retry Send" }).waitFor();
+  await seriesEditor.locator("#send:has-text('Retry Send')").waitFor();
+  assert.equal(
+    (await seriesEditor.locator("#send-header").textContent()).trim(),
+    "Retry Send",
+  );
+  assert.equal(await seriesEditor.locator("#send-header").isEnabled(), true);
   const interrupted = await draft();
+  assert.ok(
+    interrupted?.thread?.id,
+    "The thread was published before image upload stopped",
+  );
+  assert.match(
+    await seriesEditor.locator("#status").textContent(),
+    /thread is already published/i,
+  );
+  assert.equal(
+    await seriesEditor.locator("#published-thread").getAttribute("href"),
+    `${access.url}/threads/${interrupted.thread.id}`,
+  );
   results.seriesReview.resumeIndex = interrupted?.uploadIndex;
   results.seriesReview.frozenAfterInterruption = interrupted?.frozen;
   results.seriesReview.visibleProgress = await seriesEditor
@@ -636,11 +1571,13 @@ try {
   results.seriesReview.meter = await seriesEditor
     .locator("#upload-meter")
     .evaluate((meter) => meter.value);
-  await seriesEditor.locator("#send").click();
+  await seriesEditor.locator("#send-header").click();
   await seriesEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
   results.seriesReview.uploadProgress = await seriesEditor.evaluate(
     () => window.qaUploadProgress,
   );
+  assert.ok(results.seriesReview.uploadProgress.every((entry) => entry.actionsLocked));
+  assert.equal(await seriesEditor.locator("#send-header").isVisible(), false);
   const seriesThreadUrl = await seriesEditor.locator("#thread").getAttribute("href");
   const seriesThreadId = seriesThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
   if (!seriesThreadId) throw Error("Ordered screenshot submission lacks a thread link");
@@ -738,8 +1675,12 @@ try {
     };
   });
   await removableEditor.locator("#send").click();
-  await removableEditor.getByRole("button", { name: "Retry Send" }).waitFor();
+  await removableEditor.locator("#send:has-text('Retry Send')").waitFor();
   const interruptedCombined = await draft();
+  assert.match(
+    await removableEditor.locator("#status").textContent(),
+    /thread is already published/i,
+  );
   results.pageReview.resumeAtCombined =
     interruptedCombined?.frozen &&
     interruptedCombined.uploadIndex === interruptedCombined.capturePages.length;
@@ -807,9 +1748,41 @@ try {
   await page.setViewportSize({ width: 900, height: 650 });
   mode = "changing";
   await toFixture();
+  await page.evaluate(() => clearInterval(window.qaTimer));
+  await exposeReviewRoot();
+  await send({ type: "activate", tabId: id });
+  await saveInlinePoint(
+    page.getByRole("heading", { name: "Controlled page" }),
+    "Keep this original through retry",
+  );
+  // Move the viewport once after the first full-page step is measured. A height
+  // timer can return to the same height (or grow forever, which capture supports).
+  await worker.evaluate(() => {
+    const send = chrome.tabs.sendMessage.bind(chrome.tabs);
+    chrome.tabs.sendMessage = async (tabId, message, ...rest) => {
+      const response = await send(tabId, message, ...rest);
+      if (message.type === "fullPageScroll") {
+        chrome.tabs.sendMessage = send;
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => scrollBy(0, 8),
+        });
+      }
+      return response;
+    };
+  });
   const beforeChanging = await page.evaluate(() => scrollY);
   const changed = await send({ type: "popupAction", tabId: id, action: "capture-full" });
   const changingDraft = await draft();
+  const beforeOriginalIndex = changingDraft.capturePages.findIndex(
+    (item) => item.annotationId,
+  );
+  assert.ok(beforeOriginalIndex >= 0);
+  const beforeOriginal = await send({
+    type: "capturePage",
+    id: changingDraft.id,
+    index: beforeOriginalIndex,
+  });
   results.changing = {
     captured: changed?.captured,
     hasImage: Boolean(changingDraft?.image),
@@ -820,6 +1793,27 @@ try {
   // Headless Chromium's native capture uses a 563px content area after
   // switching from an extension editor. Match that viewport for this test.
   await page.setViewportSize({ width: 900, height: 563 });
+  const retainedArrow = {
+    tool: "arrow",
+    points: [
+      { x: 40, y: 60 },
+      { x: 140, y: 160 },
+    ],
+  };
+  const editedNote = "Edited original note before retry";
+  await send({
+    type: "saveDraft",
+    id: changingDraft.id,
+    imageRevision: changingDraft.imageRevision,
+    projectId: changingDraft.projectId,
+    body: "Keep editor changes through page retry",
+    pageIndex: beforeOriginalIndex,
+    toolState: [...changingDraft.pageToolStates[beforeOriginalIndex], retainedArrow],
+    annotations: changingDraft.context.annotations.map((item) => ({
+      id: item.id,
+      body: editedNote,
+    })),
+  });
   const retryEditor = await context.newPage();
   await retryEditor.goto(`chrome-extension://${extensionId}/editor.html`);
   await retryEditor.getByRole("button", { name: "Retry full-page capture" }).waitFor();
@@ -829,6 +1823,23 @@ try {
     .waitFor({ timeout: 120000 });
   results.changing.retryPages = (await draft())?.capturePages?.length;
   assert.ok(results.changing.retryPages > 1);
+  const retried = await draft();
+  const afterOriginalIndex = retried.capturePages.findIndex((item) => item.annotationId);
+  assert.ok(afterOriginalIndex >= 0);
+  assert.equal(retried.context.annotations[0].body, editedNote);
+  assert.deepEqual(retried.pageToolStates[afterOriginalIndex].at(-1), retainedArrow);
+  const afterOriginal = await send({
+    type: "capturePage",
+    id: retried.id,
+    index: afterOriginalIndex,
+  });
+  assert.equal(
+    afterOriginal.image,
+    beforeOriginal.image,
+    "Retry keeps the exact original point pixels",
+  );
+  assert.equal(retried.capturePages.filter((item) => item.annotationId).length, 1);
+  results.changing.originalRetainedThroughRetry = true;
   await send({ type: "discard" });
 
   mode = "short";
@@ -917,8 +1928,45 @@ try {
   const cookieName = auth.cookie.slice(0, cookieSplit);
   const cookieValue = auth.cookie.slice(cookieSplit + 1);
   await context.addCookies([
-    { name: cookieName, value: cookieValue, url: access.url, sameSite: "Lax" },
+    { name: cookieName, value: cookieValue, url: access.url, sameSite: "Strict" },
   ]);
+  // Cross-site links must enter the web app first: Strict cookies are omitted
+  // on the top-level navigation, then sent on the app's same-site API requests.
+  const linkedOriginal = inlineThread.assets.find(
+    (asset) => asset.filename === "point-002-original.webp",
+  );
+  assert.ok(linkedOriginal);
+  const crossSite = await context.newPage();
+  await crossSite.goto("https://example.com/");
+  const assetLink = `${access.url}/threads/${inlineThreadId}#asset-${linkedOriginal.id}`;
+  await crossSite.evaluate((href) => {
+    const link = document.createElement("a");
+    link.href = href;
+    link.target = "_blank";
+    link.textContent = "Open feedback image";
+    document.body.prepend(link);
+  }, assetLink);
+  const linkedPagePromise = context.waitForEvent("page");
+  await crossSite.getByRole("link", { name: "Open feedback image" }).click();
+  const linkedPage = await linkedPagePromise;
+  await linkedPage
+    .locator(`.review-evidence-figure[id="asset-${linkedOriginal.id}"]`)
+    .waitFor();
+  await linkedPage.waitForFunction(() => {
+    const img = document.querySelector(".review-evidence-figure img");
+    return img?.complete && img.naturalWidth > 0;
+  });
+  assert.equal(
+    await linkedPage.getByRole("button", { name: "Sign in", exact: true }).count(),
+    0,
+  );
+  results.githubAssetLink = {
+    existingSessionReused: true,
+    selectedOriginal: true,
+    imageLoaded: true,
+  };
+  await linkedPage.close();
+  await crossSite.close();
   const inlineThreadPage = await context.newPage();
   await inlineThreadPage.goto(`${access.url}/threads/${inlineThreadId}`);
   await inlineThreadPage.getByRole("heading", { name: "Review on the page" }).waitFor();
@@ -926,21 +1974,62 @@ try {
   await inlineThreadPage.locator(".review-evidence-pin").first().hover();
   await inlineThreadPage
     .locator(".review-evidence-popover")
-    .getByText("Make this heading shorter")
+    .getByText("Make this heading clearer")
     .waitFor();
   await inlineThreadPage.screenshot({
     path: join(root, ".local/remaining-todos-qa/thread-inline-desktop.png"),
   });
   await inlineThreadPage.setViewportSize({ width: 390, height: 844 });
-  await inlineThreadPage.locator(".review-point-list button").last().click();
-  assert.equal(await inlineThreadPage.locator(".review-evidence-pin").count(), 2);
+  await inlineThreadPage
+    .getByRole("button", { name: "Show original view" })
+    .last()
+    .click();
+  assert.equal(await inlineThreadPage.locator(".review-evidence-pin").count(), 1);
+  await inlineThreadPage
+    .getByRole("button", { name: "Resolve point", exact: true })
+    .click();
+  await inlineThreadPage
+    .getByRole("status")
+    .filter({ hasText: "Point resolved." })
+    .waitFor();
+  assert.equal(
+    await inlineThreadPage
+      .getByRole("button", { name: "Reopen point", exact: true })
+      .count(),
+    2,
+  );
+  await inlineThreadPage
+    .getByRole("button", { name: "Remove point", exact: true })
+    .last()
+    .click();
+  await inlineThreadPage
+    .getByRole("status")
+    .filter({ hasText: "Point removed." })
+    .waitFor();
+  await inlineThreadPage.getByLabel("Filter points").selectOption("removed");
+  await inlineThreadPage
+    .getByRole("button", { name: "Restore point", exact: true })
+    .click();
+  await inlineThreadPage
+    .getByRole("status")
+    .filter({ hasText: "Point reopened." })
+    .waitFor();
+  await inlineThreadPage.getByLabel("Filter points").selectOption("all");
+  assert.equal(
+    await inlineThreadPage
+      .getByRole("button", { name: "Resolve point", exact: true })
+      .count(),
+    1,
+  );
   await inlineThreadPage.screenshot({
     path: join(root, ".local/remaining-todos-qa/thread-inline-mobile.png"),
   });
   results.inlineReview.webPins = 2;
   results.inlineReview.mobilePointSelection = true;
   const threadPage = await context.newPage();
-  await threadPage.goto(`${access.url}/threads/${seriesThreadId}`);
+  await threadPage.goto(
+    `${access.url}/threads/${seriesThreadId}#asset-${seriesThread.assets[2].id}`,
+  );
   await threadPage
     .getByText("Full-page capture · 4 numbered images")
     .waitFor({ timeout: 15000 });
@@ -951,6 +2040,58 @@ try {
     path: join(root, ".local/remaining-todos-qa/thread-gallery.png"),
   });
   assert.equal(results.seriesReview.galleryImages, 4);
+  await page.bringToFront();
+  await send({ type: "activate", tabId: id });
+  // Real MediaRecorder, deterministic local canvas stream in place of Chrome's
+  // user-operated picker. Do not record a user's desktop in automated tests.
+  const recorderOpened = context.waitForEvent("page");
+  await sendFromReview({ type: "openRecorder" });
+  const recorderPage = await recorderOpened;
+  await recorderPage.waitForLoadState();
+  await recorderPage.locator("#start:enabled").waitFor();
+  await recorderPage.evaluate(() => {
+    navigator.mediaDevices.getDisplayMedia = async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 320;
+      canvas.height = 180;
+      const ctx = canvas.getContext("2d");
+      const draw = () => {
+        ctx.fillStyle = "#17324d";
+        ctx.fillRect(0, 0, 320, 180);
+        ctx.fillStyle = "white";
+        ctx.fillText(String(Date.now()), 20, 50);
+      };
+      draw();
+      const stream = canvas.captureStream(10);
+      const timer = setInterval(draw, 100);
+      const track = stream.getVideoTracks()[0];
+      track.getSettings = () => ({ displaySurface: "browser" });
+      track.addEventListener("ended", () => clearInterval(timer));
+      return stream;
+    };
+  });
+  await recorderPage.locator("#start").click();
+  await page.waitForTimeout(400);
+  assert.equal(
+    (await sendFromReview({ type: "recordingControl", action: "pause" })).ok,
+    true,
+  );
+  await recorderPage.locator("#pause").filter({ hasText: "Resume" }).waitFor();
+  await recorderPage.locator("#timer").filter({ hasText: "Paused" }).waitFor();
+  const pausedText = await recorderPage.locator("#timer").textContent();
+  await page.waitForTimeout(1100);
+  assert.equal(await recorderPage.locator("#timer").textContent(), pausedText);
+  await sendFromReview({ type: "recordingControl", action: "resume" });
+  await recorderPage.locator("#pause").filter({ hasText: "Pause" }).waitFor();
+  await page.waitForTimeout(400);
+  await sendFromReview({ type: "recordingControl", action: "stop" });
+  await recorderPage.locator("#review:visible").waitFor();
+  assert.ok(
+    (await recorderPage.locator("#preview").getAttribute("src")).startsWith("blob:"),
+  );
+  await recorderPage.close();
+  await page.bringToFront();
+  results.recordingControls = { pauseResumeStop: true, preview: true };
   console.log(JSON.stringify(results));
 } finally {
   if (context) await context.close();

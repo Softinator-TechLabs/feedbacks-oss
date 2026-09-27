@@ -13,6 +13,7 @@ import { requireConnectedGithubRepo } from "./github-repositories.js";
 import { reportedIssue } from "./issue-links.js";
 import { documentRow } from "./documents.js";
 import { figmaReferenceUrl } from "./figma-reference.js";
+import { annotationSummary, setAnnotationStatus } from "./annotation-status.js";
 import type { Config } from "./config.js";
 // Legacy human messages had no reliable intent. Treat them as requests on read;
 // preserve agent responses and explicit intent without rewriting work history.
@@ -338,6 +339,9 @@ export async function feedback(
     );
     const data = rows.length ? await listData(db, a, rows) : undefined;
     return {
+      ...(i.includeSummary
+        ? { summary: await annotationSummary(db, i.projectId, i) }
+        : {}),
       items: data
         ? await Promise.all(
             rows.map(async (r) => ({
@@ -452,7 +456,9 @@ export async function feedback(
   checkRevision(row, i.revision);
   const actor = publicActor(a),
     at = new Date().toISOString();
-  if (op === "threads.organize") {
+  if (op === "threads.annotationStatus") {
+    await setAnnotationStatus(db, a, row, i);
+  } else if (op === "threads.organize") {
     data.category = i.category;
     data.tags = i.tags;
   } else if (op === "threads.priority") {
@@ -579,7 +585,11 @@ export async function feedback(
     a,
     row,
     op,
-    op === "threads.priority" ? { topPriority: i.topPriority } : {},
+    op === "threads.priority"
+      ? { topPriority: i.topPriority }
+      : op === "threads.annotationStatus"
+        ? { annotationId: i.annotationId, state: i.state }
+        : {},
   );
   await remember(db, a, op, i, row.id);
   return fullThread(db, a, saved);

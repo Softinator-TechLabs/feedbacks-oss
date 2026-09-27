@@ -6,6 +6,7 @@
     host,
     shadow,
     point,
+    opening = false,
     busy = false,
     enabledRevision = 0;
   const ownedRoots = (globalThis.feedbacksOwnedRoots ||= new WeakSet());
@@ -16,7 +17,66 @@
     host?.remove();
     host = null;
     point = null;
+    opening = false;
   };
+  function snapshot(el, rect, x, y) {
+    const localSelector = (element) => {
+      const parts = [];
+      for (
+        let node = element;
+        node && node !== element.ownerDocument.documentElement && parts.length < 8;
+        node = node.parentElement
+      ) {
+        const tag = node.tagName.toLowerCase();
+        if (
+          node.id &&
+          !/token|password|secret|session|auth/i.test(node.id) &&
+          node.id.length < 80
+        ) {
+          parts.unshift(`${tag}#${CSS.escape(node.id)}`);
+          break;
+        }
+        const siblings = [...(node.parentElement?.children || [])].filter(
+          (other) => other.tagName === node.tagName,
+        );
+        parts.unshift(`${tag}:nth-of-type(${siblings.indexOf(node) + 1})`);
+      }
+      return parts.join(" > ");
+    };
+    const point = {
+      x: Math.max(0, Math.min(1, (x - rect.x) / rect.width)),
+      y: Math.max(0, Math.min(1, (y - rect.y) / rect.height)),
+    };
+    const style = el.ownerDocument.defaultView.getComputedStyle(el);
+    const screenshotPoint = {
+      x: rect.x + point.x * rect.width,
+      y: rect.y + point.y * rect.height,
+    };
+    return {
+      point,
+      evidence: {
+        tagName: el.tagName.toLowerCase(),
+        selector: F.path(el, localSelector),
+        confidence: "unmatched",
+        point,
+        rect,
+        screenshotPoint,
+        pagePoint: { x: scrollX + screenshotPoint.x, y: scrollY + screenshotPoint.y },
+        styles: Object.fromEntries(
+          [
+            ["fontFamily", style.fontFamily, 200],
+            ["fontSize", style.fontSize, 50],
+            ["color", style.color, 100],
+            ["backgroundColor", style.backgroundColor, 100],
+            ["borderWidth", style.borderWidth, 100],
+            ["borderStyle", style.borderStyle, 100],
+            ["borderColor", style.borderColor, 100],
+            ["borderRadius", style.borderRadius, 100],
+          ].map(([key, value, max]) => [key, String(value).slice(0, max)]),
+        ),
+      },
+    };
+  }
   const send = async (message) => {
     const r = await chrome.runtime.sendMessage(message);
     if (!r.ok) throw Error(r.error);
@@ -92,6 +152,7 @@
       !enabled ||
       globalThis.feedbacksReviewActive ||
       busy ||
+      opening ||
       event.shiftKey ||
       event.composedPath().includes(host)
     )
@@ -102,12 +163,16 @@
     event.stopImmediatePropagation();
     if (host) return;
     const r = F.rect(el);
+    if (!r.width || !r.height) return;
+    const x = event.clientX || r.x + r.width / 2;
+    const y = event.clientY || r.y + r.height / 2;
     point = {
       element: el,
-      x: event.clientX || r.x + r.width / 2,
-      y: event.clientY || r.y + r.height / 2,
+      x,
+      y,
       signature: signature(),
       rect: { x: r.x, y: r.y, width: r.width, height: r.height },
+      ...snapshot(el, r, x, y),
       ...guardPoint(el),
     };
     host = document.createElement("div");
@@ -116,7 +181,9 @@
       "all:initial!important;position:fixed!important;z-index:2147483647!important;pointer-events:auto!important";
     shadow = host.attachShadow({ mode: "closed" });
     const style = document.createElement("style");
-    style.textContent = `:host{color-scheme:light}*{box-sizing:border-box}.target{position:fixed;pointer-events:none;border:3px solid #347dbc;border-radius:6px;background:rgba(52,125,188,.13);box-shadow:0 5px 20px rgba(14,52,80,.22)}.menu{width:260px;padding:12px;background:#fff;color:#202c37;border:1px solid #bdc5cc;border-radius:10px;font:14px/1.5 system-ui}button{font:inherit;min-height:40px;border:1px solid #bdc5cc;border-radius:6px;padding:7px 12px;background:white;color:#17324d;cursor:pointer}button:first-of-type{background:#17324d;color:white}button:hover{filter:brightness(.92)}button:focus-visible{outline:2px solid #3875a9;outline-offset:2px}p{margin:8px 0 0;color:#596672}p:empty{display:none}@media(prefers-color-scheme:dark){:host{color-scheme:dark}.menu{background:#171e25;color:#e5ebf0;border-color:#40515e}button{background:#171e25;color:#e5ebf0;border-color:#52616d}button:first-of-type{background:#c3d8e8;color:#142b3f}p{color:#b0bec9}}`;
+    style.textContent = `:host{color-scheme:light}*{box-sizing:border-box}.freeze{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:0}.target{position:fixed;z-index:1;pointer-events:none;border:3px solid #347dbc;border-radius:6px;background:rgba(52,125,188,.13);box-shadow:0 5px 20px rgba(14,52,80,.22)}.menu{position:relative;z-index:2;width:260px;padding:12px;background:#fff;color:#202c37;border:1px solid #bdc5cc;border-radius:10px;font:14px/1.5 system-ui}button{font:inherit;min-height:40px;border:1px solid #bdc5cc;border-radius:6px;padding:7px 12px;background:white;color:#17324d;cursor:pointer}button:first-of-type{background:#17324d;color:white}button:hover{filter:brightness(.92)}button:focus-visible{outline:2px solid #3875a9;outline-offset:2px}p{margin:8px 0 0;color:#596672}p:empty{display:none}@media(prefers-color-scheme:dark){:host{color-scheme:dark}.menu{background:#171e25;color:#e5ebf0;border-color:#40515e}button{background:#171e25;color:#e5ebf0;border-color:#52616d}button:first-of-type{background:#c3d8e8;color:#142b3f}p{color:#b0bec9}}`;
+    const frozen = document.createElement("img");
+    frozen.className = "freeze";
     const target = document.createElement("div");
     target.className = "target";
     Object.assign(target.style, {
@@ -139,7 +206,7 @@
     cancel.onclick = close;
     add.onclick = async () => {
       if (busy) return;
-      if (!point || point.signature !== signature() || !point.valid()) {
+      if (!point || point.signature !== signature()) {
         message.textContent = "The page changed. Right-click again.";
         return;
       }
@@ -166,11 +233,30 @@
       }
     };
     menu.append(add, cancel, message);
-    shadow.append(style, target, menu);
+    shadow.append(style, frozen, target, menu);
     document.documentElement.append(host);
     host.style.left = `${Math.max(8, Math.min(point.x + 12, innerWidth - 268))}px`;
     host.style.top = `${Math.max(8, Math.min(point.y + 12, innerHeight - 110))}px`;
-    add.focus({ preventScroll: true });
+    opening = true;
+    const selected = point;
+    host.style.visibility = "hidden";
+    requestAnimationFrame(async () => {
+      try {
+        const result = await send({ type: "freezeInstantView" });
+        if (point === selected) {
+          selected.frozen = result.image;
+          frozen.src = result.image;
+        }
+      } catch {
+        // Element evidence still supports a text-only point when capture is denied.
+      } finally {
+        if (point === selected && host) {
+          host.style.visibility = "visible";
+          add.focus({ preventScroll: true });
+        }
+        opening = false;
+      }
+    });
   }
   F.listen(
     "pointerdown",

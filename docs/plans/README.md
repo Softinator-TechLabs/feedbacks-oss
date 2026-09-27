@@ -6,9 +6,16 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Immediate comments and compact review controls](instant-review-controls.md)
+
 The initial harness decision is recorded in [Decision 0001](../decisions/0001-repository-harness.md); current public capability gaps are tracked in [quality](../quality.md).
 
 - [Inline multi-point review](inline-multipoint-review.md)
+- [Shared page annotations](shared-page-annotations.md)
+- [Point evidence and responsive review](point-evidence-and-responsive-review.md)
+- [Annotation status and page overview](annotation-status-and-page-overview.md)
+- [Review popup and keyboard shortcuts](review-popup-and-shortcuts.md)
+- [Point evidence and GitHub repository routing](point-evidence-and-github-routing.md)
 - [Optional full-page website capture](optional-full-page-capture.md)
 - [Ordered full-page screenshots](ordered-full-page-capture.md)
 - [Basic project view with optional tools](project-feature-visibility.md)

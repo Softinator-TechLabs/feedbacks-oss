@@ -9,8 +9,15 @@
   </head>
   <body>
     <header>
-      <strong>Feedbacks</strong><span>Review capture</span
-      ><button id="discard">Discard draft</button>
+      <strong>Feedbacks</strong><span>Review capture</span>
+      <div id="review-actions" class="review-actions">
+        <button id="discard">Discard draft</button>
+        <button id="send-header" class="primary send-action" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 3-6 18-4-8-8-4 18-6ZM11 13 21 3" /></svg
+          ><span>Send feedback</span>
+        </button>
+      </div>
     </header>
     <section id="completion" hidden aria-labelledby="completion-title">
       <svg viewBox="0 0 32 32" width="40" height="40" fill="none" aria-hidden="true">
@@ -110,14 +117,14 @@
         </div>
       </section>
       <aside>
-        <h1>Send feedback</h1>
+        <h1>Feedback details</h1>
         <p id="capture-origin" class="capture-origin"></p>
-        <p id="capture-scope" class="hint">
-          The screenshot covers the visible browser area. Review it before sending.
-        </p>
         <details class="capture-details">
           <summary id="capture-size">Capture details</summary>
           <p id="context"></p>
+          <p id="capture-scope" class="hint">
+            The screenshot covers the visible browser area. Review it before sending.
+          </p>
         </details>
         <label for="project">Project</label
         ><select id="project"></select>
@@ -127,8 +134,16 @@
           aria-label="Comments on selected elements"
           hidden
         ></ol>
-        <label id="body-label" for="body">Comment</label
-        ><textarea
+        <label id="body-label" for="body">Comment</label>
+        <div class="markdown-toolbar" role="toolbar" aria-label="Format comment">
+          <button type="button" data-md-format="bold">Bold</button>
+          <button type="button" data-md-format="italic">Italic</button>
+          <button type="button" data-md-format="link">Link</button>
+          <button type="button" data-md-format="list">List</button>
+          <button type="button" data-md-format="code">Code</button>
+          <span>Markdown</span>
+        </div>
+        <textarea
           id="body"
           rows="7"
           maxlength="12000"
@@ -178,13 +193,20 @@
           </p>
         </div>
         <p class="hint">Your draft stays in this browser until you explicitly send it.</p>
-        <button id="send" class="primary">Send feedback</button>
+        <button id="send" class="primary send-action" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 3-6 18-4-8-8-4 18-6ZM11 13 21 3" /></svg
+          ><span>Send feedback</span>
+        </button>
         <div id="upload-progress" class="upload-progress" hidden>
           <label id="upload-label" for="upload-meter">Preparing screenshots…</label>
           <progress id="upload-meter" max="100"></progress>
         </div>
         <button id="retry-capture" hidden>Retry capture on original tab</button>
         <p id="status" role="status"></p>
+        <a id="published-thread" hidden target="_blank" rel="noopener noreferrer"
+          >Open published thread</a
+        >
       </aside>
     </main>
     <script type="module" src="editor.js"></script>

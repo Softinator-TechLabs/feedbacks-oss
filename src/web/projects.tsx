@@ -402,7 +402,7 @@ export function ProjectEditor({
   );
   return (
     <form
-      className="form-grid"
+      className="form-grid project-basics-form"
       onSubmit={(e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
@@ -851,13 +851,13 @@ export function ProjectGithub({
           </form>
         )}
         <div className="github-connection-actions">
-          {connection.data?.configured &&
-            connection.data.installation !== "installed" &&
-            connection.data.installUrl && (
-              <ExternalLink href={connection.data.installUrl}>
-                Install App on repository ↗
-              </ExternalLink>
-            )}
+          {connection.data?.configured && connection.data.installUrl && (
+            <ExternalLink href={connection.data.installUrl}>
+              {project.githubConnected
+                ? "Manage App installations ↗"
+                : "Install App on repository ↗"}
+            </ExternalLink>
+          )}
           {project.permissions.canMaintain &&
             !project.githubConnected &&
             connection.data?.installation === "installed" && (

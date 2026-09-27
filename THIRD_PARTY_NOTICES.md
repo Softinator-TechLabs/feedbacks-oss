@@ -2,7 +2,7 @@
 
 Feedbacks' own source is covered by `LICENSE` and `NOTICE`. Dependencies retain their original copyrights, licenses and notices in their installed packages; the lockfile records exact resolved versions. A source release includes the lockfile; the runtime container preserves production packages and their notices.
 
-The principal runtime packages are React/React DOM, Express, pg, Zod, Argon2, Sharp, tldts, the AWS SDK and the Model Context Protocol SDK. Development tools include TypeScript, Vite, tsx, Prettier, PGlite and Playwright (Apache-2.0). Native dependencies such as libvips have their own notices in the relevant packages. Use `npm sbom --sbom-format cyclonedx` after `npm ci` for the installed dependency inventory; this does not replace reviewing license text.
+The principal runtime packages are React/React DOM, React Markdown (MIT), Express, pg, Zod, Argon2, Sharp, tldts, the AWS SDK and the Model Context Protocol SDK. Development tools include TypeScript, Vite, tsx, Prettier, PGlite and Playwright (Apache-2.0). Native dependencies such as libvips have their own notices in the relevant packages. Use `npm sbom --sbom-format cyclonedx` after `npm ci` for the installed dependency inventory; this does not replace reviewing license text.
 
 The public documentation build uses VitePress (MIT) and its local search. VitePress and its build dependencies are installed only while building the static website. The static output includes VitePress client assets and self-hosted font files; their package licenses remain in the npm dependency tree. The S3 request presigner is part of the AWS SDK family and runs only on the application server.
 

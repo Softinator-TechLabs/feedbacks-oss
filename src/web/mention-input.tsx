@@ -66,8 +66,50 @@ export function MentionInput({
       input.current?.setSelectionRange(start + token.length, start + token.length);
     });
   }
+  function format(prefix: string, suffix: string, placeholder: string) {
+    const textarea = input.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const content = value.slice(start, end) || placeholder;
+    const insertion = `${prefix}${content}${suffix}`;
+    onChange(value.slice(0, start) + insertion + value.slice(end), {
+      start,
+      end,
+      nextEnd: start + insertion.length,
+    });
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + prefix.length,
+        start + prefix.length + content.length,
+      );
+    });
+  }
   return (
     <div className="mention-composer">
+      <div className="markdown-toolbar" role="toolbar" aria-label="Format reply">
+        {(
+          [
+            ["Bold", "**", "**", "bold text"],
+            ["Italic", "*", "*", "italic text"],
+            ["Link", "[", "](https://example.com)", "link text"],
+            ["List", "- ", "", "list item"],
+            ["Code", "`", "`", "code"],
+          ] as const
+        ).map(([label, prefix, suffix, placeholder]) => (
+          <button
+            key={label}
+            type="button"
+            aria-label={label}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => format(prefix, suffix, placeholder)}
+          >
+            {label}
+          </button>
+        ))}
+        <span>Markdown</span>
+      </div>
       <label className="sr-only" htmlFor={id}>
         Reply
       </label>

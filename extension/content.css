@@ -2,16 +2,22 @@
   all: initial;
   color-scheme: light;
 }
+.pin.resolved {
+  background: #53765f;
+  border-style: dashed;
+}
 * {
   box-sizing: border-box;
 }
 .bar {
   position: fixed;
   right: 16px;
-  top: 60px;
-  width: 360px;
+  bottom: 82px;
+  max-height: calc(100vh - 106px);
+  overflow: auto;
+  width: 316px;
   max-width: calc(100vw - 32px);
-  padding: 18px;
+  padding: 12px;
   background: #fff;
   border: 1px solid #dce1e5;
   border-radius: 10px;
@@ -21,14 +27,56 @@
   color: #202c37;
   z-index: 2147483647;
 }
-.drawer-handle {
+.review-dock {
   position: fixed;
+  z-index: 2147483647;
   pointer-events: auto;
-  top: 12px;
+  bottom: 12px;
   right: 16px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #bdc5cc;
+  border-radius: 8px;
+  box-shadow: 0 2px 9px #102a3c24;
   font:
     600 13px/1.5 system-ui,
     sans-serif;
+}
+.review-dock[hidden] {
+  display: none;
+}
+.review-dock button {
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 0;
+  background: transparent;
+}
+.review-dock .review-drag {
+  cursor: grab;
+  touch-action: none;
+  font-size: 19px;
+  padding: 2px 5px;
+}
+.drawer-handle {
+  text-align: left;
+}
+.review-bar-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.review-bar-heading strong {
+  flex: 1;
+  min-width: 0;
+}
+.review-bar-heading button {
+  min-height: 30px;
+  padding: 4px 7px;
+  font-size: 12px;
 }
 .bar.hidden {
   display: none !important;
@@ -102,12 +150,32 @@ button:focus-visible {
   background: #17324d;
   color: #fff;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font:
+    700 13px/1 system-ui,
+    sans-serif;
   border: 2px solid white;
   z-index: 2147483646;
 }
+.freeze-frame {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: fill;
+  pointer-events: auto;
+  z-index: 2147483644;
+}
+:host([data-editing-point]) .saved-draft-pin,
+:host([data-editing-point]) .pin:not(.draft-pin),
+:host([data-editing-point]) .preview {
+  visibility: hidden;
+}
 .preview {
   position: fixed;
-  max-width: 280px;
+  width: min(284px, calc(100vw - 16px));
   max-height: min(45vh, 300px);
   overflow: auto;
   padding: 11px 13px;
@@ -119,9 +187,33 @@ button:focus-visible {
     13px/1.5 system-ui,
     sans-serif;
   z-index: 2147483647;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
   box-shadow: 0 10px 28px rgba(13, 36, 54, 0.18);
+}
+.preview-byline {
+  font-weight: 700;
+  margin: 0 0 7px;
+}
+.preview-note {
+  white-space: pre-wrap;
+  margin: 0 0 10px;
+}
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.preview-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: #17324d;
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+.preview-actions button {
+  min-height: 36px;
+  margin-left: auto;
 }
 .target {
   position: fixed;
@@ -131,6 +223,14 @@ button:focus-visible {
   background: rgba(52, 125, 188, 0.13);
   box-shadow: 0 5px 20px rgba(14, 52, 80, 0.22);
   z-index: 2147483645;
+}
+.hover-target {
+  position: fixed;
+  pointer-events: none;
+  border: 2px solid #347dbc;
+  border-radius: 5px;
+  background: rgba(52, 125, 188, 0.08);
+  z-index: 2147483643;
 }
 .draft-pin {
   display: grid;
@@ -204,8 +304,18 @@ button:focus-visible {
   padding: 3px 8px;
 }
 .saved-draft-pin {
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 2147483646;
+  background: #a43e17;
+  color: #fff;
+  border: 2px dashed #fff;
+  box-shadow: 0 4px 14px rgba(83, 31, 12, 0.32);
+  cursor: pointer;
+}
+.saved-draft-pin:not(:disabled):hover,
+.saved-draft-pin:not(:disabled):focus-visible {
+  background: #873311;
+  color: #fff;
 }
 .point-menu button {
   min-height: 40px;
@@ -244,6 +354,7 @@ button:focus-visible {
     color-scheme: dark;
   }
   .bar,
+  .review-dock,
   .point-menu,
   .preview {
     background: #171e25;
@@ -285,4 +396,143 @@ button:focus-visible {
     background: #17324d;
     color: white;
   }
+  .saved-draft-pin {
+    background: #a43e17;
+    color: #fff;
+    border-color: #fff;
+  }
+  .preview-actions a {
+    color: #c3d8e8;
+  }
+}
+
+.draft-state {
+  display: block;
+  margin: 4px 0 7px;
+  color: #596672;
+}
+.draft-preview {
+  pointer-events: auto;
+}
+.draft-preview .preview-note {
+  margin-top: 8px;
+}
+.draft-preview button {
+  margin: 6px 6px 0 0;
+}
+.point-image-view {
+  position: fixed;
+  inset: 16px;
+  padding: 16px;
+  z-index: 2147483647;
+  background: #fff;
+  color: #202c37;
+  border: 1px solid #bdc5cc;
+  border-radius: 10px;
+  pointer-events: auto;
+  overflow: auto;
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+}
+.point-image-view > button {
+  float: right;
+  margin-bottom: 12px;
+}
+.point-image-stage {
+  position: relative;
+  clear: both;
+  width: 100%;
+}
+.point-image-stage img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.image-point {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: #a43e17;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .draft-state {
+    color: #b0bec9;
+  }
+  .point-image-view {
+    background: #171e25;
+    color: #e5ebf0;
+    border-color: #40515e;
+  }
+}
+
+.review-dock .drawer-handle {
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  position: relative;
+}
+.drawer-handle svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.drawer-handle[data-count]:not([data-count=""])::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  min-width: 18px;
+  padding: 2px 4px;
+  border-radius: 10px;
+  background: #a43e17;
+  color: white;
+  font: 700 11px/1.3 system-ui;
+}
+.review-dock[data-recording="recording"],
+.review-dock[data-recording="paused"] {
+  border-color: #a43e17;
+}
+.recording-controls,
+.navigation-controls,
+.pin-controls {
+  margin-top: 8px;
+}
+.navigation-controls button {
+  width: 100%;
+}
+.point-evidence {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.point-thumbnail {
+  width: 72px;
+  height: 46px;
+  object-fit: contain;
+  background: #edf1f4;
+  border-radius: 4px;
+}
+.point-thumbnail:not([src]),
+.point-thumbnail[hidden] {
+  display: none;
+}
+.point-evidence .point-tip {
+  margin: 0;
+}
+.notice:empty {
+  display: none;
 }

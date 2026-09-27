@@ -10,6 +10,7 @@ async function popup({
   serverAllowed = false,
   allSitesAllowed = false,
   instantReview = false,
+  toolbarPopup = false,
 } = {}) {
   const html = await readFile(
     new URL("../extension/popup.html", import.meta.url),
@@ -24,12 +25,14 @@ async function popup({
         hidden: false,
         disabled: false,
         removeAttribute() {},
+        setAttribute() {},
         replaceChildren() {},
       },
     ]),
   );
   const requested: any[] = [],
-    sent: any[] = [];
+    sent: any[] = [],
+    opened: string[] = [];
   let interval: (() => void) | undefined;
   let allowed = true,
     updateChecks = 0;
@@ -39,6 +42,13 @@ async function popup({
     pending: false,
     instantReview,
   };
+  let closed = 0;
+  const window = {
+    close() {
+      closed++;
+    },
+  };
+  const element = new EventTarget();
   const context = vm.createContext({
     URL,
     Option: class {
@@ -51,11 +61,17 @@ async function popup({
     },
     crypto,
     console,
-    document: { getElementById: (id: string) => nodes[id] },
+    document: {
+      getElementById: (id: string) => nodes[id],
+      body: { classList: { toggle() {} } },
+      documentElement: element,
+    },
+    setTimeout,
+    clearTimeout,
     setInterval(fn: () => void) {
       interval = fn;
     },
-    window: { close() {} },
+    window,
     createReleaseSelectionGate: () => ({ select: () => 1, isCurrent: () => true }),
     checkForUpdates: async () => {
       updateChecks++;
@@ -63,6 +79,10 @@ async function popup({
     },
     releaseLinks: () => ({}),
     chrome: {
+      extension: { getViews: () => (toolbarPopup ? [window] : []) },
+      commands: {
+        getAll: async () => [{ name: "_execute_action", shortcut: "Command+Shift+Y" }],
+      },
       permissions: {
         contains: async (input: any) =>
           input.origins?.[0] === "<all_urls>" ? allSitesAllowed : serverAllowed,
@@ -71,8 +91,16 @@ async function popup({
           return allowed;
         },
       },
-      tabs: { query: async () => [{ id: 1, url: "https://review.example.test" }] },
+      tabs: {
+        query: async () => [{ id: 1, url: "https://review.example.test" }],
+        create: async ({ url }: { url: string }) => {
+          opened.push(url);
+        },
+      },
       runtime: {
+        openOptionsPage: async () => {
+          opened.push("options");
+        },
         getManifest: () => ({
           version: "0.1.9",
           ...(managed
@@ -118,9 +146,12 @@ async function popup({
   await new Promise((resolve) => setImmediate(resolve));
   return {
     nodes,
+    closed: () => closed,
+    pointer: (type: string) => element.dispatchEvent(new Event(type)),
     state,
     requested,
     sent,
+    opened,
     setAllowed: (value: boolean) => {
       allowed = value;
     },
@@ -221,16 +252,28 @@ test("popup separates current-tab access from optional all-site and server grant
   });
   assert.equal(allowed.nodes["server-access"].textContent, "Allowed");
   assert.equal(allowed.nodes["tab-access"].textContent, "Ready");
-  assert.equal(allowed.nodes["site-access"].textContent, "On");
+  assert.equal(allowed.nodes["site-access"].textContent, "Allowed");
   assert.equal(allowed.nodes["server-access"].className, "is-ready");
   assert.equal(allowed.nodes["restore-server-access"].hidden, true);
 
   const revoked = await popup({ connected: true });
   assert.equal(revoked.nodes["server-access"].textContent, "Needs access");
-  assert.equal(revoked.nodes["site-access"].textContent, "Off");
+  assert.equal(revoked.nodes["site-access"].textContent, "Optional");
   assert.equal(revoked.nodes["restore-server-access"].hidden, false);
   await revoked.nodes["restore-server-access"].onclick();
   assert.deepEqual(revoked.requested, [{ origins: ["https://saved.example.test/*"] }]);
+});
+
+test("review stop and shortcut help are primary popup controls", async () => {
+  const html = await readFile(
+    new URL("../extension/popup.html", import.meta.url),
+    "utf8",
+  );
+  const primary = html.split('<details id="connection-settings">')[0];
+  assert.match(primary, /id="stop"/);
+  assert.match(primary, /id="shortcut-help"/);
+  assert.match(primary, /id="capture"/);
+  assert.match(primary, /id="capture-full"/);
 });
 
 test("QA scan keeps an empty result in the popup without creating feedback", async () => {
@@ -262,4 +305,26 @@ test("typing a server persists the draft and a background refresh does not overw
   state.pending = true;
   await tick();
   assert.equal(nodes.server.value, "https://chosen.example.test");
+});
+
+test("popup opens Chrome shortcut controls through the API and exposes extension settings", async () => {
+  const { nodes, opened } = await popup();
+  await nodes["customize-shortcuts"].onclick();
+  await nodes.settings.onclick();
+  assert.deepEqual(opened, ["chrome://extensions/shortcuts", "options"]);
+});
+
+test("only the toolbar popup closes after pointer departure and re-entry cancels closing", async () => {
+  const toolbar = await popup({ toolbarPopup: true });
+  toolbar.pointer("pointerleave");
+  toolbar.pointer("pointerenter");
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal(toolbar.closed(), 0);
+  toolbar.pointer("pointerleave");
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal(toolbar.closed(), 1);
+  const tab = await popup();
+  tab.pointer("pointerleave");
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal(tab.closed(), 0);
 });
