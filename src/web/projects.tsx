@@ -402,7 +402,7 @@ export function ProjectEditor({
   );
   return (
     <form
-      className="form-grid"
+      className="form-grid project-basics-form"
       onSubmit={(e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);

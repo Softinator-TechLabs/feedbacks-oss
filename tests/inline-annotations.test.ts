@@ -12,6 +12,8 @@ const first = {
     fingerprint: "heading-v1:abc",
     pagePoint: { x: 120, y: 75 },
     screenshotPoint: { x: 120, y: 75 },
+    viewport: { width: 820, height: 600 },
+    capturedAt: "2026-09-27T04:00:00.000Z",
   },
 };
 const second = {
@@ -52,6 +54,8 @@ test("website context preserves ordered comments with distinct element anchors",
     saved.annotations[1].anchor.selector,
   );
   assert.deepEqual(saved.anchor, saved.annotations[0].anchor);
+  assert.deepEqual(saved.annotations[0].anchor.viewport, first.anchor.viewport);
+  assert.equal(saved.annotations[0].anchor.capturedAt, first.anchor.capturedAt);
 });
 
 test("blank point comments are rejected before storage", () => {
