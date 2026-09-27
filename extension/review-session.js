@@ -76,7 +76,11 @@ export function createReviewController({ get, set, authenticated, defaultServer 
       css ||= await (await fetch(chrome.runtime.getURL("content.css"))).text();
       const result = await chrome.tabs.sendMessage(tabId, {
         type: "activate",
-        project: { id: project.id, name: project.name },
+        project: {
+          id: project.id,
+          name: project.name,
+          canResolve: project.permissions.canResolve,
+        },
         css,
         instantPoint,
         reviewId,

@@ -291,6 +291,15 @@ aside .hint {
 #status {
   margin: 12px 0 0;
 }
+#published-thread {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--accent, #b9d5ec);
+  text-underline-offset: 3px;
+}
+#published-thread[hidden] {
+  display: none;
+}
 .upload-progress {
   margin-top: 12px;
 }

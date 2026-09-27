@@ -39,8 +39,41 @@
     drawerHandle,
     drawerTimer,
     loadingPins,
+    occlusionPins = [],
+    occlusionFrame,
+    activePreviewHide,
     activationGeneration = 0,
     reviewId;
+  function ageLabel(value) {
+    const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 60000));
+    if (!Number.isFinite(minutes)) return "recently";
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} ${days === 1 ? "day" : "days"} ago`;
+  }
+  function updatePinOcclusion() {
+    if (!active || !host?.isConnected || !occlusionPins.length) return;
+    for (const { pin, element, x, y, hidePreview } of occlusionPins) {
+      if (!pin.isConnected) continue;
+      const top = document
+        .elementsFromPoint(x, y)
+        .find((candidate) => candidate !== host);
+      const covered =
+        !!element && (!top || (!element.contains(top) && !top.contains(element)));
+      pin.style.visibility = covered ? "hidden" : "";
+      if (covered) hidePreview?.();
+    }
+  }
+  function schedulePinOcclusion() {
+    if (occlusionFrame) return;
+    occlusionFrame = requestAnimationFrame(() => {
+      occlusionFrame = null;
+      updatePinOcclusion();
+    });
+  }
   function revealDrawer(open = true) {
     if (!bar) return;
     bar.classList.add("hidden");
@@ -356,6 +389,7 @@
   }
   function renderDraftPoints() {
     if (draftEditing) return;
+    occlusionPins = occlusionPins.filter((entry) => entry.kind !== "draft");
     draftPoints.replaceChildren();
     draftList.replaceChildren();
     annotations.forEach((item, index) => {
@@ -419,12 +453,22 @@
       pin.style.left = `${x}px`;
       pin.style.top = `${y}px`;
       pin.setAttribute("aria-label", `Draft point ${index + 1}: ${item.body}`);
+      pin.title = `Not sent yet · ${item.body}. Review screenshots and send to share with your team.`;
       draftPoints.append(pin);
+      let element;
+      try {
+        element = F.find(item.anchor.selector)[0];
+      } catch {}
+      occlusionPins.push({ kind: "draft", pin, element, x, y });
     });
     reviewButton.hidden = annotations.length === 0;
+    drawerHandle.textContent = annotations.length
+      ? `Feedbacks · ${annotations.length} not sent`
+      : "Feedbacks";
     meta.textContent = annotations.length
-      ? `${annotations.length} unsent ${annotations.length === 1 ? "comment" : "comments"} · Right-click to add another`
+      ? `${annotations.length} ${annotations.length === 1 ? "point" : "points"} saved on this browser, not sent · Review screenshots and send to share`
       : `${threads.length} comments on this view · ${innerWidth} × ${innerHeight}`;
+    schedulePinOcclusion();
   }
   function savePoint() {
     if (!chosen) throw Error("Right-click an element first.");
@@ -462,7 +506,7 @@
     closePointMenu();
     clearChosenPoint();
     renderDraftPoints();
-    notice.textContent = `Point ${annotations.length} saved. Right-click another element or review screenshots.`;
+    notice.textContent = `Point ${annotations.length} saved here, not sent. Right-click another element or review screenshots and send.`;
     revealDrawer();
   }
   async function capturePoint() {
@@ -781,6 +825,7 @@
   }
   function renderPins() {
     if (!active) return;
+    occlusionPins = [];
     pinLayer.replaceChildren();
     targetBox.classList.add("hidden");
     const current = context();
@@ -861,31 +906,90 @@
         pin.style.top = `${y}px`;
         pin.setAttribute(
           "aria-label",
-          `${thread.author.name}: ${item.body.slice(0, 160)}`,
+          `${thread.author.name}, ${ageLabel(thread.createdAt)}: ${item.body.slice(0, 160)}. Open thread for details.`,
         );
-        let preview;
+        let preview, hideTimer;
         const hide = () => {
+          clearTimeout(hideTimer);
           preview?.remove();
           preview = null;
+          if (activePreviewHide === hide) activePreviewHide = null;
+        };
+        const scheduleHide = () => {
+          clearTimeout(hideTimer);
+          hideTimer = setTimeout(() => {
+            if (preview?.matches(":hover") || preview?.contains(root.activeElement))
+              return;
+            hide();
+          }, 180);
         };
         const show = () => {
-          hide();
+          clearTimeout(hideTimer);
+          if (preview?.isConnected) return;
+          activePreviewHide?.();
           preview = document.createElement("div");
+          activePreviewHide = hide;
           preview.className = "preview";
-          preview.textContent = `${thread.author.name}\n${item.body}`;
-          preview.style.left = `${Math.max(8, Math.min(x + 18, innerWidth - 290))}px`;
-          preview.style.top = `${Math.max(8, Math.min(y + 18, innerHeight - 150))}px`;
+          const byline = document.createElement("p");
+          byline.className = "preview-byline";
+          byline.textContent = `${thread.author.name} · ${ageLabel(thread.createdAt)}`;
+          byline.title = new Date(thread.createdAt).toLocaleString();
+          const note = document.createElement("p");
+          note.className = "preview-note";
+          note.textContent = item.body;
+          const actions = document.createElement("div");
+          actions.className = "preview-actions";
+          const link = document.createElement("a");
+          link.href = thread.threadUrl;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = "Open thread";
+          actions.append(link);
+          if (
+            project.canResolve &&
+            !["resolved", "declined"].includes(thread.work.state)
+          ) {
+            const resolve = button(
+              "Resolve",
+              async () => {
+                try {
+                  await send({ type: "resolveThread", id: thread.id, reviewId });
+                } catch (error) {
+                  if (!/outside token scope/i.test(error.message)) throw error;
+                  await send({ type: "openThread", id: thread.id });
+                  notice.textContent =
+                    "This older connection opens the thread to resolve it. Reconnect Feedbacks for one-click resolve.";
+                  revealDrawer();
+                  return;
+                }
+                hide();
+                await loadPins();
+                notice.textContent = "Thread resolved. Its pin is hidden.";
+              },
+              actions,
+            );
+            resolve.className = "resolve-thread";
+          }
+          preview.append(byline, note, actions);
+          preview.style.left = `${Math.max(8, Math.min(x + 18, innerWidth - 302))}px`;
+          preview.style.top = `${Math.max(8, Math.min(y + 18, innerHeight - 185))}px`;
+          preview.addEventListener("pointerenter", () => clearTimeout(hideTimer));
+          preview.addEventListener("pointerleave", scheduleHide);
+          preview.addEventListener("focusin", () => clearTimeout(hideTimer));
+          preview.addEventListener("focusout", scheduleHide);
           pinLayer.append(preview);
         };
         pin.onmouseenter = show;
         pin.onfocus = show;
-        pin.onmouseleave = hide;
-        pin.onblur = hide;
+        pin.onmouseleave = scheduleHide;
+        pin.onblur = scheduleHide;
+        occlusionPins.push({ kind: "published", pin, element, x, y, hidePreview: hide });
       }
     }
     renderCategories(unmatched, other);
     if (!annotations.length)
       meta.textContent = `${matched + unmatched.length} comments on this view · ${innerWidth} × ${innerHeight}`;
+    schedulePinOcclusion();
   }
   function renderCategories(unmatched, other) {
     // Keep open details and keyboard focus stable during scroll/repaint.
@@ -1022,6 +1126,7 @@
   F.listen(
     "pointermove",
     (event) => {
+      if (active) schedulePinOcclusion();
       if (!active || !choosing || event.composedPath().includes(host)) return;
       hoverTarget = event.target;
       if (hoverFrame) return;
@@ -1040,6 +1145,13 @@
     },
     { passive: true, capture: true },
   );
+  F.listen("focusin", schedulePinOcclusion, true);
+  F.listen("focusout", schedulePinOcclusion, true);
+  F.listen("pointerover", schedulePinOcclusion, true);
+  F.listen("visibilitychange", () => {
+    if (active && document.visibilityState === "visible")
+      loadPins().catch((error) => (notice.textContent = error.message));
+  });
   const repaint = () => {
     if (active && !scheduled) {
       scheduled = true;
@@ -1074,6 +1186,8 @@
         "deactivate",
         "metrics",
         "feedbackSaved",
+        "feedbackThreadCreated",
+        "feedbackSubmissionIncomplete",
         "captureContext",
         "prepareCapture",
         "captureCheck",
@@ -1198,12 +1312,29 @@
         annotations = [];
         renderDraftPoints();
         if (chosen?.evidence.fingerprint === message.fingerprint) clearChosenPoint();
+        notice.textContent =
+          "Feedback sent. The thread and screenshots are ready for your team.";
         if (active) {
           renderPins();
           loadPins().catch((e) => {
             if (active) notice.textContent = e.message;
           });
         }
+        return {};
+      }
+      if (message.type === "feedbackThreadCreated") {
+        annotations = [];
+        renderDraftPoints();
+        if (chosen?.evidence.fingerprint === message.fingerprint) clearChosenPoint();
+        notice.textContent =
+          "Thread published. Screenshots are uploading in the review tab.";
+        if (active) await loadPins();
+        return {};
+      }
+      if (message.type === "feedbackSubmissionIncomplete") {
+        notice.textContent =
+          "Thread published, but sending is incomplete. Retry Send in the review tab to finish images.";
+        if (active) await loadPins();
         return {};
       }
       if (message.type === "captureContext") {

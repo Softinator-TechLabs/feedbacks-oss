@@ -368,6 +368,7 @@ try {
     });
   }, id);
   await waitReview((state) => state.points === 1);
+  assert.match((await inspectReview()).notice, /not sent/i);
   assert.equal(
     (await inspectReview()).frozen,
     false,
@@ -579,6 +580,7 @@ try {
   };
   await inlineEditor.close();
   await page.bringToFront();
+  assert.match((await inspectReview()).notice, /Feedback sent/i);
   await send({ type: "activate", tabId: id });
   const hoverComments = ["Make this heading **clearer**", "Repair this link"];
   const inspectPin = (body) =>
@@ -597,6 +599,9 @@ try {
               x: rect.x + rect.width / 2,
               y: rect.y + rect.height / 2,
               preview: root.querySelector(".preview")?.textContent,
+              link: root.querySelector(".preview a")?.getAttribute("href"),
+              resolve: !!root.querySelector(".preview button.resolve-thread"),
+              visible: getComputedStyle(pin).visibility !== "hidden",
             };
           },
           args: [body],
@@ -614,11 +619,126 @@ try {
     }
     assert.ok(point, `Saved point is not visible on its element: ${comment}`);
     await page.mouse.move(point.x, point.y);
-    assert.ok((await inspectPin(comment))?.preview?.includes(comment));
+    const hovered = await inspectPin(comment);
+    assert.ok(hovered?.preview?.includes(comment));
+    assert.match(hovered.preview, /just now|ago/);
+    assert.equal(hovered.link, `${access.url}/threads/${inlineThreadId}`);
+    assert.equal(hovered.resolve, true);
+  }
+  const firstPoint = await inspectPin(hoverComments[0]);
+  await page.evaluate(({ x, y }) => {
+    const menu = document.createElement("div");
+    menu.id = "qa-covering-menu";
+    menu.style.cssText = `position:fixed;left:${x - 40}px;top:${y - 40}px;width:80px;height:80px;background:white;z-index:1000`;
+    document.body.append(menu);
+  }, firstPoint);
+  await page.mouse.move(firstPoint.x + 1, firstPoint.y + 1);
+  await page.waitForTimeout(50);
+  assert.equal((await inspectPin(hoverComments[0]))?.visible, false);
+  await page.locator("#qa-covering-menu").evaluate((menu) => menu.remove());
+  await page.mouse.move(firstPoint.x + 2, firstPoint.y + 2);
+  await page.waitForTimeout(50);
+  assert.equal((await inspectPin(hoverComments[0]))?.visible, true);
+  await page.mouse.move(800, 400);
+  await page.waitForTimeout(200);
+  await page.mouse.move(firstPoint.x, firstPoint.y);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if ((await inspectPin(hoverComments[0]))?.resolve) break;
+    await page.waitForTimeout(50);
   }
   await page.screenshot({
     path: join(root, ".local/remaining-todos-qa/inline-comment-hover.png"),
   });
+  const resolveClick = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const control = globalThis.__feedbacksQaRoot.querySelector(
+          ".preview button.resolve-thread",
+        );
+        const before = {
+          found: !!control,
+          disabled: control?.disabled,
+          action: typeof control?.onclick,
+        };
+        control?.click();
+        return before;
+      },
+    });
+    return entry.result;
+  }, id);
+  assert.equal(resolveClick.found, true);
+  assert.equal(resolveClick.disabled, false);
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const current = (await post("threads.get", { threadId: inlineThreadId }, auth)).data;
+    if (current.work.state === "resolved") break;
+    await page.waitForTimeout(100);
+  }
+  assert.equal(
+    (await post("threads.get", { threadId: inlineThreadId }, auth)).data.work.state,
+    "resolved",
+  );
+  const teammate = (
+    await post(
+      "members.create",
+      {
+        name: "Team reviewer",
+        email: "reviewer@example.test",
+        password: "Synthetic-Reviewer-Pass-123",
+        grants: [{ projectId: inlineThread.projectId, role: "reviewer" }],
+      },
+      auth,
+    )
+  ).data;
+  assert.ok(teammate.id);
+  const teammateLogin = await post("auth.login", {
+    email: "reviewer@example.test",
+    password: "Synthetic-Reviewer-Pass-123",
+  });
+  const teammateAuth = {
+    cookie: teammateLogin.cookie,
+    csrf: teammateLogin.data.csrf,
+  };
+  const teammatePairing = (await post("pairing.request", { name: "Team browser" })).data;
+  await post("pairing.approve", { pairingId: teammatePairing.pairingId }, teammateAuth);
+  const teammateToken = (
+    await post("pairing.poll", {
+      pairingId: teammatePairing.pairingId,
+      deviceSecret: teammatePairing.deviceSecret,
+    })
+  ).data.token;
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  await worker.evaluate(
+    ({ server, token }) =>
+      chrome.storage.local.set({
+        accounts: { [server]: { token } },
+      }),
+    { server: access.url, token: teammateToken },
+  );
+  await send({ type: "activate", tabId: id });
+  await send({ type: "popupAction", tabId: id, action: "resolved" });
+  let teammatePin;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    teammatePin = await inspectPin(hoverComments[0]);
+    if (teammatePin?.visible) break;
+    await page.waitForTimeout(100);
+  }
+  assert.ok(teammatePin?.visible, "A teammate should see the published point");
+  await page.mouse.move(teammatePin.x, teammatePin.y);
+  assert.equal((await inspectPin(hoverComments[0])).resolve, false);
+  assert.equal(
+    (await inspectPin(hoverComments[0])).link,
+    `${access.url}/threads/${inlineThreadId}`,
+  );
+  results.inlineReview.teammateCanRead = true;
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  await worker.evaluate(
+    ({ server, token }) =>
+      chrome.storage.local.set({
+        accounts: { [server]: { token } },
+      }),
+    { server: access.url, token: paired.token },
+  );
   results.inlineReview.hoverComments = hoverComments;
 
   mode = "long";
@@ -833,6 +953,18 @@ try {
   await seriesEditor.locator("#send").click();
   await seriesEditor.getByRole("button", { name: "Retry Send" }).waitFor();
   const interrupted = await draft();
+  assert.ok(
+    interrupted?.thread?.id,
+    "The thread was published before image upload stopped",
+  );
+  assert.match(
+    await seriesEditor.locator("#status").textContent(),
+    /thread is already published/i,
+  );
+  assert.equal(
+    await seriesEditor.locator("#published-thread").getAttribute("href"),
+    `${access.url}/threads/${interrupted.thread.id}`,
+  );
   results.seriesReview.resumeIndex = interrupted?.uploadIndex;
   results.seriesReview.frozenAfterInterruption = interrupted?.frozen;
   results.seriesReview.visibleProgress = await seriesEditor
@@ -945,6 +1077,10 @@ try {
   await removableEditor.locator("#send").click();
   await removableEditor.getByRole("button", { name: "Retry Send" }).waitFor();
   const interruptedCombined = await draft();
+  assert.match(
+    await removableEditor.locator("#status").textContent(),
+    /thread is already published/i,
+  );
   results.pageReview.resumeAtCombined =
     interruptedCombined?.frozen &&
     interruptedCombined.uploadIndex === interruptedCombined.capturePages.length;

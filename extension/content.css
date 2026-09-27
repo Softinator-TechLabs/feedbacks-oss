@@ -122,7 +122,7 @@ button:focus-visible {
 }
 .preview {
   position: fixed;
-  max-width: 280px;
+  width: min(284px, calc(100vw - 16px));
   max-height: min(45vh, 300px);
   overflow: auto;
   padding: 11px 13px;
@@ -134,9 +134,33 @@ button:focus-visible {
     13px/1.5 system-ui,
     sans-serif;
   z-index: 2147483647;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
   box-shadow: 0 10px 28px rgba(13, 36, 54, 0.18);
+}
+.preview-byline {
+  font-weight: 700;
+  margin: 0 0 7px;
+}
+.preview-note {
+  white-space: pre-wrap;
+  margin: 0 0 10px;
+}
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.preview-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: #17324d;
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+.preview-actions button {
+  min-height: 36px;
+  margin-left: auto;
 }
 .target {
   position: fixed;
@@ -221,6 +245,9 @@ button:focus-visible {
 .saved-draft-pin {
   pointer-events: none;
   z-index: 2147483646;
+  background: #fff;
+  color: #17324d;
+  border: 2px dashed #17324d;
 }
 .point-menu button {
   min-height: 40px;
@@ -299,5 +326,13 @@ button:focus-visible {
   .pin {
     background: #17324d;
     color: white;
+  }
+  .saved-draft-pin {
+    background: #171e25;
+    color: #d9e6f0;
+    border-color: #d9e6f0;
+  }
+  .preview-actions a {
+    color: #c3d8e8;
   }
 }

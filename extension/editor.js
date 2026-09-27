@@ -89,6 +89,11 @@ function status(message, kind = "info") {
   $("status").dataset.kind = kind;
   if (!$("completion").hidden) $("completion-error").textContent = message;
 }
+function showPublishedThread(draft) {
+  const link = $("published-thread");
+  link.hidden = !draft?.thread;
+  if (draft?.thread) link.href = `${draft.server}/threads/${draft.thread.id}`;
+}
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "submitProgress" && message.id === draft?.id) {
     status(message.message);
@@ -744,6 +749,7 @@ $("send").onclick = async () => {
     sendingApproval = false;
     const fresh = await send({ type: "draft" }).catch(() => null);
     if (fresh) await loadBase(fresh);
+    showPublishedThread(fresh);
     if (fresh?.capturePages?.length && fresh.frozen && !fresh.noImage)
       uploadProgress(
         fresh.uploadIndex + (fresh.combinedUploaded ? 1 : 0),
@@ -753,7 +759,9 @@ $("send").onclick = async () => {
     lock(!draft || loadingBase || !!draft?.frozen);
     status(
       fresh
-        ? `${e.message} Your draft is kept here. Review it before retrying Send.`
+        ? fresh.thread
+          ? `${e.message} The feedback thread is already published; some images are pending. Retry Send to finish them. Thread: ${fresh.server}/threads/${fresh.thread.id}`
+          : `${e.message} Your draft is kept here. Review it before retrying Send.`
         : `${e.message} No local draft remains. Check Feedbacks for any completed submission.`,
       "error",
     );
@@ -891,11 +899,14 @@ async function init() {
   lock(!!draft.frozen);
   $("send").disabled = false;
   if (draft.frozen) {
+    showPublishedThread(draft);
     $("send").textContent = "Retry Send";
     status(
-      draft.capturePages?.length && draft.uploadIndex === draft.capturePages.length
-        ? `${draft.uploadIndex} numbered screenshots uploaded. Retry will finish the combined image and keep the same feedback thread.`
-        : "Pending submission. Retry continues from the first unsent screenshot.",
+      draft.thread
+        ? `Feedback thread already published. Retry Send to finish pending images without creating a second thread. ${draft.server}/threads/${draft.thread.id}`
+        : draft.capturePages?.length && draft.uploadIndex === draft.capturePages.length
+          ? `${draft.uploadIndex} numbered screenshots uploaded. Retry will finish the combined image and keep the same feedback thread.`
+          : "Pending submission. Retry continues from the first unsent screenshot.",
     );
     if (draft.capturePages?.length && !draft.noImage)
       uploadProgress(

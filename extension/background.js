@@ -1257,6 +1257,7 @@ function submitProgress(draft, message, completed, total) {
 async function submit(message) {
   if (sending) throw Error("Submission is already in progress.");
   sending = true;
+  let publishedDraft;
   try {
     let { draft } = await get();
     if (!draft || draft.id !== message.id) throw Error("No pending draft.");
@@ -1336,6 +1337,14 @@ async function submit(message) {
       );
       await set({ draft });
     }
+    publishedDraft = draft;
+    chrome.tabs
+      .sendMessage(draft.sourceTabId, {
+        type: "feedbackThreadCreated",
+        fingerprint: draft.context.anchor?.fingerprint,
+        url: `${draft.server}/threads/${draft.thread.id}`,
+      })
+      .catch(() => {});
     if (draft.approvedImage) {
       if (!draft.uploadAttempt) {
         draft.uploadAttempt = {
@@ -1545,6 +1554,16 @@ async function submit(message) {
       })
       .catch(() => {});
     return { url, threadId: draft.thread.id };
+  } catch (error) {
+    if (publishedDraft?.thread) {
+      chrome.tabs
+        .sendMessage(publishedDraft.sourceTabId, {
+          type: "feedbackSubmissionIncomplete",
+          url: `${publishedDraft.server}/threads/${publishedDraft.thread.id}`,
+        })
+        .catch(() => {});
+    }
+    throw error;
   } finally {
     sending = false;
   }
@@ -1645,7 +1664,33 @@ async function route(message, sender) {
         throw Error(
           "The review project changed. Refresh comments in the current review.",
         );
-      return result;
+      return {
+        ...result,
+        items: result.items.map((thread) => ({
+          ...thread,
+          threadUrl: `${session.server}/threads/${thread.id}`,
+        })),
+      };
+    }
+    if (message.type === "resolveThread" && /^[0-9a-f-]{36}$/.test(message.id)) {
+      if (message.reviewId !== session.reviewId)
+        throw Error("The review changed. Refresh the page comments.");
+      const thread = await authenticated(
+        "threads.get",
+        { threadId: message.id },
+        session.server,
+      );
+      if (
+        thread.projectId !== session.projectId ||
+        U.safeUrl(thread.context.url) !== U.safeUrl(sender.tab.url)
+      )
+        throw Error("Thread is outside this page review.");
+      if (thread.work.state === "resolved") return thread;
+      return authenticated(
+        "threads.status",
+        { threadId: thread.id, revision: thread.revision, state: "resolved" },
+        session.server,
+      );
     }
     if (message.type === "openThread" && /^[0-9a-f-]{36}$/.test(message.id)) {
       const thread = await authenticated(
