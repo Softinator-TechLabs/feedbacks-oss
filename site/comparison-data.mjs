@@ -1,6 +1,6 @@
 // Evidence-backed copy for the public comparison pages. Keep claims tied to the
 // linked vendor documentation and update the reviewed date when rechecking it.
-export const reviewed = "23 September 2026";
+export const reviewed = "27 September 2026";
 
 export const comparisons = [
   {
@@ -86,7 +86,7 @@ export const comparisons = [
     bestFor:
       "Choose OpenReplay + Spot when reproducing a sequence of user actions is the main job.",
     feedbacksBest:
-      "Choose Feedbacks when a specific screenshot, pencil mark and continuing team discussion are the main record your agent should read.",
+      "Choose Feedbacks for original screenshots per review point, annotated exports, an optional five-minute recording and continuing team discussion on your own server.",
     sources: [
       ["OpenReplay source", "https://github.com/openreplay/openreplay"],
       ["Spot documentation", "https://docs.openreplay.com/en/spot/"],
@@ -289,7 +289,7 @@ export const comparisons = [
     bestFor:
       "Choose Usersnap when surveys, sentiment and product research sit alongside visual bug reports.",
     feedbacksBest:
-      "Choose Feedbacks when you need screenshot-and-pencil discussions, self-hosted storage and an agent view of who said what.",
+      "Choose Feedbacks for page pins, annotated screenshots, optional recordings, self-hosted storage and an agent view of who said what.",
     sources: [
       ["Usersnap features", "https://usersnap.com/features"],
       ["Usersnap widget guide", "https://help.usersnap.com/docs/feedback-widget"],

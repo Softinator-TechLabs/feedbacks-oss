@@ -1,227 +1,920 @@
 // Each verdict links to the vendor's documentation or public source.
-// A cross means the named capability is not documented in the linked public
-// product/edition. It is not a claim about every private or future offering.
-// An omitted cell means the evidence is insufficient for either verdict.
-export const matrixReviewed = "23 September 2026";
+// Missing documentation is not evidence of absence. Omitted cells are unverified.
+// Each confirmed cell has a source and its own review date.
+export const matrixReviewed = "27 September 2026";
 
-export const matrixFeatures = [
-  ["source", "Public server source"],
-  ["selfHost", "Whole service self-hosted"],
-  ["independent", "No required external account"],
-  ["storage", "S3 in no-fee self-hosting"],
-  ["extension", "Browser extension capture"],
-  ["drawing", "Draw on screenshots"],
-  ["mcp", "Feedback via MCP"],
-  ["video", "Record feedback or replay"],
-  ["github", "GitHub Issues handoff"],
-  ["expertise", "Owner-approved weighted reviewer guidance in MCP"],
+export const matrixGroups = [
+  {
+    id: "capture",
+    title: "Capture and page review",
+    description:
+      "Keep the page, the selected element and its original evidence together.",
+    features: [
+      ["extension", "Browser extension capture"],
+      ["screenshots", "Screenshot capture"],
+      ["fullPage", "Full-page capture"],
+      ["pins", "Element or page pins"],
+      ["originals", "Screenshot saved with each comment"],
+      ["drafts", "Local unsent review points"],
+      ["resolved", "Resolve individual points"],
+      ["reviewDefaults", "Saved review and recording controls"],
+    ],
+  },
+  {
+    id: "annotation",
+    title: "Annotation and image exports",
+    description:
+      "Compare specific editing tools and output formats, not just an annotation checkbox.",
+    features: [
+      ["drawing", "Draw, shapes and text"],
+      ["highlighter", "Highlighter"],
+      ["steps", "Numbered steps"],
+      ["blur", "Blur tool"],
+      ["redact", "Mask private pixels"],
+      ["stickers", "Stamps or stickers"],
+      ["localImages", "Insert, move and resize local images"],
+      ["cropExport", "Crop screenshot exports"],
+      ["rasterExport", "PNG, JPEG and WebP export"],
+      ["pdfExport", "Multi-page PDF export"],
+      ["clipboard", "Copy annotated image"],
+    ],
+  },
+  {
+    id: "recording",
+    title: "Recording and diagnostics",
+    description:
+      "Recording a new clip and replaying a past session are different capabilities.",
+    features: [
+      ["video", "Record feedback video"],
+      ["tabAudio", "Capture tab audio"],
+      ["microphone", "Microphone narration"],
+      ["pauseVideo", "Pause and resume recording"],
+      ["trimVideo", "Trim video visually"],
+      ["cropVideo", "Crop video frame"],
+      ["replay", "Session replay"],
+      ["diagnostics", "Console or network context"],
+    ],
+  },
+  {
+    id: "collaboration",
+    title: "Team discussion and agent handoff",
+    description: "Check how reviewers, developers and authorized agents share the work.",
+    features: [
+      ["discussion", "Team comments and replies"],
+      ["mcp", "Feedback via MCP"],
+      ["agentContext", "Visual or page context for agents"],
+      ["expertise", "Owner-approved weighted reviewer guidance in MCP"],
+      ["github", "GitHub Issues handoff"],
+    ],
+  },
+  {
+    id: "hosting",
+    title: "Source and self-hosting",
+    description: "Availability in a hosted plan does not establish self-hosting support.",
+    features: [
+      ["source", "Public server source"],
+      ["selfHost", "Whole service self-hosted"],
+      ["independent", "No required external account"],
+      ["storage", "S3 in no-fee self-hosting"],
+    ],
+  },
 ];
+export const matrixFeatures = matrixGroups.flatMap((group) => group.features);
 
-const feedbacks =
-  "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md";
-const hosting =
-  "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md";
-const agent =
-  "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md";
-const yes = (url) => ({ status: "yes", url });
-const note = (status, url) => ({ status, url });
-const no = (url) => note("no", url);
-const hosted = (url) => ({
-  source: no(url),
-  selfHost: no(url),
-  independent: no(url),
-  storage: no(url),
-});
-
+// Dates describe documentation/source review, not installed-product testing.
 export const matrixRows = {
   feedbacks: {
-    source: yes(feedbacks),
-    selfHost: yes(hosting),
-    independent: yes(feedbacks),
-    storage: yes(hosting),
-    extension: yes(feedbacks),
-    drawing: yes(feedbacks),
-    mcp: yes(agent),
-    video: yes(
-      "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-    ),
-    github: yes(
-      "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/api.md",
-    ),
-    expertise: yes(feedbacks),
+    source: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md",
+      reviewed: "27 September 2026",
+    },
+    selfHost: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md",
+      reviewed: "27 September 2026",
+    },
+    independent: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md",
+      reviewed: "27 September 2026",
+    },
+    storage: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md",
+      reviewed: "27 September 2026",
+    },
+    extension: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md",
+      reviewed: "27 September 2026",
+    },
+    video: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+      detail:
+        "Up to five minutes of active recording; separate recorder tab and preview before Send.",
+    },
+    github: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/api.md",
+      reviewed: "27 September 2026",
+      detail:
+        "Optional GitHub App; reviewed issue drafts and project opt-in for status sync.",
+    },
+    expertise: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    fullPage: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    pins: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    originals: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    drafts: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    resolved: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    reviewDefaults: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+      detail:
+        "Separate saved controls for review and recording; recording restores prior review controls.",
+    },
+    highlighter: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    steps: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    blur: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+      detail: "Visual softening, not secure redaction. Use Redact for private pixels.",
+    },
+    redact: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    stickers: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    localImages: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    cropExport: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+      detail:
+        "Local clipboard and downloads only; sent feedback retains the complete screenshot.",
+    },
+    rasterExport: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    pdfExport: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    clipboard: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    tabAudio: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+      detail: "Tab audio and microphone are separate opt-ins, both off by default.",
+    },
+    microphone: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    pauseVideo: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    trimVideo: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    cropVideo: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    diagnostics: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
+    discussion: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/review-workflow.md",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md",
+      reviewed: "27 September 2026",
+    },
+    replay: {
+      status: "no",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "27 September 2026",
+    },
   },
   bugpin: {
-    source: yes("https://github.com/aranticlabs/bugpin"),
-    selfHost: yes("https://bugpin.io/editions/"),
-    independent: yes("https://bugpin.io/editions/"),
-    storage: note("paid", "https://bugpin.io/editions/"),
-    drawing: yes("https://bugpin.io/editions/"),
-    github: yes("https://bugpin.io/editions/"),
-    extension: no("https://github.com/aranticlabs/bugpin/tree/main/src/widget"),
-    mcp: no("https://github.com/aranticlabs/bugpin/tree/main/src"),
-    video: no("https://bugpin.io/editions/"),
-    expertise: no("https://github.com/aranticlabs/bugpin"),
+    source: {
+      status: "yes",
+      url: "https://github.com/aranticlabs/bugpin",
+      reviewed: "27 September 2026",
+    },
+    selfHost: {
+      status: "yes",
+      url: "https://bugpin.io/editions/",
+      reviewed: "27 September 2026",
+    },
+    independent: {
+      status: "yes",
+      url: "https://bugpin.io/editions/",
+      reviewed: "27 September 2026",
+    },
+    storage: {
+      status: "paid",
+      url: "https://bugpin.io/editions/",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://bugpin.io/editions/",
+      reviewed: "27 September 2026",
+    },
+    github: {
+      status: "yes",
+      url: "https://bugpin.io/editions/",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://bugpin.io/editions/",
+      reviewed: "27 September 2026",
+    },
+    blur: {
+      status: "yes",
+      url: "https://bugpin.io/editions/",
+      reviewed: "27 September 2026",
+    },
+    diagnostics: {
+      status: "yes",
+      url: "https://github.com/aranticlabs/bugpin",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://github.com/aranticlabs/bugpin",
+      reviewed: "27 September 2026",
+      detail: "Manual Markdown, JSON or AI prompt export; MCP access is not verified.",
+    },
   },
   fasterfixes: {
-    source: yes("https://github.com/manucoffin/faster-fixes"),
-    selfHost: yes("https://www.faster-fixes.com/docs/self-hosting"),
-    independent: note("required", "https://www.faster-fixes.com/docs/self-hosting"),
-    storage: yes("https://www.faster-fixes.com/docs/self-hosting"),
-    mcp: yes("https://www.faster-fixes.com/docs/mcp/setup"),
-    github: yes("https://www.faster-fixes.com/docs/self-hosting"),
-    extension: no("https://www.faster-fixes.com/docs/concepts/how-it-works"),
-    drawing: no("https://www.faster-fixes.com/docs/getting-started/quickstart"),
-    video: no("https://www.faster-fixes.com/docs/concepts/how-it-works"),
-    expertise: no("https://www.faster-fixes.com/docs/mcp/setup"),
+    source: {
+      status: "yes",
+      url: "https://github.com/manucoffin/faster-fixes",
+      reviewed: "27 September 2026",
+    },
+    selfHost: {
+      status: "yes",
+      url: "https://www.faster-fixes.com/docs/self-hosting",
+      reviewed: "27 September 2026",
+    },
+    independent: {
+      status: "required",
+      url: "https://www.faster-fixes.com/docs/self-hosting",
+      reviewed: "27 September 2026",
+    },
+    storage: {
+      status: "yes",
+      url: "https://www.faster-fixes.com/docs/self-hosting",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://github.com/manucoffin/faster-fixes",
+      reviewed: "27 September 2026",
+    },
+    github: {
+      status: "yes",
+      url: "https://github.com/manucoffin/faster-fixes",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://github.com/manucoffin/faster-fixes",
+      reviewed: "27 September 2026",
+    },
+    pins: {
+      status: "yes",
+      url: "https://github.com/manucoffin/faster-fixes",
+      reviewed: "27 September 2026",
+    },
+    originals: {
+      status: "yes",
+      url: "https://github.com/manucoffin/faster-fixes",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://github.com/manucoffin/faster-fixes",
+      reviewed: "27 September 2026",
+    },
   },
   siteping: {
-    source: yes("https://github.com/NeosiaNexus/SitePing"),
-    selfHost: note(
-      "components",
-      "https://github.com/NeosiaNexus/SitePing/blob/main/apps/demo/content/docs/index.mdx",
-    ),
-    independent: yes(
-      "https://github.com/NeosiaNexus/SitePing/blob/main/apps/demo/content/docs/adapters/localstorage.mdx",
-    ),
-    storage: note(
-      "components",
-      "https://github.com/NeosiaNexus/SitePing/blob/main/apps/demo/content/docs/adapters/prisma.mdx",
-    ),
-    extension: no("https://github.com/NeosiaNexus/SitePing/tree/main/packages"),
-    drawing: no(
-      "https://github.com/NeosiaNexus/SitePing/blob/main/apps/demo/content/docs/index.mdx",
-    ),
-    mcp: no("https://github.com/NeosiaNexus/SitePing/tree/main/packages"),
-    video: no("https://github.com/NeosiaNexus/SitePing/tree/main/packages"),
-    github: no("https://github.com/NeosiaNexus/SitePing/tree/main/packages"),
-    expertise: no("https://github.com/NeosiaNexus/SitePing/tree/main/packages"),
+    source: {
+      status: "yes",
+      url: "https://github.com/NeosiaNexus/SitePing",
+      reviewed: "27 September 2026",
+    },
+    selfHost: {
+      status: "components",
+      url: "https://github.com/NeosiaNexus/SitePing/blob/main/apps/demo/content/docs/index.mdx",
+      reviewed: "27 September 2026",
+    },
+    independent: {
+      status: "yes",
+      url: "https://github.com/NeosiaNexus/SitePing/blob/main/apps/demo/content/docs/adapters/localstorage.mdx",
+      reviewed: "27 September 2026",
+    },
+    pins: {
+      status: "yes",
+      url: "https://github.com/NeosiaNexus/SitePing",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://github.com/NeosiaNexus/SitePing",
+      reviewed: "27 September 2026",
+    },
+    diagnostics: {
+      status: "yes",
+      url: "https://github.com/NeosiaNexus/SitePing",
+      reviewed: "27 September 2026",
+    },
   },
   openreplay: {
-    source: yes("https://github.com/openreplay/openreplay"),
-    selfHost: yes("https://github.com/openreplay/openreplay"),
-    independent: yes("https://docs.openreplay.com/en/deployment/"),
-    storage: yes("https://docs.openreplay.com/en/configuration/external-storage/"),
-    extension: yes("https://docs.openreplay.com/en/spot/"),
-    mcp: yes("https://docs.openreplay.com/en/mcp/setup/"),
-    video: yes("https://docs.openreplay.com/en/spot/"),
-    drawing: no("https://docs.openreplay.com/en/spot/"),
-    github: yes("https://docs.openreplay.com/en/integrations/github/"),
-    expertise: no("https://docs.openreplay.com/en/mcp/setup/"),
+    source: {
+      status: "yes",
+      url: "https://github.com/openreplay/openreplay",
+      reviewed: "27 September 2026",
+    },
+    selfHost: {
+      status: "yes",
+      url: "https://github.com/openreplay/openreplay",
+      reviewed: "27 September 2026",
+    },
+    independent: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/deployment/",
+      reviewed: "27 September 2026",
+    },
+    storage: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/configuration/external-storage/",
+      reviewed: "27 September 2026",
+    },
+    extension: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/spot/",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/mcp/setup/",
+      reviewed: "27 September 2026",
+    },
+    video: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/spot/",
+      reviewed: "27 September 2026",
+    },
+    github: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/integrations/github/",
+      reviewed: "27 September 2026",
+    },
+    microphone: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/spot/",
+      reviewed: "27 September 2026",
+    },
+    pauseVideo: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/spot/",
+      reviewed: "27 September 2026",
+    },
+    diagnostics: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/spot/",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://docs.openreplay.com/en/mcp/setup/",
+      reviewed: "27 September 2026",
+    },
+    replay: {
+      status: "yes",
+      url: "https://github.com/openreplay/openreplay",
+      reviewed: "27 September 2026",
+    },
   },
   bugherd: {
-    ...hosted("https://bugherd.com/pricing"),
-    extension: yes(
-      "https://support.bugherd.com/en/articles/11424451-bugherd-browser-extensions",
-    ),
-    mcp: yes("https://bugherd.com/feature/mcp"),
-    video: yes("https://bugherd.com/blog/record-website"),
-    github: yes(
-      "https://support.bugherd.com/en/articles/11430519-bugherd-and-github-integration",
-    ),
-    drawing: yes("https://bugherd.com/website-annotation-tool"),
-    expertise: no("https://bugherd.com/feature/mcp"),
+    extension: {
+      status: "yes",
+      url: "https://support.bugherd.com/en/articles/11424451-bugherd-browser-extensions",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://bugherd.com/feature/mcp",
+      reviewed: "27 September 2026",
+    },
+    video: {
+      status: "yes",
+      url: "https://bugherd.com/features",
+      reviewed: "27 September 2026",
+    },
+    github: {
+      status: "yes",
+      url: "https://bugherd.com/features",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://bugherd.com/website-annotation-tool",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://bugherd.com/features",
+      reviewed: "27 September 2026",
+    },
+    pins: {
+      status: "yes",
+      url: "https://bugherd.com/features",
+      reviewed: "27 September 2026",
+    },
+    microphone: {
+      status: "yes",
+      url: "https://bugherd.com/features",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://bugherd.com/feature/mcp",
+      reviewed: "27 September 2026",
+    },
+    discussion: {
+      status: "yes",
+      url: "https://bugherd.com/feature/mcp",
+      reviewed: "27 September 2026",
+    },
   },
   "marker-io": {
-    ...hosted("https://marker.io/website-annotation-tool"),
-    extension: yes("https://help.marker.io/en/articles/6495644-browser-extensions"),
-    drawing: yes(
-      "https://help.marker.io/en/articles/5546520-how-to-integrate-marker-io-into-your-web-app",
-    ),
-    mcp: yes(
-      "https://help.marker.io/en/articles/14034657-mcp-integration-model-context-protocol",
-    ),
-    video: yes("https://marker.io/features/session-replay"),
-    github: yes(
-      "https://help.marker.io/en/articles/5546520-how-to-integrate-marker-io-into-your-web-app",
-    ),
-    expertise: no(
-      "https://help.marker.io/en/articles/14034657-mcp-integration-model-context-protocol",
-    ),
+    extension: {
+      status: "yes",
+      url: "https://help.marker.io/en/articles/6495644-browser-extensions",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://marker.io/features/website-feedback-widget",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://help.marker.io/en/articles/14034657-mcp-integration-model-context-protocol",
+      reviewed: "27 September 2026",
+    },
+    github: {
+      status: "yes",
+      url: "https://marker.io/features/website-feedback-widget",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://marker.io/features/website-feedback-widget",
+      reviewed: "27 September 2026",
+    },
+    redact: {
+      status: "yes",
+      url: "https://marker.io/features/website-feedback-widget",
+      reviewed: "27 September 2026",
+    },
+    replay: {
+      status: "yes",
+      url: "https://marker.io/features/session-replay",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://help.marker.io/en/articles/14034657-mcp-integration-model-context-protocol",
+      reviewed: "27 September 2026",
+    },
   },
   "markup-io": {
-    ...hosted("https://www.markup.io/"),
-    extension: yes("https://www.markup.io/blog/how-to-annotate-on-google-chrome/"),
-    drawing: yes("https://www.markup.io/"),
-    video: no("https://www.markup.io/"),
-    expertise: no("https://www.markup.io/"),
+    extension: {
+      status: "yes",
+      url: "https://www.markup.io/",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://www.markup.io/",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://www.markup.io/",
+      reviewed: "27 September 2026",
+    },
+    pins: {
+      status: "yes",
+      url: "https://www.markup.io/",
+      reviewed: "27 September 2026",
+    },
+    originals: {
+      status: "yes",
+      url: "https://www.markup.io/",
+      reviewed: "27 September 2026",
+    },
+    highlighter: {
+      status: "yes",
+      url: "https://www.markup.io/",
+      reviewed: "27 September 2026",
+    },
+    discussion: {
+      status: "yes",
+      url: "https://www.markup.io/",
+      reviewed: "27 September 2026",
+    },
+    resolved: {
+      status: "yes",
+      url: "https://www.markup.io/",
+      reviewed: "27 September 2026",
+    },
   },
   "markup-hero": {
-    ...hosted("https://markuphero.com/"),
-    extension: yes("https://markuphero.com/integrations/chrome-extension.html"),
-    drawing: yes("https://markuphero.com/integrations/chrome-extension.html"),
-    video: no("https://markuphero.com/"),
-    expertise: no("https://markuphero.com/"),
+    extension: {
+      status: "yes",
+      url: "https://markuphero.com/integrations/chrome-extension.html",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://markuphero.com/integrations/chrome-extension.html",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://markuphero.com/integrations/chrome-extension.html",
+      reviewed: "27 September 2026",
+    },
+    fullPage: {
+      status: "yes",
+      url: "https://markuphero.com/integrations/chrome-extension.html",
+      reviewed: "27 September 2026",
+    },
+    highlighter: {
+      status: "yes",
+      url: "https://markuphero.com/integrations/chrome-extension.html",
+      reviewed: "27 September 2026",
+    },
+    pdfExport: {
+      status: "yes",
+      url: "https://markuphero.com/integrations/chrome-extension.html",
+      reviewed: "27 September 2026",
+    },
+    rasterExport: {
+      status: "partial",
+      url: "https://markuphero.com/integrations/chrome-extension.html",
+      reviewed: "27 September 2026",
+      detail: "PNG download confirmed. JPEG and WebP export not verified.",
+    },
   },
   "redpen-ai": {
-    ...hosted("https://www.redpen.ai/getting-started"),
-    extension: yes("https://www.redpen.ai/getting-started"),
-    drawing: yes("https://www.redpen.ai/getting-started"),
-    video: yes("https://www.redpen.ai/getting-started"),
-    github: yes("https://www.redpen.ai/getting-started"),
-    expertise: no("https://www.redpen.ai/getting-started"),
+    extension: {
+      status: "yes",
+      url: "https://www.redpen.ai/getting-started",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://www.redpen.ai/getting-started",
+      reviewed: "27 September 2026",
+    },
+    video: {
+      status: "yes",
+      url: "https://www.redpen.ai/getting-started",
+      reviewed: "27 September 2026",
+    },
+    github: {
+      status: "yes",
+      url: "https://www.redpen.ai/getting-started",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://www.redpen.ai/getting-started",
+      reviewed: "27 September 2026",
+    },
   },
   pastel: {
-    ...hosted(
-      "https://help.usepastel.com/en/articles/16399951-connecting-pastel-to-cursor",
-    ),
-    extension: yes(
-      "https://help.usepastel.com/en/articles/8168731-pastel-chrome-extension",
-    ),
-    drawing: no("https://usepastel.com/website-annotation-tool"),
-    video: no("https://usepastel.com/website-annotation-tool"),
-    mcp: yes(
-      "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
-    ),
-    expertise: no(
-      "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
-    ),
+    screenshots: {
+      status: "yes",
+      url: "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
+      reviewed: "27 September 2026",
+    },
+    extension: {
+      status: "yes",
+      url: "https://help.usepastel.com/en/articles/8168731-pastel-chrome-extension",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
+      reviewed: "27 September 2026",
+    },
+    pins: {
+      status: "yes",
+      url: "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
+      reviewed: "27 September 2026",
+    },
+    originals: {
+      status: "yes",
+      url: "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
+      reviewed: "27 September 2026",
+    },
+    resolved: {
+      status: "yes",
+      url: "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
+      reviewed: "27 September 2026",
+    },
+    discussion: {
+      status: "yes",
+      url: "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://help.usepastel.com/en/articles/16399713-connect-your-ai-agent-to-pastel-mcp-server",
+      reviewed: "27 September 2026",
+    },
   },
   ruttl: {
-    ...hosted("https://www.ruttl.com/"),
-    extension: yes("https://site.dev.ruttl.com/chrome-extension/"),
-    drawing: yes("https://site.dev.ruttl.com/chrome-extension/"),
-    mcp: yes("https://www.ruttl.com/mcp"),
-    video: yes("https://www.ruttl.com/blog/video-feedback-record-website"),
-    expertise: no("https://www.ruttl.com/mcp"),
+    extension: {
+      status: "yes",
+      url: "https://site.dev.ruttl.com/chrome-extension/",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://site.dev.ruttl.com/chrome-extension/",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://www.ruttl.com/mcp",
+      reviewed: "27 September 2026",
+    },
+    video: {
+      status: "yes",
+      url: "https://www.ruttl.com/blog/video-feedback-record-website",
+      reviewed: "27 September 2026",
+    },
+    discussion: {
+      status: "yes",
+      url: "https://www.ruttl.com/mcp",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://www.ruttl.com/mcp",
+      reviewed: "27 September 2026",
+    },
   },
   superflow: {
-    ...hosted("https://usesuperflow.ai/pricing"),
-    extension: no("https://usesuperflow.ai/screenshots"),
-    drawing: no("https://usesuperflow.ai/screenshots"),
-    mcp: no("https://usesuperflow.ai/tools/mcp"),
-    video: yes("https://usesuperflow.ai/recordings"),
-    github: no("https://usesuperflow.ai/integrations"),
-    expertise: no("https://usesuperflow.ai/tools/mcp"),
+    video: {
+      status: "yes",
+      url: "https://usesuperflow.ai/recordings",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://usesuperflow.ai/screenshots",
+      reviewed: "27 September 2026",
+    },
+    originals: {
+      status: "yes",
+      url: "https://usesuperflow.ai/screenshots",
+      reviewed: "27 September 2026",
+    },
+    pins: {
+      status: "yes",
+      url: "https://usesuperflow.ai/screenshots",
+      reviewed: "27 September 2026",
+    },
+    microphone: {
+      status: "yes",
+      url: "https://usesuperflow.ai/recordings",
+      reviewed: "27 September 2026",
+    },
   },
   usersnap: {
-    ...hosted("https://wf.usersnap.com/pricing"),
-    extension: yes("https://help.usersnap.com/docs/track-browser-extensions"),
-    drawing: yes("https://usersnap.com/quality-assurance"),
-    mcp: yes("https://usersnap.com/integrations/mcp"),
-    video: yes("https://help.usersnap.com/docs/feedback-with-a-screen-recording"),
-    github: yes("https://help.usersnap.com/docs/github"),
-    expertise: no("https://usersnap.com/integrations/mcp"),
+    extension: {
+      status: "yes",
+      url: "https://usersnap.com/features",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://usersnap.com/features",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://usersnap.com/integrations/mcp",
+      reviewed: "27 September 2026",
+    },
+    video: {
+      status: "yes",
+      url: "https://usersnap.com/features",
+      reviewed: "27 September 2026",
+    },
+    github: {
+      status: "yes",
+      url: "https://help.usersnap.com/docs/github",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://usersnap.com/features",
+      reviewed: "27 September 2026",
+    },
+    discussion: {
+      status: "yes",
+      url: "https://usersnap.com/features",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://usersnap.com/integrations/mcp",
+      reviewed: "27 September 2026",
+    },
   },
   userback: {
-    ...hosted("https://userback.io/pricing/"),
-    extension: yes("https://userback.io/feature/browser-extension/"),
-    drawing: yes(
-      "https://support.userback.io/en/articles/5322214-installing-the-userback-browser-extension",
-    ),
-    mcp: yes("https://docs.userback.io/docs/welcome"),
-    video: yes("https://support.userback.io/en/articles/15268500-video-feedback"),
-    github: yes("https://userback.io/integration/github/"),
-    expertise: no("https://docs.userback.io/docs/welcome"),
+    extension: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
+    video: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
+    github: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
+    highlighter: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
+    replay: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
+    diagnostics: {
+      status: "yes",
+      url: "https://userback.io/ai-info/",
+      reviewed: "27 September 2026",
+    },
   },
   atarim: {
-    ...hosted("https://atarim.io/pricing/"),
-    extension: yes(
-      "https://atarim.io/help/visual-collaboration/how-to-use-the-annotation-tools-for-feedback-in-atarim/",
-    ),
-    drawing: yes(
-      "https://atarim.io/help/visual-collaboration/how-to-use-the-annotation-tools-for-feedback-in-atarim/",
-    ),
-    mcp: yes("https://atarim.io/mcp/"),
-    expertise: no("https://atarim.io/mcp/"),
+    extension: {
+      status: "yes",
+      url: "https://atarim.io/help/visual-collaboration/how-to-use-the-annotation-tools-for-feedback-in-atarim/",
+      reviewed: "27 September 2026",
+    },
+    drawing: {
+      status: "yes",
+      url: "https://atarim.io/help/visual-collaboration/how-to-use-the-annotation-tools-for-feedback-in-atarim/",
+      reviewed: "27 September 2026",
+    },
+    mcp: {
+      status: "yes",
+      url: "https://atarim.io/mcp/",
+      reviewed: "27 September 2026",
+    },
+    screenshots: {
+      status: "yes",
+      url: "https://atarim.io/mcp/",
+      reviewed: "27 September 2026",
+    },
+    pins: {
+      status: "yes",
+      url: "https://atarim.io/mcp/",
+      reviewed: "27 September 2026",
+    },
+    originals: {
+      status: "yes",
+      url: "https://atarim.io/mcp/",
+      reviewed: "27 September 2026",
+    },
+    discussion: {
+      status: "yes",
+      url: "https://atarim.io/mcp/",
+      reviewed: "27 September 2026",
+    },
+    agentContext: {
+      status: "yes",
+      url: "https://atarim.io/mcp/",
+      reviewed: "27 September 2026",
+    },
   },
 };

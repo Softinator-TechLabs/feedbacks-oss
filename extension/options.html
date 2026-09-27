@@ -16,7 +16,7 @@
     <div class="settings-layout">
       <nav aria-label="Settings sections">
         <a href="#connection">Server &amp; account</a><a href="#access">Website access</a
-        ><a href="#shortcuts">Review &amp; shortcuts</a
+        ><a href="#defaults">Review defaults</a><a href="#shortcuts">Keyboard shortcuts</a
         ><a href="#updates">Updates &amp; help</a>
       </nav>
       <main>
@@ -77,6 +77,60 @@
             ><button id="grant-sites">Allow all websites</button
             ><button id="manage-access">Manage Chrome permissions</button>
           </div>
+        </section>
+        <section id="defaults" aria-labelledby="defaults-title">
+          <h2 id="defaults-title">Review defaults</h2>
+          <p class="hint">
+            Starting settings for each new review. Page controls let you change the
+            current session.
+          </p>
+          <div class="preference-list">
+            <label class="check"
+              ><input type="checkbox" data-review-default="navigationLocked" />Lock page
+              navigation</label
+            >
+            <label class="check"
+              ><input type="checkbox" data-review-default="highlightEnabled" />Highlight
+              hovered elements</label
+            >
+            <label class="check"
+              ><input type="checkbox" data-review-default="clickIndicators" />Animate
+              clicks</label
+            >
+            <label class="check"
+              ><input type="checkbox" data-review-default="showPins" />Show feedback
+              pins</label
+            >
+            <label class="check"
+              ><input type="checkbox" data-review-default="showResolved" />Include
+              resolved points</label
+            >
+          </div>
+          <h3>Recording defaults</h3>
+          <div class="preference-list">
+            <label class="check"
+              ><input
+                type="checkbox"
+                data-review-default="recordingNavigationLocked"
+              />Lock navigation while recording</label
+            >
+            <label class="check"
+              ><input
+                type="checkbox"
+                data-review-default="recordingHighlightEnabled"
+              />Highlight elements while recording</label
+            >
+            <label class="check"
+              ><input
+                type="checkbox"
+                data-review-default="recordingClickIndicators"
+              />Animate clicks while recording</label
+            >
+          </div>
+          <p class="hint">
+            After recording, your review controls are restored. Tab audio and microphone
+            are chosen separately before recording.
+          </p>
         </section>
         <section id="shortcuts" aria-labelledby="shortcuts-title">
           <h2 id="shortcuts-title">Review &amp; shortcuts</h2>

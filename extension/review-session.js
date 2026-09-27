@@ -1,3 +1,4 @@
+import { reviewDefaults } from "./review-preferences.js";
 import { diagnosticCollector } from "./diagnostics.js";
 // Website routing and opt-in, document-start review. No page is sent to the
 // service until the user opens Feedbacks or explicitly asks to add feedback.
@@ -76,6 +77,7 @@ export function createReviewController({ get, set, authenticated, defaultServer 
       const result = await chrome.tabs.sendMessage(tabId, {
         type: "activate",
         reviewShortcuts: state.reviewShortcuts !== false,
+        reviewDefaults: reviewDefaults(state.reviewDefaults),
         project: {
           id: project.id,
           name: project.name,

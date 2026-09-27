@@ -4,6 +4,7 @@ import prettier from "prettier";
 import { comparisons, reviewed } from "../site/comparison-data.mjs";
 import {
   matrixFeatures,
+  matrixGroups,
   matrixReviewed,
   matrixRows,
 } from "../site/comparison-matrix.mjs";
@@ -61,42 +62,50 @@ function shell({ title, description, canonical, content }) {
 }
 
 const ours = {
+  editing:
+    "Pencil, shapes, text, highlighter, numbered steps, blur, redaction, stickers and movable local images. Copy annotated PNG pixels or download PNG, JPEG, WebP and multi-page PDF. Crop export changes local outputs only.",
+  recording:
+    "Record a short tab video in a separate recorder for up to five active minutes, with pause/resume and separate opt-in tab audio and microphone. Preview, visually trim or crop, then send. Recording is not session replay.",
   capture:
-    "Chrome extension: screenshot any supported web page, draw with the pencil, or record a short tab video after an explicit start and preview. Discuss the result in a project thread.",
+    "Capture visible or full-page screenshots, attach original evidence to element pins, and keep unsent points local until Send. Shared pins and individually resolved points stay linked to the team thread.",
   hosting:
     "Apache-2.0 backend, web app, extension, MCP and CLI. Run them with your PostgreSQL and private S3-compatible storage.",
   agents:
     "Scoped MCP access to the thread, replies, screenshot and owner-approved reviewer guidance. Expertise weights are advisory.",
   handoff:
-    "Clarify requests in the thread. An optional GitHub App can create an Issue from a reviewed draft and sync verified open/closed status when a project opts in; a separately authorized agent handoff also remains available.",
+    "Clarify requests in the thread. An optional GitHub App can create an Issue from a reviewed draft and sync verified open/closed status when a project opts in; an authorized maintainer or separately scoped agent can perform the handoff.",
 };
 
 const statusLabels = {
   yes: "✓",
-  no: "✕",
+  no: "No",
+  unknown: "Not verified",
   paid: "Paid",
+  partial: "Partial",
   required: "External",
   components: "Parts",
   manual: "Manual",
   agent: "Agent",
 };
 
-function matrix(activeSlug) {
+function matrixGroup(group, activeSlug) {
+  const features = group.features;
   const entries = [{ slug: "feedbacks", name: "Feedbacks" }, ...comparisons];
-  const header = matrixFeatures
+  const header = features
     .map(([, label]) => `<th scope="col">${escape(label)}</th>`)
     .join("");
   const rows = entries
     .map((entry) => {
-      const cells = matrixFeatures
+      const cells = features
         .map(([key, label]) => {
           const evidence = matrixRows[entry.slug]?.[key];
           if (!evidence) {
-            return `<td class="matrix-unknown"><span aria-label="${escape(entry.name)}: ${escape(label)} not verified">?</span></td>`;
+            return `<td class="matrix-unknown"><span aria-label="${escape(entry.name)}: ${escape(label)} not verified">Not verified</span></td>`;
           }
           const symbol = statusLabels[evidence.status];
           const value = evidence.status === "yes" ? "Confirmed" : symbol;
-          return `<td class="matrix-${evidence.status}"><a href="${escape(evidence.url)}" ${externalLink} aria-label="${escape(entry.name)}: ${escape(label)}. ${escape(value)}. Read source." title="Read source for ${escape(entry.name)}: ${escape(label)}">${escape(symbol)}</a></td>`;
+          const explanation = `${value}. Checked ${evidence.reviewed}.${evidence.detail ? ` ${evidence.detail}` : ""}`;
+          return `<td class="matrix-${evidence.status}"><a href="${escape(evidence.url)}" ${externalLink} aria-label="${escape(entry.name)}: ${escape(label)}. ${escape(explanation)} Read source." title="${escape(explanation)} Read source for ${escape(entry.name)}: ${escape(label)}">${escape(symbol)}</a></td>`;
         })
         .join("");
       const name =
@@ -106,15 +115,24 @@ function matrix(activeSlug) {
       return `<tr${entry.slug === activeSlug ? ' class="matrix-active"' : ""}><th scope="row">${name}</th>${cells}</tr>`;
     })
     .join("");
-  return `<section class="compare-matrix" aria-labelledby="matrix-heading">
-    <div class="matrix-intro"><h2 id="matrix-heading">The whole field, at a glance.</h2><p>Open any mark to see the evidence.</p></div>
-    <div class="matrix-controls" aria-label="Comparison table navigation"><p>Swipe or use the arrows to see every feature.</p><div><button type="button" class="matrix-prev" aria-label="Previous comparison columns" disabled>←</button><span class="matrix-position" aria-live="polite">Feature 1 of ${matrixFeatures.length}</span><button type="button" class="matrix-next" aria-label="Next comparison columns">→</button></div></div>
-    <div class="matrix-scroll" role="region" aria-label="Feature comparison table" tabindex="0">
-      <table><caption>Feedbacks and 15 website feedback tools, compared by documented capability</caption><thead><tr><th scope="col">Tool</th>${header}</tr></thead><tbody>${rows}</tbody></table>
+  return `<section class="compare-matrix" id="matrix-${group.id}" aria-labelledby="matrix-${group.id}-heading">
+    <div class="matrix-intro"><h2 id="matrix-${group.id}-heading">${escape(group.title)}</h2><p>${escape(group.description)}</p></div>
+    <div class="matrix-controls" aria-label="Comparison table navigation"><p>Swipe or use the arrows to see every feature.</p><div><button type="button" class="matrix-prev" aria-label="Previous comparison columns" disabled>←</button><span class="matrix-position" aria-live="polite">Feature 1 of ${features.length}</span><button type="button" class="matrix-next" aria-label="Next comparison columns">→</button></div></div>
+    <div class="matrix-scroll" role="region" aria-label="${escape(group.title)} comparison table" tabindex="0">
+      <table style="--matrix-columns: ${features.length}"><caption>${escape(group.title)}: Feedbacks and ${comparisons.length} website feedback tools, compared by documented capability</caption><thead><tr><th scope="col">Tool</th>${header}</tr></thead><tbody>${rows}</tbody></table>
     </div>
-    <p class="matrix-key"><strong>✓</strong> Confirmed <span>·</span> <strong>✕</strong> Not documented in the linked public product or edition <span>·</span> <strong>?</strong> Evidence insufficient <span>·</span> <strong>Parts</strong> Components to assemble <span>·</span> <strong>External</strong> Required account <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Agent</strong> Agent handoff with separate GitHub access</p>
-    <p class="matrix-date">Documentation and available public source checked ${matrixReviewed}. A cross describes the documented product or edition, not every private offer or future release. Features and plans can change. Recording means creating a feedback video or session replay, not reviewing an uploaded video. A tick does not imply identical workflows.</p>
+
   </section>`;
+}
+
+function matrix(activeSlug) {
+  return `<div class="comparison-overview">
+    <h2>Compare the details that matter.</h2>
+    <p>${matrixFeatures.length} capabilities across ${matrixGroups.length} tables. Open a confirmed mark for its source and review date. “Not verified” means the available evidence does not establish that capability; it does not mean the tool lacks it.</p>
+    <nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape(group.title)}</a>`).join("")}</nav>
+    <p class="matrix-key"><strong>✓</strong> Confirmed <span>·</span> <strong>No</strong> Explicitly unavailable <span>·</span> <strong>Not verified</strong> Evidence insufficient <span>·</span> <strong>Parts</strong> Components to assemble <span>·</span> <strong>External</strong> Required account <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Some named formats confirmed</p>
+    <p class="matrix-date">Latest review: ${matrixReviewed}. Official vendor sources were reviewed on this date; each sourced cell records its check. Vendor documentation describes available capabilities, which can depend on plan or setup. This is not a hands-on certification. Feedbacks describes the current source; installed and Store versions may differ. A tick does not imply identical workflows.</p>
+    </div>${matrixGroups.map((group) => matrixGroup(group, activeSlug)).join("")}`;
 }
 
 function detail(entry, index) {
@@ -146,13 +164,15 @@ function detail(entry, index) {
       <section class="compare-facts" aria-labelledby="compare-facts-heading">
         <h2 id="compare-facts-heading">How the work moves.</h2>
         ${row("Capture", ours.capture, entry.theirCapture)}
+        ${row("Editing & exports", ours.editing, entry.theirEditing ?? "See the annotation table above for confirmed tools and formats. Specific capabilities without supporting documentation are marked Not verified.")}
+        ${row("Recording", ours.recording, entry.theirRecording ?? "See the recording table above. Video review, session replay, audio sources and recording edits are assessed separately; undocumented capabilities are Not verified.")}
         ${row("Hosting & source", ours.hosting, entry.theirHosting)}
         ${row("Coding agents", ours.agents, entry.theirAI)}
         ${row("Next step", ours.handoff, entry.theirHandoff)}
       </section>
       <aside class="compare-limits">
         <h2>What Feedbacks does today.</h2>
-        <p>Feedbacks is an early 0.x product. Its optional GitHub App requires separate server configuration and repository installation; it creates an Issue only from a reviewed draft and syncs verified open/closed status only after project opt-in. Incoming feedback never creates Issues automatically. The extension can record a short tab video after an explicit start and preview, but Feedbacks does not provide session replay or an AI model subscription. It also offers opt-in project surveys and NPS. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
+        <p>Feedbacks is an early 0.x product. Its optional GitHub App requires separate server configuration and repository installation; it creates an Issue only from a reviewed draft and syncs verified open/closed status only after project opt-in. Incoming feedback never creates Issues automatically. The extension can record a short tab video with a five-minute active limit and 40 MiB size limit. Tab audio and microphone are optional. Visual trimming and frame cropping run locally before Send. Feedbacks does not provide session replay or an AI model subscription. Full-page screenshots retain separate readable sections; the optional combined attachment can be scaled for server limits. Blur is visual softening; use Redact for private pixels. Crop export affects downloads and clipboard copies, not the shared screenshot. It also offers opt-in project surveys and NPS. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
         <p>Reviewer expertise belongs in owner-approved guidance. A private member note or profile field is not automatically shared with an ordinary agent. Guidance helps interpretation but never grants permissions or guarantees how a model will decide.</p>
       </aside>
       <div class="compare-actions"><a class="button primary" href="${store}" ${externalLink}>Get the Chrome extension</a><a href="${source}/blob/HEAD/docs/self-hosting.md" ${externalLink}>Self-host Feedbacks</a></div>
@@ -162,6 +182,8 @@ function detail(entry, index) {
         ${entry.scopeNote ? `<p>${escape(entry.scopeNote)}</p>` : ""}
         <ul>
           <li><a href="${source}/blob/HEAD/docs/why-feedbacks.md" ${externalLink}>Feedbacks product boundaries</a></li>
+          <li><a href="${source}/blob/HEAD/docs/extension.md" ${externalLink}>Feedbacks capture, editing and recording</a></li>
+          <li><a href="${source}/blob/HEAD/docs/agents.md" ${externalLink}>Feedbacks agent context</a></li>
           <li><a href="${source}/blob/HEAD/docs/self-hosting.md" ${externalLink}>Feedbacks self-hosting</a></li>
           ${entry.sources.map(([label, url]) => `<li><a href="${escape(url)}" ${externalLink}>${escape(label)}</a></li>`).join("")}
         </ul>
@@ -181,7 +203,7 @@ function indexPage() {
     canonical,
     content: `<div class="compare-index wrap">
       <h1>Choose where your feedback lives.</h1>
-      <p class="compare-index-intro">Some tools start with a widget. Some start with a recording or a canvas. Feedbacks starts with a screenshot, a pencil mark and a discussion your team and agent can follow on your own server.</p>
+      <p class="compare-index-intro">Some tools start with a widget. Some start with a recording or a canvas. Feedbacks combines screenshots, original evidence for each page pin, annotation and local exports, optional recordings, and a discussion your team and agent can follow on your own server.</p>
       <p class="compare-index-note">Several tools here also offer MCP, self-hosting or both. Each page links to the vendor's own description, and makes the tradeoffs clear.</p>
       ${matrix()}
       ${groups
@@ -232,7 +254,8 @@ for (const [slug, row] of Object.entries(matrixRows)) {
     if (
       !matrixFeatures.some(([feature]) => feature === key) ||
       !statusLabels[evidence.status] ||
-      !/^https:\/\//.test(evidence.url)
+      !/^https:\/\//.test(evidence.url) ||
+      !/^\d{1,2} [A-Za-z]+ \d{4}$/.test(evidence.reviewed)
     ) {
       throw new Error(`Invalid matrix evidence: ${slug}.${key}`);
     }

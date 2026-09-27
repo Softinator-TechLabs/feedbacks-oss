@@ -44,17 +44,17 @@
         credentials and pending drafts in local extension storage. Review actions can
         capture screenshots and page context; submitted feedback goes to that server.
         Review and redact sensitive information before sending. Broad website permission
-        for automatic right-click review is optional.
+        is optional and does not start a review.
       </p>
       <p>
         Review context can include the current page URL and title, viewport size, selected
         text and element details. Loading existing pins sends page context to your chosen
-        server. With optional automatic review enabled, that lookup can happen when you
-        visit a supported page. The extension does not read Chrome's browsing history.
-        Screenshots, annotations and new comments are uploaded only when you submit them.
-        Optional tab video records without audio after you choose a tab in Chrome's
-        picker. You can preview or discard the short recording before explicitly sending
-        it.
+        server. The lookup starts when you explicitly open Feedbacks to review a page. The
+        extension does not read Chrome's browsing history. Screenshots, annotations and
+        new comments are uploaded only when you submit them. Optional video recording
+        starts after you choose a tab in Chrome's picker. Tab audio and microphone are
+        separate options, both off by default. You can preview, trim, crop or discard the
+        recording before explicitly sending it.
       </p>
       <p>
         Feedbacks account names, discussions and connection tokens are used to show and
@@ -64,9 +64,9 @@
         the Limited Use requirements. No remote executable code is loaded.
       </p>
       <p>
-        You can discard local drafts, disconnect an account and turn off automatic review
-        in the extension. Uninstalling removes its local extension storage. Disconnecting
-        or uninstalling does not delete feedback already submitted to a server; ask its
+        You can discard local drafts, disconnect an account and exit review in the
+        extension. Uninstalling removes its local extension storage. Disconnecting or
+        uninstalling does not delete feedback already submitted to a server; ask its
         operator to delete that data or revoke a connection. Retention and backup removal
         depend on that operator's policy.
       </p>
@@ -94,9 +94,10 @@
         extension. The editor lets you inspect and select entries before explicitly
         sharing them with your Feedbacks instance. Collection is bounded to five minutes,
         25 console entries and 50 resource entries. URL credentials, queries and fragments
-        are removed; headers, bodies and cookies are not collected. Redaction is best
-        effort, so review messages and URL paths before sharing. Submitted diagnostics
-        follow your instance operator's access and retention policy.
+        are removed; headers, bodies and cookies are not collected. Resource URLs are
+        limited to origins. Redaction is best effort, so review messages and resource
+        entries before sharing. Submitted diagnostics follow your instance operator's
+        access and retention policy.
       </p>
     </main>
     <footer class="site-footer wrap">

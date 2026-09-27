@@ -93,15 +93,11 @@
         </select>
         <p id="feedback-counts" role="status">Loading feedback…</p>
         <a id="page-feedback" target="_blank" rel="noreferrer">View page threads</a>
+        <div class="control-row">
+          <button id="pins">Hide pins</button><button id="resolved">Show resolved</button>
+        </div>
       </section>
-      <details class="more-actions">
-        <summary>More review tools</summary>
-        <button
-          id="navigation"
-          title="Keep links and forms from leaving this page; menu toggles still work"
-        >
-          Navigation locked
-        </button>
+      <div class="capture-extras control-row" aria-label="More capture options">
         <button
           id="capture-full"
           title="Optional: scrolls the page and adds more images (P)"
@@ -114,11 +110,26 @@
         >
           Record video
         </button>
+      </div>
+      <p class="hint media-cost">
+        More media can increase agent processing and token use.
+      </p>
+      <details class="more-actions">
+        <summary>More review tools</summary>
+        <button
+          id="navigation"
+          title="Keep links and forms from leaving this page; menu toggles still work"
+        >
+          Navigation locked
+        </button>
+        <div class="control-row">
+          <button id="highlight" title="Outline the element under your pointer">
+            Highlight on
+          </button>
+          <button id="clicks" title="Animate mouse clicks">Click indicators on</button>
+        </div>
         <button id="qa-scan">Scan page for QA findings</button>
         <button id="choose">Choose a point</button>
-        <div class="control-row">
-          <button id="pins">Hide pins</button><button id="resolved">Show resolved</button>
-        </div>
       </details>
       <details class="diagnostic-controls">
         <summary>Console &amp; network diagnostics</summary>

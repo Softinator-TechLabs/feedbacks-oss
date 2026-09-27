@@ -19,11 +19,11 @@ test("point lifecycle preserves evidence, permissions and accurate paginated pag
     );
     const project = await ops.executeOperation(owner, "projects.create", {
       name: "Review",
-      origins: ["https://globaljournals.org"],
+      origins: ["https://review.example.com"],
     });
     const other = await ops.executeOperation(owner, "projects.create", {
       name: "Other",
-      origins: ["https://globaljournals.org"],
+      origins: ["https://review.example.com"],
     });
     const invite = await ops.executeOperation(owner, "members.invite", {
       email: "reviewer@example.test",
@@ -43,7 +43,7 @@ test("point lifecycle preserves evidence, permissions and accurate paginated pag
       projectId: project.id,
       body: "Page review",
       context: {
-        url: "https://globaljournals.org/?token=private#heading",
+        url: "https://review.example.com/?token=private#heading",
         viewport: { width: 1440, height: 900 },
         annotations: points,
       },
@@ -83,7 +83,7 @@ test("point lifecycle preserves evidence, permissions and accurate paginated pag
     const list = (extra = {}) =>
       ops.executeOperation(reviewer, "threads.list", {
         projectId: project.id,
-        url: "https://globaljournals.org/",
+        url: "https://review.example.com/",
         includeSummary: true,
         limit: 1,
         ...extra,
@@ -127,8 +127,8 @@ test("point lifecycle preserves evidence, permissions and accurate paginated pag
         context: {
           url:
             n === 202
-              ? "https://globaljournals.org/other"
-              : "https://globaljournals.org/",
+              ? "https://review.example.com/other"
+              : "https://review.example.com/",
           viewport: { width: 390, height: 844 },
           annotations: [{ ...points[0], id: randomUUID() }],
         },
@@ -140,7 +140,7 @@ test("point lifecycle preserves evidence, permissions and accurate paginated pag
     assert.equal(result.summary.points.total, 205);
     assert.equal((await list({ deviceClass: "mobile" })).summary.points.total, 202);
     assert.equal(
-      (await list({ url: undefined, hostname: "globaljournals.org" })).summary.points
+      (await list({ url: undefined, hostname: "review.example.com" })).summary.points
         .total,
       206,
     );

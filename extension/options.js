@@ -41,6 +41,9 @@ async function refresh() {
       $("allow-local").checked = state.allowLocal;
     }
     $("review-shortcuts").checked = state.reviewShortcuts;
+    for (const input of document.querySelectorAll("[data-review-default]"))
+      if (!input.disabled)
+        input.checked = state.reviewDefaults?.[input.dataset.reviewDefault] === true;
     $("connection-status").textContent = state.pending
       ? "Approve the connection in Feedbacks."
       : state.connected
@@ -152,6 +155,29 @@ $("review-shortcuts").onchange = async () => {
     await refresh();
   }
 };
+for (const input of document.querySelectorAll("[data-review-default]")) {
+  input.onchange = async () => {
+    const keepFocus = document.activeElement === input;
+    input.disabled = true;
+    try {
+      await send({
+        type: "saveReviewPreferences",
+        reviewDefaults: {
+          [input.dataset.reviewDefault]: input.checked,
+        },
+      });
+      $("message").textContent = "Defaults saved for your next review.";
+      $("message").dataset.kind = "success";
+    } catch (error) {
+      $("message").textContent = error.message;
+      $("message").dataset.kind = "error";
+    } finally {
+      input.disabled = false;
+      await refresh();
+      if (keepFocus && document.activeElement === document.body) input.focus();
+    }
+  };
+}
 $("check-updates").hidden = Boolean(manifest.update_url);
 $("update-status").textContent = manifest.update_url
   ? "Chrome manages updates for this installation."

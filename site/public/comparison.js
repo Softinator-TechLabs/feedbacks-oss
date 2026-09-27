@@ -25,7 +25,10 @@ for (const matrix of document.querySelectorAll(".compare-matrix")) {
   function move(direction) {
     const step = firstFeature.getBoundingClientRect().width;
     const visible = Math.max(1, Math.floor((scroller.clientWidth - 148) / step));
-    scroller.scrollBy({ left: direction * step * visible, behavior: "smooth" });
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
+    scroller.scrollBy({ left: direction * step * visible, behavior });
   }
 
   previous.addEventListener("click", () => move(-1));

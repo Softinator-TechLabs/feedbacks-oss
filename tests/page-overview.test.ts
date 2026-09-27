@@ -6,13 +6,13 @@ import { readFilters } from "../src/web/review-filters.js";
 
 test("popup scope links preserve the configured server and exact page, website and size filters", () => {
   const server = "https://configured.example.test";
-  const raw = "https://globaljournals.org/journal/?token=private&volume=4#title";
+  const raw = "https://review.example.com/journal/?token=private&volume=4#title";
   for (const [scope, expected] of [
-    ["page", { url: "https://globaljournals.org/journal/?volume=4" }],
-    ["website", { hostname: "globaljournals.org" }],
+    ["page", { url: "https://review.example.com/journal/?volume=4" }],
+    ["website", { hostname: "review.example.com" }],
     [
       "view",
-      { url: "https://globaljournals.org/journal/?volume=4", deviceClass: "mobile" },
+      { url: "https://review.example.com/journal/?volume=4", deviceClass: "mobile" },
     ],
   ] as const) {
     const result = pageOverviewTarget(server, "project-id", raw, 390, scope);

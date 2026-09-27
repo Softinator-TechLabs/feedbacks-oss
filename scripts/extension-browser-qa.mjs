@@ -21,8 +21,9 @@ async function previewDimensions(page) {
     height: images.reduce((sum, image) => sum + image.naturalHeight, 0),
   }));
 }
-const publicCaptureUrl =
-  process.env.FEEDBACKS_QA_PUBLIC_URL || "https://globaljournals.org/";
+const publicCaptureUrl = process.env.FEEDBACKS_QA_PUBLIC_URL;
+if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1" && !publicCaptureUrl)
+  throw Error("Set FEEDBACKS_QA_PUBLIC_URL to the approved website for live capture QA.");
 const profile = await mkdtemp(join(tmpdir(), "feedbacks-extension-browser-"));
 const extension = join(profile, "extension");
 await cp(join(root, "extension"), extension, { recursive: true });
@@ -267,8 +268,16 @@ try {
   });
   assert.equal(
     await control.locator("#capture-full").isVisible(),
-    false,
-    "Full page is secondary",
+    true,
+    "Full page remains directly available beside video",
+  );
+  assert.equal(await control.locator("#record-video").isVisible(), true);
+  const diagnosticsSummary = await control
+    .locator(".diagnostic-controls summary")
+    .boundingBox();
+  assert.ok(
+    diagnosticsSummary.y + diagnosticsSummary.height < 600,
+    "Connected popup's collapsed controls should fit Chrome's popup height",
   );
   const optionsOpened = context.waitForEvent("page");
   await control.locator("#settings").click();
@@ -280,6 +289,122 @@ try {
   await options.locator("#message").filter({ hasText: "saved" }).waitFor();
   assert.equal((await send({ type: "settings" })).reviewShortcuts, false);
   await options.locator("#review-shortcuts").check();
+  await page.bringToFront();
+  const defaultsTabId = await tabId();
+  const navigationDefault = options.locator('[data-review-default="navigationLocked"]');
+  await navigationDefault.focus();
+  await navigationDefault.press("Space");
+  await options.locator("#message").filter({ hasText: "Defaults saved" }).waitFor();
+  await options.waitForFunction(
+    () =>
+      document.activeElement ===
+      document.querySelector('[data-review-default="navigationLocked"]'),
+  );
+  assert.equal((await send({ type: "settings" })).reviewDefaults.navigationLocked, false);
+  await page.bringToFront();
+  // A new default must not silently change a review already in progress.
+  assert.equal(
+    (await send({ type: "popupAction", tabId: defaultsTabId, action: "state" }))
+      .navigationLocked,
+    true,
+  );
+  await page.bringToFront();
+  await send({ type: "popupAction", tabId: defaultsTabId, action: "stop" });
+  await send({ type: "activate", tabId: defaultsTabId });
+  assert.equal(
+    (await send({ type: "popupAction", tabId: defaultsTabId, action: "state" }))
+      .navigationLocked,
+    false,
+  );
+  await navigationDefault.check();
+  await options.locator("#message").filter({ hasText: "Defaults saved" }).waitFor();
+  await options.waitForFunction(
+    () => !document.querySelector('[data-review-default="navigationLocked"]').disabled,
+  );
+  await Promise.all([
+    send({ type: "saveReviewPreferences", reviewDefaults: { showPins: false } }),
+    send({ type: "saveReviewPreferences", reviewDefaults: { showResolved: true } }),
+  ]);
+  const savedDefaults = (await send({ type: "settings" })).reviewDefaults;
+  assert.equal(savedDefaults.showPins, false);
+  assert.equal(savedDefaults.showResolved, true);
+  await send({
+    type: "saveReviewPreferences",
+    reviewDefaults: { showPins: true, showResolved: false },
+  });
+  await page.bringToFront();
+  await send({ type: "popupAction", tabId: defaultsTabId, action: "stop" });
+  await send({ type: "activate", tabId: defaultsTabId });
+  assert.equal(
+    (await send({ type: "popupAction", tabId: defaultsTabId, action: "state" }))
+      .navigationLocked,
+    true,
+  );
+
+  await send({
+    type: "saveReviewPreferences",
+    reviewDefaults: {
+      navigationLocked: false,
+      highlightEnabled: false,
+      clickIndicators: false,
+      recordingNavigationLocked: true,
+      recordingHighlightEnabled: true,
+      recordingClickIndicators: true,
+    },
+  });
+  await page.bringToFront();
+  await send({ type: "popupAction", tabId: defaultsTabId, action: "stop" });
+  await send({ type: "activate", tabId: defaultsTabId });
+  const recordingPreferenceState = async (state) => {
+    await worker.evaluate(
+      ({ tabId, state }) =>
+        chrome.tabs.sendMessage(tabId, { type: "recordingState", state }),
+      { tabId: defaultsTabId, state },
+    );
+    return send({ type: "popupAction", tabId: defaultsTabId, action: "state" });
+  };
+  // Opening the popup again must retain this review's recording defaults too.
+  await send({
+    type: "saveReviewPreferences",
+    reviewDefaults: {
+      recordingNavigationLocked: false,
+      recordingHighlightEnabled: false,
+    },
+  });
+  await send({ type: "activate", tabId: defaultsTabId });
+  for (const state of ["recording", "paused"]) {
+    const controls = await recordingPreferenceState(state);
+    assert.equal(controls.navigationLocked, true);
+    assert.equal(controls.highlightEnabled, true);
+    assert.equal(controls.clickIndicators, true);
+  }
+  const restoredPreferences = await recordingPreferenceState("idle");
+  assert.equal(restoredPreferences.navigationLocked, false);
+  assert.equal(restoredPreferences.highlightEnabled, false);
+  assert.equal(restoredPreferences.clickIndicators, false);
+  await send({
+    type: "saveReviewPreferences",
+    reviewDefaults: {
+      navigationLocked: true,
+      highlightEnabled: true,
+      clickIndicators: true,
+      recordingNavigationLocked: false,
+      recordingHighlightEnabled: false,
+      recordingClickIndicators: true,
+    },
+  });
+  await send({ type: "popupAction", tabId: defaultsTabId, action: "stop" });
+  await send({ type: "activate", tabId: defaultsTabId });
+  await options.reload();
+  await options.locator("#connection-status").filter({ hasText: "Connected" }).waitFor();
+  assert.equal(
+    await options.locator('[data-review-default="navigationLocked"]').isChecked(),
+    true,
+  );
+  await options.locator("#defaults").scrollIntoViewIfNeeded();
+  await options.screenshot({
+    path: join(root, ".local/remaining-todos-qa/review-defaults-desktop.png"),
+  });
   await options.evaluate(() => scrollTo(0, 0));
   await options.screenshot({
     path: join(root, ".local/remaining-todos-qa/settings.png"),
@@ -304,6 +429,10 @@ try {
   await options.screenshot({
     path: join(root, ".local/remaining-todos-qa/settings-mobile.png"),
     fullPage: true,
+  });
+  await options.locator("#defaults").scrollIntoViewIfNeeded();
+  await options.screenshot({
+    path: join(root, ".local/remaining-todos-qa/review-defaults-mobile.png"),
   });
   await options.close();
   await page.bringToFront();
@@ -481,6 +610,8 @@ try {
           .click();
         return {
           moved,
+          visibleGrip: root.querySelectorAll(".drag-grip circle").length === 6,
+          moveHint: root.querySelector(".drag-hint").textContent,
           fits,
           hidden: dock.hidden,
           label: root.querySelector(".drawer-handle").getAttribute("aria-label"),
@@ -490,6 +621,8 @@ try {
     return entry.result;
   }, id);
   assert.equal(dockResult.moved, true);
+  assert.equal(dockResult.visibleGrip, true);
+  assert.match(dockResult.moveHint, /Drag the dotted handle/);
   assert.equal(dockResult.fits, true);
   assert.equal(dockResult.hidden, true);
   assert.doesNotMatch(dockResult.label, /FeedbacksS/);
@@ -1866,8 +1999,53 @@ try {
 
   mode = "short";
   await toFixture();
+  await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
-  await send({ type: "diagnostics", tabId: id, action: "start" });
+  await send({ type: "popupAction", tabId: id, action: "show-controls" });
+  const clickPageControl = async (label) =>
+    worker.evaluate(
+      async ({ tabId, label }) => {
+        const [entry] = await chrome.scripting.executeScript({
+          target: { tabId },
+          args: [label],
+          func: (label) => {
+            const root = globalThis.__feedbacksQaRoot;
+            const button = [...root.querySelectorAll("button")].find(
+              (node) => node.textContent === label,
+            );
+            if (!button || button.disabled) return false;
+            button.click();
+            return true;
+          },
+        });
+        return entry.result;
+      },
+      { tabId: id, label },
+    );
+  for (let attempt = 0; attempt < 30; attempt++) {
+    if (await clickPageControl("Start diagnostics")) break;
+    await page.waitForTimeout(100);
+  }
+  for (let attempt = 0; attempt < 30; attempt++) {
+    if ((await send({ type: "diagnostics", tabId: id, action: "status" })).active) break;
+    await page.waitForTimeout(100);
+  }
+  assert.equal(
+    (await send({ type: "diagnostics", tabId: id, action: "status" })).active,
+    true,
+  );
+  const commentsOpened = context.waitForEvent("page");
+  assert.equal(await clickPageControl("Page comments"), true);
+  const commentsTab = await commentsOpened;
+  await commentsTab.waitForURL(
+    (url) => url.pathname.startsWith("/projects/") && url.searchParams.has("url"),
+  );
+  assert.equal(
+    new URL(commentsTab.url()).searchParams.get("url"),
+    new URL(page.url()).origin + new URL(page.url()).pathname,
+  );
+  await commentsTab.close();
+  await page.bringToFront();
   await page.evaluate(() =>
     console.warn("Synthetic card token PRIVATE-123 should be masked"),
   );
@@ -2267,6 +2445,79 @@ try {
     navigation: true,
     cropExport: true,
     originalRestored: true,
+  };
+  // A recorder retiring after a project switch cannot restore the prior review's state.
+  await page.bringToFront();
+  const switchTabId = await tabId();
+  await send({ type: "activate", tabId: switchTabId });
+  await worker.evaluate(
+    (tabId) =>
+      chrome.tabs.sendMessage(tabId, { type: "recordingState", state: "recording" }),
+    switchTabId,
+  );
+  await send({
+    type: "saveReviewPreferences",
+    reviewDefaults: {
+      navigationLocked: false,
+      highlightEnabled: false,
+      clickIndicators: false,
+    },
+  });
+  const switchLogin = await post("auth.login", {
+    email: access.email,
+    password: access.password,
+  });
+  const switchAuth = { cookie: switchLogin.cookie, csrf: switchLogin.data.csrf };
+  const alternateProject = (
+    await post(
+      "projects.create",
+      {
+        name: "Alternate synthetic review",
+        origins: [new URL(page.url()).origin],
+      },
+      switchAuth,
+    )
+  ).data;
+  // Pairing keys intentionally snapshot project access; refresh the synthetic key
+  // so this test can actually switch to the newly created project.
+  const switchPair = (await post("pairing.request", { name: "Project switch QA" })).data;
+  await post("pairing.approve", { pairingId: switchPair.pairingId }, switchAuth);
+  const switchToken = (
+    await post("pairing.poll", {
+      pairingId: switchPair.pairingId,
+      deviceSecret: switchPair.deviceSecret,
+    })
+  ).data;
+  await worker.evaluate(
+    ({ server, token }) =>
+      chrome.storage.local.set({
+        accounts: { [server]: { token } },
+      }),
+    { server: access.url, token: switchToken.token },
+  );
+  const switchedReview = await send({
+    type: "activate",
+    tabId: switchTabId,
+    projectId: alternateProject.id,
+  });
+  assert.equal(switchedReview.project.id, alternateProject.id);
+  await worker.evaluate(
+    (tabId) => chrome.tabs.sendMessage(tabId, { type: "recordingState", state: "idle" }),
+    switchTabId,
+  );
+  const switchedControls = await send({
+    type: "popupAction",
+    tabId: switchTabId,
+    action: "state",
+  });
+  assert.equal(switchedControls.navigationLocked, false);
+  assert.equal(switchedControls.highlightEnabled, false);
+  assert.equal(switchedControls.clickIndicators, false);
+  results.reviewDefaults = {
+    persisted: true,
+    keyboardFocus: true,
+    recordingRestored: true,
+    projectSwitch: true,
   };
   console.log(JSON.stringify(results));
 } finally {
