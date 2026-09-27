@@ -297,7 +297,8 @@ test("URL review state round-trips filters and safely bounds pagination", () => 
     category: "visualDesign",
     hostname: "example.test",
   });
-  const { projectId, limit, offset, ...expected } = filters;
+  // Summary is a response option, not a saved view filter.
+  const { projectId, limit, offset, includeSummary, ...expected } = filters;
   assert.deepEqual(readFilters(filterQuery(expected, 60)), expected);
   assert.equal(readOffset(filterQuery(expected, 60)), 60);
   for (const invalid of ["offset=-1", "offset=Infinity", "offset=100001", "offset=1.5"])

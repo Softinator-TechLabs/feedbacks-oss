@@ -3,7 +3,6 @@ import { diagnosticCollector } from "./diagnostics.js";
 // service until the user opens Feedbacks or explicitly asks to add feedback.
 export function createReviewController({ get, set, authenticated, defaultServer }) {
   const U = globalThis.FeedbacksUtil;
-  const sites = ["http://*/*", "https://*/*"];
   const scriptId = "feedbacks-instant";
   let css;
   let instantSync = Promise.resolve();
@@ -76,7 +75,12 @@ export function createReviewController({ get, set, authenticated, defaultServer 
       css ||= await (await fetch(chrome.runtime.getURL("content.css"))).text();
       const result = await chrome.tabs.sendMessage(tabId, {
         type: "activate",
-        project: { id: project.id, name: project.name },
+        reviewShortcuts: state.reviewShortcuts !== false,
+        project: {
+          id: project.id,
+          name: project.name,
+          canResolve: project.permissions.canResolve,
+        },
         css,
         instantPoint,
         reviewId,
@@ -103,70 +107,32 @@ export function createReviewController({ get, set, authenticated, defaultServer 
     return work;
   }
   async function applyInstant() {
-    const state = await get(),
-      server = state.server || defaultServer;
-    const enabled =
-      !!state.instantReview &&
-      !!state.accounts?.[server]?.token &&
-      (await chrome.permissions.contains({ origins: ["<all_urls>"] }));
+    // All-site permission is only a pre-grant. It must never start review on
+    // right-click; opening Feedbacks remains the user's explicit start action.
+    if ((await get()).instantReview) await set({ instantReview: false });
     const registered = await chrome.scripting.getRegisteredContentScripts({
       ids: [scriptId],
     });
-    if (enabled && !registered.length)
-      await chrome.scripting.registerContentScripts([
-        {
-          id: scriptId,
-          matches: sites,
-          js: ["utils.js", "frame-dom.js", "instant.js"],
-          runAt: "document_start",
-          allFrames: false,
-          persistAcrossSessions: true,
-        },
-      ]);
-    if (enabled && registered.length)
-      await chrome.scripting.updateContentScripts([
-        {
-          id: scriptId,
-          js: ["utils.js", "frame-dom.js", "instant.js"],
-        },
-      ]);
-    if (!enabled && registered.length)
+    if (registered.length)
       await chrome.scripting.unregisterContentScripts({ ids: [scriptId] });
-    const tabs = await chrome.tabs.query({ url: sites });
+    const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
     await Promise.all(
       tabs.map(async (tab) => {
-        const message = { type: "instantEnabled", enabled };
         try {
-          const response = await chrome.tabs.sendMessage(tab.id, message);
-          if (response?.ok || !enabled) return;
-        } catch {
-          if (!enabled) return;
-        }
-        // Existing documents need the same dormant listener as future navigations.
-        // The granted permission enables only local interactions, not page uploads.
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ["utils.js", "frame-dom.js", "instant.js"],
+          await chrome.tabs.sendMessage(tab.id, {
+            type: "instantEnabled",
+            enabled: false,
           });
-          await chrome.tabs.sendMessage(tab.id, message);
         } catch {} // Chrome-protected pages and closing tabs cannot host content scripts.
       }),
     );
-    return enabled;
+    return false;
   }
   async function enableInstant(tabId) {
     if (!(await chrome.permissions.contains({ origins: ["<all_urls>"] })))
-      throw Error("Allow website access in Chrome to enable instant right-click.");
-    await set({ instantReview: true });
+      throw Error("Allow website access in Chrome first.");
+    await set({ instantReview: false });
     await syncInstant();
-    if (tabId) {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ["utils.js", "frame-dom.js", "instant.js"],
-      });
-      await chrome.tabs.sendMessage(tabId, { type: "instantEnabled", enabled: true });
-    }
     return {};
   }
   async function stop(tabId) {

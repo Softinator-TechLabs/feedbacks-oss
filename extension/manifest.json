@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Feedbacks: Website Review",
-  "version": "0.1.21",
+  "version": "0.1.25",
   "description": "Capture, annotate and discuss website feedback with your team on your chosen Feedbacks server.",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus", "alarms"],
   "optional_host_permissions": ["https://*/*", "http://*/*", "<all_urls>"],
@@ -17,10 +17,12 @@
       "32": "icons/32.png"
     }
   },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
   "commands": {
     "_execute_action": {
       "suggested_key": {
-        "default": "Alt+Shift+F"
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
       }
     }
   },

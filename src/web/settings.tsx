@@ -630,14 +630,14 @@ export function Instructions({ project }: { project: Project }) {
   return (
     <>
       <div className="page-heading">
-        <h1>Approved instructions</h1>
+        <h1>Context for Coding Agent</h1>
         <button type="button" onClick={() => setRefreshVersion((v) => v + 1)}>
           Refresh
         </button>
       </div>
       <p>
-        Set the rules your team and connected agents should follow for this project.
-        Publishing creates a new version; feedback comments do not change these rules.
+        Describe this project, its codebase and the rules your coding agent should follow.
+        A maintainer publishes each version. Feedback comments do not change this context.
       </p>
       <details className="instruction-example compact-details">
         <summary>See an example</summary>
@@ -670,7 +670,7 @@ export function Instructions({ project }: { project: Project }) {
                 }, "Instruction version published.");
               }}
             >
-              <Field label="Instructions for people and agents">
+              <Field label="Context for Coding Agent">
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
@@ -680,7 +680,7 @@ export function Instructions({ project }: { project: Project }) {
                 />
               </Field>
               <button className="primary" disabled={a.busy || !body.trim()}>
-                Publish approved version
+                Publish context
               </button>
               <ActionState action={a} />
             </form>
@@ -701,8 +701,8 @@ export function Instructions({ project }: { project: Project }) {
                 </article>
               ))
             : data && (
-                <Empty title="No approved instructions">
-                  A human maintainer can publish the first version.
+                <Empty title="No project context yet">
+                  A project maintainer can publish the first version.
                 </Empty>
               )}
         </>

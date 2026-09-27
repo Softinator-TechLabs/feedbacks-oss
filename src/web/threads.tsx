@@ -20,6 +20,7 @@ import {
   ThreadDiagnostics,
 } from "./review-tools.js";
 import { MentionInput } from "./mention-input.js";
+import { MarkdownText } from "./markdown-text.js";
 import {
   mentionIds,
   reconcileMentionRanges,
@@ -42,6 +43,19 @@ import {
   useAction,
   useLoad,
 } from "./ui.js";
+export function threadAttachmentLabels(thread: Pick<Thread, "assets">) {
+  const counts = { screenshots: 0, videos: 0, files: 0 };
+  for (const asset of thread.assets ?? []) {
+    if (asset.rendition === "thumbnail") continue;
+    if (asset.contentType?.startsWith("image/")) counts.screenshots++;
+    else if (asset.contentType?.startsWith("video/")) counts.videos++;
+    else counts.files++;
+  }
+  return Object.entries(counts)
+    .filter(([, count]) => count > 0)
+    .map(([kind, count]) => `${count} ${count === 1 ? kind.slice(0, -1) : kind}`);
+}
+
 export function ThreadList({ project, actor }: { project: Project; actor: Actor }) {
   const pageLocation = usePageLocation(),
     query = pageLocation.split("?")[1] ?? "";
@@ -85,7 +99,16 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
         total: number;
         nextOffset: number | null;
         websiteFilters: { domains: string[]; hostnames: string[] };
-      }>("threads.list", { projectId: project.id, ...filters, offset }),
+        summary?: {
+          threads: { open: number; closed: number; total: number };
+          points: { open: number; resolved: number; closed: number; total: number };
+        };
+      }>("threads.list", {
+        projectId: project.id,
+        ...filters,
+        offset,
+        includeSummary: true,
+      }),
     }),
     [project.id, query, version],
     true,
@@ -106,6 +129,15 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
               ? `${data.total} ${data.total === 1 ? "thread" : "threads"}`
               : "Project discussion"}{" "}
           </p>
+          {data?.summary && (
+            <p className="muted">
+              {data.summary.points.open} open · {data.summary.points.resolved} resolved
+              {data.summary.points.closed
+                ? ` · ${data.summary.points.closed} closed`
+                : ""}{" "}
+              points · {data.summary.threads.closed} closed threads in this selection
+            </p>
+          )}
         </div>
         <div className="thread-list-quick-actions">
           {actor.owner && (
@@ -292,82 +324,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                 ) ?? t.assets?.find((asset) => asset.contentType === "image/webp");
               return (
                 <div className="thread-row" key={t.id}>
-                  <a
-                    className={`thread-row-main${image ? " has-thumbnail" : ""}`}
-                    href={`/threads/${t.id}${filterQuery(filters, offset)}`}
-                  >
-                    {image && (
-                      <img
-                        className="thread-row-thumbnail"
-                        src={`${image.url}?preview=list`}
-                        alt=""
-                        width="160"
-                        height="100"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    )}
-                    <div className="thread-summary">
-                      <h2>{t.body}</h2>
-                      {t.topPriority && !project.permissions.canMaintain && (
-                        <span className="thread-priority-label">Top priority</span>
-                      )}
-                      {!!t.tags?.length && (
-                        <div className="tag-list">
-                          {t.tags.map((tag) => (
-                            <span className="tag" key={tag}>
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="meta">
-                        <span>{t.author?.name ?? "Member"}</span>
-                        <span>
-                          {t.context.deviceClass} · {t.context.viewport.width} ×{" "}
-                          {t.context.viewport.height}
-                        </span>
-                        <span>{t.context.url}</span>
-                      </div>
-                    </div>
-                    <div className="thread-stats">
-                      <span>
-                        {t.view?.uniqueLikes ?? 0}{" "}
-                        {t.view?.uniqueLikes === 1 ? "view like" : "view likes"} ·{" "}
-                        {t.replies?.length ?? 0}{" "}
-                        {t.replies?.length === 1 ? "reply" : "replies"}
-                      </span>
-                      <HumanTime at={t.updatedAt} />
-                    </div>
-                  </a>
-                  <div className="thread-row-actions">
-                    <ThreadQuickStatus
-                      thread={t}
-                      canWrite={project.permissions.canWrite}
-                      canResolve={project.permissions.canResolve}
-                      onSaved={(updated) =>
-                        setLoaded((current) => {
-                          if (!current || current.query !== query) return current;
-                          const leavesView =
-                            !showResolved &&
-                            ["resolved", "declined"].includes(updated.work.state);
-                          return {
-                            ...current,
-                            result: {
-                              ...current.result,
-                              items: leavesView
-                                ? current.result.items.filter(
-                                    (item) => item.id !== updated.id,
-                                  )
-                                : current.result.items.map((item) =>
-                                    item.id === updated.id ? updated : item,
-                                  ),
-                              total: current.result.total - (leavesView ? 1 : 0),
-                            },
-                          };
-                        })
-                      }
-                    />
+                  <div className="thread-row-leading">
                     {project.permissions.canMaintain && (
                       <ThreadQuickPriority
                         thread={t}
@@ -389,6 +346,98 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                         }}
                       />
                     )}
+                  </div>
+                  <div className="thread-row-content">
+                    <a
+                      className={`thread-row-main${image ? " has-thumbnail" : ""}`}
+                      href={`/threads/${t.id}${filterQuery(filters, offset)}`}
+                    >
+                      {image && (
+                        <img
+                          className="thread-row-thumbnail"
+                          src={`${image.url}?preview=list`}
+                          alt=""
+                          width="160"
+                          height="100"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      )}
+                      <div className="thread-summary">
+                        <h2>{t.body}</h2>
+                        {t.topPriority && !project.permissions.canMaintain && (
+                          <span className="thread-priority-label">Top priority</span>
+                        )}
+                        {!!t.tags?.length && (
+                          <div className="tag-list">
+                            {t.tags.map((tag) => (
+                              <span className="tag" key={tag}>
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="meta">
+                          <span>{t.author?.name ?? "Member"}</span>
+                          <span>
+                            {t.context.deviceClass} · {t.context.viewport.width} ×{" "}
+                            {t.context.viewport.height}
+                          </span>
+                          <span>{t.context.url}</span>
+                        </div>
+                      </div>
+                      <div className="thread-stats">
+                        <span>
+                          {t.view?.uniqueLikes ?? 0}{" "}
+                          {t.view?.uniqueLikes === 1 ? "view like" : "view likes"} ·{" "}
+                          {t.replies?.length ?? 0}{" "}
+                          {t.replies?.length === 1 ? "reply" : "replies"}
+                        </span>
+                        <HumanTime at={t.updatedAt} />
+                      </div>
+                    </a>
+                    <div className="thread-row-evidence">
+                      <ExternalLink href={t.context.url}>Open website ↗</ExternalLink>
+                      <span>
+                        {t.context.annotations?.filter(
+                          (point) => t.annotationStates?.[point.id]?.state !== "removed",
+                        ).length ?? (t.context.anchor ? 1 : 0)}{" "}
+                        annotations
+                      </span>
+                      {threadAttachmentLabels(t).map((label) => (
+                        <span key={label}>{label}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="thread-row-actions">
+                    <ThreadQuickStatus
+                      thread={t}
+                      canWrite={project.permissions.canWrite}
+                      canResolve={project.permissions.canResolve}
+                      onSaved={(updated) => {
+                        setLoaded((current) => {
+                          if (!current || current.query !== query) return current;
+                          const leavesView =
+                            !showResolved &&
+                            ["resolved", "declined"].includes(updated.work.state);
+                          return {
+                            ...current,
+                            result: {
+                              ...current.result,
+                              items: leavesView
+                                ? current.result.items.filter(
+                                    (item) => item.id !== updated.id,
+                                  )
+                                : current.result.items.map((item) =>
+                                    item.id === updated.id ? updated : item,
+                                  ),
+                              total: current.result.total - (leavesView ? 1 : 0),
+                            },
+                          };
+                        });
+                        setVersion((value) => value + 1);
+                      }}
+                    />
                     {t.response.state === "unanswered" ? (
                       !!t.replies?.length && (
                         <span className="muted">Needs team response</span>
@@ -953,7 +1002,7 @@ export function ThreadDetail({
                   <span>{labels[t.category] ?? t.category}</span>
                 </div>
               )}
-              <p className="message">{t.body}</p>
+              <MarkdownText body={t.body} className="message" />
               {!!t.tags?.length && (
                 <div className="tag-list">
                   {t.tags.map((tag) => (
@@ -964,7 +1013,14 @@ export function ThreadDetail({
                 </div>
               )}
             </article>
-            {!!t.context.annotations?.length && <ReviewEvidence thread={t} />}
+            {!!t.context.annotations?.length && (
+              <ReviewEvidence
+                thread={t}
+                canResolve={project?.permissions.canResolve}
+                canMaintain={project?.permissions.canMaintain}
+                onSaved={setThread}
+              />
+            )}
             {t.assets?.length > 0 && !t.context.annotations?.length && (
               <section className="attachments">
                 <h2 className="sr-only">Attachments</h2>
@@ -1151,7 +1207,7 @@ export function ThreadDetail({
                           </span>
                           <HumanTime at={r.createdAt} />
                         </div>
-                        <p className="message">{r.body}</p>
+                        <MarkdownText body={r.body} className="message" />
                         <DiscussionLike
                           threadId={t.id}
                           replyId={r.id}

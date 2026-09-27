@@ -11,6 +11,14 @@ Feedbacks can create a verified Issue in one connected GitHub repository per pro
 
 Only a project maintainer can connect or disconnect. Use a repository whose access policy matches the feedback you will put in Issues.
 
+### More than one GitHub organization or repository
+
+A GitHub App installation belongs to a GitHub **account** (a personal account or one organization). Selecting three repositories in Softinator-TechLabs grants access only to those three repositories in that organization. To use another organization, [install the same App there separately](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app) and choose its repositories. The Feedbacks server requests a token for the exact repository when it creates an Issue; it does not reuse an installation token from another organization.
+
+If your App is **private**, GitHub permits installation only on the account that owns it. To install it in other organizations, the App owner must [change its visibility](https://docs.github.com/en/apps/maintaining-github-apps/modifying-a-github-app-registration) in the App's **Advanced → Danger zone → Make public** settings. This makes the installation page available to other accounts; each installation still needs an owner to choose and approve repositories. GitHub warns that a public App installed on other accounts cannot be made private again until those installations are removed. Review the App's requested permissions and availability before making that change. You do not need to create one App per organization.
+
+The current Feedbacks project connection accepts **one repository per project**. Separate Feedbacks projects can connect repositories from different GitHub organizations after each installation is approved. For a project involving several repositories, connect the primary Issue repository here and link Issues from the other repositories manually on the thread. Native one-click destination selection and multi-repository status sync are planned; do not assume the current **Create Issue** button can choose a second repository.
+
 ## Create an Issue from feedback
 
 Open a thread. The GitHub bar below its heading shows the current connection and **Create Issue**. One click creates an Issue from the original feedback, links it back to the thread and records a verified URL. Use **Review/edit first** when the text needs adjustment. The button is a deliberate maintainer action; incoming comments never create Issues on their own.

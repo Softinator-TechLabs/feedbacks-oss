@@ -215,3 +215,21 @@ input::file-selector-button {
   color: var(--accent);
   cursor: pointer;
 }
+
+.project-basics-form {
+  row-gap: 12px;
+}
+.project-basics-form > .check {
+  margin-block: 0;
+}
+.project-basics-form > p.muted {
+  margin: -4px 0 4px;
+  font-size: 0.9rem;
+}
+.project-basics-form .project-optional-tools {
+  margin-block: 4px 0;
+  padding-block: 16px 0;
+}
+.project-basics-form .project-optional-tools .check {
+  margin-block: 0;
+}

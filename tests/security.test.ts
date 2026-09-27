@@ -112,6 +112,17 @@ test("private image grants, one-use invite/pairing, scoped resolution and snapsh
     });
     const extension = await ops.auth.authenticate(paired.token);
     assert.equal(extension.kind, "extension");
+    assert.ok(extension.scopes?.includes("threads.status"));
+    await assert.rejects(
+      ops.executeOperation(extension, "threads.status", {
+        threadId: thread.id,
+        revision: (
+          await ops.executeOperation(member, "threads.get", { threadId: thread.id })
+        ).revision,
+        state: "resolved",
+      }),
+      { code: "FORBIDDEN" },
+    );
     assert.equal(
       (await ops.executeOperation(extension, "projects.list", {})).items.length,
       1,

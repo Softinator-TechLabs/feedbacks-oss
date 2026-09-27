@@ -341,6 +341,8 @@ export class Auth {
             "threads.get",
             "threads.create",
             "threads.reply",
+            "threads.status",
+            "threads.annotationStatus",
             "views.get",
             "views.like",
             "assets.upload",

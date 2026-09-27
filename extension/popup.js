@@ -17,7 +17,32 @@ let tab,
   activeServer = "",
   pairingPending = false,
   serverEdited = false;
-$("installed-version").textContent = `Installed extension ${installedVersion}`;
+let overviewTicket = 0;
+async function refreshOverview() {
+  const ticket = ++overviewTicket;
+  $("feedback-counts").textContent = "Loading feedback…";
+  $("page-feedback").removeAttribute("href");
+  const scope = $("feedback-scope").value || "page";
+  try {
+    const result = await send({ type: "pageOverview", tabId: tab.id, scope });
+    if (ticket !== overviewTicket) return;
+    $("page-feedback").href = result.url;
+    $("page-feedback").textContent =
+      scope === "website"
+        ? "View website threads"
+        : scope === "view"
+          ? "View threads at this size"
+          : "View page threads";
+    const summary = result.summary;
+    $("feedback-counts").textContent = summary
+      ? `${summary.points.open} open · ${summary.points.resolved} resolved${summary.points.closed ? ` · ${summary.points.closed} closed` : ""} points · ${summary.threads.total} threads (${summary.threads.closed} closed)${result.drafts ? ` · ${result.drafts} not sent` : ""}`
+      : `${result.total ?? 0} threads · Update the server for point counts.`;
+  } catch (error) {
+    if (ticket === overviewTicket) $("feedback-counts").textContent = error.message;
+  }
+}
+$("feedback-scope").onchange = () => void refreshOverview();
+$("installed-version").textContent = `v${installedVersion}`;
 $("check-updates").hidden = managedUpdates;
 if (managedUpdates)
   $("update-status").textContent = "Chrome manages updates for this installation.";
@@ -26,6 +51,34 @@ const connectionKey = (state) =>
 function showAccess(id, state, label) {
   $(id).className = `is-${state}`;
   $(id).textContent = label;
+}
+async function recentServers() {
+  const { recentServers = [] } = await chrome.storage.sync.get("recentServers");
+  return Array.isArray(recentServers)
+    ? recentServers.filter((value) => typeof value === "string").slice(0, 5)
+    : [];
+}
+async function showRecentServers() {
+  const servers = await recentServers();
+  $("recent-servers").replaceChildren(
+    ...servers.map((server) => {
+      const option = document.createElement("option");
+      option.value = server;
+      return option;
+    }),
+  );
+  return servers;
+}
+async function rememberServer(server) {
+  try {
+    const servers = await recentServers();
+    await chrome.storage.sync.set({
+      recentServers: [server, ...servers.filter((value) => value !== server)].slice(0, 5),
+    });
+    await showRecentServers();
+  } catch {
+    // Browser sync may be unavailable; a successful connection still stands.
+  }
 }
 function hideUpdateNotice() {
   $("update-notice").hidden = true;
@@ -87,8 +140,7 @@ async function start(projectId) {
     $("project").replaceChildren(...result.choices.map((p) => new Option(p.name, p.id)));
     $("project").value = result.project.id;
     $("review-controls").hidden = false;
-    const settings = await send({ type: "settings" });
-    $("page-feedback").href = settings.server + "/projects/" + result.project.id;
+    void refreshOverview();
     const controls = await send({ type: "popupAction", tabId: tab.id, action: "state" });
     const diagnostics = await send({
       type: "diagnostics",
@@ -113,7 +165,14 @@ async function refresh() {
     activeServer = state.server;
     loadedConnection = connectionKey(state);
     pairingPending = state.pending;
-    if (!serverEdited) $("server").value = state.serverDraft ?? state.server;
+    if (!serverEdited) {
+      const servers = await showRecentServers().catch(() => []);
+      $("server").value = state.serverDraft || state.server || servers[0] || "";
+    }
+    $("server-summary").textContent = state.server
+      ? `Server · ${new URL(state.server).host}`
+      : "Choose a Feedbacks server";
+    if (!state.connected) $("server-settings").open = true;
     $("allow-local").checked = !!state.allowLocal;
     $("app").href = state.server + "/";
     $("app").hidden = !state.server;
@@ -148,14 +207,17 @@ async function refresh() {
     );
     showAccess(
       "site-access",
-      state.instantReview && allSites ? "ready" : "off",
-      state.instantReview && allSites ? "On" : "Off",
+      allSites ? "ready" : "off",
+      allSites ? "Allowed" : "Optional",
     );
     showAccess("tab-access", "off", "Not started");
+    $("access-summary").textContent =
+      !state.server || !serverAllowed ? "Needs attention" : "Ready";
+    $("access-summary").className =
+      !state.server || !serverAllowed ? "needs-attention" : "ready";
     $("restore-server-access").hidden = !state.connected || serverAllowed;
-    $("instant").hidden = !state.connected || (state.instantReview && allSites);
+    $("instant").hidden = !state.connected || allSites;
     $("instant-help").hidden = $("instant").hidden;
-    $("disable-instant").hidden = !state.instantReview;
     void refreshRelease(state).catch(() => {});
     [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (state.connected) await start();
@@ -201,6 +263,8 @@ async function connect(server) {
     throw Error("Allow access to your Feedbacks server to connect.");
   }
   await send({ type: "finishPair" });
+  await rememberServer(server);
+  $("server-settings").open = false;
   await refresh();
 }
 action("pair", () => connect($("server").value));
@@ -215,10 +279,6 @@ action("instant", async () => {
   // Permission request stays within the button gesture, before any other I/O.
   if (!(await chrome.permissions.request({ origins: ["<all_urls>"] })))
     throw Error("Not enabled. You can still click Feedbacks on each website.");
-  await send({
-    type: "enableInstant",
-    tabId: /^https?:/.test(tab?.url || "") ? tab.id : undefined,
-  });
   await refresh();
 });
 function showDiagnostics(active) {
@@ -240,6 +300,7 @@ for (const id of [
   "qa-scan",
   "choose",
   "pins",
+  "show-controls",
   "resolved",
   "mobile",
   "tablet",
@@ -271,6 +332,8 @@ for (const id of [
     if (id === "pins") $(id).textContent = result.showPins ? "Hide pins" : "Show pins";
     if (id === "resolved")
       $(id).textContent = result.showResolved ? "Hide resolved" : "Show resolved";
+    if (["mobile", "tablet", "desktop", "wide", "resolved"].includes(id))
+      void refreshOverview();
   });
 action("draft", async () => {
   await send({ type: "resume" });
@@ -286,10 +349,6 @@ action("record-video", async () => {
 });
 action("disconnect", async () => {
   await send({ type: "disconnect" });
-  await refresh();
-});
-action("disable-instant", async () => {
-  await send({ type: "disableInstant" });
   await refresh();
 });
 action("check-updates", async () => {
@@ -312,3 +371,20 @@ setInterval(
       .catch(() => {}),
   3000,
 );
+
+chrome.commands
+  .getAll()
+  .then((commands) => {
+    const shortcut = commands.find(
+      (command) => command.name === "_execute_action",
+    )?.shortcut;
+    $("popup-shortcut").textContent = shortcut
+      ? `Open Feedbacks: ${shortcut}.`
+      : "Open Feedbacks using its toolbar icon.";
+  })
+  .catch(() => {});
+
+action("customize-shortcuts", () =>
+  chrome.tabs.create({ url: "chrome://extensions/shortcuts" }),
+);
+action("settings", () => chrome.runtime.openOptionsPage());

@@ -3,6 +3,7 @@ name: "Feedbacks"
 description: "A creative public slate, with a focused review application."
 colors:
   app-oxford: "#17324d"
+  review-draft: "#a43e17"
   site-ink: "#202020"
   site-paper: "#fffdfa"
   site-coral: "#db4939"
@@ -38,6 +39,8 @@ Assets and complete font licensing are documented in [website asset provenance](
 ## Application and extension: focused review tools
 
 Preserve the existing system sans-serif stack, white light-mode surfaces, Oxford actions and theme behavior. Native fields and buttons stay at least 44px high. Group related controls and retain visible keyboard focus. Do not apply the website's oversized headings or rotated compositions to review screens.
+
+Unsent review pins use the rust `review-draft` color and a dashed white border. Published pins remain Oxford. The difference signals local versus shared state before a reviewer opens a tooltip.
 
 Navigation preserves the applied filters and protects unsaved drafts. Optional organization, personal views and diagnostics use disclosure sections. Screenshot comparison preserves image proportions and provides a labeled native range control. Arrow-key navigation must not intercept typing, selectors, sliders or dialogs.
 

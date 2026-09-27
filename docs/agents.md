@@ -35,8 +35,16 @@ See the [API and CLI reference](api.md) for operations and setup. Client-specifi
 
 The optional diagnostics packet contains only entries a reviewer chose to share. It is partial, page-generated evidence. It does not include request bodies, headers or cookies; missing HTTP status is not evidence of success.
 
+Website points carry ordered `context.annotations`. Use `markings[].annotationId` to associate an approved image with its note and element box. A `point-001-original.webp` attachment preserves the original viewport or menu state for that point; `anchor.viewport` and `anchor.capturedAt` describe when it was selected. It can differ from the later `page-visible.webp` or numbered full-page sections. Inspect the original image when investigating that point. Do not project coordinates from one viewport or menu state onto another image without matching markings. The combined image contains continuous page sections only; point originals remain separate. See [extension evidence](extension.md).
+
 ## Plugin and MCP maintenance
 
 `plugins/feedbacks/plugin.json` and `mcp.json` are the portable manifests; compatibility metadata lives under `.codex-plugin/` and `.mcp.json`. `npm test` builds the plugin and exercises both the source and bundled adapters with an MCP SDK client, including discovery and a real thread read. Every business operation uses the shared schemas and authorization layer, with read/write annotations; a tool appearing in discovery does not grant permission to call it.
 
 Follow the official [plugin build guide](https://developers.openai.com/plugins/build/plugins), [Codex MCP guide](https://developers.openai.com/codex/mcp) and [app review requirements](https://developers.openai.com/plugins/deploy/app-review) when preparing a submission. Public distribution needs its own publisher, authentication, endpoint and review evidence. This repository does not claim directory acceptance.
+
+### Point decisions and page totals
+
+Captured `context.annotations` and attachment markings retain the original evidence. Read `annotationStates[annotationId]` for separately attributed open/resolved/removed decisions. Thread resolution/decline closes active points; a later reopen preserves their individual decisions. Removed points remain historical evidence, including their baked screenshot marks.
+
+`threads.annotationStatus` requires the current thread revision and an explicit token scope. Resolution also requires resolve permission; remove/restore requires maintain permission. Existing tokens do not gain this scope automatically. `threads.list` with `includeSummary: true` returns aggregate thread/point totals for the selected project, page/hostname and device filters, independent of pagination.

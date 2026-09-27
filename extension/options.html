@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Settings · Feedbacks</title>
+    <link rel="stylesheet" href="appearance.css" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header>
+      <a href="https://feedbacks.softinator.ai/docs/" target="_blank" rel="noreferrer"
+        >Feedbacks</a
+      ><span id="version"></span>
+    </header>
+    <div class="settings-layout">
+      <nav aria-label="Settings sections">
+        <a href="#connection">Server &amp; account</a><a href="#access">Website access</a
+        ><a href="#shortcuts">Review &amp; shortcuts</a
+        ><a href="#updates">Updates &amp; help</a>
+      </nav>
+      <main>
+        <h1>Extension settings</h1>
+        <p class="intro">Connection, permissions and review controls.</p>
+        <p id="message" role="status" aria-live="polite"></p>
+        <section id="connection" aria-labelledby="connection-title">
+          <h2 id="connection-title">Server &amp; account</h2>
+          <p id="connection-status" role="status"></p>
+          <label for="server">Feedbacks server</label>
+          <input
+            id="server"
+            type="url"
+            list="recent-servers"
+            placeholder="https://feedback.example.com"
+            autocomplete="url"
+          />
+          <datalist id="recent-servers"></datalist>
+          <p class="hint">
+            Choose a recently used address or enter your team’s server. Changing servers
+            requires approval on that server.
+          </p>
+          <label class="check"
+            ><input id="allow-local" type="checkbox" />Allow local HTTP development
+            server</label
+          >
+          <div class="actions">
+            <button id="connect" class="primary">Connect to server</button
+            ><button id="disconnect">Disconnect account</button
+            ><a id="open-server" target="_blank" rel="noreferrer" hidden
+              >Open Feedbacks</a
+            >
+          </div>
+          <p class="hint">
+            Recent addresses can sync with your Chrome profile. Account tokens stay on
+            this device. Uninstalling can erase local settings; reload an unpacked update
+            to keep them.
+          </p>
+        </section>
+        <section id="access" aria-labelledby="access-title">
+          <h2 id="access-title">Website access</h2>
+          <dl>
+            <div>
+              <dt>Server access</dt>
+              <dd id="server-access">Checking…</dd>
+            </div>
+            <div>
+              <dt>Access on all websites</dt>
+              <dd id="site-access">Checking…</dd>
+            </div>
+          </dl>
+          <p>
+            Review starts when you open Feedbacks. Allowing all websites makes access
+            easier; it does not start reviews or send captures automatically.
+          </p>
+          <div class="actions">
+            <button id="grant-server" hidden>Allow server access</button
+            ><button id="grant-sites">Allow all websites</button
+            ><button id="manage-access">Manage Chrome permissions</button>
+          </div>
+        </section>
+        <section id="shortcuts" aria-labelledby="shortcuts-title">
+          <h2 id="shortcuts-title">Review &amp; shortcuts</h2>
+          <label class="check"
+            ><input id="review-shortcuts" type="checkbox" />Use single-key shortcuts
+            during review</label
+          >
+          <p class="hint">
+            They pause while you type in a field, comment or editor. Turning this off
+            keeps every action available through buttons.
+          </p>
+          <dl class="keys">
+            <div>
+              <dt><kbd>S</kbd></dt>
+              <dd>Capture the visible view and saved point images</dd>
+            </div>
+            <div>
+              <dt><kbd>M</kbd> <kbd>T</kbd> <kbd>D</kbd></dt>
+              <dd>Mobile, tablet or desktop preview</dd>
+            </div>
+            <div>
+              <dt><kbd>W</kbd></dt>
+              <dd>Restore the window size</dd>
+            </div>
+            <div>
+              <dt><kbd>R</kbd></dt>
+              <dd>Exit review</dd>
+            </div>
+          </dl>
+          <p id="opening-shortcut"></p>
+          <button id="customize-shortcuts">Customize opening shortcut in Chrome</button>
+          <p class="hint">
+            Chrome controls the shortcut that opens the extension. In-review keys are
+            listed above.
+          </p>
+          <details>
+            <summary>Full-page capture (optional)</summary>
+            <p>
+              <kbd>P</kbd> scrolls the page and captures additional images. Use it when
+              the whole page matters. Visible capture already includes the saved original
+              view for each point, including closed menus.
+            </p>
+          </details>
+          <h3>Keep page controls out of the way</h3>
+          <p>
+            Drag the grip to move the Feedbacks dock. Collapse the panel or hide it, then
+            reopen the Chrome extension to restore it. <strong>Exit</strong> is always
+            available on the dock. Pin the extension using Chrome’s puzzle menu for quick
+            access.
+          </p>
+        </section>
+        <section id="updates" aria-labelledby="updates-title">
+          <h2 id="updates-title">Updates &amp; help</h2>
+          <p id="update-status" role="status"></p>
+          <div class="actions">
+            <button id="check-updates">Check for updates</button
+            ><a id="download-update" target="_blank" rel="noreferrer" hidden
+              >Download update</a
+            ><a
+              href="https://feedbacks.softinator.ai/docs/guide/chrome-extension"
+              target="_blank"
+              rel="noreferrer"
+              >Extension guide</a
+            >
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="utils.js"></script>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
