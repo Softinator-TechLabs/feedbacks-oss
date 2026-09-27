@@ -13,18 +13,24 @@
       <h1>Record a short tab video</h1>
       <p id="target"></p>
       <p class="hint">
-        Choose the website tab shown below in Chrome's picker. Recording starts only when
-        you click Start recording. It has no audio and stops after 30 seconds or at 8 MiB.
-        Review the video and discard it if you selected another tab. Only your selected
-        project can access an uploaded recording. Your server operator controls retention;
-        Feedbacks has no automatic deletion timer.
+        Choose your website tab in Chrome's picker. No audio · up to 30 seconds.
       </p>
       <div class="controls">
         <button id="start" class="primary" disabled>Start recording</button>
+        <button id="pause" hidden>Pause recording</button>
         <button id="stop" hidden>Stop recording</button>
         <button id="discard" hidden>Discard recording</button>
       </div>
       <p id="timer" role="status"></p>
+      <details class="hint">
+        <summary>Recording &amp; privacy</summary>
+        <p>
+          Recording stops at 30 seconds or 8 MiB. Review or discard it before sending,
+          especially if you selected another tab. Only your selected project can access an
+          uploaded recording. Your server operator controls retention; Feedbacks has no
+          automatic deletion timer.
+        </p>
+      </details>
       <video
         id="preview"
         controls

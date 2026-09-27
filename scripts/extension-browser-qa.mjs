@@ -302,6 +302,23 @@ try {
       await chrome.scripting.executeScript({
         target: { tabId },
         func: () => {
+          window.addEventListener(
+            "pointerdown",
+            (event) => {
+              if (event.button !== 2) return;
+              const start = performance.now();
+              requestAnimationFrame(() => {
+                const root = globalThis.__feedbacksQaRoot;
+                globalThis.__pointFirstPaint = {
+                  elapsed: performance.now() - start,
+                  visible:
+                    !root.querySelector(".point-menu").classList.contains("hidden") &&
+                    getComputedStyle(root.host).display !== "none",
+                };
+              });
+            },
+            { capture: true },
+          );
           const attach = Element.prototype.attachShadow;
           Element.prototype.attachShadow = function (options) {
             const shadow = attach.call(this, options);
@@ -388,6 +405,51 @@ try {
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
+  const sendFromReview = (message) =>
+    worker.evaluate(
+      async ({ tabId, message }) =>
+        (
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: (message) => chrome.runtime.sendMessage(message),
+            args: [message],
+          })
+        )[0].result,
+      { tabId: id, message },
+    );
+  // Default navigation lock leaves menus usable but prevents leaving the page.
+  await page.getByRole("link", { name: "Broken same-origin link" }).click();
+  assert.equal(new URL(page.url()).pathname, "/review");
+  const formBlocked = await page.evaluate(() => {
+    const form = document.createElement("form");
+    document.body.append(form);
+    const event = new Event("submit", { bubbles: true, cancelable: true });
+    form.dispatchEvent(event);
+    form.remove();
+    return event.defaultPrevented;
+  });
+  assert.equal(formBlocked, true);
+  const unlocked = await send({ type: "popupAction", tabId: id, action: "navigation" });
+  assert.equal(unlocked.navigationLocked, false);
+  const defaultAllowed = await page
+    .getByRole("link", { name: "Broken same-origin link" })
+    .evaluate((link) => {
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+      let allowed;
+      window.addEventListener(
+        "click",
+        (e) => {
+          allowed = !e.defaultPrevented;
+          e.preventDefault();
+        },
+        { once: true },
+      );
+      link.dispatchEvent(event);
+      return allowed;
+    });
+  assert.equal(defaultAllowed, true);
+  await send({ type: "popupAction", tabId: id, action: "navigation" });
+
   const dockResult = await worker.evaluate(async (tabId) => {
     const [entry] = await chrome.scripting.executeScript({
       target: { tabId },
@@ -410,7 +472,7 @@ try {
           moved,
           fits,
           hidden: dock.hidden,
-          label: root.querySelector(".drawer-handle").textContent,
+          label: root.querySelector(".drawer-handle").getAttribute("aria-label"),
         };
       },
     });
@@ -454,7 +516,22 @@ try {
     "Review should highlight a hovered element before selection",
   );
   const menuBounds = await page.locator("#hover-menu").boundingBox();
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+        chrome.runtime.sendMessage = async (message, ...rest) => {
+          if (message.type === "freezeView")
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+          return send(message, ...rest);
+        };
+      },
+    });
+  }, id);
   await page.locator("#hover-menu").evaluate((menu) => {
+    // A transitioning menu must retain its selected visual state during capture.
+    menu.style.transition = "opacity .2s ease, transform .2s ease";
     window.qaMenuMotion = menu.animate(
       [{ transform: "translateY(0px)" }, { transform: "translateY(16px)" }],
       { duration: 1300, iterations: Infinity, direction: "alternate" },
@@ -462,6 +539,24 @@ try {
   });
   await page.mouse.click(menuBounds.x + 20, menuBounds.y + 20, { button: "right" });
   await waitReview((state) => state.ready);
+  const firstPaint = await worker.evaluate(
+    async (tabId) =>
+      (
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => globalThis.__pointFirstPaint,
+        })
+      )[0].result,
+    id,
+  );
+  assert.equal(
+    firstPaint.visible,
+    true,
+    "Comment field must paint before a delayed original capture finishes",
+  );
+  await page.mouse.move(700, 500);
+  await page.keyboard.type("t");
+  await waitReview((state) => state.frozen);
   assert.equal(
     (await inspectReview()).frozen,
     true,
@@ -488,7 +583,7 @@ try {
     "The selected hover state should stay visible while writing the point",
   );
   const typingWidth = await page.evaluate(() => innerWidth);
-  await page.keyboard.type("tKeep this menu visible for review");
+  await page.keyboard.type("Keep this menu visible for review");
   assert.equal(
     await page.evaluate(() => innerWidth),
     typingWidth,
@@ -515,7 +610,7 @@ try {
         const root = globalThis.__feedbacksQaRoot;
         const result = {
           pins: root.querySelectorAll(".saved-draft-pin").length,
-          handle: root.querySelector(".drawer-handle").textContent,
+          handle: root.querySelector(".drawer-handle").getAttribute("aria-label"),
         };
         root.querySelector(".drawer-handle").click();
         const row = root.querySelector(".draft-section li");
@@ -603,6 +698,112 @@ try {
   await page.bringToFront();
   await send({ type: "popupAction", tabId: id, action: "stop" });
   mode = "hover";
+  await toFixture();
+  await exposeReviewRoot();
+  // Canceled captures must never restore UI over a newer point's pixels.
+  await send({ type: "activate", tabId: id });
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+        chrome.runtime.sendMessage = async (message, ...rest) => {
+          if (message.type !== "freezeView") return send(message, ...rest);
+          globalThis.__captureToken = message.key;
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+          return { ok: false, error: "Synthetic capture failure" };
+        };
+      },
+    });
+  }, id);
+  const selectedToken = () =>
+    worker.evaluate(
+      async (tabId) =>
+        (
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => globalThis.__captureToken,
+          })
+        )[0].result,
+      id,
+    );
+  const cancelPoint = () =>
+    worker.evaluate(async (tabId) => {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          [...globalThis.__feedbacksQaRoot.querySelectorAll(".point-menu button")]
+            .find((b) => b.textContent === "Cancel")
+            .click();
+        },
+      });
+    }, id);
+  await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await waitReview((state) => state.ready);
+  await page.waitForTimeout(50);
+  const oldToken = await selectedToken();
+  await worker.evaluate(
+    async ({ id, token }) =>
+      chrome.tabs.sendMessage(id, { type: "preparePointImage", pointToken: token }),
+    { id, token: oldToken },
+  );
+  await cancelPoint();
+  await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await waitReview((state) => state.ready);
+  await page.waitForTimeout(50);
+  const currentToken = await selectedToken();
+  assert.notEqual(oldToken, currentToken);
+  const retainedHidden = await worker.evaluate(
+    async ({ id, oldToken, currentToken }) => {
+      await chrome.tabs.sendMessage(id, {
+        type: "preparePointImage",
+        pointToken: currentToken,
+      });
+      await chrome.tabs.sendMessage(id, {
+        type: "pointImageCaptured",
+        pointToken: oldToken,
+      });
+      const [{ result }] = await chrome.scripting.executeScript({
+        target: { tabId: id },
+        func: () => globalThis.__feedbacksQaRoot.host.style.opacity,
+      });
+      await chrome.tabs.sendMessage(id, {
+        type: "pointImageCaptured",
+        pointToken: currentToken,
+      });
+      return result;
+    },
+    { id, oldToken, currentToken },
+  );
+  assert.equal(retainedHidden, "0");
+  await page.keyboard.type("Keep my comment after image failure");
+  await waitReview((state) => state.tip.includes("Synthetic capture failure"));
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        [...globalThis.__feedbacksQaRoot.querySelectorAll(".point-menu button")]
+          .find((b) => b.textContent === "Save point")
+          .click();
+      },
+    });
+  }, id);
+  await waitReview((state) => state.points === 1);
+  const failedDraft = await worker.evaluate(
+    async (tabId) =>
+      (
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () =>
+            globalThis.__feedbacksQaRoot.querySelector(".draft-section").textContent,
+        })
+      )[0].result,
+    id,
+  );
+  assert.match(failedDraft, /Keep my comment after image failure/);
+  assert.match(failedDraft, /No original image/);
+  results.captureFailure = { textRetained: true, canceledCaptureCannotRevealNewUI: true };
+  await send({ type: "popupAction", tabId: id, action: "stop" });
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "enableInstant", tabId: id });
@@ -1506,12 +1707,21 @@ try {
     page.getByRole("heading", { name: "Controlled page" }),
     "Keep this original through retry",
   );
-  await page.evaluate(() => {
-    let size = 2100;
-    window.qaTimer = setInterval(() => {
-      size = size === 2100 ? 2300 : 2100;
-      document.querySelector("main").style.height = `${size}px`;
-    }, 75);
+  // Move the viewport once after the first full-page step is measured. A height
+  // timer can return to the same height (or grow forever, which capture supports).
+  await worker.evaluate(() => {
+    const send = chrome.tabs.sendMessage.bind(chrome.tabs);
+    chrome.tabs.sendMessage = async (tabId, message, ...rest) => {
+      const response = await send(tabId, message, ...rest);
+      if (message.type === "fullPageScroll") {
+        chrome.tabs.sendMessage = send;
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => scrollBy(0, 8),
+        });
+      }
+      return response;
+    };
   });
   const beforeChanging = await page.evaluate(() => scrollY);
   const changed = await send({ type: "popupAction", tabId: id, action: "capture-full" });
@@ -1743,6 +1953,58 @@ try {
     path: join(root, ".local/remaining-todos-qa/thread-gallery.png"),
   });
   assert.equal(results.seriesReview.galleryImages, 4);
+  await page.bringToFront();
+  await send({ type: "activate", tabId: id });
+  // Real MediaRecorder, deterministic local canvas stream in place of Chrome's
+  // user-operated picker. Do not record a user's desktop in automated tests.
+  const recorderOpened = context.waitForEvent("page");
+  await sendFromReview({ type: "openRecorder" });
+  const recorderPage = await recorderOpened;
+  await recorderPage.waitForLoadState();
+  await recorderPage.locator("#start:enabled").waitFor();
+  await recorderPage.evaluate(() => {
+    navigator.mediaDevices.getDisplayMedia = async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 320;
+      canvas.height = 180;
+      const ctx = canvas.getContext("2d");
+      const draw = () => {
+        ctx.fillStyle = "#17324d";
+        ctx.fillRect(0, 0, 320, 180);
+        ctx.fillStyle = "white";
+        ctx.fillText(String(Date.now()), 20, 50);
+      };
+      draw();
+      const stream = canvas.captureStream(10);
+      const timer = setInterval(draw, 100);
+      const track = stream.getVideoTracks()[0];
+      track.getSettings = () => ({ displaySurface: "browser" });
+      track.addEventListener("ended", () => clearInterval(timer));
+      return stream;
+    };
+  });
+  await recorderPage.locator("#start").click();
+  await page.waitForTimeout(400);
+  assert.equal(
+    (await sendFromReview({ type: "recordingControl", action: "pause" })).ok,
+    true,
+  );
+  await recorderPage.locator("#pause").filter({ hasText: "Resume" }).waitFor();
+  await recorderPage.locator("#timer").filter({ hasText: "Paused" }).waitFor();
+  const pausedText = await recorderPage.locator("#timer").textContent();
+  await page.waitForTimeout(1100);
+  assert.equal(await recorderPage.locator("#timer").textContent(), pausedText);
+  await sendFromReview({ type: "recordingControl", action: "resume" });
+  await recorderPage.locator("#pause").filter({ hasText: "Pause" }).waitFor();
+  await page.waitForTimeout(400);
+  await sendFromReview({ type: "recordingControl", action: "stop" });
+  await recorderPage.locator("#review:visible").waitFor();
+  assert.ok(
+    (await recorderPage.locator("#preview").getAttribute("src")).startsWith("blob:"),
+  );
+  await recorderPage.close();
+  await page.bringToFront();
+  results.recordingControls = { pauseResumeStop: true, preview: true };
   console.log(JSON.stringify(results));
 } finally {
   if (context) await context.close();

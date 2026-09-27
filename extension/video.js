@@ -9,6 +9,8 @@ let stream,
   blob,
   durationMs,
   startedAt,
+  pausedAt = 0,
+  pausedMs = 0,
   tooLarge = false,
   recordingFailed = false;
 let thread,
@@ -17,6 +19,40 @@ let thread,
   target,
   createAttempt,
   createKey = crypto.randomUUID();
+const port = chrome.runtime.connect({ name: "feedbacks-video" });
+let connected = true;
+const recordingElapsed = () => (pausedAt || performance.now()) - startedAt - pausedMs;
+function publishState(state) {
+  if (connected) port.postMessage({ state });
+}
+function pauseOrResume() {
+  if (recorder?.state === "recording") {
+    pausedAt = performance.now();
+    recorder.pause();
+    $("pause").textContent = "Resume recording";
+    status("Paused. Resume or stop to review.");
+    publishState("paused");
+  } else if (recorder?.state === "paused") {
+    pausedMs += performance.now() - pausedAt;
+    pausedAt = 0;
+    recorder.resume();
+    $("pause").textContent = "Pause recording";
+    status("Recording this tab.");
+    publishState("recording");
+  }
+}
+port.onMessage.addListener(({ action }) => {
+  if (action === "stop") stop();
+  if (action === "pause" && recorder?.state === "recording") pauseOrResume();
+  if (action === "resume" && recorder?.state === "paused") pauseOrResume();
+});
+port.onDisconnect.addListener(() => {
+  connected = false;
+  $("start").disabled = true;
+  stop();
+  if (blob || !thread)
+    status("Review connection closed. Review the saved recording here.");
+});
 
 async function send(message) {
   const result = await chrome.runtime.sendMessage(message);
@@ -38,19 +74,25 @@ function clearPreview() {
   $("timer").textContent = "";
 }
 function stop() {
-  if (recorder?.state === "recording") recorder.stop();
+  if (recorder && recorder.state !== "inactive") recorder.stop();
   stream?.getTracks().forEach((track) => track.stop());
   clearInterval(timer);
   $("stop").hidden = true;
+  $("pause").hidden = true;
 }
 function startError(error) {
   stop();
   clearPreview();
-  $("start").disabled = false;
+  $("start").disabled = !connected;
   status(error.message);
 }
 
 $("start").onclick = async () => {
+  if (!connected) {
+    status("Open a new recorder from the current review.");
+    return;
+  }
+  $("start").disabled = true;
   // Keep the native picker in the click gesture. It is the capture consent step.
   try {
     stream = await navigator.mediaDevices.getDisplayMedia({
@@ -59,6 +101,8 @@ $("start").onclick = async () => {
       selfBrowserSurface: "exclude",
       monitorTypeSurfaces: "exclude",
     });
+    if (!connected)
+      throw Error("Review ended. Open a new recorder from the current review.");
     if (stream.getVideoTracks()[0]?.getSettings().displaySurface !== "browser")
       throw Error("Choose a Chrome tab in the picker, then try again.");
     const mimeType = ["video/webm;codecs=vp8", "video/webm"].find((type) =>
@@ -86,16 +130,15 @@ $("start").onclick = async () => {
       chunks.push(event.data);
     };
     recorder.onstop = () => {
-      durationMs = Math.max(
-        1,
-        Math.min(maxMs, Math.round(performance.now() - startedAt)),
-      );
+      durationMs = Math.max(1, Math.min(maxMs, Math.round(recordingElapsed())));
       stream?.getTracks().forEach((track) => track.stop());
       clearInterval(timer);
-      $("start").disabled = false;
+      $("start").disabled = !connected;
       $("stop").hidden = true;
+      $("pause").hidden = true;
       if (tooLarge || recordingFailed || !chunks.length) {
         clearPreview();
+        publishState("idle");
         status(
           tooLarge
             ? "Recording exceeded 8 MiB. Try a shorter clip."
@@ -111,17 +154,24 @@ $("start").onclick = async () => {
       $("preview").hidden = false;
       $("review").hidden = false;
       $("discard").hidden = false;
+      publishState("ready");
       status("Review the recording, then send or discard it.");
     };
     stream.getVideoTracks()[0].addEventListener("ended", stop, { once: true });
     startedAt = performance.now();
+    pausedAt = 0;
+    pausedMs = 0;
     recorder.start(1000);
     $("start").disabled = true;
     $("stop").hidden = false;
+    $("pause").hidden = false;
+    $("pause").textContent = "Pause recording";
+    publishState("recording");
     status("Recording this tab. Stop when the issue is visible.");
     timer = setInterval(() => {
-      const seconds = Math.ceil((maxMs - (performance.now() - startedAt)) / 1000);
-      $("timer").textContent = `${Math.max(0, seconds)} seconds remaining`;
+      const seconds = Math.ceil((maxMs - recordingElapsed()) / 1000);
+      $("timer").textContent =
+        `${recorder.state === "paused" ? "Paused · " : ""}${Math.max(0, seconds)} seconds remaining`;
       if (seconds <= 0) stop();
     }, 250);
   } catch (error) {
@@ -129,9 +179,11 @@ $("start").onclick = async () => {
   }
 };
 $("stop").onclick = stop;
+$("pause").onclick = pauseOrResume;
 $("discard").onclick = () => {
   stop();
   clearPreview();
+  publishState("idle");
   status("Recording discarded.");
 };
 
@@ -187,6 +239,7 @@ $("send").onclick = async () => {
     $("send").hidden = true;
     $("thread").hidden = false;
     status("Video shared with the project.");
+    publishState("sent");
   } catch (error) {
     if (error.code === "CONFLICT" && thread) {
       try {
@@ -226,7 +279,7 @@ else
       });
       serverOrigin = server;
       $("target").textContent = `${project.name} · ${url}`;
-      $("start").disabled = false;
+      $("start").disabled = !connected;
     })
     .catch((error) => status(error.message));
 window.addEventListener("pagehide", stop);

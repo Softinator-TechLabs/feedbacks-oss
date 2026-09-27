@@ -14,6 +14,7 @@ import {
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 import { formatPageQa } from "./page-qa.js";
 import { pageOverviewTarget } from "./page-overview.js";
+import { createRecordingControls } from "./recording-controls.js";
 import {
   videoTarget,
   videoCreateInput,
@@ -34,6 +35,7 @@ const set = async (value) => {
   await ready;
   await chrome.storage.local.set(value);
 };
+const recordings = createRecordingControls({ chrome, sessionFor });
 let polling = false,
   capturing = false,
   sending = false;
@@ -242,13 +244,21 @@ function combinedSections(draft) {
   });
 }
 let lastVisibleCaptureAt = 0;
-async function captureVisibleTab(windowId) {
+async function captureVisibleTab(windowId, beforeCapture, afterCapture) {
   // Chrome permits two visible-tab captures per second across this extension.
   const wait = 650 - (Date.now() - lastVisibleCaptureAt);
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
   lastVisibleCaptureAt = Date.now();
+  const take = async () => {
+    try {
+      await beforeCapture?.();
+      return await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+    } finally {
+      await afterCapture?.();
+    }
+  };
   try {
-    return await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+    return await take();
   } catch (error) {
     if (
       !String(error?.message || error).includes(
@@ -258,7 +268,7 @@ async function captureVisibleTab(windowId) {
       throw error;
     await new Promise((resolve) => setTimeout(resolve, 1100));
     lastVisibleCaptureAt = Date.now();
-    return chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+    return take();
   }
 }
 let draftWrites = Promise.resolve();
@@ -415,7 +425,12 @@ setInterval(pollPair, 3000);
 async function sessionFor(sender) {
   if (!sender.tab || sender.frameId !== 0)
     throw Error("This action requires the selected review page.");
-  const { sessions = {}, server = DEFAULT, accounts = {} } = await get(),
+  await ready;
+  const {
+      sessions = {},
+      server = DEFAULT,
+      accounts = {},
+    } = await chrome.storage.local.get(["sessions", "server", "accounts"]),
     session = sessions[sender.tab.id];
   if (
     !session ||
@@ -1731,6 +1746,9 @@ async function route(message, sender) {
     if (sender.tab && sender.frameId === 0 && message.type === "freezeInstantView")
       throw Error("Open Feedbacks to start reviewing this page.");
     const session = await sessionFor(sender);
+    if (message.type === "openRecorder") return recordings.open(sender);
+    if (message.type === "recordingControl")
+      return recordings.control(sender, message.action);
     if (message.type === "freezeView") {
       const tab = await chrome.tabs.get(sender.tab.id);
       if (!tab.active || tab.windowId !== sender.tab.windowId)
@@ -1746,7 +1764,23 @@ async function route(message, sender) {
         pointToken: message.key,
       });
       if (before.error || started.error) throw Error(before.error || started.error);
-      const image = await captureVisibleTab(tab.windowId);
+      const image = await captureVisibleTab(
+        tab.windowId,
+        async () => {
+          const prepared = await chrome.tabs.sendMessage(tab.id, {
+            type: "preparePointImage",
+            pointToken: message.key,
+          });
+          if (prepared.error) throw Error(prepared.error);
+        },
+        () =>
+          chrome.tabs
+            .sendMessage(tab.id, {
+              type: "pointImageCaptured",
+              pointToken: message.key,
+            })
+            .catch(() => {}),
+      );
       const after = await chrome.tabs.sendMessage(tab.id, {
         type: "captureCheck",
         pointToken: message.key,
@@ -1760,6 +1794,11 @@ async function route(message, sender) {
         started.signature !== after.signature
       )
         throw Error("The page moved before its original view could be saved.");
+      await chrome.tabs.sendMessage(tab.id, {
+        type: "pointImageCaptured",
+        pointToken: message.key,
+        image,
+      });
       const bitmap = await createImageBitmap(await (await fetch(image)).blob());
       if (
         Math.abs(
@@ -1818,6 +1857,7 @@ async function route(message, sender) {
       };
     }
     if (message.type === "stopReview") {
+      recordings.stop(sender.tab.id);
       await chrome.tabs.sendMessage(sender.tab.id, { type: "deactivate" });
       return review.stop(sender.tab.id);
     }
@@ -2005,6 +2045,11 @@ async function route(message, sender) {
         drafts: controls.drafts || 0,
       };
     }
+    case "openRecorder": {
+      const tab = await chrome.tabs.get(message.tabId);
+      if (!tab.active) throw Error("Select the review tab first.");
+      return recordings.open({ tab, frameId: 0, url: tab.url });
+    }
     case "videoContext": {
       const tab = await chrome.tabs.get(message.sourceTabId);
       const session = await sessionFor({ tab, frameId: 0, url: tab.url });
@@ -2095,6 +2140,7 @@ async function route(message, sender) {
       await chrome.storage.local.remove("pair");
       await review.syncInstant();
       for (const tabId of Object.keys(state.sessions || {})) {
+        recordings.stop(Number(tabId));
         await chrome.tabs
           .sendMessage(Number(tabId), { type: "deactivate" })
           .catch(() => {});
@@ -2115,8 +2161,17 @@ async function route(message, sender) {
       });
       return { active: results[0]?.result?.active === true };
     }
-    case "activate":
-      return review.activate(message.tabId, message.projectId);
+    case "activate": {
+      const result = await review.activate(message.tabId, message.projectId);
+      const { sessions = {} } = await chrome.storage.local.get("sessions");
+      await chrome.tabs
+        .sendMessage(message.tabId, {
+          type: "recordingState",
+          state: recordings.state(message.tabId, sessions[message.tabId]?.reviewId),
+        })
+        .catch(() => {});
+      return result;
+    }
     case "enableInstant":
       return review.enableInstant(message.tabId);
     case "disableInstant":
@@ -2162,6 +2217,7 @@ async function route(message, sender) {
       }
       await sessionFor(sender);
       if (message.action === "stop") {
+        recordings.stop(tab.id);
         await chrome.tabs.sendMessage(tab.id, { type: "deactivate" });
         return review.stop(tab.id);
       }
@@ -2170,7 +2226,11 @@ async function route(message, sender) {
         return resize(sender, message.action);
       if (message.action === "choose")
         return chrome.tabs.sendMessage(tab.id, { type: "choosePoint" });
-      if (["pins", "resolved", "state", "show-controls"].includes(message.action))
+      if (
+        ["pins", "resolved", "state", "show-controls", "navigation"].includes(
+          message.action,
+        )
+      )
         return chrome.tabs.sendMessage(tab.id, {
           type: "popupControls",
           action: message.action,
@@ -2253,6 +2313,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   return true;
 });
 chrome.tabs.onRemoved.addListener(async (id) => {
+  recordings.stop(id);
   await clearVideoCreateForTab(chrome.storage.session, id);
   await deleteDraftPages(`point-${id}`);
   const state = await get();
@@ -2265,6 +2326,7 @@ chrome.tabs.onUpdated.addListener((id, change) => {
     change.status === "loading" ||
     (change.url && !change.url.startsWith(chrome.runtime.getURL("video.html")))
   ) {
+    recordings.stop(id);
     clearVideoCreateForTab(chrome.storage.session, id).catch(() => {});
     deleteDraftPages(`point-${id}`).catch(() => {});
   }

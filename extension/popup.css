@@ -286,6 +286,37 @@ footer {
 [hidden] {
   display: none !important;
 }
+.is-paired #connection,
+.is-paired #server-settings,
+.is-paired #connection-settings,
+.is-paired.access-ready .access-status,
+.is-paired #app,
+.is-paired footer {
+  display: none;
+}
+.is-paired #routing {
+  font-size: 12px;
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+#message:empty {
+  display: none;
+}
+.review-heading strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.review-heading button {
+  flex: none;
+}
+.shortcut-help summary {
+  cursor: pointer;
+}
+.diagnostic-controls {
+  margin-top: 10px;
+  font-size: 13px;
+}
 
 .header-links {
   display: flex;
