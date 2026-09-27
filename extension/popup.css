@@ -58,6 +58,54 @@ button {
   margin-top: 16px;
   text-align: center;
 }
+.review-heading,
+.capture-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.review-heading {
+  justify-content: space-between;
+  margin: 8px 0 5px;
+}
+.review-heading strong {
+  font-size: 14px;
+}
+.review-heading button {
+  width: auto;
+  margin: 0;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.capture-row button {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+.viewport-row {
+  margin-top: 8px;
+}
+.viewport-row button {
+  padding: 7px 2px;
+  font-size: 12px;
+  min-height: 36px;
+}
+.shortcut-help {
+  margin: 9px 0 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.shortcut-help kbd {
+  font: inherit;
+  color: var(--text);
+  font-weight: 700;
+}
+.shortcut-help a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
 #connection {
   margin: 0 0 10px;
 }

@@ -262,7 +262,7 @@ const pairing = createPairingCoordinator({
       throw Error("The server returned an invalid approval address.");
     await set({
       server: origin,
-      instantReview: true,
+      instantReview: false,
       allowLocal,
       pair: { ...pair, server: origin, nextAt: Date.now() + 3000 },
     });
@@ -1576,44 +1576,12 @@ async function route(message, sender) {
     sender.url?.startsWith(chrome.runtime.getURL("popup.html"));
   if (!trusted) {
     if (sender.tab && sender.frameId === 0 && message.type === "instantStatus") {
-      const state = await get(),
-        server = state.server || DEFAULT;
-      return {
-        enabled:
-          !!state.instantReview &&
-          !!state.accounts?.[server]?.token &&
-          (await chrome.permissions.contains({ origins: ["<all_urls>"] })),
-      };
+      return { enabled: false };
     }
-    if (sender.tab && sender.frameId === 0 && message.type === "instantStart") {
-      const state = await get();
-      if (
-        !state.instantReview ||
-        !(await chrome.permissions.contains({ origins: ["<all_urls>"] }))
-      )
-        throw Error("Enable instant right-click in Feedbacks first.");
-      if (state.draft) return openDraft();
-      await review.activate(sender.tab.id, undefined, true);
-      const selected = await chrome.tabs.sendMessage(sender.tab.id, {
-        type: "instantCapturePoint",
-      });
-      if (selected?.error || !selected?.pointToken)
-        throw Error(selected?.error || "Right-click the point again.");
-      await chrome.tabs.sendMessage(sender.tab.id, { type: "openInlinePoint" });
-      return { inline: true };
-    }
-    if (sender.tab && sender.frameId === 0 && message.type === "freezeInstantView") {
-      const state = await get();
-      if (
-        !state.instantReview ||
-        !(await chrome.permissions.contains({ origins: ["<all_urls>"] }))
-      )
-        throw Error("Enable instant right-click in Feedbacks first.");
-      const tab = await chrome.tabs.get(sender.tab.id);
-      if (!tab.active || tab.windowId !== sender.tab.windowId)
-        throw Error("Keep this tab active while commenting.");
-      return { image: await captureVisibleTab(tab.windowId) };
-    }
+    if (sender.tab && sender.frameId === 0 && message.type === "instantStart")
+      throw Error("Open Feedbacks to start reviewing this page.");
+    if (sender.tab && sender.frameId === 0 && message.type === "freezeInstantView")
+      throw Error("Open Feedbacks to start reviewing this page.");
     const session = await sessionFor(sender);
     if (message.type === "freezeView") {
       const tab = await chrome.tabs.get(sender.tab.id);
@@ -1965,6 +1933,31 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     .then((data) => reply({ ok: true, data }))
     .catch((e) => reply({ ok: false, error: e.message, code: e.code }));
   return true;
+});
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (!tab?.id || !/^https?:/.test(tab.url || "")) return;
+  try {
+    if (command === "toggle-review") {
+      const state = await get();
+      const session = state.sessions?.[tab.id];
+      if (session?.origin === new URL(tab.url).origin) {
+        await chrome.tabs.sendMessage(tab.id, { type: "deactivate" });
+        await review.stop(tab.id);
+      } else await review.activate(tab.id);
+    } else if (command === "capture-view" || command === "capture-full") {
+      await route(
+        {
+          type: "popupAction",
+          tabId: tab.id,
+          action: command === "capture-view" ? "capture" : "capture-full",
+        },
+        { url: chrome.runtime.getURL("popup.html") },
+      );
+    }
+  } catch (error) {
+    await set({ captureError: error.message });
+    await chrome.action.openPopup().catch(() => {});
+  }
 });
 chrome.tabs.onRemoved.addListener(async (id) => {
   await clearVideoCreateForTab(chrome.storage.session, id);

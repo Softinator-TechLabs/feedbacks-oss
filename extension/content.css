@@ -171,6 +171,14 @@ button:focus-visible {
   box-shadow: 0 5px 20px rgba(14, 52, 80, 0.22);
   z-index: 2147483645;
 }
+.hover-target {
+  position: fixed;
+  pointer-events: none;
+  border: 2px solid #347dbc;
+  border-radius: 5px;
+  background: rgba(52, 125, 188, 0.08);
+  z-index: 2147483643;
+}
 .draft-pin {
   display: grid;
   place-items: center;
@@ -243,11 +251,18 @@ button:focus-visible {
   padding: 3px 8px;
 }
 .saved-draft-pin {
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 2147483646;
-  background: #fff;
-  color: #17324d;
-  border: 2px dashed #17324d;
+  background: #a43e17;
+  color: #fff;
+  border: 2px dashed #fff;
+  box-shadow: 0 4px 14px rgba(83, 31, 12, 0.32);
+  cursor: pointer;
+}
+.saved-draft-pin:not(:disabled):hover,
+.saved-draft-pin:not(:disabled):focus-visible {
+  background: #873311;
+  color: #fff;
 }
 .point-menu button {
   min-height: 40px;
@@ -328,9 +343,9 @@ button:focus-visible {
     color: white;
   }
   .saved-draft-pin {
-    background: #171e25;
-    color: #d9e6f0;
-    border-color: #d9e6f0;
+    background: #a43e17;
+    color: #fff;
+    border-color: #fff;
   }
   .preview-actions a {
     color: #c3d8e8;

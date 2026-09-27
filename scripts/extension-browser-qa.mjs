@@ -281,6 +281,7 @@ try {
             ready: !!root?.querySelector(".point-menu:not(.hidden)"),
             frozen: !!root?.querySelector(".freeze-frame:not(.hidden)"),
             points: root?.querySelectorAll(".draft-section li").length || 0,
+            meta: root?.querySelector(".bar .meta")?.textContent || "",
             notice: root?.querySelector(".notice")?.textContent || "",
             tip: root?.querySelector(".point-tip")?.textContent || "",
           };
@@ -346,6 +347,21 @@ try {
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
   await page.locator("#hover-host").hover();
+  const liveHover = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () =>
+        !globalThis.__feedbacksQaRoot
+          .querySelector(".hover-target")
+          .classList.contains("hidden"),
+    });
+    return entry.result;
+  }, id);
+  assert.equal(
+    liveHover,
+    true,
+    "Review should highlight a hovered element before selection",
+  );
   await page.locator("#hover-menu").click({ button: "right" });
   await waitReview((state) => state.ready);
   await page.mouse.move(700, 500);
@@ -355,7 +371,13 @@ try {
     true,
     "The selected hover state should stay visible while writing the point",
   );
-  await page.keyboard.type("Keep this menu visible for review");
+  const typingWidth = await page.evaluate(() => innerWidth);
+  await page.keyboard.type("tKeep this menu visible for review");
+  assert.equal(
+    await page.evaluate(() => innerWidth),
+    typingWidth,
+    "Typing t in a comment must not switch to tablet size",
+  );
   await worker.evaluate(async (tabId) => {
     await chrome.scripting.executeScript({
       target: { tabId },
@@ -368,13 +390,64 @@ try {
     });
   }, id);
   await waitReview((state) => state.points === 1);
-  assert.match((await inspectReview()).notice, /not sent/i);
+  const draftPin = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const root = globalThis.__feedbacksQaRoot;
+        const pin = root.querySelector(".saved-draft-pin");
+        const before = { title: pin.title, color: getComputedStyle(pin).backgroundColor };
+        pin.click();
+        return {
+          ...before,
+          editing: !!root.querySelector(
+            '.draft-section textarea[aria-label="Edit point 1"]',
+          ),
+        };
+      },
+    });
+    return entry.result;
+  }, id);
+  assert.match(draftPin.title, /not sent.*screenshot/i);
+  assert.equal(draftPin.editing, true, "Clicking an unsent marker should edit its note");
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const root = globalThis.__feedbacksQaRoot;
+        const row = root.querySelector(".draft-section li");
+        row.querySelector("textarea").value = "Edited before screenshot";
+        [...row.querySelectorAll("button")]
+          .find((button) => button.textContent === "Save")
+          .click();
+      },
+    });
+  }, id);
+  assert.match((await inspectReview()).meta, /not sent/i);
+  const editedPin = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => globalThis.__feedbacksQaRoot.querySelector(".saved-draft-pin")?.title,
+    });
+    return entry.result;
+  }, id);
+  assert.match(editedPin, /Edited before screenshot/);
   assert.equal(
     (await inspectReview()).frozen,
     false,
     "The frozen view should clear after saving",
   );
-  results.hoverPoint = { saved: true, frozenWhileWriting: true };
+  results.hoverPoint = {
+    saved: true,
+    frozenWhileWriting: true,
+    liveHover,
+    draftPinEdited: true,
+    typingWidth,
+  };
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  await send({ type: "activate", tabId: id });
+  await waitReview((state) => state.points === 1);
+  results.hoverPoint.restoredAfterReviewToggle = true;
   await send({ type: "popupAction", tabId: id, action: "stop" });
   mode = "hover";
   await toFixture();
@@ -382,47 +455,20 @@ try {
   await send({ type: "enableInstant", tabId: id });
   await page.locator("#hover-host").hover();
   await page.locator("#hover-menu").click({ button: "right" });
-  let instantState;
-  for (let attempt = 0; attempt < 50; attempt++) {
-    instantState = await worker.evaluate(async (tabId) => {
-      const [entry] = await chrome.scripting.executeScript({
-        target: { tabId },
-        func: () => ({
-          installed: globalThis.feedbacksInstantInstalled,
-          active: globalThis.feedbacksReviewActive,
-          root: !!globalThis.__feedbacksInstantRoot,
-          menu: !!globalThis.__feedbacksInstantRoot?.querySelector(".menu"),
-          frozen: !!globalThis.__feedbacksInstantRoot?.querySelector(".freeze[src]"),
-        }),
-      });
-      return entry.result;
-    }, id);
-    if (instantState.frozen && instantState.menu) break;
-    await page.waitForTimeout(100);
-  }
-  assert.ok(instantState.frozen && instantState.menu, JSON.stringify(instantState));
-  await page.mouse.move(700, 500);
-  assert.equal(await page.locator("#hover-menu").isVisible(), false);
-  await worker.evaluate(async (tabId) => {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => globalThis.__feedbacksInstantRoot.querySelector(".menu button").click(),
-    });
-  }, id);
-  await waitReview((state) => state.ready && state.frozen);
-  await page.keyboard.type("Instant hover point");
-  await worker.evaluate(async (tabId) => {
-    await chrome.scripting.executeScript({
+  const autoStarted = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
       target: { tabId },
       func: () =>
-        [...globalThis.__feedbacksQaRoot.querySelectorAll(".point-menu button")]
-          .find((button) => button.textContent === "Save point")
-          .click(),
+        Boolean(globalThis.feedbacksReviewActive || globalThis.__feedbacksInstantRoot),
     });
+    return entry.result;
   }, id);
-  await waitReview((state) => state.points === 1);
-  results.instantHoverPoint = { saved: true, frozenWhileWriting: true };
-  await send({ type: "popupAction", tabId: id, action: "stop" });
+  assert.equal(
+    autoStarted,
+    false,
+    "All-site access must not start review on right-click",
+  );
+  results.allSitePregrant = { autoStarted };
   await send({ type: "disableInstant" });
   mode = "long";
   await toFixture();

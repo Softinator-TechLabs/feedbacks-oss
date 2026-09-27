@@ -183,8 +183,8 @@ async function refresh() {
     );
     showAccess(
       "site-access",
-      state.instantReview && allSites ? "ready" : "off",
-      state.instantReview && allSites ? "On" : "Off",
+      allSites ? "ready" : "off",
+      allSites ? "Allowed" : "Optional",
     );
     showAccess("tab-access", "off", "Not started");
     $("access-summary").textContent =
@@ -192,9 +192,8 @@ async function refresh() {
     $("access-summary").className =
       !state.server || !serverAllowed ? "needs-attention" : "ready";
     $("restore-server-access").hidden = !state.connected || serverAllowed;
-    $("instant").hidden = !state.connected || (state.instantReview && allSites);
+    $("instant").hidden = !state.connected || allSites;
     $("instant-help").hidden = $("instant").hidden;
-    $("disable-instant").hidden = !state.instantReview;
     void refreshRelease(state).catch(() => {});
     [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (state.connected) await start();
@@ -256,10 +255,6 @@ action("instant", async () => {
   // Permission request stays within the button gesture, before any other I/O.
   if (!(await chrome.permissions.request({ origins: ["<all_urls>"] })))
     throw Error("Not enabled. You can still click Feedbacks on each website.");
-  await send({
-    type: "enableInstant",
-    tabId: /^https?:/.test(tab?.url || "") ? tab.id : undefined,
-  });
   await refresh();
 });
 function showDiagnostics(active) {
@@ -327,10 +322,6 @@ action("record-video", async () => {
 });
 action("disconnect", async () => {
   await send({ type: "disconnect" });
-  await refresh();
-});
-action("disable-instant", async () => {
-  await send({ type: "disableInstant" });
   await refresh();
 });
 action("check-updates", async () => {

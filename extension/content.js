@@ -12,6 +12,7 @@
     categoryLists,
     sizes,
     targetBox,
+    hoverBox,
     freezeFrame,
     pointMenu,
     draftPin,
@@ -397,7 +398,7 @@
       const label = document.createElement("span");
       label.textContent = `${index + 1}. ${item.body}`;
       row.append(label);
-      button(
+      const editButton = button(
         "Edit",
         () => {
           draftEditing = true;
@@ -447,13 +448,22 @@
       const x = point.x - scrollX,
         y = point.y - scrollY;
       if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return;
-      const pin = document.createElement("span");
+      const pin = document.createElement("button");
       pin.className = "pin saved-draft-pin";
+      pin.type = "button";
       pin.textContent = String(index + 1);
       pin.style.left = `${x}px`;
       pin.style.top = `${y}px`;
-      pin.setAttribute("aria-label", `Draft point ${index + 1}: ${item.body}`);
-      pin.title = `Not sent yet · ${item.body}. Review screenshots and send to share with your team.`;
+      pin.setAttribute(
+        "aria-label",
+        `Draft point ${index + 1}, not sent: ${item.body}. Click to edit.`,
+      );
+      pin.title = `Draft · not sent. ${item.body} Click to edit. Take a screenshot, review it, then Send feedback to share.`;
+      pin.onclick = () => {
+        revealDrawer();
+        editButton.click();
+        row.scrollIntoView({ block: "nearest" });
+      };
       draftPoints.append(pin);
       let element;
       try {
@@ -542,6 +552,7 @@
     }
   }
   async function openPointMenu(el, x, y) {
+    hoverBox?.classList.add("hidden");
     if (pointRequest || captureActive) return;
     if (freezePending) return;
     if (chosen && pointText.value.trim()) {
@@ -697,7 +708,7 @@
         clearTimeout(drawerTimer);
         host.remove();
         clearChosenPoint();
-        annotations = [];
+        draftEditing = false;
         choosing = false;
         await send({ type: "stopReview" });
       },
@@ -712,6 +723,9 @@
     bar.append(categoryLists);
     pinLayer = document.createElement("div");
     root.append(pinLayer);
+    hoverBox = document.createElement("div");
+    hoverBox.className = "hover-target hidden";
+    root.append(hoverBox);
     targetBox = document.createElement("div");
     targetBox.className = "target hidden";
     root.append(targetBox);
@@ -771,7 +785,7 @@
     const shortcutTip = document.createElement("p");
     shortcutTip.className = "meta";
     shortcutTip.textContent =
-      "Right-click an element, write beside it, and add as many points as needed.";
+      "Right-click to comment · Alt+Shift+M/T/D/W for size · Alt+Shift+R to stop or start review · Alt+Shift+S/P for screenshot.";
     bar.append(shortcutTip);
     document.documentElement.append(host);
   }
@@ -1116,6 +1130,7 @@
       const value = U.shortcut(event);
       if (value) {
         event.preventDefault();
+        event.stopImmediatePropagation();
         changeMode(value).catch((e) => (notice.textContent = e.message));
       }
     },
@@ -1127,20 +1142,35 @@
     "pointermove",
     (event) => {
       if (active) schedulePinOcclusion();
-      if (!active || !choosing || event.composedPath().includes(host)) return;
+      if (!active) return;
+      if (event.composedPath().includes(host)) {
+        hoverBox.classList.add("hidden");
+        return;
+      }
       hoverTarget = event.target;
       if (hoverFrame) return;
       hoverFrame = requestAnimationFrame(() => {
         hoverFrame = null;
-        if (!choosing || hoverTarget?.nodeType !== 1) return;
+        if (
+          !active ||
+          hoverTarget?.nodeType !== 1 ||
+          !pointMenu.classList.contains("hidden")
+        ) {
+          hoverBox.classList.add("hidden");
+          return;
+        }
+        if (hoverTarget === document.documentElement || hoverTarget === document.body) {
+          hoverBox.classList.add("hidden");
+          return;
+        }
         const r = F.rect(hoverTarget);
-        Object.assign(targetBox.style, {
+        Object.assign(hoverBox.style, {
           left: `${r.x}px`,
           top: `${r.y}px`,
           width: `${r.width}px`,
           height: `${r.height}px`,
         });
-        targetBox.classList.remove("hidden");
+        hoverBox.classList.remove("hidden");
       });
     },
     { passive: true, capture: true },
@@ -1223,6 +1253,7 @@
         if (project?.id !== message.project.id) {
           threads = [];
           clearChosenPoint();
+          annotations = [];
           host?.remove();
         }
         project = message.project;
@@ -1298,7 +1329,7 @@
       if (message.type === "deactivate") {
         activationGeneration++;
         clearChosenPoint();
-        annotations = [];
+        draftEditing = false;
         active = false;
         globalThis.feedbacksReviewActive = false;
         clearInterval(timer);

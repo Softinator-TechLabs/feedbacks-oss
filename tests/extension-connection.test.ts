@@ -221,16 +221,28 @@ test("popup separates current-tab access from optional all-site and server grant
   });
   assert.equal(allowed.nodes["server-access"].textContent, "Allowed");
   assert.equal(allowed.nodes["tab-access"].textContent, "Ready");
-  assert.equal(allowed.nodes["site-access"].textContent, "On");
+  assert.equal(allowed.nodes["site-access"].textContent, "Allowed");
   assert.equal(allowed.nodes["server-access"].className, "is-ready");
   assert.equal(allowed.nodes["restore-server-access"].hidden, true);
 
   const revoked = await popup({ connected: true });
   assert.equal(revoked.nodes["server-access"].textContent, "Needs access");
-  assert.equal(revoked.nodes["site-access"].textContent, "Off");
+  assert.equal(revoked.nodes["site-access"].textContent, "Optional");
   assert.equal(revoked.nodes["restore-server-access"].hidden, false);
   await revoked.nodes["restore-server-access"].onclick();
   assert.deepEqual(revoked.requested, [{ origins: ["https://saved.example.test/*"] }]);
+});
+
+test("review stop and shortcut help are primary popup controls", async () => {
+  const html = await readFile(
+    new URL("../extension/popup.html", import.meta.url),
+    "utf8",
+  );
+  const primary = html.split('<details id="connection-settings">')[0];
+  assert.match(primary, /id="stop"/);
+  assert.match(primary, /id="shortcut-help"/);
+  assert.match(primary, /id="capture"/);
+  assert.match(primary, /id="capture-full"/);
 });
 
 test("QA scan keeps an empty result in the popup without creating feedback", async () => {

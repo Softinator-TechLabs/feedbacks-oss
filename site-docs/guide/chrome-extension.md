@@ -12,20 +12,20 @@ The public Store extension starts without a preset server. An unpacked developer
 
 ## What Chrome asks for
 
-| Permission               | Purpose                                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------------- |
-| Active tab and scripting | Capture or mark the page only after you start a review.                                           |
-| Storage                  | Keep the paired server and an unfinished local draft.                                             |
-| Context menus            | Start an inline comment on the selected element; keep adding points before screenshot review.     |
-| Alarms                   | Poll a pairing request while it is pending.                                                       |
-| Selected server host     | Connect the extension to the server you entered.                                                  |
-| All websites (optional)  | Enable the instant right-click flow across HTTP(S) pages. Turn it on explicitly in the extension. |
+| Permission               | Purpose                                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------- |
+| Active tab and scripting | Capture or mark the page only after you start a review.                                        |
+| Storage                  | Keep the paired server and an unfinished local draft.                                          |
+| Context menus            | Start an inline comment on the selected element; keep adding points before screenshot review.  |
+| Alarms                   | Poll a pairing request while it is pending.                                                    |
+| Selected server host     | Connect the extension to the server you entered.                                               |
+| All websites (optional)  | Pre-approve site access. Review still starts only when you open Feedbacks or use its shortcut. |
 
 Browser-protected pages cannot be captured. Some inaccessible frames permit coordinate-only evidence rather than a precise element. For local HTTP development, open the extension's **Advanced** section and enable the separate local-server allowance; use HTTPS for team servers.
 
-The popup keeps capture actions near the top. Expand **Chrome access** to inspect permissions and **More review tools** for QA, pin and viewport controls. A connected server appears as a short row; expand it to change the address. The address field suggests up to five recently connected servers from Chrome sync when available. A new unpacked extension with a different Chrome extension ID has separate storage, so its server address and authorization may need to be entered again. Chrome controls toolbar pinning: open its Extensions menu and pin Feedbacks there.
+The popup keeps **Turn off review**, capture actions, viewport sizes and shortcuts together near the top. Expand **Chrome access** to inspect permissions and **More review tools** for QA and pin controls. A connected server appears as a short row; expand it to change the address. The address field suggests up to five recently connected servers from Chrome sync when available. A new unpacked extension with a different Chrome extension ID has separate storage, so its server address and authorization may need to be entered again. Chrome controls toolbar pinning: open its Extensions menu and pin Feedbacks there.
 
-Right-click an element, write its note, and choose **Save point**. The dashed point and **not sent** count mean it is only on this browser. Add more points, choose **Review screenshots**, inspect the image, then **Send feedback**. The shared thread is created before its screenshots finish uploading. If an upload stops, the editor identifies the already published thread and **Retry Send** finishes the remaining images without creating another thread. Team members with access to the same Feedbacks project see published points when reviewing that page. Hover or focus a point for its author, time, note and thread link. A member allowed to resolve feedback can use **Resolve**; older connections open the thread for resolution until they pair again with an updated server. Pins on underlying content disappear while a website menu covers that content.
+Hover an element to see its outline, then right-click it, write its note, and choose **Save point**. The orange dashed point and **not sent** count mean it is only on this browser. Hover the point for the send reminder, or click it to edit before capture. Add more points, choose **Review screenshots**, inspect the image, then **Send feedback**. The shared thread is created before its screenshots finish uploading. If an upload stops, the editor identifies the already published thread and **Retry Send** finishes the remaining images without creating another thread. Team members with access to the same Feedbacks project see published points when reviewing that page. Hover or focus a point for its author, time, note and thread link. A member allowed to resolve feedback can use **Resolve**; older connections open the thread for resolution until they pair again with an updated server. Pins on underlying content disappear while a website menu covers that content.
 
 ## Full-page screenshots
 

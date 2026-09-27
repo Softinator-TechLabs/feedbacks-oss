@@ -41,15 +41,23 @@ globalThis.FeedbacksUtil = Object.freeze({
       event.isComposing ||
       event.ctrlKey ||
       event.metaKey ||
-      event.altKey ||
-      event.shiftKey ||
+      !event.altKey ||
+      !event.shiftKey ||
       event.repeat
     )
       return null;
-    const target = event.composedPath?.()[0] || event.target;
+    const path = event.composedPath?.() || [event.target];
     if (
-      target?.isContentEditable ||
-      target?.closest?.('input,textarea,select,[contenteditable="true"],[role="textbox"]')
+      path.some(
+        (target) =>
+          target?.isContentEditable ||
+          target?.matches?.(
+            'input,textarea,select,[contenteditable],[role="textbox"],[role="searchbox"],[role="combobox"],[role="spinbutton"]',
+          ) ||
+          target?.closest?.(
+            'input,textarea,select,[contenteditable],[role="textbox"],[role="searchbox"],[role="combobox"],[role="spinbutton"]',
+          ),
+      )
     )
       return null;
     return (

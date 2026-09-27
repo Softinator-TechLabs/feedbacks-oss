@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Feedbacks: Website Review",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "Capture, annotate and discuss website feedback with your team on your chosen Feedbacks server.",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus", "alarms"],
   "optional_host_permissions": ["https://*/*", "http://*/*", "<all_urls>"],
@@ -22,6 +22,18 @@
       "suggested_key": {
         "default": "Alt+Shift+F"
       }
+    },
+    "toggle-review": {
+      "suggested_key": { "default": "Alt+Shift+R" },
+      "description": "Start or stop review on the current page"
+    },
+    "capture-view": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "Capture the visible page for feedback"
+    },
+    "capture-full": {
+      "suggested_key": { "default": "Alt+Shift+P" },
+      "description": "Capture the full page for feedback"
     }
   },
   "icons": {
