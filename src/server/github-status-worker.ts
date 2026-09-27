@@ -4,6 +4,7 @@ import type { Config } from "./config.js";
 import { GithubApp, githubRepo } from "./github-app.js";
 import { event } from "./access.js";
 import { saveThread } from "./feedback.js";
+import { connectedGithubRepos, hasConnectedGithubRepo } from "./github-repositories.js";
 
 const syncActor: Actor = {
   id: "00000000-0000-0000-0000-000000000000",
@@ -29,7 +30,14 @@ export async function pollGithubStatusSync(
     LEFT JOIN github_status_sync s ON s.thread_id=t.id
     WHERE p.data->>'githubConnected'='true' AND p.data->>'githubStatusSync'='true'
       AND (SELECT count(*) FROM jsonb_array_elements(coalesce(t.data->'externalIssues','[]'::jsonb)) e
-        WHERE e->>'verification'='github_verified' AND lower(e->>'repository')=lower(trim(trailing '/' from substring(p.data->>'repositoryUrl' from '^https://github.com/(.*)$'))))=1
+        WHERE e->>'verification'='github_verified' AND EXISTS (
+          SELECT 1 FROM jsonb_array_elements_text(
+            CASE WHEN jsonb_array_length(coalesce(p.data->'githubRepositories','[]'::jsonb))>0
+              THEN p.data->'githubRepositories'
+              ELSE jsonb_build_array(p.data->>'repositoryUrl') END
+          ) r(url)
+          WHERE lower(e->>'repository')=lower(trim(trailing '/' from substring(r.url from '^https://github.com/(.*)$')))
+        ))=1
       AND (s.thread_id IS NULL OR (s.status IN ('ready','error') AND s.next_at<=now() AND (s.lease_until IS NULL OR s.lease_until<now())))
     ORDER BY s.next_at NULLS FIRST,t.id LIMIT 10`);
   for (const candidate of rows) {
@@ -39,14 +47,16 @@ export async function pollGithubStatusSync(
         [candidate.id],
       );
       if (!row?.project.githubConnected || !row.project.githubStatusSync) return null;
-      const repo = githubRepo(row.project.repositoryUrl);
       const links = (row.data.externalIssues ?? []).filter(
         (link: any) =>
           link.verification === "github_verified" &&
-          link.repository?.toLowerCase() === repo.fullName.toLowerCase(),
+          connectedGithubRepos(row.project).some(
+            (repo) => link.repository?.toLowerCase() === repo.fullName.toLowerCase(),
+          ),
       );
       if (links.length !== 1) return null;
       const link = links[0];
+      const repo = githubRepo(`https://github.com/${link.repository}`);
       await tx.query(
         `INSERT INTO github_status_sync(thread_id,issue_url) VALUES($1,$2)
         ON CONFLICT(thread_id) DO NOTHING`,
@@ -79,8 +89,7 @@ export async function pollGithubStatusSync(
         fresh.sync_issue_url !== link.url ||
         fresh.claim_token !== claimed.sync.claim_token ||
         (fresh.sync_status !== "ready" && fresh.sync_status !== "error") ||
-        githubRepo(fresh.project.repositoryUrl).fullName.toLowerCase() !==
-          repo.fullName.toLowerCase()
+        !hasConnectedGithubRepo(fresh.project, repo)
       )
         continue;
       const row = fresh;
@@ -132,7 +141,11 @@ export async function pollGithubStatusSync(
           lease_until=$6::timestamptz AND
           EXISTS(SELECT 1 FROM threads t JOIN projects p ON p.id=t.project_id
             WHERE t.id=$1 AND t.revision=$3 AND p.data->>'githubConnected'='true'
-              AND p.data->>'githubStatusSync'='true' AND p.data->>'repositoryUrl'=$4)
+              AND p.data->>'githubStatusSync'='true' AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements_text(
+                  CASE WHEN jsonb_array_length(coalesce(p.data->'githubRepositories','[]'::jsonb))>0
+                    THEN p.data->'githubRepositories' ELSE jsonb_build_array(p.data->>'repositoryUrl') END
+                ) r(url) WHERE lower(r.url)=lower($4)))
           RETURNING lease_until::text AS claim_token`,
             [
               row.id,
@@ -305,8 +318,10 @@ async function applyOutcome(
     );
     if (
       !link ||
-      link.repository.toLowerCase() !==
-        githubRepo(row.project.repositoryUrl).fullName.toLowerCase()
+      !hasConnectedGithubRepo(
+        row.project,
+        githubRepo(`https://github.com/${link.repository}`),
+      )
     )
       return;
     const current = desiredGithubState(row.data.work.state);

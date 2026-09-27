@@ -137,6 +137,10 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
             waitUntil: "load",
           });
           await page.getByRole("heading", { name: "Feedback" }).waitFor();
+          await page
+            .getByRole("navigation", { name: "Project navigation" })
+            .getByRole("link", { name: "GitHub" })
+            .waitFor();
           const threadLink = page.locator('a[href^="/threads/"]').first();
           await threadLink.waitFor();
           const href = await threadLink.getAttribute("href");
@@ -148,7 +152,6 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
           });
           await page.goto(`${access.url}${href}`, { waitUntil: "load" });
           await page.getByRole("heading", { name: /Feedback/ }).waitFor();
-          await page.locator("#thread-github").waitFor();
           await page.evaluate(() => scrollTo(0, 0));
           images[`thread-${device}-${theme}`] = await page.screenshot({
             type: "png",

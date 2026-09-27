@@ -34,6 +34,7 @@ export function GithubIssue({
   const [requestKey, setRequestKey] = useState("");
   const [issueUrl, setIssueUrl] = useState("");
   const [confirmedAbsent, setConfirmedAbsent] = useState(false);
+  const [destination, setDestination] = useState("");
   const connection = useLoad<{
     configured: boolean;
     installation:
@@ -42,11 +43,22 @@ export function GithubIssue({
       | "installed"
       | "not_installed"
       | "unavailable";
+    repositories: {
+      repositoryUrl: string;
+      connected: boolean;
+      installation: "installed" | "not_installed" | "unavailable";
+    }[];
   }>(
     () => api("github.connection", { projectId: project.id }),
     [project.id, project.revision],
   );
   useUnsavedChanges(!!draft);
+  const repositories =
+    connection.data?.repositories.filter((repo) => repo.connected) ?? [];
+  const selectedRepository =
+    repositories.find((repo) => repo.repositoryUrl === destination) ??
+    (repositories.length === 1 ? repositories[0] : undefined);
+  const issueReady = selectedRepository?.installation === "installed";
   const refresh = () =>
     api<RequestState>("github.issueState", { threadId: thread.id }).then((value) => {
       setRequest(value);
@@ -85,15 +97,17 @@ export function GithubIssue({
                 ? "Checking connection…"
                 : !connection.data.configured
                   ? "App not configured"
-                  : connection.data.installation === "not_installed"
-                    ? "App not installed on this repository"
-                    : !project.githubConnected
-                      ? "Project not connected"
-                      : connection.data.installation === "unavailable"
+                  : !project.githubConnected
+                    ? "Project not connected"
+                    : selectedRepository?.installation === "not_installed"
+                      ? "App not installed on this repository"
+                      : selectedRepository?.installation === "unavailable"
                         ? "Connection needs checking"
-                        : request?.status === "linked"
-                          ? "Issue linked"
-                          : "Ready to create an Issue"}
+                        : repositories.length > 1 && !selectedRepository
+                          ? "Choose an Issue repository"
+                          : request?.status === "linked"
+                            ? "Issue linked"
+                            : "Ready to create an Issue"}
           </span>
         </div>
         <a href={`/projects/${project.id}/github`}>GitHub settings</a>
@@ -203,56 +217,73 @@ export function GithubIssue({
           from this feedback.
         </p>
       ) : request?.status !== "linked" && !draft ? (
-        <div className="github-issue-actions">
-          <button
-            className="primary"
-            type="button"
-            disabled={
-              action.busy ||
-              request === null ||
-              !!connection.error ||
-              connection.data?.installation !== "installed"
-            }
-            onClick={() =>
-              void action.run(async () => {
-                const key = requestKey || crypto.randomUUID();
-                setRequestKey(key);
-                try {
-                  const saved = await api<Thread>("github.issueCreateQuick", {
+        <>
+          {repositories.length > 1 && (
+            <Field label="Create Issue in">
+              <select
+                value={selectedRepository?.repositoryUrl ?? ""}
+                onChange={(event) => setDestination(event.target.value)}
+              >
+                <option value="">Choose a repository</option>
+                {repositories.map((repo) => (
+                  <option key={repo.repositoryUrl} value={repo.repositoryUrl}>
+                    {repo.repositoryUrl.replace("https://github.com/", "")}
+                    {repo.installation !== "installed" ? " · App access unavailable" : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <div className="github-issue-actions">
+            <button
+              className="primary"
+              type="button"
+              disabled={
+                action.busy || request === null || !!connection.error || !issueReady
+              }
+              onClick={() =>
+                void action.run(async () => {
+                  const key = requestKey || crypto.randomUUID();
+                  setRequestKey(key);
+                  try {
+                    const saved = await api<Thread>("github.issueCreateQuick", {
+                      threadId: thread.id,
+                      revision: thread.revision,
+                      idempotencyKey: key,
+                      repositoryUrl: selectedRepository?.repositoryUrl,
+                    });
+                    onSaved(saved);
+                  } finally {
+                    await refresh();
+                  }
+                }, "GitHub Issue created and linked.")
+              }
+            >
+              Create Issue
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              disabled={action.busy || !issueReady}
+              onClick={() =>
+                void action.run(async () => {
+                  const value = await api<Draft>("threads.issueDraft", {
                     threadId: thread.id,
-                    revision: thread.revision,
-                    idempotencyKey: key,
+                    repositoryUrl: selectedRepository?.repositoryUrl,
                   });
-                  onSaved(saved);
-                } finally {
-                  await refresh();
-                }
-              }, "GitHub Issue created and linked.")
-            }
-          >
-            Create Issue
-          </button>
-          <button
-            type="button"
-            className="text-button"
-            disabled={action.busy}
-            onClick={() =>
-              void action.run(async () => {
-                const value = await api<Draft>("threads.issueDraft", {
-                  threadId: thread.id,
-                });
-                setDraft(value);
-                setTitle(value.title);
-                setBody(value.body);
-                setReviewed(false);
-                setRequestKey(crypto.randomUUID());
-              })
-            }
-          >
-            Review/edit first
-          </button>
-          <span className="muted">Images and videos are linked automatically.</span>
-        </div>
+                  setDraft(value);
+                  setTitle(value.title);
+                  setBody(value.body);
+                  setReviewed(false);
+                  setRequestKey(crypto.randomUUID());
+                })
+              }
+            >
+              Review/edit first
+            </button>
+            <span className="muted">Images and videos are linked automatically.</span>
+          </div>
+        </>
       ) : request?.status !== "linked" && draft ? (
         <form
           onSubmit={(event) => {
@@ -267,6 +298,7 @@ export function GithubIssue({
                   title,
                   body,
                   idempotencyKey: requestKey,
+                  repositoryUrl: selectedRepository?.repositoryUrl,
                 });
                 onSaved(saved);
                 setDraft(null);
@@ -309,7 +341,10 @@ export function GithubIssue({
             <button type="button" onClick={() => setDraft(null)}>
               Cancel
             </button>
-            <button className="primary" disabled={action.busy || !reviewed}>
+            <button
+              className="primary"
+              disabled={action.busy || !reviewed || !issueReady}
+            >
               Create GitHub Issue
             </button>
           </div>
@@ -342,12 +377,19 @@ function GithubStatusSync({
   const action = useAction();
   const [sync, setSync] = useState<SyncState | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const repository = project.repositoryUrl?.replace(/\/$/, "");
+  const repositories = project.githubRepositories?.length
+    ? project.githubRepositories
+    : project.repositoryUrl
+      ? [project.repositoryUrl]
+      : [];
   const link = thread.externalIssues?.find(
     (issue) =>
       issue.verification === "github_verified" &&
-      !!repository &&
-      issue.url.toLowerCase().startsWith(`${repository.toLowerCase()}/issues/`),
+      repositories.some((repository) =>
+        issue.url
+          .toLowerCase()
+          .startsWith(`${repository.replace(/\/$/, "").toLowerCase()}/issues/`),
+      ),
   );
   useEffect(() => {
     if (!link || !project.githubStatusSync) return;

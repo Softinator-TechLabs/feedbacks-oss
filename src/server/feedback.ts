@@ -9,6 +9,7 @@ import { reviewerContext } from "./accounts.js";
 import { priorityScore, threadQuery } from "./review-views.js";
 import { discussionLikes, setDiscussionLike } from "./discussion-likes.js";
 import { issueDraft } from "./issue-draft.js";
+import { requireConnectedGithubRepo } from "./github-repositories.js";
 import { reportedIssue } from "./issue-links.js";
 import { documentRow } from "./documents.js";
 import { figmaReferenceUrl } from "./figma-reference.js";
@@ -285,7 +286,19 @@ export async function feedback(
   if (op === "threads.issueDraft") {
     const thread = await fullThread(db, a, await threadRow(db, a, i.threadId));
     const project = await access(db, a, thread.projectId);
-    return issueDraft(thread, project.repositoryUrl);
+    const repo = project.githubConnected
+      ? requireConnectedGithubRepo(project, i.repositoryUrl)
+      : null;
+    if (i.repositoryUrl && !repo)
+      fail(
+        "GITHUB_NOT_CONNECTED",
+        "This repository is not connected to the project",
+        409,
+      );
+    return issueDraft(
+      thread,
+      repo ? `https://github.com/${repo.fullName}` : project.repositoryUrl,
+    );
   }
   if (op === "threads.neighbors") {
     const row = await threadRow(db, a, i.threadId);

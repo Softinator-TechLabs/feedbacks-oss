@@ -374,6 +374,27 @@ small {
   width: auto;
   flex: 0 0 auto;
 }
+.github-repository-list {
+  margin: 20px 0;
+}
+.github-repository-list h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+.github-repository-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.github-repository-item > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .github-connection-actions {
   justify-content: flex-start;
   margin-top: 14px;

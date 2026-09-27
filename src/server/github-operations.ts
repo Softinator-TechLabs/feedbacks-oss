@@ -6,6 +6,11 @@ import { Auth, accountLock, hash, publicActor } from "./auth.js";
 import { access, event } from "./access.js";
 import { checkRevision, fullThread, saveThread, threadRow } from "./feedback.js";
 import { GithubApp, githubRepo, type GithubRepo } from "./github-app.js";
+import {
+  connectedGithubRepos,
+  hasConnectedGithubRepo,
+  requireConnectedGithubRepo,
+} from "./github-repositories.js";
 import { DomainError, fail } from "./errors.js";
 import { quickIssueDraft } from "./issue-draft.js";
 import type { AssetStore } from "./assets.js";
@@ -31,12 +36,6 @@ async function issueAuthor(db: Database, actor: Actor) {
 function requireApp(config: Config) {
   if (!config.githubAppId || !config.githubAppSlug || !config.githubAppPrivateKey)
     fail("GITHUB_UNAVAILABLE", "This server has no GitHub App configured", 503);
-}
-
-function requireConnected(project: any): GithubRepo {
-  if (!project.githubConnected)
-    fail("GITHUB_NOT_CONNECTED", "Connect the GitHub App in project settings first", 409);
-  return githubRepo(project.repositoryUrl);
 }
 
 function issueNumber(value: string, repo: GithubRepo) {
@@ -133,6 +132,9 @@ export async function githubOperation(
         connected: project.githubConnected === true,
         statusSyncEnabled: project.githubStatusSync === true,
         repositoryUrl: project.repositoryUrl ?? null,
+        connectedRepositories: connectedGithubRepos(project).map(
+          (repo) => `https://github.com/${repo.fullName}`,
+        ),
         installUrl: config.githubAppSlug
           ? `https://github.com/apps/${config.githubAppSlug}/installations/new`
           : null,
@@ -148,17 +150,42 @@ export async function githubOperation(
       : !connection.repositoryUrl
         ? "no_repository"
         : "unavailable";
-    if (connection.configured && connection.repositoryUrl) {
-      try {
-        await client.check(githubRepo(connection.repositoryUrl));
-        installation = "installed";
-      } catch (error) {
-        if (error instanceof DomainError && error.code === "GITHUB_NOT_INSTALLED")
-          installation = "not_installed";
-        else installation = "unavailable";
-      }
-    }
-    return { ...connection, installation };
+    const repositoryUrls = [
+      ...new Set(
+        [...connection.connectedRepositories, connection.repositoryUrl].filter(
+          (value): value is string => !!value,
+        ),
+      ),
+    ].slice(0, 21);
+    const repositories = await Promise.all(
+      repositoryUrls.map(async (repositoryUrl) => {
+        let state: "installed" | "not_installed" | "unavailable" = "unavailable";
+        if (connection.configured) {
+          try {
+            await client.check(githubRepo(repositoryUrl));
+            state = "installed";
+          } catch (error) {
+            if (error instanceof DomainError && error.code === "GITHUB_NOT_INSTALLED")
+              state = "not_installed";
+          }
+        }
+        return {
+          repositoryUrl,
+          connected: connection.connectedRepositories.some(
+            (url) => url.toLowerCase() === repositoryUrl.toLowerCase(),
+          ),
+          installation: state,
+        };
+      }),
+    );
+    if (connection.configured && connection.repositoryUrl)
+      installation =
+        repositories.find(
+          (repo) =>
+            repo.repositoryUrl.toLowerCase() === connection.repositoryUrl?.toLowerCase(),
+        )?.installation ?? "unavailable";
+    const { connectedRepositories: _connectedRepositories, ...summary } = connection;
+    return { ...summary, installation, repositories };
   }
   if (name === "github.issueState")
     return db.transaction(async (tx) => {
@@ -228,9 +255,24 @@ export async function githubOperation(
           repo.fullName.toLowerCase()
       )
         fail("CONFLICT", "Project changed while checking GitHub", 409);
+      if (
+        !hasConnectedGithubRepo(project, repo) &&
+        connectedGithubRepos(project).length >= 20
+      )
+        fail("LIMIT", "A project can connect up to 20 GitHub repositories", 400);
       await tx.query(
-        "UPDATE projects SET data=jsonb_set(data,'{githubConnected}','true'::jsonb),revision=revision+1 WHERE id=$1",
-        [project.id],
+        "UPDATE projects SET data=data || jsonb_build_object('githubConnected',true,'githubRepositories',$2::jsonb),revision=revision+1 WHERE id=$1",
+        [
+          project.id,
+          JSON.stringify([
+            ...new Set([
+              ...connectedGithubRepos(project).map(
+                (connected) => `https://github.com/${connected.fullName}`,
+              ),
+              `https://github.com/${repo.fullName}`,
+            ]),
+          ]),
+        ],
       );
       await event(tx, a, project.id, project.id, name, { repository: repo.fullName });
       return access(tx, a, project.id);
@@ -244,10 +286,68 @@ export async function githubOperation(
       if (project.revision !== i.revision)
         fail("CONFLICT", "Project changed; reload first", 409);
       await tx.query(
-        "UPDATE projects SET data=jsonb_set(jsonb_set(data,'{githubConnected}','false'::jsonb),'{githubStatusSync}','false'::jsonb),revision=revision+1 WHERE id=$1",
+        "UPDATE projects SET data=data || jsonb_build_object('githubConnected',false,'githubStatusSync',false,'githubRepositories','[]'::jsonb),revision=revision+1 WHERE id=$1",
         [project.id],
       );
       await event(tx, a, project.id, project.id, name, {});
+      return access(tx, a, project.id);
+    });
+  if (name === "github.repositoryConnect") {
+    requireApp(config);
+    const repo = githubRepo(i.repositoryUrl);
+    await db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await human(tx, actor);
+      const project = await access(tx, a, i.projectId, "maintain");
+      if (project.revision !== i.revision)
+        fail("CONFLICT", "Project changed; reload first", 409);
+      if (
+        !hasConnectedGithubRepo(project, repo) &&
+        connectedGithubRepos(project).length >= 20
+      )
+        fail("LIMIT", "A project can connect up to 20 GitHub repositories", 400);
+    });
+    await client.check(repo);
+    return db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await human(tx, actor);
+      const project = await access(tx, a, i.projectId, "maintain");
+      if (project.revision !== i.revision)
+        fail("CONFLICT", "Project changed while checking GitHub", 409);
+      const urls = connectedGithubRepos(project).map(
+        (connected) => `https://github.com/${connected.fullName}`,
+      );
+      if (!hasConnectedGithubRepo(project, repo))
+        urls.push(`https://github.com/${repo.fullName}`);
+      if (urls.length > 20) fail("LIMIT", "Too many repositories", 400);
+      await tx.query(
+        "UPDATE projects SET data=data || jsonb_build_object('githubConnected',true,'githubRepositories',$2::jsonb),revision=revision+1 WHERE id=$1",
+        [project.id, JSON.stringify(urls)],
+      );
+      await event(tx, a, project.id, project.id, name, { repository: repo.fullName });
+      return access(tx, a, project.id);
+    });
+  }
+  if (name === "github.repositoryDisconnect")
+    return db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await human(tx, actor);
+      const project = await access(tx, a, i.projectId, "maintain");
+      if (project.revision !== i.revision)
+        fail("CONFLICT", "Project changed; reload first", 409);
+      const repo = githubRepo(i.repositoryUrl);
+      if (!hasConnectedGithubRepo(project, repo))
+        fail("GITHUB_NOT_CONNECTED", "This repository is not connected", 409);
+      const urls = connectedGithubRepos(project)
+        .filter(
+          (connected) => connected.fullName.toLowerCase() !== repo.fullName.toLowerCase(),
+        )
+        .map((connected) => `https://github.com/${connected.fullName}`);
+      await tx.query(
+        "UPDATE projects SET data=data || jsonb_build_object('githubConnected',$2::boolean,'githubStatusSync',false,'githubRepositories',$3::jsonb),revision=revision+1 WHERE id=$1",
+        [project.id, urls.length > 0, JSON.stringify(urls)],
+      );
+      await event(tx, a, project.id, project.id, name, { repository: repo.fullName });
       return access(tx, a, project.id);
     });
   if (name === "github.statusSyncConfigure")
@@ -285,17 +385,20 @@ export async function githubOperation(
       const project = await access(tx, a, row.project_id, "maintain");
       if (!project.githubConnected || !project.githubStatusSync)
         fail("GITHUB_SYNC_DISABLED", "Enable status sync in project settings first", 409);
-      const repo = requireConnected(project);
       const link = row.data.externalIssues?.find(
         (entry: any) =>
           entry.url === i.issueUrl && entry.verification === "github_verified",
       );
-      if (!link || link.repository.toLowerCase() !== repo.fullName.toLowerCase())
+      if (!link)
         fail(
           "GITHUB_ISSUE_INVALID",
           "Use a verified Issue in the connected repository",
           409,
         );
+      const repo = requireConnectedGithubRepo(
+        project,
+        `https://github.com/${link.repository}`,
+      );
       return { repo, number: issueNumber(i.issueUrl, repo) };
     });
     const issue = await client.readIssue(target.repo, target.number);
@@ -327,8 +430,7 @@ export async function githubOperation(
           if (
             !project.githubConnected ||
             !project.githubStatusSync ||
-            githubRepo(project.repositoryUrl).fullName.toLowerCase() !==
-              target.repo.fullName.toLowerCase()
+            !hasConnectedGithubRepo(project, target.repo)
           )
             fail(
               "GITHUB_SYNC_DISABLED",
@@ -395,8 +497,7 @@ export async function githubOperation(
       if (
         !project.githubConnected ||
         !project.githubStatusSync ||
-        githubRepo(project.repositoryUrl).fullName.toLowerCase() !==
-          target.repo.fullName.toLowerCase()
+        !hasConnectedGithubRepo(project, target.repo)
       )
         fail(
           "GITHUB_SYNC_DISABLED",
@@ -513,6 +614,16 @@ export async function githubOperation(
       const inputHash = hash(JSON.stringify({ title: i.title, body: i.body }));
       if (existing) {
         if (
+          i.repositoryUrl &&
+          githubRepo(i.repositoryUrl).fullName.toLowerCase() !==
+            existing.repository.toLowerCase()
+        )
+          fail(
+            "IDEMPOTENCY_CONFLICT",
+            "An Issue request already exists for another repository",
+            409,
+          );
+        if (
           existing.request_key !== i.idempotencyKey ||
           existing.input_hash !== inputHash
         )
@@ -528,7 +639,7 @@ export async function githubOperation(
           409,
         );
       }
-      const repo = requireConnected(project);
+      const repo = requireConnectedGithubRepo(project, i.repositoryUrl);
       if (
         row.data.externalIssues?.some(
           (link: any) => link.repository?.toLowerCase() === repo.fullName.toLowerCase(),
@@ -572,12 +683,22 @@ export async function githubOperation(
       const a = await human(tx, actor);
       const row = await threadRow(tx, a, i.threadId, "maintain", true);
       const project = await access(tx, a, row.project_id, "maintain");
-      const repo = requireConnected(project);
+      const repo = requireConnectedGithubRepo(project, i.repositoryUrl);
       const existing = await tx.one(
-        "SELECT status,request_key FROM github_issue_requests WHERE thread_id=$1 FOR UPDATE",
+        "SELECT status,request_key,repository FROM github_issue_requests WHERE thread_id=$1 FOR UPDATE",
         [row.id],
       );
       if (existing) {
+        if (
+          i.repositoryUrl &&
+          githubRepo(i.repositoryUrl).fullName.toLowerCase() !==
+            existing.repository.toLowerCase()
+        )
+          fail(
+            "IDEMPOTENCY_CONFLICT",
+            "An Issue request already exists for another repository",
+            409,
+          );
         if (existing.request_key !== i.idempotencyKey)
           fail(
             "IDEMPOTENCY_CONFLICT",

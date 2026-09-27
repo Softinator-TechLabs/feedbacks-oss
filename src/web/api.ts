@@ -150,6 +150,7 @@ export type Project = {
   origins: string[];
   captureMode?: "origins" | "any";
   repositoryUrl: string | null;
+  githubRepositories?: string[];
   githubConnected?: boolean;
   githubStatusSync?: boolean;
   reviewEnabled?: boolean;
