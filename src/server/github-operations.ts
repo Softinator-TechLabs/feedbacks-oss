@@ -600,20 +600,11 @@ export async function githubOperation(
       return { thread, repo, assets };
     });
     if ("prior" in prepared) return prepared.prior;
-    const privateRepository = await client.repositoryPrivate(prepared.repo);
-    const attachments = [];
-    for (const asset of prepared.assets) {
-      const directUrl =
-        privateRepository && store?.signedGetUrl
-          ? await store.signedGetUrl(asset.object_key, 7 * 24 * 60 * 60)
-          : null;
-      attachments.push({
-        id: asset.id,
-        contentType: asset.data.contentType,
-        filename: asset.data.filename,
-        directUrl,
-      });
-    }
+    const attachments = prepared.assets.map((asset) => ({
+      id: asset.id,
+      contentType: asset.data.contentType,
+      filename: asset.data.filename,
+    }));
     const draft = quickIssueDraft(prepared.thread, config.appOrigin, attachments);
     return githubOperation(
       db,

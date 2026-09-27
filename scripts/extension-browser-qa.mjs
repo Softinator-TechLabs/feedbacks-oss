@@ -1328,9 +1328,9 @@ try {
       const rect = button.getBoundingClientRect();
       return {
         visible: rect.top >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth,
-        reachable:
-          document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) ===
-          button,
+        reachable: button.contains(
+          document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2),
+        ),
         overflow: document.documentElement.scrollWidth > innerWidth,
       };
     });
@@ -1545,7 +1545,10 @@ try {
   });
   await seriesEditor.locator("#send").click();
   await seriesEditor.locator("#send:has-text('Retry Send')").waitFor();
-  assert.equal(await seriesEditor.locator("#send-header").textContent(), "Retry Send");
+  assert.equal(
+    (await seriesEditor.locator("#send-header").textContent()).trim(),
+    "Retry Send",
+  );
   assert.equal(await seriesEditor.locator("#send-header").isEnabled(), true);
   const interrupted = await draft();
   assert.ok(
@@ -1925,8 +1928,45 @@ try {
   const cookieName = auth.cookie.slice(0, cookieSplit);
   const cookieValue = auth.cookie.slice(cookieSplit + 1);
   await context.addCookies([
-    { name: cookieName, value: cookieValue, url: access.url, sameSite: "Lax" },
+    { name: cookieName, value: cookieValue, url: access.url, sameSite: "Strict" },
   ]);
+  // Cross-site links must enter the web app first: Strict cookies are omitted
+  // on the top-level navigation, then sent on the app's same-site API requests.
+  const linkedOriginal = inlineThread.assets.find(
+    (asset) => asset.filename === "point-002-original.webp",
+  );
+  assert.ok(linkedOriginal);
+  const crossSite = await context.newPage();
+  await crossSite.goto("https://example.com/");
+  const assetLink = `${access.url}/threads/${inlineThreadId}#asset-${linkedOriginal.id}`;
+  await crossSite.evaluate((href) => {
+    const link = document.createElement("a");
+    link.href = href;
+    link.target = "_blank";
+    link.textContent = "Open feedback image";
+    document.body.prepend(link);
+  }, assetLink);
+  const linkedPagePromise = context.waitForEvent("page");
+  await crossSite.getByRole("link", { name: "Open feedback image" }).click();
+  const linkedPage = await linkedPagePromise;
+  await linkedPage
+    .locator(`.review-evidence-figure[id="asset-${linkedOriginal.id}"]`)
+    .waitFor();
+  await linkedPage.waitForFunction(() => {
+    const img = document.querySelector(".review-evidence-figure img");
+    return img?.complete && img.naturalWidth > 0;
+  });
+  assert.equal(
+    await linkedPage.getByRole("button", { name: "Sign in", exact: true }).count(),
+    0,
+  );
+  results.githubAssetLink = {
+    existingSessionReused: true,
+    selectedOriginal: true,
+    imageLoaded: true,
+  };
+  await linkedPage.close();
+  await crossSite.close();
   const inlineThreadPage = await context.newPage();
   await inlineThreadPage.goto(`${access.url}/threads/${inlineThreadId}`);
   await inlineThreadPage.getByRole("heading", { name: "Review on the page" }).waitFor();
@@ -1987,7 +2027,9 @@ try {
   results.inlineReview.webPins = 2;
   results.inlineReview.mobilePointSelection = true;
   const threadPage = await context.newPage();
-  await threadPage.goto(`${access.url}/threads/${seriesThreadId}`);
+  await threadPage.goto(
+    `${access.url}/threads/${seriesThreadId}#asset-${seriesThread.assets[2].id}`,
+  );
   await threadPage
     .getByText("Full-page capture · 4 numbered images")
     .waitFor({ timeout: 15000 });

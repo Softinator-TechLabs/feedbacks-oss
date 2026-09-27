@@ -22,6 +22,8 @@ and explicit review before sharing.
       navigation, recording pause/resume/stop and compact layout.
 - [x] Keep Send beside Discard in a sticky editor header, synchronize upload/retry
       states, and separate point labels from original-image actions.
+- [x] Replace GitHub Issue media links with durable thread attachment links, and
+      verify cross-site entry with an existing browser session.
 - [x] Run release checks and package the verified extension.
 
 ## Boundaries

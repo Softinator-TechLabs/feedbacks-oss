@@ -18,6 +18,6 @@ Do not click again with a new key or manually create a second Issue. Check the c
 
 ## A media link expired
 
-Direct Wasabi links in private GitHub Issues expire after seven days. Open the same attachment through the durable Feedbacks link while signed in with current project access. If access was removed, ask a project maintainer rather than making the bucket public.
+New GitHub Issues link directly to the attachment inside its Feedbacks thread. These links do not expire and reuse your existing sign-in. Older Issues may contain raw `/api/assets/` links that show `Sign in required` when opened from GitHub, or direct storage links that expire after seven days. Use the Issue’s Source thread link to open those attachments. If project access was removed, ask a project maintainer.
 
 For server health, migrations and backup/restore, use the [operator guide](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/operations.md).

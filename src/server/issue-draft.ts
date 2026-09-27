@@ -50,7 +50,6 @@ export function quickIssueDraft(
     id: string;
     contentType: string;
     filename?: string;
-    directUrl: string | null;
   }[],
 ) {
   const safe = (value: string) =>
@@ -79,24 +78,19 @@ export function quickIssueDraft(
     body += "\n\n## Images and videos\n\n";
     for (const [index, attachment] of attachments.entries()) {
       const kind = attachment.contentType === "video/webm" ? "Video" : "Image";
-      const authenticated = `${origin}/api/assets/${attachment.id}`;
-      const links = [`[Open in Feedbacks](${authenticated})`];
-      if (attachment.directUrl)
-        links.push(`[Direct Wasabi link, valid 7 days](${attachment.directUrl})`);
+      const threadImage = `${source}#asset-${attachment.id}`;
       const name = attachment.filename
         ? safe(attachment.filename)
         : `${kind} ${index + 1}`;
-      const line = `- ${name}: ${links.join(" · ")}\n`;
+      const line = `- ${name}: [Open in Feedbacks](${threadImage})\n`;
       if (body.length + line.length + 90 > 8000) {
         body += "\nMore attachments are available on the Feedbacks thread.\n";
         break;
       }
       body += line;
     }
-    if (attachments.some((item) => item.directUrl))
-      body +=
-        "\nDirect storage links expire after 7 days. Feedbacks links require project access and remain available.\n";
-    else body += "\nFeedbacks links require project access.\n";
+    body +=
+      "\nThese links do not expire. Open with your existing Feedbacks project access.\n";
   }
   return { title, body: body.slice(0, 8000) };
 }

@@ -12,7 +12,11 @@
       <strong>Feedbacks</strong><span>Review capture</span>
       <div id="review-actions" class="review-actions">
         <button id="discard">Discard draft</button>
-        <button id="send-header" class="primary" disabled>Send feedback</button>
+        <button id="send-header" class="primary send-action" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 3-6 18-4-8-8-4 18-6ZM11 13 21 3" /></svg
+          ><span>Send feedback</span>
+        </button>
       </div>
     </header>
     <section id="completion" hidden aria-labelledby="completion-title">
@@ -113,14 +117,14 @@
         </div>
       </section>
       <aside>
-        <h1>Send feedback</h1>
+        <h1>Feedback details</h1>
         <p id="capture-origin" class="capture-origin"></p>
-        <p id="capture-scope" class="hint">
-          The screenshot covers the visible browser area. Review it before sending.
-        </p>
         <details class="capture-details">
           <summary id="capture-size">Capture details</summary>
           <p id="context"></p>
+          <p id="capture-scope" class="hint">
+            The screenshot covers the visible browser area. Review it before sending.
+          </p>
         </details>
         <label for="project">Project</label
         ><select id="project"></select>
@@ -189,7 +193,11 @@
           </p>
         </div>
         <p class="hint">Your draft stays in this browser until you explicitly send it.</p>
-        <button id="send" class="primary" disabled>Send feedback</button>
+        <button id="send" class="primary send-action" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 3-6 18-4-8-8-4 18-6ZM11 13 21 3" /></svg
+          ><span>Send feedback</span>
+        </button>
         <div id="upload-progress" class="upload-progress" hidden>
           <label id="upload-label" for="upload-meter">Preparing screenshots…</label>
           <progress id="upload-meter" max="100"></progress>

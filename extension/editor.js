@@ -44,7 +44,7 @@ function hideFullPagePreview() {
 function setSendState(disabled, label) {
   for (const id of ["send", "send-header"]) {
     $(id).disabled = disabled;
-    if (label) $(id).textContent = label;
+    if (label) $(id).querySelector("span").textContent = label;
   }
 }
 function uploadProgress(completed, total) {
