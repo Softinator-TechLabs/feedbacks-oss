@@ -1625,11 +1625,35 @@ try {
     "full-page-003-of-004.webp";
   await removableEditor.locator("#page-select").selectOption("0");
   await removableEditor.locator('[data-tool="rectangle"]').click();
-  const reviewImage = await removableEditor.locator("#canvas").boundingBox();
-  if (!reviewImage) throw Error("The screenshot is missing from the review editor");
-  await removableEditor.mouse.move(reviewImage.x + 32, reviewImage.y + 94);
+  await removableEditor.waitForFunction(
+    () =>
+      document.querySelector("#status")?.textContent ===
+      "Reviewing full-page-001-of-004.webp.",
+  );
+  await removableEditor.locator("#canvas").scrollIntoViewIfNeeded();
+  const reviewArea = await removableEditor.locator("#canvas").evaluate((canvas) => {
+    const image = canvas.getBoundingClientRect();
+    const viewport = document.querySelector("#canvas-scroll").getBoundingClientRect();
+    return {
+      left: Math.max(image.left, viewport.left, 0) + 8,
+      top: Math.max(image.top, viewport.top, 0) + 8,
+      right: Math.min(image.right, viewport.right, innerWidth) - 8,
+      bottom: Math.min(image.bottom, viewport.bottom, innerHeight) - 8,
+    };
+  });
+  assert.ok(reviewArea.right - reviewArea.left > 40, JSON.stringify(reviewArea));
+  assert.ok(reviewArea.bottom - reviewArea.top > 40, JSON.stringify(reviewArea));
+  const drawingStart = { x: reviewArea.left + 8, y: reviewArea.top + 8 };
+  assert.equal(
+    await removableEditor.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.id,
+      drawingStart,
+    ),
+    "canvas",
+  );
+  await removableEditor.mouse.move(drawingStart.x, drawingStart.y);
   await removableEditor.mouse.down();
-  await removableEditor.mouse.move(reviewImage.x + 115, reviewImage.y + 155, {
+  await removableEditor.mouse.move(reviewArea.right - 8, reviewArea.bottom - 8, {
     steps: 4,
   });
   await removableEditor.mouse.up();
