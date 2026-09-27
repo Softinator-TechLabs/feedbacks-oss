@@ -10,6 +10,8 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 
 - [Inline multi-point review](inline-multipoint-review.md)
 - [Shared page annotations](shared-page-annotations.md)
+- [Point evidence and responsive review](point-evidence-and-responsive-review.md)
+- [Annotation status and page overview](annotation-status-and-page-overview.md)
 - [Review popup and keyboard shortcuts](review-popup-and-shortcuts.md)
 - [Point evidence and GitHub repository routing](point-evidence-and-github-routing.md)
 - [Optional full-page website capture](optional-full-page-capture.md)

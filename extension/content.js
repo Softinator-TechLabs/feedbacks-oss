@@ -24,6 +24,7 @@
     pointSignature,
     freezePending = false,
     active = false,
+    reviewShortcuts = true,
     choosing = false,
     chosen = null,
     annotations = [],
@@ -38,13 +39,17 @@
     captureActive = false,
     captureEpoch = 0,
     drawerHandle,
+    reviewDock,
+    dockPosition,
     drawerTimer,
     loadingPins,
     occlusionPins = [],
     occlusionFrame,
     activePreviewHide,
     activationGeneration = 0,
-    reviewId;
+    reviewId,
+    pendingReview = false,
+    draftRenderSignature = "";
   function ageLabel(value) {
     const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 60000));
     if (!Number.isFinite(minutes)) return "recently";
@@ -77,25 +82,80 @@
   }
   function revealDrawer(open = true) {
     if (!bar) return;
-    bar.classList.add("hidden");
+    if (open) reviewDock.hidden = false;
+    bar.classList.toggle("hidden", !open);
     drawerHandle.setAttribute("aria-expanded", String(open));
+    positionControls();
     clearTimeout(drawerTimer);
-    if (open) foldLater();
+    // Keep the point list open until explicitly closed; edits must not disappear.
   }
-  function foldLater() {
-    clearTimeout(drawerTimer);
-    drawerTimer = setTimeout(() => {
-      if (
-        !active ||
-        choosing ||
-        pointRequest ||
-        captureActive ||
-        bar.matches(":hover") ||
-        bar.matches(":focus-within")
-      )
-        return;
-      revealDrawer(false);
-    }, 1000);
+  function positionControls() {
+    if (!reviewDock || reviewDock.hidden) return;
+    if (dockPosition) {
+      const rect = reviewDock.getBoundingClientRect();
+      dockPosition.x = Math.max(8, Math.min(dockPosition.x, innerWidth - rect.width - 8));
+      dockPosition.y = Math.max(
+        8,
+        Math.min(dockPosition.y, innerHeight - rect.height - 8),
+      );
+      Object.assign(reviewDock.style, {
+        left: `${dockPosition.x}px`,
+        top: `${dockPosition.y}px`,
+        right: "auto",
+        bottom: "auto",
+      });
+    }
+    if (bar.classList.contains("hidden")) return;
+    const dock = reviewDock.getBoundingClientRect();
+    const belowSpace = innerHeight - dock.bottom - 16;
+    const aboveSpace = dock.top - 16;
+    const below =
+      belowSpace >= Math.min(bar.scrollHeight, 360) || belowSpace > aboveSpace;
+    const available = Math.max(0, below ? belowSpace : aboveSpace);
+    bar.style.maxHeight = `${available}px`;
+    const height = Math.min(bar.scrollHeight + 2, available);
+    Object.assign(bar.style, {
+      left: `${Math.max(8, Math.min(dock.left, innerWidth - bar.offsetWidth - 8))}px`,
+      top: `${Math.max(8, below ? dock.bottom + 8 : dock.top - height - 8)}px`,
+      right: "auto",
+      bottom: "auto",
+    });
+  }
+  function movableControls(grip) {
+    grip.title = "Drag to move review controls. Arrow keys move them when focused.";
+    grip.onpointerdown = (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      const rect = reviewDock.getBoundingClientRect();
+      const origin = { x: event.clientX, y: event.clientY };
+      grip.setPointerCapture(event.pointerId);
+      grip.onpointermove = (move) => {
+        dockPosition = {
+          x: rect.left + move.clientX - origin.x,
+          y: rect.top + move.clientY - origin.y,
+        };
+        positionControls();
+      };
+      grip.onpointerup = grip.onpointercancel = () => {
+        grip.onpointermove = null;
+      };
+    };
+    grip.onkeydown = (event) => {
+      const delta = {
+        ArrowLeft: [-24, 0],
+        ArrowRight: [24, 0],
+        ArrowUp: [0, -24],
+        ArrowDown: [0, 24],
+      }[event.key];
+      if (!delta) return;
+      event.preventDefault();
+      const rect = reviewDock.getBoundingClientRect();
+      dockPosition = { x: rect.left + delta[0], y: rect.top + delta[1] };
+      positionControls();
+    };
+  }
+  async function exitReview() {
+    await send({ type: "stopReview" });
   }
   const invalidateCapture = (event) => {
     // Capture-phase listeners also see scroll/resize events from carousels and
@@ -246,7 +306,29 @@
       ...(requested ? { requestedSize: { width: requested, height: innerHeight } } : {}),
       capturedAt: new Date().toISOString(),
       anchor: saved[0]?.anchor || anchor,
-      ...(saved.length ? { annotations: saved } : {}),
+      ...(saved.length
+        ? {
+            annotations: saved,
+            pointEvidence: annotations.map(({ id, snapshot }) => ({ id, snapshot })),
+            liveAnnotations: annotations.map((item) => {
+              const location = draftLocation(item);
+              return location.element &&
+                (location.visible || location.reason === "Outside visible area")
+                ? {
+                    ...saved.find((entry) => entry.id === item.id),
+                    anchor: {
+                      ...targetEvidence(
+                        location.element,
+                        item.anchor.point,
+                        item.anchor.fingerprint,
+                      ),
+                      confidence: item.anchor.confidence,
+                    },
+                  }
+                : { id: item.id, body: item.body, anchor: {} };
+            }),
+          }
+        : {}),
     };
   }
   function targetEvidence(el, point, evidenceFingerprint) {
@@ -342,11 +424,14 @@
     const r = F.rect(el);
     if (!r.width || !r.height) return false;
     choosing = false;
+    releasePointImage(chosen);
     clearChosenPoint();
     chosen = {
       token: crypto.randomUUID(),
       element: el,
       record: identity(),
+      viewport: { width: innerWidth, height: innerHeight },
+      capturedAt: new Date().toISOString(),
       fingerprint: fingerprint(el),
       point: {
         x: Math.max(0, Math.min(1, (x - r.x) / r.width)),
@@ -390,17 +475,43 @@
   }
   function renderDraftPoints() {
     if (draftEditing) return;
+    const locations = annotations.map(draftLocation);
+    const renderSignature = JSON.stringify([
+      showPins,
+      pendingReview,
+      annotations.map((item, index) => [
+        item.id,
+        item.body,
+        !!item.snapshot,
+        locations[index].visible,
+        locations[index].reason,
+        locations[index].x,
+        locations[index].y,
+      ]),
+    ]);
+    if (draftRenderSignature === renderSignature) return;
+    draftRenderSignature = renderSignature;
+    activePreviewHide?.();
     occlusionPins = occlusionPins.filter((entry) => entry.kind !== "draft");
     draftPoints.replaceChildren();
     draftList.replaceChildren();
+    let outside = 0;
     annotations.forEach((item, index) => {
+      const location = locations[index];
+      if (!location.visible) outside++;
       const row = document.createElement("li");
       const label = document.createElement("span");
       label.textContent = `${index + 1}. ${item.body}`;
       row.append(label);
+      const state = document.createElement("small");
+      state.className = "draft-state";
+      state.textContent = `${location.visible ? "On this view" : location.reason} · ${item.snapshot ? "Original image saved" : "No original image"}`;
+      row.append(state);
+      if (item.snapshot) button("Original view", () => showPointImage(item, index), row);
       const editButton = button(
         "Edit",
         () => {
+          if (pendingReview) return send({ type: "openCapturedReview" });
           draftEditing = true;
           row.replaceChildren();
           const edit = document.createElement("textarea");
@@ -418,6 +529,7 @@
               }
               item.body = edit.value.trim();
               draftEditing = false;
+              draftRenderSignature = "";
               renderDraftPoints();
             },
             row,
@@ -426,6 +538,7 @@
             "Cancel",
             () => {
               draftEditing = false;
+              draftRenderSignature = "";
               renderDraftPoints();
             },
             row,
@@ -437,17 +550,16 @@
       button(
         "Remove",
         () => {
+          if (pendingReview) return send({ type: "openCapturedReview" });
+          releasePointImage(item);
           annotations.splice(index, 1);
           renderDraftPoints();
         },
         row,
       );
       draftList.append(row);
-      const point = item.anchor.pagePoint;
-      if (!point) return;
-      const x = point.x - scrollX,
-        y = point.y - scrollY;
-      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return;
+      if (!location.visible || !showPins) return;
+      const { x, y, element } = location;
       const pin = document.createElement("button");
       pin.className = "pin saved-draft-pin";
       pin.type = "button";
@@ -465,22 +577,147 @@
         row.scrollIntoView({ block: "nearest" });
       };
       draftPoints.append(pin);
-      let element;
-      try {
-        element = F.find(item.anchor.selector)[0];
-      } catch {}
-      occlusionPins.push({ kind: "draft", pin, element, x, y });
+      let preview, hideTimer;
+      const hide = () => {
+        clearTimeout(hideTimer);
+        preview?.remove();
+        preview = null;
+        if (activePreviewHide === hide) activePreviewHide = null;
+      };
+      const show = () => {
+        clearTimeout(hideTimer);
+        if (preview?.isConnected) return;
+        activePreviewHide?.();
+        activePreviewHide = hide;
+        preview = document.createElement("section");
+        preview.className = "preview draft-preview";
+        preview.setAttribute("aria-label", `Draft point ${index + 1}`);
+        const state = document.createElement("strong");
+        state.textContent = `Point ${index + 1} · Draft, not sent`;
+        const note = document.createElement("p");
+        note.className = "preview-note";
+        note.textContent = item.body;
+        const hint = document.createElement("p");
+        hint.className = "meta";
+        hint.textContent =
+          "Review screenshots, then Send feedback to share with your team.";
+        preview.append(state, note, hint);
+        button(
+          "Edit point",
+          () => {
+            hide();
+            pin.click();
+          },
+          preview,
+        );
+        if (item.snapshot)
+          button("Original view", () => showPointImage(item, index), preview);
+        draftPoints.append(preview);
+        const rect = preview.getBoundingClientRect();
+        preview.style.left = `${Math.max(8, Math.min(x + 18, innerWidth - rect.width - 8))}px`;
+        preview.style.top = `${Math.max(8, Math.min(y + 18, innerHeight - rect.height - 8))}px`;
+        preview.onpointerenter = () => clearTimeout(hideTimer);
+        preview.onpointerleave = leave;
+        preview.onfocusin = () => clearTimeout(hideTimer);
+        preview.onfocusout = leave;
+      };
+      const leave = () => {
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+          if (!preview?.matches(":hover") && !preview?.contains(root.activeElement))
+            hide();
+        }, 250);
+      };
+      pin.onpointerenter = show;
+      pin.onfocus = show;
+      pin.onpointerleave = leave;
+      pin.onblur = leave;
+      occlusionPins.push({ kind: "draft", pin, element, x, y, hidePreview: hide });
     });
     reviewButton.hidden = annotations.length === 0;
     drawerHandle.textContent = annotations.length
-      ? `Feedbacks · ${annotations.length} not sent`
+      ? `Feedbacks · ${annotations.length} not sent${outside ? ` · ${outside} outside this view` : ""}`
       : "Feedbacks";
+    drawerHandle.title = "Open or collapse review controls and unsent points";
+    positionControls();
     meta.textContent = annotations.length
-      ? `${annotations.length} ${annotations.length === 1 ? "point" : "points"} saved on this browser, not sent · Review screenshots and send to share`
+      ? `${annotations.length} points not sent${outside ? ` · ${outside} outside this view` : ""}. Open any point below to edit or view its original image.`
       : `${threads.length} comments on this view · ${innerWidth} × ${innerHeight}`;
     schedulePinOcclusion();
   }
+  function releasePointImage(item) {
+    if (item?.snapshot)
+      send({ type: "releasePointImage", key: item.snapshot.key }).catch(() => {});
+  }
+  async function showPointImage(item, index) {
+    const { image } = await send({ type: "pointImage", key: item.snapshot.key });
+    activePreviewHide?.();
+    const preview = document.createElement("section");
+    preview.className = "point-image-view";
+    preview.setAttribute("role", "dialog");
+    preview.setAttribute("aria-label", `Original view for point ${index + 1}`);
+    const heading = document.createElement("strong");
+    heading.textContent = `Point ${index + 1} · Original ${item.snapshot.viewport.width} × ${item.snapshot.viewport.height} view · Not sent`;
+    const imageElement = document.createElement("img");
+    imageElement.src = image;
+    imageElement.alt = `Original page state for point ${index + 1}: ${item.body}`;
+    preview.append(heading);
+    const close = button("Close original view", () => preview.remove(), preview);
+    const stage = document.createElement("div");
+    stage.className = "point-image-stage";
+    stage.append(imageElement);
+    const marker = document.createElement("span");
+    marker.className = "image-point";
+    marker.textContent = String(index + 1);
+    marker.style.left = `${(item.anchor.screenshotPoint.x / item.snapshot.viewport.width) * 100}%`;
+    marker.style.top = `${(item.anchor.screenshotPoint.y / item.snapshot.viewport.height) * 100}%`;
+    stage.append(marker);
+    preview.append(stage);
+    root.append(preview);
+    close.focus();
+  }
+  function draftLocation(item) {
+    // A live DOM reference survives responsive reflow. Never move a point to a
+    // different element merely because it occupies the old coordinates.
+    let element = item.element;
+    if (
+      !element?.isConnected &&
+      /^(record-v3:|heading-v1:)/.test(item.anchor.fingerprint || "")
+    ) {
+      try {
+        const candidates = F.find(item.anchor.selector);
+        if (
+          candidates.length === 1 &&
+          fingerprint(candidates[0]) === item.anchor.fingerprint
+        )
+          element = candidates[0];
+      } catch {}
+    }
+    if (!element?.isConnected)
+      return { visible: false, reason: "Element no longer available" };
+    const r = F.rect(element);
+    const style = element.ownerDocument.defaultView.getComputedStyle(element);
+    if (
+      !r.width ||
+      !r.height ||
+      style.visibility === "hidden" ||
+      style.display === "none" ||
+      style.opacity === "0" ||
+      element.closest('[hidden],[aria-hidden="true"]')
+    )
+      return { visible: false, reason: "Element hidden in this view" };
+    const x = r.x + r.width * (item.anchor.point?.x ?? 0.5);
+    const y = r.y + r.height * (item.anchor.point?.y ?? 0.5);
+    if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight)
+      return { visible: false, reason: "Outside visible area", element, x, y };
+    const top = document.elementsFromPoint(x, y).find((el) => el !== host);
+    if (!top || (!element.contains(top) && !top.contains(element)))
+      return { visible: false, reason: "Covered by another element", element, x, y };
+    return { visible: true, element, x, y };
+  }
   function savePoint() {
+    hoverTarget = null;
+    hoverBox?.classList.add("hidden");
     if (!chosen) throw Error("Right-click an element first.");
     // The selected element may disappear when a hover menu loses focus. Its
     // geometry and selector were recorded at the right-click, before editing.
@@ -498,8 +735,12 @@
     annotations.push({
       id: crypto.randomUUID(),
       body,
+      element: chosen.element,
+      snapshot: chosen.snapshot,
       anchor: {
         ...chosen.evidence,
+        viewport: chosen.viewport,
+        capturedAt: chosen.capturedAt,
         confidence:
           chosen.fingerprint &&
           chosen.element.isConnected &&
@@ -517,7 +758,7 @@
     clearChosenPoint();
     renderDraftPoints();
     notice.textContent = `Point ${annotations.length} saved here, not sent. Right-click another element or review screenshots and send.`;
-    revealDrawer();
+    revealDrawer(false);
   }
   async function capturePoint() {
     if (pointRequest || !annotations.length) return;
@@ -532,17 +773,7 @@
     closePointMenu();
     notice.textContent = "Capturing your review…";
     try {
-      const outsideView = annotations.some(({ anchor }) => {
-        const point = anchor.pagePoint;
-        return (
-          point &&
-          (point.y < scrollY ||
-            point.y > scrollY + innerHeight ||
-            point.x < scrollX ||
-            point.x > scrollX + innerWidth)
-        );
-      });
-      await send({ type: "capture", scope: outsideView ? "fullPage" : "visible" });
+      await send({ type: "capture", scope: "visible" });
       notice.textContent = "Review the screenshot and send your comments.";
     } catch (error) {
       notice.textContent = error.message;
@@ -552,8 +783,13 @@
     }
   }
   async function openPointMenu(el, x, y) {
+    hoverTarget = null;
     hoverBox?.classList.add("hidden");
     if (pointRequest || captureActive) return;
+    if (pendingReview) {
+      await send({ type: "openCapturedReview" });
+      return;
+    }
     if (freezePending) return;
     if (chosen && pointText.value.trim()) {
       pointMenu.classList.remove("hidden");
@@ -562,23 +798,41 @@
       pointText.focus({ preventScroll: true });
       return;
     }
-    if (!choosePoint(el, x, y)) return;
+    // A menu may still be entering when it is selected. Hold its visual
+    // position while Chrome captures it, then resume the website's motion.
+    const motions = document
+      .getAnimations()
+      .filter((motion) => motion.playState === "running");
+    for (const motion of motions) motion.pause();
+    const resumeMotion = () => {
+      for (const motion of motions) if (motion.playState === "paused") motion.play();
+    };
+    if (!choosePoint(el, x, y)) {
+      resumeMotion();
+      return;
+    }
     const token = chosen.token;
     freezePending = true;
-    host.style.visibility = "hidden";
+    host.style.setProperty("display", "none", "important");
     try {
       // Flush the hidden extension UI before Chrome captures the still-hovered
-      // website. The image remains local and is discarded on Save or Cancel.
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      const { image } = await send({ type: "freezeView" });
+      // website. Keep that original view with the point until explicit Send.
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+      const { image, snapshot } = await send({ type: "freezeView", key: token });
       if (chosen?.token === token && pointSignature === signature()) {
+        chosen.snapshot = snapshot;
         freezeFrame.src = image;
         freezeFrame.classList.remove("hidden");
-      }
-    } catch {
+      } else releasePointImage({ snapshot });
+    } catch (error) {
       // A denied screenshot must not prevent a text-only point from being saved.
+      pointMenu.querySelector(".point-tip").textContent =
+        `Original view could not be saved: ${error.message} Your point text can still be saved.`;
     } finally {
-      host.style.visibility = "";
+      resumeMotion();
+      host.style.removeProperty("display");
       freezePending = false;
     }
     if (chosen?.token !== token || pointSignature !== signature()) return;
@@ -610,6 +864,7 @@
     draftPin.classList.remove("hidden");
   }
   function setup(css) {
+    draftRenderSignature = "";
     host = document.createElement("div");
     (globalThis.feedbacksOwnedRoots ||= new WeakSet()).add(host);
     host.id = "feedbacks-review-root";
@@ -624,21 +879,46 @@
     bar.style.pointerEvents = "auto";
     bar.setAttribute("aria-label", "Feedbacks review");
     root.append(bar);
+    reviewDock = document.createElement("div");
+    reviewDock.className = "review-dock";
+    root.append(reviewDock);
+    const grip = button("⠿", () => {}, reviewDock);
+    grip.className = "review-drag";
+    grip.setAttribute("aria-label", "Move review controls");
+    movableControls(grip);
     drawerHandle = document.createElement("button");
     drawerHandle.className = "drawer-handle";
     drawerHandle.textContent = "Feedbacks";
-    drawerHandle.setAttribute("aria-expanded", "true");
+    drawerHandle.setAttribute("aria-expanded", "false");
     drawerHandle.setAttribute("aria-controls", "feedbacks-drawer");
     drawerHandle.onclick = () => revealDrawer(bar.classList.contains("hidden"));
-    drawerHandle.hidden = true;
+    drawerHandle.hidden = false;
+    reviewDock.append(drawerHandle);
+    const dockExit = button("Exit", exitReview, reviewDock);
+    dockExit.className = "dock-exit";
+    dockExit.title = "Exit review (R). Draft points stay on this page.";
+    dockExit.setAttribute("aria-label", "Exit review");
     bar.id = "feedbacks-drawer";
     bar.addEventListener("pointerenter", () => clearTimeout(drawerTimer));
-    bar.addEventListener("pointerleave", foldLater);
+
     bar.addEventListener("focusin", () => clearTimeout(drawerTimer));
-    bar.addEventListener("focusout", foldLater);
+
     const heading = document.createElement("strong");
     heading.textContent = `Feedbacks · ${project.name}`;
-    bar.append(heading);
+    const barHeading = document.createElement("div");
+    barHeading.className = "review-bar-heading";
+    barHeading.append(heading);
+    button("Collapse", () => revealDrawer(false), barHeading);
+    button(
+      "Hide",
+      () => {
+        revealDrawer(false);
+        reviewDock.hidden = true;
+        activePreviewHide?.();
+      },
+      barHeading,
+    ).title = "Hide page controls. Reopen Feedbacks from Chrome to restore them.";
+    bar.append(barHeading);
     meta = document.createElement("p");
     meta.className = "meta";
     bar.append(meta);
@@ -698,22 +978,7 @@
       control.setAttribute("aria-pressed", String(mode === value));
     }
     button("Move to narrow window", () => changeMode("mobile", true), sizes);
-    button(
-      "Exit review",
-      async () => {
-        active = false;
-        activationGeneration++;
-        globalThis.feedbacksReviewActive = false;
-        clearInterval(timer);
-        clearTimeout(drawerTimer);
-        host.remove();
-        clearChosenPoint();
-        draftEditing = false;
-        choosing = false;
-        await send({ type: "stopReview" });
-      },
-      sizes,
-    );
+    button("Exit review", exitReview, sizes);
     notice = document.createElement("p");
     notice.className = "notice";
     notice.setAttribute("role", "status");
@@ -761,6 +1026,7 @@
     button(
       "Cancel",
       () => {
+        releasePointImage(chosen);
         closePointMenu(true);
         pointText.value = "";
         clearChosenPoint();
@@ -785,7 +1051,7 @@
     const shortcutTip = document.createElement("p");
     shortcutTip.className = "meta";
     shortcutTip.textContent =
-      "Right-click to comment · Alt+Shift+M/T/D/W for size · Alt+Shift+R to stop or start review · Alt+Shift+S/P for screenshot.";
+      "While not typing: M mobile · T tablet · D desktop · W reset · S screenshot · R exit review.";
     bar.append(shortcutTip);
     document.documentElement.append(host);
   }
@@ -839,10 +1105,13 @@
   }
   function renderPins() {
     if (!active) return;
-    occlusionPins = [];
+    occlusionPins = occlusionPins.filter((entry) => entry.kind === "draft");
     pinLayer.replaceChildren();
     targetBox.classList.add("hidden");
-    const current = context();
+    const current = {
+      url: U.safeUrl(location.href),
+      viewport: { width: innerWidth, height: innerHeight },
+    };
     renderChosenPoint();
     renderDraftPoints();
     const unmatched = [],
@@ -850,18 +1119,17 @@
     let matched = 0;
     for (const thread of threads) {
       if (!U.pinVisible(thread, showResolved)) continue;
-      if (U.device(thread.context.viewport.width) !== U.device(innerWidth)) {
-        other.push(thread);
-        continue;
-      }
       const linked = thread.context.annotations?.length
         ? thread.context.annotations
         : [{ anchor: thread.context.anchor, body: thread.body }];
       for (const item of linked) {
+        const pointState = U.pointState(thread, item.id);
+        if (pointState === "removed" || (!showResolved && pointState !== "open"))
+          continue;
         const a = item.anchor;
         let element;
         if (
-          U.sameContext(thread.context, current) &&
+          U.safeUrl(thread.context.url) === current.url &&
           a?.confidence === "element" &&
           a.selector &&
           /^(record-v3:|heading-v1:)/.test(a.fingerprint || "")
@@ -900,7 +1168,12 @@
           } catch {}
         }
         if (!element) {
-          unmatched.push(thread);
+          const list =
+            U.device((a?.viewport || thread.context.viewport).width) ===
+            U.device(innerWidth)
+              ? unmatched
+              : other;
+          if (!list.includes(thread)) list.push(thread);
           continue;
         }
         const r = F.rect(element);
@@ -914,7 +1187,7 @@
           () => send({ type: "openThread", id: thread.id }),
           pinLayer,
         );
-        pin.className = "pin";
+        pin.className = `pin${pointState !== "open" ? " resolved" : ""}`;
         pin.style.pointerEvents = "auto";
         pin.style.left = `${x}px`;
         pin.style.top = `${y}px`;
@@ -946,7 +1219,7 @@
           preview.className = "preview";
           const byline = document.createElement("p");
           byline.className = "preview-byline";
-          byline.textContent = `${thread.author.name} · ${ageLabel(thread.createdAt)}`;
+          byline.textContent = `${thread.author.name} · ${ageLabel(thread.createdAt)} · ${pointState === "open" ? "Open" : pointState === "closed" ? "Thread closed" : "Resolved"}`;
           byline.title = new Date(thread.createdAt).toLocaleString();
           const note = document.createElement("p");
           note.className = "preview-note";
@@ -964,21 +1237,41 @@
             !["resolved", "declined"].includes(thread.work.state)
           ) {
             const resolve = button(
-              "Resolve",
+              item.id
+                ? pointState === "resolved"
+                  ? "Reopen point"
+                  : "Resolve point"
+                : "Resolve thread",
               async () => {
                 try {
-                  await send({ type: "resolveThread", id: thread.id, reviewId });
+                  await send(
+                    item.id
+                      ? {
+                          type: "pointStatus",
+                          id: thread.id,
+                          annotationId: item.id,
+                          revision: thread.revision,
+                          state: pointState === "resolved" ? "open" : "resolved",
+                          reviewId,
+                        }
+                      : { type: "resolveThread", id: thread.id, reviewId },
+                  );
                 } catch (error) {
-                  if (!/outside token scope/i.test(error.message)) throw error;
+                  if (!/outside token scope|unknown operation/i.test(error.message))
+                    throw error;
                   await send({ type: "openThread", id: thread.id });
                   notice.textContent =
-                    "This older connection opens the thread to resolve it. Reconnect Feedbacks for one-click resolve.";
+                    "Manage this point in the thread. Update the server and reconnect Feedbacks for point actions here.";
                   revealDrawer();
                   return;
                 }
                 hide();
                 await loadPins();
-                notice.textContent = "Thread resolved. Its pin is hidden.";
+                notice.textContent = item.id
+                  ? pointState === "resolved"
+                    ? "Point reopened."
+                    : "Point resolved. Other points and the thread stay open."
+                  : "Thread resolved. Its pin is hidden.";
               },
               actions,
             );
@@ -1117,6 +1410,12 @@
     (event) => {
       if (!active) return;
       if (event.key === "Escape") {
+        const imageView = root.querySelector(".point-image-view");
+        if (imageView) {
+          imageView.remove();
+          return;
+        }
+        releasePointImage(chosen);
         closePointMenu(true);
         pointText.value = "";
         choosing = false;
@@ -1127,11 +1426,23 @@
         return;
       }
       if (event.composedPath().includes(host)) return;
-      const value = U.shortcut(event);
+      const value = reviewShortcuts && U.shortcut(event);
       if (value) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        changeMode(value).catch((e) => (notice.textContent = e.message));
+        const action =
+          value === "stop"
+            ? send({ type: "stopReview" })
+            : value === "capture" || value === "capture-full"
+              ? send({
+                  type: "capture",
+                  scope: value === "capture-full" ? "fullPage" : "visible",
+                })
+              : changeMode(value);
+        action.catch((e) => {
+          notice.textContent = e.message;
+          revealDrawer();
+        });
       }
     },
     true,
@@ -1153,6 +1464,8 @@
         hoverFrame = null;
         if (
           !active ||
+          freezePending ||
+          captureActive ||
           hoverTarget?.nodeType !== 1 ||
           !pointMenu.classList.contains("hidden")
         ) {
@@ -1177,7 +1490,27 @@
   );
   F.listen("focusin", schedulePinOcclusion, true);
   F.listen("focusout", schedulePinOcclusion, true);
-  F.listen("pointerover", schedulePinOcclusion, true);
+  F.listen(
+    "pointerover",
+    (event) => {
+      schedulePinOcclusion();
+      if (active && !event.composedPath().includes(host)) repaint();
+    },
+    true,
+  );
+  const layoutObserver = new MutationObserver((records) => {
+    if (
+      active &&
+      records.some((record) => record.target !== host && !host?.contains(record.target))
+    )
+      repaint();
+  });
+  layoutObserver.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["class", "style", "hidden", "open", "aria-hidden", "aria-expanded"],
+  });
   F.listen("visibilitychange", () => {
     if (active && document.visibilityState === "visible")
       loadPins().catch((error) => (notice.textContent = error.message));
@@ -1193,13 +1526,20 @@
   };
   F.listen(
     "scroll",
-    () => {
+    (event) => {
+      if (event.composedPath().includes(host)) return;
+      if (event.target !== document && event.target !== window) {
+        repaint();
+        return;
+      }
       closePointMenu();
       repaint();
     },
     { passive: true, capture: true },
   );
-  F.listen("resize", () => {
+  F.listen("resize", (event) => {
+    if (event.target !== window) return;
+    positionControls();
     closePointMenu();
     repaint();
   });
@@ -1210,6 +1550,7 @@
     if (
       ![
         "activate",
+        "reviewPreferences",
         "instantCapturePoint",
         "openInlinePoint",
         "choosePoint",
@@ -1226,13 +1567,26 @@
         "qaScan",
         "restore",
         "discardPoint",
+        "discardDraftPoints",
+        "draftPrepared",
         "popupControls",
       ].includes(message.type)
     )
       return;
     (async () => {
+      if (message.type === "draftPrepared") {
+        pendingReview = true;
+        return {};
+      }
+      if (message.type === "discardDraftPoints") {
+        annotations = [];
+        pendingReview = false;
+        renderPins();
+        return {};
+      }
       if (message.type === "popupControls") {
         if (!active) throw Error("Open Feedbacks to connect this page.");
+        if (message.action === "show-controls") revealDrawer(true);
         if (message.action === "pins") {
           showPins = !showPins;
           renderPins();
@@ -1241,10 +1595,22 @@
           showResolved = !showResolved;
           await loadPins();
         }
-        return { showPins, showResolved, comments: threads.length };
+        return {
+          showPins,
+          showResolved,
+          comments: threads.length,
+          drafts: annotations.length,
+          viewport: { width: innerWidth, height: innerHeight },
+        };
+      }
+      if (message.type === "reviewPreferences") {
+        reviewShortcuts = message.reviewShortcuts !== false;
+        return {};
       }
       if (message.type === "activate") {
+        reviewShortcuts = message.reviewShortcuts !== false;
         const wasActive = active && host?.isConnected;
+        if (wasActive) reviewDock.hidden = false;
         activationGeneration++;
         reviewId = message.reviewId;
         threads = [];
@@ -1252,6 +1618,8 @@
         globalThis.feedbacksReviewActive = true;
         if (project?.id !== message.project.id) {
           threads = [];
+          releasePointImage(chosen);
+          annotations.forEach(releasePointImage);
           clearChosenPoint();
           annotations = [];
           host?.remove();
@@ -1259,7 +1627,7 @@
         project = message.project;
         if (!host?.isConnected) setup(message.css);
         renderPins();
-        if (!wasActive) revealDrawer();
+        if (!wasActive) revealDrawer(false);
         clearInterval(timer);
         timer = setInterval(
           () => loadPins().catch((e) => (notice.textContent = e.message)),
@@ -1340,6 +1708,7 @@
       if (message.type === "metrics")
         return { outerWidth, width: innerWidth, height: innerHeight };
       if (message.type === "feedbackSaved") {
+        pendingReview = false;
         annotations = [];
         renderDraftPoints();
         if (chosen?.evidence.fingerprint === message.fingerprint) clearChosenPoint();

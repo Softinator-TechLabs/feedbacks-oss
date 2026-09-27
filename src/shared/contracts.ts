@@ -68,6 +68,13 @@ export const reviewFiltersSchema = z.object({
 });
 export type ReviewFilters = z.infer<typeof reviewFiltersSchema>;
 export const anchorSchema = z.object({
+  viewport: z
+    .object({
+      width: z.number().int().min(1).max(20000),
+      height: z.number().int().min(1).max(20000),
+    })
+    .optional(),
+  capturedAt: z.string().datetime().optional(),
   tagName: z.string().max(40).optional(),
   selector: z.string().max(2000).optional(),
   fingerprint: z.string().max(500).optional(),
@@ -115,6 +122,10 @@ export const contextSchema = z.object({
       }),
     )
     .max(100)
+    .refine(
+      (items) => new Set(items.map((item) => item.id)).size === items.length,
+      "Point IDs must be distinct",
+    )
     .optional(),
 });
 const normalizedPointSchema = z.object({
@@ -365,6 +376,7 @@ export const inputSchemas = {
   }),
   "threads.list": z.object({
     projectId: id,
+    includeSummary: z.boolean().default(false),
     ...page,
     ...reviewFiltersSchema.shape,
   }),
@@ -486,6 +498,11 @@ export const inputSchemas = {
     state: z.enum(["open", "in_progress", "ready_for_review", "resolved", "declined"]),
     note: z.string().trim().max(12000).optional(),
     duplicateOf: id.optional(),
+  }),
+  "threads.annotationStatus": z.object({
+    ...tm,
+    annotationId: id,
+    state: z.enum(["open", "resolved", "removed"]),
   }),
   "threads.review": z.object({
     ...tm,
@@ -611,6 +628,16 @@ export const threadOutput = z
     id,
     projectId: id,
     revision,
+    annotationStates: z
+      .record(
+        z.string().uuid(),
+        z.object({
+          state: z.enum(["open", "resolved", "removed"]),
+          actor: z.object({}).passthrough(),
+          at: z.string().datetime(),
+        }),
+      )
+      .optional(),
     body: z.string(),
     // Older immutable export snapshots may predate explicit priority.
     topPriority: z.boolean().optional(),
@@ -990,6 +1017,22 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   }),
   "threads.list": z.object({
     items: z.array(threadOutput),
+    summary: z
+      .object({
+        threads: z.object({
+          open: z.number().int(),
+          closed: z.number().int(),
+          total: z.number().int(),
+        }),
+        points: z.object({
+          open: z.number().int(),
+          resolved: z.number().int(),
+          closed: z.number().int(),
+          removed: z.number().int(),
+          total: z.number().int(),
+        }),
+      })
+      .optional(),
     total: z.number().int(),
     nextOffset: z.number().int().nullable(),
     websiteFilters: z.object({
@@ -1126,6 +1169,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "threads.create": threadOutput,
   "threads.reply": threadOutput,
   "threads.status": threadOutput,
+  "threads.annotationStatus": threadOutput,
   "threads.review": threadOutput,
   "threads.linkIssue": threadOutput,
   "threads.figmaReference": threadOutput,
@@ -1185,6 +1229,7 @@ export const scopedAgentOperations = [
 
 export const agentTokenScopes = [
   ...scopedAgentOperations,
+  "threads.annotationStatus",
   "qa.get",
   "qa.runs",
   "qa.baselineGet",

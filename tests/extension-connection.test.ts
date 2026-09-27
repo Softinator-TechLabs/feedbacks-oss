@@ -29,7 +29,8 @@ async function popup({
     ]),
   );
   const requested: any[] = [],
-    sent: any[] = [];
+    sent: any[] = [],
+    opened: string[] = [];
   let interval: (() => void) | undefined;
   let allowed = true,
     updateChecks = 0;
@@ -63,6 +64,9 @@ async function popup({
     },
     releaseLinks: () => ({}),
     chrome: {
+      commands: {
+        getAll: async () => [{ name: "_execute_action", shortcut: "Command+Shift+Y" }],
+      },
       permissions: {
         contains: async (input: any) =>
           input.origins?.[0] === "<all_urls>" ? allSitesAllowed : serverAllowed,
@@ -71,8 +75,16 @@ async function popup({
           return allowed;
         },
       },
-      tabs: { query: async () => [{ id: 1, url: "https://review.example.test" }] },
+      tabs: {
+        query: async () => [{ id: 1, url: "https://review.example.test" }],
+        create: async ({ url }: { url: string }) => {
+          opened.push(url);
+        },
+      },
       runtime: {
+        openOptionsPage: async () => {
+          opened.push("options");
+        },
         getManifest: () => ({
           version: "0.1.9",
           ...(managed
@@ -121,6 +133,7 @@ async function popup({
     state,
     requested,
     sent,
+    opened,
     setAllowed: (value: boolean) => {
       allowed = value;
     },
@@ -274,4 +287,11 @@ test("typing a server persists the draft and a background refresh does not overw
   state.pending = true;
   await tick();
   assert.equal(nodes.server.value, "https://chosen.example.test");
+});
+
+test("popup opens Chrome shortcut controls through the API and exposes extension settings", async () => {
+  const { nodes, opened } = await popup();
+  await nodes["customize-shortcuts"].onclick();
+  await nodes.settings.onclick();
+  assert.deepEqual(opened, ["chrome://extensions/shortcuts", "options"]);
 });

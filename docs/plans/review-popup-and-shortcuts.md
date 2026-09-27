@@ -2,6 +2,8 @@
 
 Status: implemented and locally verified. Date: 2026-09-27.
 
+The 0.1.24 shortcut design below is superseded by [point evidence and responsive review](point-evidence-and-responsive-review.md), which restores single-letter shortcuts during review and preserves per-point original views.
+
 ## Outcome
 
 The popup presents review state, a visible stop control, capture actions, and discoverable shortcuts without scrolling for the main actions. Typing in any webpage editor cannot trigger viewport shortcuts. Unsent points visibly differ from published points and can be edited from their marker. Hovering a page element during review highlights it before selection.

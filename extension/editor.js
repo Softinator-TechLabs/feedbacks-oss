@@ -172,9 +172,12 @@ async function showFullPagePreview() {
     const fresh = await send({ type: "draft" });
     if (!fresh || fresh.id !== draft.id) throw Error("This draft changed. Reopen it.");
     const kind = fresh.frozen ? "approved" : "source";
+    const pageIndices = fresh.capturePages
+      .map((page, index) => index)
+      .filter((index) => !fresh.capturePages[index].annotationId);
     let width = 0;
     let height = 0;
-    for (let index = 0; index < fresh.capturePages.length; index++) {
+    for (const index of pageIndices) {
       const blob = await getPage(fresh.id, index, kind);
       if (!blob) throw Error(`Screenshot ${index + 1} is missing from this browser.`);
       const bitmap = await createImageBitmap(blob);
@@ -191,7 +194,7 @@ async function showFullPagePreview() {
     const surface = overview.getContext("2d");
     if (!surface) throw Error("This browser cannot render the full-page preview.");
     let sourceTop = 0;
-    for (let index = 0; index < fresh.capturePages.length; index++) {
+    for (const index of pageIndices) {
       if (request !== previewBuild) return;
       const bitmap = await createImageBitmap(await getPage(fresh.id, index, kind));
       const top = Math.round((sourceTop / height) * size.height);
@@ -372,9 +375,13 @@ function renderThumbnails(fresh) {
     const image = document.createElement("img");
     image.alt = "";
     const label = document.createElement("strong");
-    label.textContent = `Screenshot ${index + 1}`;
+    label.textContent = page.annotationId
+      ? `Point ${page.pointNumber} · Original view`
+      : `Screenshot ${index + 1}`;
     const range = document.createElement("small");
-    range.textContent = `${page.startY}–${page.endY}px`;
+    range.textContent = page.annotationId
+      ? `${page.viewportWidth}px wide · At time of comment`
+      : `${page.startY}–${page.endY}px`;
     open.append(image, label, range);
     open.onclick = () => changePage(index);
     card.append(open);
@@ -419,13 +426,20 @@ async function loadBase(fresh) {
   $("image-review").classList.toggle("has-pages", pages.length > 1);
   $("series-guide").hidden = pages.length < 2;
   renderThumbnails(fresh);
-  $("combine-option").hidden = pages.length < 2;
-  $("include-combined").checked = !!fresh?.includeCombined && pages.length > 1;
+  const continuousPages = pages.filter((page) => !page.annotationId);
+  $("combine-option").hidden = continuousPages.length < 2;
+  $("full-page-toggle").hidden = continuousPages.length < 2;
+  $("include-combined").checked = !!fresh?.includeCombined && continuousPages.length > 1;
   $("page-navigation").hidden = pages.length < 2;
   $("page-select").replaceChildren(
     ...pages.map(
       (page, index) =>
-        new Option(`${page.name} · ${page.startY}–${page.endY}px`, String(index)),
+        new Option(
+          page.annotationId
+            ? `Point ${page.pointNumber} · Original ${page.viewportWidth}px view`
+            : `${page.name} · ${page.startY}–${page.endY}px`,
+          String(index),
+        ),
     ),
   );
   $("page-select").value = String(pageIndex);
@@ -436,9 +450,7 @@ async function loadBase(fresh) {
     fresh?.captureScope === "fullPage"
       ? `${pages.length} ${pages.length === 1 ? "screenshot" : "screenshots"} in page order. Review and redact each image before sending. Sticky elements may repeat.`
       : "The screenshot covers the visible browser area. Review it before sending.";
-  $("capture-scope").textContent = fresh?.captureNotice
-    ? `${fresh.captureNotice} Sticky elements may repeat.`
-    : scopeCopy;
+  $("capture-scope").textContent = fresh?.captureNotice ? fresh.captureNotice : scopeCopy;
   $("retry-capture").textContent =
     fresh?.captureScope === "fullPage"
       ? "Retry full-page capture"
@@ -869,6 +881,21 @@ async function init() {
     const label = document.createElement("label");
     label.htmlFor = `point-note-${index}`;
     label.textContent = `Point ${index + 1}`;
+    const imageIndex = (draft.capturePages || []).findIndex(
+      (page) => page.annotationId === item.id,
+    );
+    if (imageIndex >= 0) {
+      const original = document.createElement("button");
+      original.type = "button";
+      original.textContent = "View original image";
+      original.onclick = () => {
+        const index = draft.capturePages.findIndex(
+          (page) => page.annotationId === item.id,
+        );
+        if (index >= 0) changePage(index);
+      };
+      label.append(original);
+    }
     const note = document.createElement("textarea");
     note.id = `point-note-${index}`;
     note.value = item.body;

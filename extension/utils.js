@@ -41,8 +41,8 @@ globalThis.FeedbacksUtil = Object.freeze({
       event.isComposing ||
       event.ctrlKey ||
       event.metaKey ||
-      !event.altKey ||
-      !event.shiftKey ||
+      event.altKey ||
+      event.shiftKey ||
       event.repeat
     )
       return null;
@@ -61,8 +61,15 @@ globalThis.FeedbacksUtil = Object.freeze({
     )
       return null;
     return (
-      { m: "mobile", t: "tablet", d: "desktop", w: "wide" }[event.key.toLowerCase()] ||
-      null
+      {
+        m: "mobile",
+        t: "tablet",
+        d: "desktop",
+        w: "wide",
+        s: "capture",
+        p: "capture-full",
+        r: "stop",
+      }[event.key.toLowerCase()] || null
     );
   },
   sameContext(saved, current) {
@@ -73,5 +80,11 @@ globalThis.FeedbacksUtil = Object.freeze({
   },
   pinVisible(thread, showResolved) {
     return !thread.archived && (showResolved || thread.pins.defaultVisible);
+  },
+  pointState(thread, id) {
+    const state = thread.annotationStates?.[id]?.state || "open";
+    if (state === "removed") return state;
+    if (thread.work.state === "declined") return "closed";
+    return thread.work.state === "resolved" ? "resolved" : state;
   },
 });

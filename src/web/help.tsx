@@ -1,14 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { ownerTokenScopes } from "../shared/contracts.js";
 import { agentSetupPrompt, type AgentIssuance } from "./agent-setup.js";
 import { api, type Actor, type Project } from "./api.js";
 import { ActionState, useAction, useLoad, Loading, ErrorNotice } from "./ui.js";
-import { chromeWebStoreUrl, officialWebsiteUrl } from "../shared/product-links.js";
-
-type HelpContent = {
-  moreHtml: string;
-  instructions: string;
-};
+import { chromeWebStoreUrl } from "../shared/product-links.js";
 
 function HelpAgentSetup({
   actor,
@@ -76,10 +71,8 @@ function HelpAgentSetup({
       <div>
         <h2>Connect your coding agent</h2>
         <p>
-          Give Codex, Claude or another MCP client a private connection to this workspace.
-          The prompt includes the server address, a newly issued API key, permissions,
-          expiry and setup instructions. Your agent reads current discussions through MCP
-          after connecting.
+          Copy the setup prompt, then paste it into Codex, Claude or your coding agent. It
+          contains the connection details and a private API key.
         </p>
         <p className="help-key-warning">
           This creates a 90-day key with full owner administration across current and
@@ -140,163 +133,75 @@ function HelpAgentSetup({
 }
 
 export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }) {
-  const [copiedCommand, setCopiedCommand] = useState(false);
-  const mcpCommand = `codex mcp add feedbacks --url ${location.origin}/mcp --bearer-token-env-var FEEDBACKS_TOKEN`;
   const { data, error } = useLoad(async () => {
-    const r = await fetch("/api/help", {
+    const response = await fetch("/api/help", {
       credentials: "same-origin",
       cache: "no-store",
     });
-    if (!r.ok) throw new Error("Sign in to read help.");
-    const document = new DOMParser().parseFromString(await r.text(), "text/html");
-    const template = document.querySelector<HTMLTemplateElement>(
-      "template#agent-setup-instructions",
-    );
-    const instructions = template?.content.textContent?.trim() ?? "";
-    template?.remove();
-    const install = document.querySelector("section");
-    document.querySelector("h1")?.remove();
-    document.body.querySelector(":scope > p")?.remove();
-    install?.remove();
-    document.querySelector("#agent-setup-slot")?.remove();
-    for (const disclosure of document.body.querySelectorAll(":scope > details")) {
-      const section = document.createElement("section");
-      const summary = disclosure.querySelector(":scope > summary");
-      const heading = document.createElement("h2");
-      heading.textContent = summary?.textContent ?? "More information";
-      if (summary?.id) heading.id = summary.id;
-      summary?.remove();
-      section.append(heading, ...Array.from(disclosure.childNodes));
-      disclosure.replaceWith(section);
-    }
+    if (!response.ok) throw new Error("Sign in to read help.");
+    const document = new DOMParser().parseFromString(await response.text(), "text/html");
     return {
-      moreHtml: document.body.innerHTML,
-      instructions,
-    } satisfies HelpContent;
-  }, []);
-  useEffect(() => {
-    const revealUpdate = () => {
-      if (location.hash !== "#update-extension") return;
-      const more = document.getElementById("more-help");
-      if (more instanceof HTMLDetailsElement) more.open = true;
-      document.getElementById("update-extension")?.scrollIntoView();
+      instructions:
+        document
+          .querySelector<HTMLTemplateElement>("template#agent-setup-instructions")
+          ?.content.textContent?.trim() ?? "",
     };
-    revealUpdate();
-    window.addEventListener("hashchange", revealUpdate);
-    return () => window.removeEventListener("hashchange", revealUpdate);
-  }, [data]);
+  }, []);
   return (
-    <>
+    <article className="reading help-page help-simple">
+      <div className="help-simple-heading">
+        <h1>Help &amp; setup</h1>
+        <a href="https://feedbacks.softinator.ai/docs/" target="_blank" rel="noreferrer">
+          Read the documentation ↗
+        </a>
+      </div>
       <ErrorNotice error={error} />
       {data ? (
-        <article className="reading help-page">
-          <div className="help-intro">
-            <h1>Review the web together.</h1>
-            <p>
-              Capture a page, mark the exact spot and keep the discussion in one place.
-            </p>
-          </div>
-          <div className="help-start">
-            <section className="help-install" aria-labelledby="help-install-title">
-              <h2 id="help-install-title">Start reviewing in Chrome</h2>
-              <ol>
-                <li>Install and pin the Feedbacks extension.</li>
-                <li>
-                  Enter <code>{location.origin}</code> as your server.
-                </li>
-                <li>Sign in and approve the pairing request.</li>
-              </ol>
-              <a
-                className="button primary"
-                href={chromeWebStoreUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Get the Chrome extension ↗
-              </a>
-            </section>
-            <section className="help-docs" aria-labelledby="help-docs-title">
-              <div className="help-docs-heading">
-                <div>
-                  <h2 id="help-docs-title">Find your guide</h2>
-                  <p>Short answers here; full steps in searchable docs.</p>
-                </div>
-                <a href="https://feedbacks.softinator.ai/docs/">Search docs ↗</a>
-              </div>
-              <nav className="help-docs-list" aria-label="Feedbacks guides">
-                <a href="https://feedbacks.softinator.ai/docs/guide/getting-started">
-                  <strong>Getting started</strong>
-                  <span>Join a workspace and review your first request</span>
-                </a>
-                <a href="https://feedbacks.softinator.ai/docs/guide/chrome-extension">
-                  <strong>Chrome extension</strong>
-                  <span>Pair, grant permissions and capture a page</span>
-                </a>
-                <a href="https://feedbacks.softinator.ai/docs/guide/mcp">
-                  <strong>AI agents and MCP</strong>
-                  <span>Understand MCP and connect a coding agent</span>
-                </a>
-                <a href="https://feedbacks.softinator.ai/docs/guide/github">
-                  <strong>GitHub Issues</strong>
-                  <span>Install the App and create an Issue</span>
-                </a>
-                <a href="https://feedbacks.softinator.ai/docs/guide/self-host">
-                  <strong>Developer installation</strong>
-                  <span>Run locally or self-host a team server</span>
-                </a>
-              </nav>
-            </section>
-          </div>
-          <section className="help-connect" aria-labelledby="help-connect-title">
-            <div>
-              <h2 id="help-connect-title">Connect a coding agent</h2>
-              <p>
-                Create a scoped key in Account, then give the key to your MCP client
-                privately. This command contains no secret.
-              </p>
-            </div>
-            <div className="help-mcp-command">
-              <code>{mcpCommand}</code>
-              <button
-                type="button"
-                onClick={() =>
-                  void navigator.clipboard
-                    .writeText(mcpCommand)
-                    .then(() => setCopiedCommand(true))
-                    .catch(() => setCopiedCommand(false))
-                }
-              >
-                {copiedCommand ? "Copied" : "Copy command"}
-              </button>
-            </div>
-            <p className="muted">
-              Supply <code>FEEDBACKS_TOKEN</code> privately to Codex.{" "}
-              <a href="https://feedbacks.softinator.ai/docs/guide/mcp">
-                Read the MCP setup guide →
-              </a>
-            </p>
-          </section>
-          <details className="help-owner-access">
-            <summary>Advanced: owner-level agent access</summary>
-            <HelpAgentSetup
-              actor={actor}
-              projects={projects}
-              instructions={data.instructions}
-            />
-          </details>
-          <details id="more-help">
-            <summary>More help</summary>
-            <div dangerouslySetInnerHTML={{ __html: data.moreHtml }} />
-          </details>
-          <p className="help-website-link">
-            Looking for the product overview?{" "}
-            <a href={officialWebsiteUrl}>Visit the Feedbacks website</a>.
-          </p>
-        </article>
+        <HelpAgentSetup
+          actor={actor}
+          projects={projects}
+          instructions={data.instructions}
+        />
       ) : (
         !error && <Loading />
       )}
-    </>
+      <section className="help-chrome-quick">
+        <div>
+          <h2>Review in Chrome</h2>
+          <p>
+            Install the extension, then connect to <code>{location.origin}</code>.
+          </p>
+        </div>
+        <a
+          className="button"
+          href={chromeWebStoreUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Get the extension ↗
+        </a>
+      </section>
+      <details
+        id="update-extension"
+        className="compact-details"
+        open={location.hash === "#update-extension"}
+      >
+        <summary>Update an unpacked extension</summary>
+        <p>
+          <a href="/downloads/feedbacks-extension.zip">Download the current extension</a>,
+          extract it over your existing extension folder, then click Reload on its card in
+          Chrome’s Extensions page. Finish any unsent review first and refresh the website
+          afterwards. Keep the same folder to retain your connection.
+        </p>
+      </details>
+      <p className="muted">
+        Installation, permissions, MCP and GitHub setup are in the{" "}
+        <a href="https://feedbacks.softinator.ai/docs/" target="_blank" rel="noreferrer">
+          Feedbacks docs
+        </a>
+        .
+      </p>
+    </article>
   );
 }
 export function Privacy() {

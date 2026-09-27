@@ -13,6 +13,7 @@ import {
 } from "./page-store.js";
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 import { formatPageQa } from "./page-qa.js";
+import { pageOverviewTarget } from "./page-overview.js";
 import {
   videoTarget,
   videoCreateInput,
@@ -115,13 +116,88 @@ function summarizeMarkings(shapes, width, height, annotations = []) {
   });
 }
 function pagePixelSize(draft, page) {
+  if (page.pixelWidth && page.pixelHeight)
+    return { width: page.pixelWidth, height: page.pixelHeight };
   const width = draft.context.captureDimensions?.width || draft.context.viewport.width;
   const ratio =
     (draft.context.captureDimensions?.height || draft.context.viewport.height) /
     draft.context.viewport.height;
   return { width, height: Math.max(1, Math.round((page.endY - page.startY) * ratio)) };
 }
+function continuousDraft(draft) {
+  const indices = draft.capturePages
+    .map((page, index) => index)
+    .filter((index) => !draft.capturePages[index].annotationId);
+  return {
+    ...draft,
+    capturePages: indices.map((index) => draft.capturePages[index]),
+    pageToolStates: indices.map((index) => draft.pageToolStates?.[index]),
+    indices,
+  };
+}
+async function attachPointEvidence(draft, retainedPointStates = new Map()) {
+  const evidence = draft.context.pointEvidence || [];
+  const annotations = draft.context.annotations || [];
+  const missing = [];
+  for (const [index, item] of annotations.entries()) {
+    if (draft.capturePages.some((page) => page.annotationId === item.id)) continue;
+    const snapshot = evidence.find((entry) => entry.id === item.id)?.snapshot;
+    const blob = snapshot && (await getPage(`point-${draft.sourceTabId}`, snapshot.key));
+    if (!blob) {
+      missing.push(index + 1);
+      continue;
+    }
+    const pageIndex = draft.capturePages.length;
+    await putPage(draft.id, pageIndex, "source", blob);
+    const { viewport, scroll } = snapshot;
+    const page = {
+      index: pageIndex,
+      annotationId: item.id,
+      pointNumber: index + 1,
+      snapshotKey: snapshot.key,
+      name: `point-${String(index + 1).padStart(3, "0")}-original.webp`,
+      startY: scroll.y,
+      endY: scroll.y + viewport.height,
+      viewportWidth: viewport.width,
+      pixelWidth: snapshot.width,
+      pixelHeight: snapshot.height,
+      capturedAt: snapshot.capturedAt,
+    };
+    draft.capturePages.push(page);
+    draft.pageToolStates.push(
+      retainedPointStates.get(item.id) ??
+        pointShapes(
+          {
+            ...item,
+            anchor: {
+              ...item.anchor,
+              pagePoint: {
+                x: item.anchor.pagePoint.x - scroll.x,
+                y: item.anchor.pagePoint.y,
+              },
+            },
+          },
+          index,
+          { startY: page.startY, endY: page.endY, width: viewport.width },
+          snapshot.width / viewport.width,
+          snapshot.height / viewport.height,
+        ),
+    );
+  }
+  // Never send local storage references or current-page projections to the server.
+  draft.context = { ...draft.context };
+  delete draft.context.pointEvidence;
+  delete draft.context.liveAnnotations;
+  draft.missingPointImages = missing;
+  if (evidence.length) {
+    const count = draft.capturePages.filter((page) => page.annotationId).length;
+    draft.captureNotice = `${count} original point views saved alongside the page capture.${missing.length ? ` Points ${missing.join(", ")} have no original image.` : ""} Review every image before sending.`;
+  }
+  if (draft.capturePages.length) draft.noImage = false;
+  return draft;
+}
 function combinedMarkings(draft) {
+  draft = continuousDraft(draft);
   const heights = draft.capturePages.map((page) => pagePixelSize(draft, page).height);
   const total = heights.reduce((sum, height) => sum + height, 0);
   let top = 0;
@@ -149,6 +225,7 @@ function combinedMarkings(draft) {
   });
 }
 function combinedSections(draft) {
+  draft = continuousDraft(draft);
   const heights = draft.capturePages.map((page) => pagePixelSize(draft, page).height);
   const total = heights.reduce((sum, height) => sum + height, 0);
   let top = 0;
@@ -494,6 +571,8 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
   if (capturing) throw Error("A capture is already in progress.");
   capturing = true;
   const guard = watchCapture(sender.tab.id, sender.tab.windowId, sender.tab.url);
+  const retainedPointStates = new Map();
+  let retainedAnnotations;
   let pending,
     captured = false;
   try {
@@ -529,7 +608,24 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       throw Error(
         "The original review page changed. Send this draft without an image, or discard it and capture the new page.",
       );
-    if (retryId) await deleteDraftPages(retryId);
+    if (retryId) {
+      retainedAnnotations = state.draft.context.annotations;
+      context.annotations = retainedAnnotations;
+      // Return retained originals to the local point cache before replacing the
+      // failed page capture. These are the current, possibly redacted pixels.
+      for (const [index, page] of (state.draft.capturePages || []).entries()) {
+        if (!page.snapshotKey) continue;
+        const blob = await getPage(retryId, index);
+        if (blob) {
+          await putPage(`point-${tab.id}`, page.snapshotKey, "source", blob);
+          retainedPointStates.set(
+            page.annotationId,
+            state.draft.pageToolStates?.[index] || [],
+          );
+        }
+      }
+      await deleteDraftPages(retryId);
+    }
     pending = {
       ...(retryId ? state.draft : {}),
       id: retryId || crypto.randomUUID(),
@@ -574,6 +670,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       pointToken,
     });
     if (before.error) throw Error(before.error);
+    if (retainedAnnotations) before.context.annotations = retainedAnnotations;
     if (before.captureEpoch !== 0)
       throw Error("The page moved while preparing capture. Try again once it is still.");
     guard.assert();
@@ -668,7 +765,28 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
               `Screenshot ${page.index + 1} exceeds the server's per-image size. Narrow the browser window and retry.`,
             );
           await putPage(pending.id, page.index, "source", blob);
+          Object.assign(page, {
+            viewportWidth: metrics.viewportWidth,
+            pixelWidth: tile.width,
+            pixelHeight: tile.height,
+          });
           pending.capturePages.push(page);
+          pending.pageToolStates.push(
+            (before.context.liveAnnotations || before.context.annotations || []).flatMap(
+              (item, index) =>
+                pointShapes(
+                  item,
+                  index,
+                  {
+                    startY: page.startY,
+                    endY: page.endY,
+                    width: metrics.viewportWidth,
+                  },
+                  sx,
+                  sy,
+                ),
+            ),
+          );
         } finally {
           bitmap.close();
         }
@@ -724,23 +842,11 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
         },
         noImage: false,
         captureError: null,
+        capturePages: [...pending.capturePages],
         captureNotice: `${plan.pages.length} ordered ${plan.pages.length === 1 ? "screenshot" : "screenshots"}. Review each page before sending.`,
-        pageToolStates: pending.capturePages.map((page) =>
-          (before.context.annotations || []).flatMap((item, index) =>
-            pointShapes(
-              item,
-              index,
-              {
-                startY: page.startY,
-                endY: page.endY,
-                width: before.context.viewport.width,
-              },
-              sx,
-              sy,
-            ),
-          ),
-        ),
+        pageToolStates: [...pending.pageToolStates],
       };
+      await attachPointEvidence(draft, retainedPointStates);
       await set({ draft });
       const persisted = await chrome.tabs.sendMessage(tab.id, {
         type: "captureCheck",
@@ -807,31 +913,33 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       image: "data:image/png;base64," + btoa(binary),
       body: pending.body,
       toolState: before.context.annotations?.length
-        ? before.context.annotations.flatMap((item, index) => {
-            const anchor = item.anchor;
-            if (!anchor?.pagePoint) return [];
-            const visible = {
-              ...item,
-              anchor: {
-                ...anchor,
-                pagePoint: {
-                  x: anchor.pagePoint.x - before.context.scroll.x,
-                  y: anchor.pagePoint.y - before.context.scroll.y,
+        ? (before.context.liveAnnotations || before.context.annotations).flatMap(
+            (item, index) => {
+              const anchor = item.anchor;
+              if (!anchor?.pagePoint) return [];
+              const visible = {
+                ...item,
+                anchor: {
+                  ...anchor,
+                  pagePoint: {
+                    x: anchor.pagePoint.x - before.context.scroll.x,
+                    y: anchor.pagePoint.y - before.context.scroll.y,
+                  },
                 },
-              },
-            };
-            return pointShapes(
-              visible,
-              index,
-              {
-                startY: 0,
-                endY: before.context.viewport.height,
-                width: before.context.viewport.width,
-              },
-              sx,
-              sy,
-            );
-          })
+              };
+              return pointShapes(
+                visible,
+                index,
+                {
+                  startY: 0,
+                  endY: before.context.viewport.height,
+                  width: before.context.viewport.width,
+                },
+                sx,
+                sy,
+              );
+            },
+          )
         : pending.pointCapture && before.context.anchor?.screenshotPoint
           ? [
               {
@@ -857,6 +965,24 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
     if (still.signature !== expectedSignature || still.captureEpoch !== 0)
       throw Error("The page moved during capture. Try again once it is still.");
     guard.assert();
+    if (before.context.annotations?.length) {
+      await putPage(draft.id, 0, "source", await (await fetch(draft.image)).blob());
+      draft.capturePages = [
+        {
+          index: 0,
+          name: "page-visible.webp",
+          startY: before.context.scroll.y,
+          endY: before.context.scroll.y + before.context.viewport.height,
+          viewportWidth: before.context.viewport.width,
+          pixelWidth: canvas.width,
+          pixelHeight: canvas.height,
+        },
+      ];
+      draft.pageToolStates = [draft.toolState];
+      draft.image = null;
+      draft.toolState = [];
+    }
+    await attachPointEvidence(draft, retainedPointStates);
     await set({ draft });
     const persisted = await chrome.tabs.sendMessage(tab.id, {
       type: "captureCheck",
@@ -876,22 +1002,27 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       if (!partial) {
         await deleteDraftPages(pending.id).catch(() => {});
         pending.capturePages = [];
+        pending.pageToolStates = [];
       } else {
-        const digits = Math.max(3, String(pending.capturePages.length).length);
-        pending.capturePages.forEach((page, index) => {
-          page.name = `full-page-${String(index + 1).padStart(digits, "0")}-of-${String(pending.capturePages.length).padStart(digits, "0")}-partial.webp`;
+        const continuous = pending.capturePages.filter((page) => !page.annotationId);
+        const digits = Math.max(3, String(continuous.length).length);
+        continuous.forEach((page, index) => {
+          page.name = `full-page-${String(index + 1).padStart(digits, "0")}-of-${String(continuous.length).padStart(digits, "0")}-partial.webp`;
         });
       }
+      await attachPointEvidence(pending, retainedPointStates);
       const { draft } = await get();
       if (draft?.id === pending.id) {
         await set({
           draft: {
             ...pending,
             captureError: error.message,
-            captureNotice: partial
-              ? `${pending.capturePages.length} pages were saved before capture stopped. This is an incomplete page; review or remove them, or retry the full capture.`
-              : null,
-            noImage: !partial,
+            captureNotice:
+              pending.captureNotice ||
+              (partial
+                ? `${pending.capturePages.length} pages were saved before capture stopped. This is an incomplete page; review or remove them, or retry the full capture.`
+                : null),
+            noImage: pending.capturePages.length === 0,
             imageRevision: Math.max(pending.imageRevision, draft.imageRevision || 0) + 1,
           },
         });
@@ -905,6 +1036,17 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
     throw error;
   } finally {
     guard.dispose();
+    const saved = (await get()).draft;
+    if (pending && saved?.id === pending.id) {
+      // The editor owns the only original now, so permanent redaction cannot
+      // leave an unredacted duplicate behind in the point cache.
+      for (const page of saved.capturePages || [])
+        if (page.snapshotKey)
+          await deletePage(`point-${sender.tab.id}`, page.snapshotKey);
+      await chrome.tabs
+        .sendMessage(sender.tab.id, { type: "draftPrepared" })
+        .catch(() => {});
+    }
     capturing = false;
     await chrome.tabs
       .sendMessage(sender.tab.id, {
@@ -960,7 +1102,8 @@ async function saveDraft(message) {
     includeDiagnostics: message.includeDiagnostics === true && !!draft.diagnostics,
     noImage: !(draft.image || draft.capturePages?.length) || !!message.noImage,
     includeCombined:
-      message.includeCombined === true && (draft.capturePages?.length || 0) > 1,
+      message.includeCombined === true &&
+      (draft.capturePages || []).filter((page) => !page.annotationId).length > 1,
     toolState: message.toolState,
     projectId: message.projectId,
   };
@@ -1191,9 +1334,10 @@ async function redactDiagnostic(message) {
   return updated;
 }
 async function combineApprovedPages(draft) {
+  const indices = continuousDraft(draft).indices;
   let width = 0;
   let height = 0;
-  for (let index = 0; index < draft.capturePages.length; index++) {
+  for (const index of indices) {
     const blob = await getPage(draft.id, index, "approved");
     if (!blob) throw Error(`Approved screenshot ${index + 1} is missing.`);
     const bitmap = await createImageBitmap(blob);
@@ -1211,7 +1355,7 @@ async function combineApprovedPages(draft) {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw Error("Canvas is unavailable.");
     let sourceTop = 0;
-    for (let index = 0; index < draft.capturePages.length; index++) {
+    for (const index of indices) {
       const bitmap = await createImageBitmap(await getPage(draft.id, index, "approved"));
       const top = Math.round((sourceTop / height) * output.height);
       sourceTop += bitmap.height;
@@ -1421,13 +1565,15 @@ async function submit(message) {
             captureRegion: {
               startY: draft.capturePages[index].startY,
               endY: draft.capturePages[index].endY,
-              pageWidth: draft.context.viewport.width,
+              pageWidth:
+                draft.capturePages[index].viewportWidth || draft.context.viewport.width,
             },
             captureSections: [
               {
                 startY: draft.capturePages[index].startY,
                 endY: draft.capturePages[index].endY,
-                pageWidth: draft.context.viewport.width,
+                pageWidth:
+                  draft.capturePages[index].viewportWidth || draft.context.viewport.width,
                 imageTop: 0,
                 imageBottom: 1,
               },
@@ -1546,6 +1692,7 @@ async function submit(message) {
     }
     const url = `${draft.server}/threads/${draft.thread.id}`;
     if (draft.capturePages?.length) await deleteDraftPages(draft.id);
+    await deleteDraftPages(`point-${draft.sourceTabId}`);
     await chrome.storage.local.remove("draft");
     chrome.tabs
       .sendMessage(draft.sourceTabId, {
@@ -1573,7 +1720,8 @@ async function route(message, sender) {
     (!sender.tab && sender.url?.startsWith(chrome.runtime.getURL(""))) ||
     sender.url?.startsWith(chrome.runtime.getURL("editor.html")) ||
     sender.url?.startsWith(chrome.runtime.getURL("video.html")) ||
-    sender.url?.startsWith(chrome.runtime.getURL("popup.html"));
+    sender.url?.startsWith(chrome.runtime.getURL("popup.html")) ||
+    sender.url?.startsWith(chrome.runtime.getURL("options.html"));
   if (!trusted) {
     if (sender.tab && sender.frameId === 0 && message.type === "instantStatus") {
       return { enabled: false };
@@ -1587,9 +1735,92 @@ async function route(message, sender) {
       const tab = await chrome.tabs.get(sender.tab.id);
       if (!tab.active || tab.windowId !== sender.tab.windowId)
         throw Error("Keep the review tab active while commenting.");
-      return { image: await captureVisibleTab(tab.windowId) };
+      if (!/^[0-9a-f-]{36}$/.test(message.key || ""))
+        throw Error("Select a point first.");
+      const before = await chrome.tabs.sendMessage(tab.id, {
+        type: "captureContext",
+        pointToken: message.key,
+      });
+      const started = await chrome.tabs.sendMessage(tab.id, {
+        type: "captureCheck",
+        pointToken: message.key,
+      });
+      if (before.error || started.error) throw Error(before.error || started.error);
+      const image = await captureVisibleTab(tab.windowId);
+      const after = await chrome.tabs.sendMessage(tab.id, {
+        type: "captureCheck",
+        pointToken: message.key,
+      });
+      const current = await chrome.tabs.get(tab.id);
+      if (
+        !current.active ||
+        current.windowId !== tab.windowId ||
+        current.url !== tab.url ||
+        after.error ||
+        started.signature !== after.signature
+      )
+        throw Error("The page moved before its original view could be saved.");
+      const bitmap = await createImageBitmap(await (await fetch(image)).blob());
+      if (
+        Math.abs(
+          bitmap.width / before.viewport.width - bitmap.height / before.viewport.height,
+        ) > 0.03
+      ) {
+        bitmap.close();
+        throw Error(
+          "The browser's captured area changed. Keep the page active and select the point again.",
+        );
+      }
+      const snapshot = {
+        key: message.key,
+        viewport: before.viewport,
+        scroll: before.scroll || { x: 0, y: 0 },
+        capturedAt: before.capturedAt,
+        width: bitmap.width,
+        height: bitmap.height,
+      };
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0);
+      bitmap.close();
+      await putPage(
+        `point-${tab.id}`,
+        message.key,
+        "source",
+        await canvas.convertToBlob({ type: "image/webp", quality: 0.9 }),
+      );
+      return { image, snapshot };
     }
-    if (message.type === "stopReview") return review.stop(sender.tab.id);
+    if (message.type === "openCapturedReview") {
+      const { draft } = await get();
+      if (!draft || draft.sourceTabId !== sender.tab.id)
+        throw Error("No review is waiting to send.");
+      return openDraft();
+    }
+    if (["pointImage", "releasePointImage"].includes(message.type)) {
+      if (!/^[0-9a-f-]{36}$/.test(message.key || "")) throw Error("Invalid point image.");
+      if (message.type === "releasePointImage") {
+        await deletePage(`point-${sender.tab.id}`, message.key);
+        return {};
+      }
+      const { draft } = await get();
+      const index =
+        draft?.sourceTabId === sender.tab.id
+          ? (draft.capturePages || []).findIndex(
+              (page) => page.snapshotKey === message.key,
+            )
+          : -1;
+      return {
+        image: await pageDataUrl(
+          index >= 0
+            ? await getPage(draft.id, index)
+            : await getPage(`point-${sender.tab.id}`, message.key),
+        ),
+      };
+    }
+    if (message.type === "stopReview") {
+      await chrome.tabs.sendMessage(sender.tab.id, { type: "deactivate" });
+      return review.stop(sender.tab.id);
+    }
     if (message.type === "capture")
       return writeDraft(() =>
         capture(
@@ -1640,6 +1871,32 @@ async function route(message, sender) {
         })),
       };
     }
+    if (message.type === "pointStatus" && /^[0-9a-f-]{36}$/.test(message.id)) {
+      if (message.reviewId !== session.reviewId)
+        throw Error("The review changed. Refresh page comments.");
+      const thread = await authenticated(
+        "threads.get",
+        { threadId: message.id },
+        session.server,
+      );
+      if (
+        thread.projectId !== session.projectId ||
+        U.safeUrl(thread.context.url) !== U.safeUrl(sender.tab.url)
+      )
+        throw Error("Point is outside this page review.");
+      if (!["open", "resolved"].includes(message.state))
+        throw Error("Open the thread to remove a point.");
+      return authenticated(
+        "threads.annotationStatus",
+        {
+          threadId: thread.id,
+          revision: message.revision,
+          annotationId: message.annotationId,
+          state: message.state,
+        },
+        session.server,
+      );
+    }
     if (message.type === "resolveThread" && /^[0-9a-f-]{36}$/.test(message.id)) {
       if (message.reviewId !== session.reviewId)
         throw Error("The review changed. Refresh the page comments.");
@@ -1684,6 +1941,7 @@ async function route(message, sender) {
         server,
         serverDraft: state.serverDraft,
         allowLocal: !!state.allowLocal,
+        reviewShortcuts: state.reviewShortcuts !== false,
         connected: !!state.accounts?.[server]?.token,
         pending: !!state.pair,
         projectId: state.projectId,
@@ -1691,8 +1949,62 @@ async function route(message, sender) {
         hasDraft: !!state.draft,
         captureError: state.captureError || state.pairError || "",
       };
+    case "saveReviewPreferences": {
+      const reviewShortcuts = message.reviewShortcuts !== false;
+      await set({ reviewShortcuts });
+      await Promise.all(
+        Object.keys(state.sessions || {}).map((tabId) =>
+          chrome.tabs
+            .sendMessage(Number(tabId), { type: "reviewPreferences", reviewShortcuts })
+            .catch(() => {}),
+        ),
+      );
+      return {};
+    }
     case "projects":
       return authenticated("projects.list");
+    case "pageOverview": {
+      const tab = await chrome.tabs.get(message.tabId);
+      const sender = { tab, frameId: 0, url: tab.url };
+      const session = await sessionFor(sender);
+      const controls = await chrome.tabs.sendMessage(tab.id, {
+        type: "popupControls",
+        action: "state",
+      });
+      const target = pageOverviewTarget(
+        session.server,
+        session.projectId,
+        tab.url,
+        controls.viewport?.width || tab.width || 1200,
+        message.scope,
+      );
+      const result = await authenticated(
+        "threads.list",
+        {
+          projectId: session.projectId,
+          ...target.filters,
+          showResolved: true,
+          includeSummary: true,
+          limit: 1,
+        },
+        session.server,
+      );
+      const latest = await sessionFor(sender);
+      const current = await chrome.tabs.get(tab.id);
+      if (
+        latest.reviewId !== session.reviewId ||
+        latest.projectId !== session.projectId ||
+        latest.server !== session.server ||
+        U.safeUrl(current.url) !== U.safeUrl(tab.url)
+      )
+        throw Error("The page or project changed. Open Feedbacks again.");
+      return {
+        ...target,
+        summary: result.summary,
+        total: result.total,
+        drafts: controls.drafts || 0,
+      };
+    }
     case "videoContext": {
       const tab = await chrome.tabs.get(message.sourceTabId);
       const session = await sessionFor({ tab, frameId: 0, url: tab.url });
@@ -1858,7 +2170,7 @@ async function route(message, sender) {
         return resize(sender, message.action);
       if (message.action === "choose")
         return chrome.tabs.sendMessage(tab.id, { type: "choosePoint" });
-      if (["pins", "resolved", "state"].includes(message.action))
+      if (["pins", "resolved", "state", "show-controls"].includes(message.action))
         return chrome.tabs.sendMessage(tab.id, {
           type: "popupControls",
           action: message.action,
@@ -1912,6 +2224,12 @@ async function route(message, sender) {
       return writeDraft(async () => {
         const { draft } = await get();
         if (draft?.capturePages?.length) await deleteDraftPages(draft.id);
+        if (draft?.sourceTabId) {
+          await deleteDraftPages(`point-${draft.sourceTabId}`);
+          await chrome.tabs
+            .sendMessage(draft.sourceTabId, { type: "discardDraftPoints" })
+            .catch(() => {});
+        }
         await chrome.storage.local.remove("draft");
         if (draft?.pointToken)
           await chrome.tabs
@@ -1934,33 +2252,9 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     .catch((e) => reply({ ok: false, error: e.message, code: e.code }));
   return true;
 });
-chrome.commands.onCommand.addListener(async (command, tab) => {
-  if (!tab?.id || !/^https?:/.test(tab.url || "")) return;
-  try {
-    if (command === "toggle-review") {
-      const state = await get();
-      const session = state.sessions?.[tab.id];
-      if (session?.origin === new URL(tab.url).origin) {
-        await chrome.tabs.sendMessage(tab.id, { type: "deactivate" });
-        await review.stop(tab.id);
-      } else await review.activate(tab.id);
-    } else if (command === "capture-view" || command === "capture-full") {
-      await route(
-        {
-          type: "popupAction",
-          tabId: tab.id,
-          action: command === "capture-view" ? "capture" : "capture-full",
-        },
-        { url: chrome.runtime.getURL("popup.html") },
-      );
-    }
-  } catch (error) {
-    await set({ captureError: error.message });
-    await chrome.action.openPopup().catch(() => {});
-  }
-});
 chrome.tabs.onRemoved.addListener(async (id) => {
   await clearVideoCreateForTab(chrome.storage.session, id);
+  await deleteDraftPages(`point-${id}`);
   const state = await get();
   const sessions = { ...state.sessions };
   delete sessions[id];
@@ -1970,6 +2264,8 @@ chrome.tabs.onUpdated.addListener((id, change) => {
   if (
     change.status === "loading" ||
     (change.url && !change.url.startsWith(chrome.runtime.getURL("video.html")))
-  )
+  ) {
     clearVideoCreateForTab(chrome.storage.session, id).catch(() => {});
+    deleteDraftPages(`point-${id}`).catch(() => {});
+  }
 });

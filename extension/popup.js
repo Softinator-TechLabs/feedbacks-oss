@@ -17,6 +17,31 @@ let tab,
   activeServer = "",
   pairingPending = false,
   serverEdited = false;
+let overviewTicket = 0;
+async function refreshOverview() {
+  const ticket = ++overviewTicket;
+  $("feedback-counts").textContent = "Loading feedback…";
+  $("page-feedback").removeAttribute("href");
+  const scope = $("feedback-scope").value || "page";
+  try {
+    const result = await send({ type: "pageOverview", tabId: tab.id, scope });
+    if (ticket !== overviewTicket) return;
+    $("page-feedback").href = result.url;
+    $("page-feedback").textContent =
+      scope === "website"
+        ? "View website threads"
+        : scope === "view"
+          ? "View threads at this size"
+          : "View page threads";
+    const summary = result.summary;
+    $("feedback-counts").textContent = summary
+      ? `${summary.points.open} open · ${summary.points.resolved} resolved${summary.points.closed ? ` · ${summary.points.closed} closed` : ""} points · ${summary.threads.total} threads (${summary.threads.closed} closed)${result.drafts ? ` · ${result.drafts} not sent` : ""}`
+      : `${result.total ?? 0} threads · Update the server for point counts.`;
+  } catch (error) {
+    if (ticket === overviewTicket) $("feedback-counts").textContent = error.message;
+  }
+}
+$("feedback-scope").onchange = () => void refreshOverview();
 $("installed-version").textContent = `v${installedVersion}`;
 $("check-updates").hidden = managedUpdates;
 if (managedUpdates)
@@ -115,8 +140,7 @@ async function start(projectId) {
     $("project").replaceChildren(...result.choices.map((p) => new Option(p.name, p.id)));
     $("project").value = result.project.id;
     $("review-controls").hidden = false;
-    const settings = await send({ type: "settings" });
-    $("page-feedback").href = settings.server + "/projects/" + result.project.id;
+    void refreshOverview();
     const controls = await send({ type: "popupAction", tabId: tab.id, action: "state" });
     const diagnostics = await send({
       type: "diagnostics",
@@ -276,6 +300,7 @@ for (const id of [
   "qa-scan",
   "choose",
   "pins",
+  "show-controls",
   "resolved",
   "mobile",
   "tablet",
@@ -307,6 +332,8 @@ for (const id of [
     if (id === "pins") $(id).textContent = result.showPins ? "Hide pins" : "Show pins";
     if (id === "resolved")
       $(id).textContent = result.showResolved ? "Hide resolved" : "Show resolved";
+    if (["mobile", "tablet", "desktop", "wide", "resolved"].includes(id))
+      void refreshOverview();
   });
 action("draft", async () => {
   await send({ type: "resume" });
@@ -344,3 +371,20 @@ setInterval(
       .catch(() => {}),
   3000,
 );
+
+chrome.commands
+  .getAll()
+  .then((commands) => {
+    const shortcut = commands.find(
+      (command) => command.name === "_execute_action",
+    )?.shortcut;
+    $("popup-shortcut").textContent = shortcut
+      ? `Open Feedbacks: ${shortcut}.`
+      : "Open Feedbacks using its toolbar icon.";
+  })
+  .catch(() => {});
+
+action("customize-shortcuts", () =>
+  chrome.tabs.create({ url: "chrome://extensions/shortcuts" }),
+);
+action("settings", () => chrome.runtime.openOptionsPage());

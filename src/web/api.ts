@@ -198,6 +198,8 @@ export type Context = {
     id: string;
     body: string;
     anchor: {
+      viewport?: { width: number; height: number };
+      capturedAt?: string;
       tagName?: string;
       selector?: string;
       confidence?: string;
@@ -226,6 +228,10 @@ export type ReviewDocument = {
 };
 export type Thread = {
   id: string;
+  annotationStates?: Record<
+    string,
+    { state: "open" | "resolved" | "removed"; actor: Actor; at: string }
+  >;
   projectId: string;
   priorityScore?: number;
   topPriority: boolean;
