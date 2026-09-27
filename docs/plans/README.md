@@ -25,6 +25,7 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 - [Scoped guest review links](guest-review-links.md)
 - [Optional GitHub Issues connection](github-issues-app.md)
 - [Optional GitHub Issue status sync](github-status-sync.md)
+- [Multi-repository GitHub projects](multi-repository-github-projects.md)
 - [GitHub workflow and public documentation](github-experience-and-public-docs.md)
 - [Signed project webhooks](signed-project-webhooks.md)
 - [Project document review](attachment-review.md)

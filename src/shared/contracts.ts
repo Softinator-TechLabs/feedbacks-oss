@@ -276,6 +276,16 @@ export const inputSchemas = {
   "github.issueState": z.object({ threadId: id }),
   "github.connect": z.object({ projectId: id, revision }),
   "github.disconnect": z.object({ projectId: id, revision }),
+  "github.repositoryConnect": z.object({
+    projectId: id,
+    revision,
+    repositoryUrl: z.string().url().max(1000),
+  }),
+  "github.repositoryDisconnect": z.object({
+    projectId: id,
+    revision,
+    repositoryUrl: z.string().url().max(1000),
+  }),
   "github.statusSyncConfigure": z.object({
     projectId: id,
     revision,
@@ -291,6 +301,7 @@ export const inputSchemas = {
   "github.issueCreate": z.object({
     threadId: id,
     revision,
+    repositoryUrl: z.string().url().max(1000).optional(),
     reviewed: z.literal(true),
     title: z.string().trim().min(1).max(120),
     body: z.string().trim().min(1).max(8000),
@@ -299,6 +310,7 @@ export const inputSchemas = {
   "github.issueCreateQuick": z.object({
     threadId: id,
     revision,
+    repositoryUrl: z.string().url().max(1000).optional(),
     idempotencyKey: z.string().min(8).max(200),
   }),
   "github.issueReconcile": z.object({
@@ -397,7 +409,10 @@ export const inputSchemas = {
   }),
   "reviewViews.delete": z.object({ projectId: id, viewId: id, revision }),
   "threads.get": z.object({ threadId: id }),
-  "threads.issueDraft": z.object({ threadId: id }),
+  "threads.issueDraft": z.object({
+    threadId: id,
+    repositoryUrl: z.string().url().max(1000).optional(),
+  }),
   "guestLinks.create": z.object({
     threadId: id,
     label: z.string().trim().min(1).max(80),
@@ -712,6 +727,7 @@ const projectOutput = z.object({
   origins: z.array(z.string()),
   captureMode: captureMode.optional(),
   repositoryUrl: z.string().nullable(),
+  githubRepositories: z.array(z.string().url()).max(20).optional(),
   githubConnected: z.boolean().optional(),
   githubStatusSync: z.boolean().optional(),
   reviewEnabled: z.boolean().default(false),
@@ -847,6 +863,15 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     connected: z.boolean(),
     statusSyncEnabled: z.boolean(),
     repositoryUrl: z.string().nullable(),
+    repositories: z
+      .array(
+        z.object({
+          repositoryUrl: z.string().url(),
+          connected: z.boolean(),
+          installation: z.enum(["installed", "not_installed", "unavailable"]),
+        }),
+      )
+      .max(21),
     installUrl: z.string().nullable(),
     installation: z.enum([
       "not_configured",
@@ -863,6 +888,8 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   }),
   "github.connect": projectOutput,
   "github.disconnect": projectOutput,
+  "github.repositoryConnect": projectOutput,
+  "github.repositoryDisconnect": projectOutput,
   "github.statusSyncConfigure": projectOutput,
   "github.statusSync": threadOutput,
   "github.statusSyncState": z.object({

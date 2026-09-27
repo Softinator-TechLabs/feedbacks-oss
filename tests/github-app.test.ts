@@ -6,6 +6,7 @@ import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
 import { GithubApp, githubRepo } from "../src/server/github-app.js";
+import { pollGithubStatusSync } from "../src/server/github-status-worker.js";
 import { agentOperations, ownerTokenScopes } from "../src/shared/contracts.js";
 
 test("GitHub repository parser rejects non-canonical URLs", () => {
@@ -150,6 +151,173 @@ test("GitHub App creates an Issue only after connection and an authorized review
       }),
       { code: "IDEMPOTENCY_CONFLICT" },
     );
+  } finally {
+    await pg.close();
+  }
+});
+
+test("one project routes Issues and status sync across selected GitHub organizations", async () => {
+  const pg = new PGlite();
+  const db = new Database(pg as any);
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const config: any = {
+    githubAppId: "123",
+    githubAppSlug: "feedbacks-test",
+    githubAppPrivateKey: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+  };
+  const primary = "https://github.com/first/site";
+  const secondary = "https://github.com/second/service";
+  const calls: string[] = [];
+  let createdBody = "";
+  let issueState: "open" | "closed" = "closed";
+  let secondInstalled = true;
+  const fetcher: typeof fetch = async (url, init) => {
+    const path = new URL(String(url)).pathname;
+    calls.push(`${init?.method ?? "GET"} ${path}`);
+    if (path.endsWith("/installation")) {
+      if (path.includes("second") && !secondInstalled)
+        return Response.json({}, { status: 404 });
+      return Response.json({ id: path.includes("second") ? 92 : 91 });
+    }
+    if (path.endsWith("/access_tokens"))
+      return Response.json({ token: "installation-token" });
+    if (path === "/repos/second/service/issues" && init?.method === "POST") {
+      createdBody = JSON.parse(String(init.body)).body;
+      return Response.json({ number: 7 }, { status: 201 });
+    }
+    if (path === "/repos/second/service/issues/7")
+      return Response.json({
+        html_url: `${secondary}/issues/7`,
+        number: 7,
+        state: issueState,
+        body: createdBody,
+      });
+    throw new Error(`Unexpected GitHub API ${path}`);
+  };
+  try {
+    await migrate(db);
+    const ops = new Operations(db, {} as any, config, new GithubApp(config, fetcher));
+    const owner = await ops.auth.bootstrap(
+      "owner@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const project = await ops.executeOperation(owner, "projects.create", {
+      name: "Across organizations",
+      origins: ["https://example.test"],
+      repositoryUrl: primary,
+    });
+    const first = await ops.executeOperation(owner, "github.connect", {
+      projectId: project.id,
+      revision: project.revision,
+    });
+    const both = await ops.executeOperation(owner, "github.repositoryConnect", {
+      projectId: project.id,
+      revision: first.revision,
+      repositoryUrl: secondary,
+    });
+    assert.deepEqual(both.githubRepositories, [primary, secondary]);
+    const connection = await ops.executeOperation(owner, "github.connection", {
+      projectId: project.id,
+    });
+    assert.deepEqual(
+      connection.repositories.map((repo: any) => [repo.repositoryUrl, repo.installation]),
+      [
+        [primary, "installed"],
+        [secondary, "installed"],
+      ],
+    );
+    const thread = await ops.executeOperation(owner, "threads.create", {
+      projectId: project.id,
+      body: "Service bug",
+      context: { url: "https://example.test", viewport: { width: 1000, height: 800 } },
+      idempotencyKey: "across-orgs-thread",
+    });
+    const input = {
+      threadId: thread.id,
+      revision: thread.revision,
+      reviewed: true,
+      title: "Service bug",
+      body: "Approved body",
+      idempotencyKey: "across-orgs-issue",
+    };
+    await assert.rejects(ops.executeOperation(owner, "github.issueCreate", input), {
+      code: "GITHUB_REPOSITORY_REQUIRED",
+    });
+    const draft = await ops.executeOperation(owner, "threads.issueDraft", {
+      threadId: thread.id,
+      repositoryUrl: secondary,
+    });
+    assert.equal(draft.repositoryUrl, secondary);
+    const linked = await ops.executeOperation(owner, "github.issueCreate", {
+      ...input,
+      repositoryUrl: secondary,
+    });
+    assert.equal(linked.externalIssues[0].repository, "second/service");
+    assert.equal(
+      calls.filter((call) => call === "POST /repos/second/service/issues").length,
+      1,
+    );
+    assert.equal(
+      calls.filter((call) => call === "POST /repos/first/site/issues").length,
+      0,
+    );
+    await assert.rejects(
+      ops.executeOperation(owner, "github.issueCreate", {
+        ...input,
+        repositoryUrl: primary,
+      }),
+      { code: "IDEMPOTENCY_CONFLICT" },
+    );
+    const enabled = await ops.executeOperation(owner, "github.statusSyncConfigure", {
+      projectId: project.id,
+      revision: both.revision,
+      enabled: true,
+    });
+    assert.equal(enabled.githubStatusSync, true);
+    const synced = await ops.executeOperation(owner, "github.statusSync", {
+      threadId: thread.id,
+      revision: linked.revision,
+      issueUrl: `${secondary}/issues/7`,
+      source: "github",
+    });
+    assert.equal(synced.work.state, "resolved");
+    issueState = "open";
+    await db.query(
+      "UPDATE github_status_sync SET next_at=now()-interval '1 minute' WHERE thread_id=$1",
+      [thread.id],
+    );
+    await pollGithubStatusSync(db, config, new GithubApp(config, fetcher));
+    const reopened = await ops.executeOperation(owner, "threads.get", {
+      threadId: thread.id,
+    });
+    assert.equal(reopened.work.state, "open");
+    secondInstalled = false;
+    const afterRevocation = await ops.executeOperation(owner, "github.connection", {
+      projectId: project.id,
+    });
+    assert.equal(
+      afterRevocation.repositories.find((repo: any) => repo.repositoryUrl === secondary)
+        ?.installation,
+      "not_installed",
+    );
+    await db.query(
+      "UPDATE github_status_sync SET next_at=now()-interval '1 minute' WHERE thread_id=$1",
+      [thread.id],
+    );
+    await pollGithubStatusSync(db, config, new GithubApp(config, fetcher));
+    assert.equal(
+      (await ops.executeOperation(owner, "threads.get", { threadId: thread.id })).work
+        .state,
+      "open",
+    );
+    const removed = await ops.executeOperation(owner, "github.repositoryDisconnect", {
+      projectId: project.id,
+      revision: enabled.revision,
+      repositoryUrl: secondary,
+    });
+    assert.deepEqual(removed.githubRepositories, [primary]);
+    assert.equal(removed.githubStatusSync, false);
   } finally {
     await pg.close();
   }

@@ -71,7 +71,7 @@ export const operationDescriptions: Record<string, string> = {
   "github.issueState":
     "Show whether a reviewed GitHub Issue request is pending or linked. A pending request may have succeeded remotely and must be reconciled before any new attempt. Human web sessions only.",
   "github.issueCreate":
-    "Create and verify one Issue in the project's connected GitHub repository from a reviewed title and body. Human project maintainers or agents with a separately granted project-scoped github.issueCreate key may call this. The tool records the verified URL on the Feedbacks thread. Use a stable idempotencyKey; if the external result is uncertain, stop and ask a human maintainer to reconcile rather than retrying with a new key.",
+    "Create and verify one Issue in a connected GitHub repository from a reviewed title and body. Supply repositoryUrl when the project has multiple connected repositories. Human project maintainers or agents with a separately granted project-scoped github.issueCreate key may call this. The tool records the verified URL on the Feedbacks thread. Use a stable idempotencyKey; if the external result is uncertain, stop and ask a human maintainer to reconcile rather than retrying with a new key.",
   "github.issueCreateQuick":
     "A signed-in human project maintainer creates one Issue directly from the original feedback. The server links each attachment inside its Feedbacks thread. These links do not expire and reuse the browser session; current project access is still required. This deliberate one-click action is unavailable to agent keys. Pending external writes require reconciliation, never a new-key retry.",
   "github.statusSyncConfigure":

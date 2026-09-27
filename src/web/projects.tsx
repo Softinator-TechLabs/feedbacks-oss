@@ -677,6 +677,11 @@ export function ProjectGithub({
       | "installed"
       | "not_installed"
       | "unavailable";
+    repositories: {
+      repositoryUrl: string;
+      connected: boolean;
+      installation: "installed" | "not_installed" | "unavailable";
+    }[];
   }>(
     () => api("github.connection", { projectId: project.id }),
     [project.id, project.revision],
@@ -695,7 +700,8 @@ export function ProjectGithub({
           <div>
             <h2 id="github-heading">Repository connection</h2>
             <p className="muted">
-              One repository per project. Issues are created only when a maintainer asks.
+              Connect selected repositories, then choose the destination when creating an
+              Issue.
             </p>
           </div>
         </div>
@@ -761,14 +767,97 @@ export function ProjectGithub({
             </button>
           </form>
         )}
+        {connection.data?.repositories.some((repo) => repo.connected) && (
+          <div
+            className="github-repository-list"
+            aria-label="Connected GitHub repositories"
+          >
+            <h3>Connected repositories</h3>
+            {connection.data.repositories
+              .filter((repo) => repo.connected)
+              .map((repo) => (
+                <div className="github-repository-item" key={repo.repositoryUrl}>
+                  <div>
+                    <strong>
+                      {repo.repositoryUrl.replace("https://github.com/", "")}
+                    </strong>
+                    <span className="muted">
+                      {repo.installation === "installed"
+                        ? "App access verified"
+                        : repo.installation === "not_installed"
+                          ? "App installation missing"
+                          : "Access check unavailable"}
+                    </span>
+                  </div>
+                  {project.permissions.canMaintain && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={action.busy}
+                      onClick={() =>
+                        void action.run(async () => {
+                          onSaved(
+                            await api<Project>("github.repositoryDisconnect", {
+                              projectId: project.id,
+                              revision: project.revision,
+                              repositoryUrl: repo.repositoryUrl,
+                            }),
+                          );
+                        }, "Repository disconnected; status sync paused.")
+                      }
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
+        {project.permissions.canMaintain && connection.data?.configured && (
+          <form
+            className="github-repository-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const repositoryUrl = String(
+                new FormData(form).get("additionalRepositoryUrl") ?? "",
+              ).trim();
+              void action.run(async () => {
+                onSaved(
+                  await api<Project>("github.repositoryConnect", {
+                    projectId: project.id,
+                    revision: project.revision,
+                    repositoryUrl,
+                  }),
+                );
+                form.reset();
+              }, "Repository connected.");
+            }}
+          >
+            <Field
+              label="Add another repository"
+              hint="The App must be installed on this exact repository."
+            >
+              <input
+                name="additionalRepositoryUrl"
+                type="url"
+                placeholder="https://github.com/owner/repository"
+                required
+              />
+            </Field>
+            <button type="submit" disabled={action.busy}>
+              Add repository
+            </button>
+          </form>
+        )}
         <div className="github-connection-actions">
-          {connection.data?.configured &&
-            connection.data.installation !== "installed" &&
-            connection.data.installUrl && (
-              <ExternalLink href={connection.data.installUrl}>
-                Install App on repository ↗
-              </ExternalLink>
-            )}
+          {connection.data?.configured && connection.data.installUrl && (
+            <ExternalLink href={connection.data.installUrl}>
+              {project.githubConnected
+                ? "Manage App installations ↗"
+                : "Install App on repository ↗"}
+            </ExternalLink>
+          )}
           {project.permissions.canMaintain &&
             !project.githubConnected &&
             connection.data?.installation === "installed" && (
@@ -806,7 +895,7 @@ export function ProjectGithub({
                 }, "GitHub disconnected; status sync stopped.")
               }
             >
-              Disconnect
+              Disconnect all
             </button>
           )}
         </div>
@@ -832,7 +921,9 @@ export function ProjectGithub({
                 action.busy ||
                 (!project.githubStatusSync &&
                   (!project.githubConnected ||
-                    connection.data?.installation !== "installed"))
+                    !connection.data?.repositories.some(
+                      (repo) => repo.connected && repo.installation === "installed",
+                    )))
               }
               onChange={(event) =>
                 void action.run(

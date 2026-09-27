@@ -250,7 +250,7 @@ function App() {
             <nav aria-label="Project navigation">
               {[
                 ["", "Feedback"],
-                ...(project.githubConnected ? [["github", "GitHub"]] : []),
+                ["github", "GitHub"],
                 ...(project.documentsEnabled ? [["documents", "Documents"]] : []),
                 ...(project.surveysEnabled ? [["surveys", "Surveys"]] : []),
                 ["members", "Members"],

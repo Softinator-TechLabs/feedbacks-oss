@@ -139,6 +139,10 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
             waitUntil: "load",
           });
           await page.getByRole("heading", { name: "Feedback" }).waitFor();
+          await page
+            .getByRole("navigation", { name: "Project navigation" })
+            .getByRole("link", { name: "GitHub" })
+            .waitFor();
           const threadLink = page.locator('a[href^="/threads/"]').first();
           await threadLink.waitFor();
           const href = await threadLink.getAttribute("href");

@@ -63,6 +63,7 @@ for (const privateRepository of [true, false]) {
       if (path.endsWith("/access_tokens"))
         return Response.json({ token: "installation-token" });
       if (path.endsWith("/issues") && init?.method === "POST") {
+        assert.equal(path, "/repos/acme/site/issues");
         Object.assign(created, JSON.parse(String(init.body)));
         return Response.json({ number: 13 }, { status: 201 });
       }
@@ -138,6 +139,11 @@ for (const privateRepository of [true, false]) {
         revision: project.revision,
       });
       assert.equal(connected.githubConnected, true);
+      await ops.executeOperation(owner, "github.repositoryConnect", {
+        projectId: project.id,
+        revision: connected.revision,
+        repositoryUrl: "https://github.com/another/service",
+      });
       const connection = await ops.executeOperation(owner, "github.connection", {
         projectId: project.id,
       });
@@ -160,7 +166,16 @@ for (const privateRepository of [true, false]) {
           code: "FORBIDDEN",
         },
       );
-      const result = await ops.executeOperation(owner, "github.issueCreateQuick", input);
+      await assert.rejects(
+        ops.executeOperation(owner, "github.issueCreateQuick", input),
+        { code: "GITHUB_REPOSITORY_REQUIRED" },
+      );
+      const selected = { ...input, repositoryUrl: "https://github.com/acme/site" };
+      const result = await ops.executeOperation(
+        owner,
+        "github.issueCreateQuick",
+        selected,
+      );
       assert.match(created.title ?? "", /Checkout breaks/);
       assert.match(
         created.body ?? "",
@@ -179,7 +194,18 @@ for (const privateRepository of [true, false]) {
         result.externalIssues[0].url,
         "https://github.com/acme/site/issues/13",
       );
-      const replay = await ops.executeOperation(owner, "github.issueCreateQuick", input);
+      const replay = await ops.executeOperation(
+        owner,
+        "github.issueCreateQuick",
+        selected,
+      );
+      await assert.rejects(
+        ops.executeOperation(owner, "github.issueCreateQuick", {
+          ...input,
+          repositoryUrl: "https://github.com/another/service",
+        }),
+        { code: "IDEMPOTENCY_CONFLICT" },
+      );
       assert.equal(replay.externalIssues[0].url, result.externalIssues[0].url);
       installationAvailable = false;
       const revoked = await ops.executeOperation(owner, "github.connection", {
