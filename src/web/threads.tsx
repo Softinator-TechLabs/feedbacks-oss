@@ -717,6 +717,21 @@ export function ThreadDetail({
           : Promise.resolve(undefined),
       [threadId, t?.projectId, projectVersion],
     );
+  const assetIds = t?.assets.map((asset) => asset.id).join(",");
+  useEffect(() => {
+    if (!t || t.context.annotations?.length) return;
+    const openLinkedAsset = () => {
+      const linked = t.assets.find((asset) => location.hash === `#asset-${asset.id}`);
+      if (!linked) return;
+      const element = document.getElementById(`asset-${linked.id}`);
+      const group = element?.closest("details");
+      if (group) group.open = true;
+      element?.scrollIntoView({ block: "start" });
+    };
+    openLinkedAsset();
+    addEventListener("hashchange", openLinkedAsset);
+    return () => removeEventListener("hashchange", openLinkedAsset);
+  }, [t?.id, assetIds]);
   const projectCallback = useRef(onProject);
   projectCallback.current = onProject;
   useEffect(() => {
@@ -1025,7 +1040,7 @@ export function ThreadDetail({
               <section className="attachments">
                 <h2 className="sr-only">Attachments</h2>
                 {otherAssets.map((asset, index) => (
-                  <figure key={asset.id}>
+                  <figure id={`asset-${asset.id}`} key={asset.id}>
                     {asset.contentType === "video/webm" ? (
                       <video
                         controls
@@ -1061,7 +1076,7 @@ export function ThreadDetail({
                     </summary>
                     <div className="capture-page-grid">
                       {capturePages.map((asset) => (
-                        <figure key={asset.id}>
+                        <figure id={`asset-${asset.id}`} key={asset.id}>
                           <a
                             href={asset.url}
                             target="_blank"

@@ -134,10 +134,25 @@ export function ReviewEvidence({
   const [selectedId, setSelectedId] = useState(first?.id);
   const [activeId, setActiveId] = useState<string | null>(null);
   const stage = useRef<HTMLElement>(null);
+  const assetIds = thread.assets.map((asset) => asset.id).join(",");
   useEffect(() => {
-    setSelectedId(first?.id);
-    setActiveId(null);
-  }, [thread.id, first?.id]);
+    const openLinkedAsset = () => {
+      const linked = thread.assets.find(
+        (asset) => location.hash === `#asset-${asset.id}`,
+      );
+      setSelectedId(linked?.contentType === "image/webp" ? linked.id : first?.id);
+      setActiveId(null);
+      if (linked)
+        requestAnimationFrame(() =>
+          document
+            .getElementById(`asset-${linked.id}`)
+            ?.scrollIntoView({ block: "start" }),
+        );
+    };
+    openLinkedAsset();
+    addEventListener("hashchange", openLinkedAsset);
+    return () => removeEventListener("hashchange", openLinkedAsset);
+  }, [thread.id, first?.id, assetIds]);
   const selected = images.find((asset) => asset.id === selectedId) || first;
   const locationFor = (item: Annotation) =>
     images.find(
@@ -248,7 +263,11 @@ export function ReviewEvidence({
         </button>
       )}
       {selected && (
-        <figure className="review-evidence-figure" ref={stage}>
+        <figure
+          id={`asset-${selected.id}`}
+          className="review-evidence-figure"
+          ref={stage}
+        >
           <div className="review-evidence-image">
             <img
               src={selected.url}
@@ -471,6 +490,7 @@ export function ReviewEvidence({
         .filter((asset) => asset.contentType === "video/webm")
         .map((asset) => (
           <video
+            id={`asset-${asset.id}`}
             key={asset.id}
             controls
             preload="metadata"

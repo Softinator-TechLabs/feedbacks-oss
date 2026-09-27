@@ -23,7 +23,7 @@ The current Feedbacks project connection accepts **one repository per project**.
 
 Open a thread. The GitHub bar below its heading shows the current connection and **Create Issue**. One click creates an Issue from the original feedback, links it back to the thread and records a verified URL. Use **Review/edit first** when the text needs adjustment. The button is a deliberate maintainer action; incoming comments never create Issues on their own.
 
-For image or video attachments, the Issue includes a durable Feedbacks URL that checks current project access. When the repository is **private** and storage supports signing, it also includes a direct Wasabi/S3 download URL valid for seven days. Anyone who sees that temporary URL can open the media until expiry. Public repositories receive no direct storage URL. Storage objects remain private and no raw object key or storage credential is copied to GitHub.
+For each image or video, the Issue includes a link to that attachment inside the Feedbacks thread. These links do not expire. The web app reuses your existing sign-in and checks current project access before loading the media. Storage objects remain private; expiring Wasabi/S3 URLs and raw asset API URLs are not copied into new Issues.
 
 Only one native Issue request is allowed per thread. If a GitHub write has an uncertain result, Feedbacks pauses creation rather than risk a duplicate. Inspect GitHub and use the recovery controls to verify and link the actual Issue, or clear the request after confirming no Issue exists and waiting for the settlement period.
 

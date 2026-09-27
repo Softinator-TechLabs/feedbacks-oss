@@ -17,19 +17,16 @@ test("one-click Issue keeps source and media links when feedback is long", () =>
       {
         id: randomUUID(),
         contentType: "video/webm",
-        directUrl: "https://s3.example.test/video",
       },
       {
         id: randomUUID(),
         contentType: "image/webp",
         filename: "full-page-001-of-002.webp",
-        directUrl: null,
       },
       {
         id: randomUUID(),
         contentType: "image/webp",
         filename: "full-page-002-of-002.webp",
-        directUrl: null,
       },
     ],
   );
@@ -38,7 +35,8 @@ test("one-click Issue keeps source and media links when feedback is long", () =>
     draft.body,
     new RegExp(`https://feedbacks\\.example\\.test/threads/${id}`),
   );
-  assert.match(draft.body, /https:\/\/s3\.example\.test\/video/);
+  assert.doesNotMatch(draft.body, /s3\.example\.test|\/api\/assets\//);
+  assert.match(draft.body, /#asset-[a-f0-9-]+/);
   assert.match(draft.body, /Full-page capture: 2 numbered images/);
   assert.match(draft.body, /full-page-002-of-002\.webp/);
 });
@@ -166,17 +164,17 @@ for (const privateRepository of [true, false]) {
       assert.match(created.title ?? "", /Checkout breaks/);
       assert.match(
         created.body ?? "",
-        /https:\/\/feedbacks\.example\.test\/api\/assets\//,
+        new RegExp(
+          `https://feedbacks\\.example\\.test/threads/${thread.id}#asset-${assetId}`,
+        ),
       );
       assert.match(created.body ?? "", /https:\/\/feedbacks\.example\.test\/threads\//);
       assert.doesNotMatch(created.body ?? "", /<script>|@team/);
-      if (privateRepository) {
-        assert.match(created.body ?? "", /https:\/\/s3\.example\.test\/signed\//);
-        assert.deepEqual(signedKeys, ["private/test-image.webp"]);
-      } else {
-        assert.doesNotMatch(created.body ?? "", /s3\.example\.test/);
-        assert.deepEqual(signedKeys, []);
-      }
+      assert.doesNotMatch(
+        created.body ?? "",
+        /s3\.example\.test|\/api\/assets\/|valid 7 days/,
+      );
+      assert.deepEqual(signedKeys, []);
       assert.equal(
         result.externalIssues[0].url,
         "https://github.com/acme/site/issues/13",

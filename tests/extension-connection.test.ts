@@ -10,6 +10,7 @@ async function popup({
   serverAllowed = false,
   allSitesAllowed = false,
   instantReview = false,
+  toolbarPopup = false,
 } = {}) {
   const html = await readFile(
     new URL("../extension/popup.html", import.meta.url),
@@ -24,6 +25,7 @@ async function popup({
         hidden: false,
         disabled: false,
         removeAttribute() {},
+        setAttribute() {},
         replaceChildren() {},
       },
     ]),
@@ -40,6 +42,13 @@ async function popup({
     pending: false,
     instantReview,
   };
+  let closed = 0;
+  const window = {
+    close() {
+      closed++;
+    },
+  };
+  const element = new EventTarget();
   const context = vm.createContext({
     URL,
     Option: class {
@@ -52,11 +61,17 @@ async function popup({
     },
     crypto,
     console,
-    document: { getElementById: (id: string) => nodes[id] },
+    document: {
+      getElementById: (id: string) => nodes[id],
+      body: { classList: { toggle() {} } },
+      documentElement: element,
+    },
+    setTimeout,
+    clearTimeout,
     setInterval(fn: () => void) {
       interval = fn;
     },
-    window: { close() {} },
+    window,
     createReleaseSelectionGate: () => ({ select: () => 1, isCurrent: () => true }),
     checkForUpdates: async () => {
       updateChecks++;
@@ -64,6 +79,7 @@ async function popup({
     },
     releaseLinks: () => ({}),
     chrome: {
+      extension: { getViews: () => (toolbarPopup ? [window] : []) },
       commands: {
         getAll: async () => [{ name: "_execute_action", shortcut: "Command+Shift+Y" }],
       },
@@ -130,6 +146,8 @@ async function popup({
   await new Promise((resolve) => setImmediate(resolve));
   return {
     nodes,
+    closed: () => closed,
+    pointer: (type: string) => element.dispatchEvent(new Event(type)),
     state,
     requested,
     sent,
@@ -294,4 +312,19 @@ test("popup opens Chrome shortcut controls through the API and exposes extension
   await nodes["customize-shortcuts"].onclick();
   await nodes.settings.onclick();
   assert.deepEqual(opened, ["chrome://extensions/shortcuts", "options"]);
+});
+
+test("only the toolbar popup closes after pointer departure and re-entry cancels closing", async () => {
+  const toolbar = await popup({ toolbarPopup: true });
+  toolbar.pointer("pointerleave");
+  toolbar.pointer("pointerenter");
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal(toolbar.closed(), 0);
+  toolbar.pointer("pointerleave");
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal(toolbar.closed(), 1);
+  const tab = await popup();
+  tab.pointer("pointerleave");
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal(tab.closed(), 0);
 });

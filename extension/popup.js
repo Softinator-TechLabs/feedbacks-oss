@@ -140,6 +140,8 @@ async function start(projectId) {
     $("project").replaceChildren(...result.choices.map((p) => new Option(p.name, p.id)));
     $("project").value = result.project.id;
     $("review-controls").hidden = false;
+    $("review-title").textContent = result.project.name;
+    $("review-title").title = new URL(result.origin).hostname;
     void refreshOverview();
     const controls = await send({ type: "popupAction", tabId: tab.id, action: "state" });
     const diagnostics = await send({
@@ -149,6 +151,10 @@ async function start(projectId) {
     }).catch(() => ({ active: false }));
     showDiagnostics(diagnostics.active);
     $("pins").textContent = controls.showPins ? "Hide pins" : "Show pins";
+    $("navigation").textContent = controls.navigationLocked
+      ? "Navigation locked"
+      : "Navigation allowed";
+    $("navigation").setAttribute("aria-pressed", String(controls.navigationLocked));
     $("resolved").textContent = controls.showResolved ? "Hide resolved" : "Show resolved";
   } catch (e) {
     showAccess("tab-access", "blocked", "Not ready");
@@ -163,6 +169,7 @@ async function refresh() {
   try {
     const state = await send({ type: "settings" });
     activeServer = state.server;
+    document.body.classList.toggle("is-paired", state.connected);
     loadedConnection = connectionKey(state);
     pairingPending = state.pending;
     if (!serverEdited) {
@@ -215,6 +222,7 @@ async function refresh() {
       !state.server || !serverAllowed ? "Needs attention" : "Ready";
     $("access-summary").className =
       !state.server || !serverAllowed ? "needs-attention" : "ready";
+    document.body.classList.toggle("access-ready", !!state.server && serverAllowed);
     $("restore-server-access").hidden = !state.connected || serverAllowed;
     $("instant").hidden = !state.connected || allSites;
     $("instant-help").hidden = $("instant").hidden;
@@ -301,6 +309,7 @@ for (const id of [
   "choose",
   "pins",
   "show-controls",
+  "navigation",
   "resolved",
   "mobile",
   "tablet",
@@ -330,6 +339,12 @@ for (const id of [
       return;
     }
     if (id === "pins") $(id).textContent = result.showPins ? "Hide pins" : "Show pins";
+    if (id === "navigation") {
+      $(id).textContent = result.navigationLocked
+        ? "Navigation locked"
+        : "Navigation allowed";
+      $(id).setAttribute("aria-pressed", String(result.navigationLocked));
+    }
     if (id === "resolved")
       $(id).textContent = result.showResolved ? "Hide resolved" : "Show resolved";
     if (["mobile", "tablet", "desktop", "wide", "resolved"].includes(id))
@@ -342,9 +357,7 @@ action("draft", async () => {
 action("record-video", async () => {
   if (!tab?.id || !/^https?:/.test(tab.url || ""))
     throw Error("Open a website before recording a tab video.");
-  await chrome.tabs.create({
-    url: chrome.runtime.getURL(`video.html?sourceTabId=${tab.id}`),
-  });
+  await send({ type: "openRecorder", tabId: tab.id });
   window.close();
 });
 action("disconnect", async () => {
@@ -388,3 +401,15 @@ action("customize-shortcuts", () =>
   chrome.tabs.create({ url: "chrome://extensions/shortcuts" }),
 );
 action("settings", () => chrome.runtime.openOptionsPage());
+
+// This script also runs as a normal tab in development. Only auto-close Chrome's
+// actual toolbar popup; keep the full settings and any typed server draft intact.
+if (chrome.extension.getViews({ type: "popup" }).includes(window)) {
+  let leaveTimer;
+  document.documentElement.addEventListener("pointerleave", () => {
+    leaveTimer = setTimeout(() => window.close(), 200);
+  });
+  document.documentElement.addEventListener("pointerenter", () =>
+    clearTimeout(leaveTimer),
+  );
+}
