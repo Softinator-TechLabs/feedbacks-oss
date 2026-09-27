@@ -1910,3 +1910,62 @@ legend {
     width: 100%;
   }
 }
+
+.thread-bulk-actions,
+.thread-cleanup-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 0;
+}
+.thread-select,
+.thread-select-all {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.thread-select {
+  justify-content: center;
+  width: 36px;
+}
+.thread-select input,
+.thread-select-all input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.thread-cleanup {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.thread-delete-dialog {
+  width: min(600px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow-y: auto;
+}
+.thread-delete-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+.thread-delete-dialog h2 {
+  margin-top: 0;
+}
+.thread-delete-dialog .actions {
+  margin-top: 20px;
+}
+.thread-delete-dialog li {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.thread-delete-dialog details {
+  margin-top: 12px;
+}

@@ -1,3 +1,4 @@
+import { createVideoTimeline } from "./video-timeline.js";
 import {
   VIDEO_MAX_BYTES,
   VIDEO_MAX_MS,
@@ -84,6 +85,8 @@ function status(message) {
 }
 function clearPreview() {
   blob = null;
+  editsPending = false;
+  $("send").disabled = false;
   durationMs = 0;
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = null;
@@ -96,7 +99,10 @@ function clearPreview() {
   originalUrl = null;
   originalBlob = null;
   originalFrame = null;
+  timeline.clear();
   $("editing").hidden = true;
+  document.body?.classList.remove("has-recording");
+  $("start").textContent = "Start recording";
 }
 function stop() {
   if (recorder && recorder.state !== "inactive") recorder.stop();
@@ -226,6 +232,8 @@ $("start").onclick = async () => {
       $("preview").hidden = false;
       $("review").hidden = false;
       $("editing").hidden = false;
+      document.body?.classList.add("has-recording");
+      $("start").textContent = "Record again";
       $("timer").textContent =
         `${(durationMs / 1000).toFixed(1)} seconds · ${(blob.size / 1024 / 1024).toFixed(1)} MiB`;
       ["crop-left", "crop-top", "crop-width", "crop-height"].forEach(
@@ -233,6 +241,8 @@ $("start").onclick = async () => {
       );
       $("trim-start").value = "0";
       $("trim-end").value = (durationMs / 1000).toFixed(3);
+      timeline.load(originalUrl, originalDuration / 1000);
+      $("edit-state").textContent = "";
       $("discard").hidden = false;
       publishState("ready");
       status("Review the recording, then send or discard it.");
@@ -389,6 +399,9 @@ $("apply-edit").onclick = async () => {
   $("reset-edit").disabled = true;
   $("cancel-edit").hidden = false;
   $("preview").pause();
+  timeline.lock(true);
+  for (const id of ["crop-left", "crop-top", "crop-width", "crop-height"])
+    $(id).disabled = true;
   try {
     const edited = await exportVideo({
       url: originalUrl,
@@ -403,14 +416,20 @@ $("apply-edit").onclick = async () => {
     blob = edited;
     durationMs = Math.round((end - start) * 1000);
     previewUrl = URL.createObjectURL(blob);
+    timeline.applied();
     $("preview").src = previewUrl;
+    $("edit-state").textContent = "Edits applied · ready to send";
+    editsPending = false;
     status("Edits applied. Preview the video before sending.");
   } catch (error) {
     status(error.message);
   } finally {
     exportController = null;
     $("apply-edit").disabled = false;
-    $("send").disabled = false;
+    timeline.lock(false);
+    for (const id of ["crop-left", "crop-top", "crop-width", "crop-height"])
+      $(id).disabled = false;
+    $("send").disabled = editsPending;
     $("start").disabled = !connected;
     $("discard").disabled = false;
     $("reset-edit").disabled = false;
@@ -430,6 +449,10 @@ $("reset-edit").onclick = () => {
   ["crop-left", "crop-top", "crop-width", "crop-height"].forEach(
     (id, i) => ($(id).value = i < 2 ? "0" : "100"),
   );
+  timeline.reset();
+  editsPending = false;
+  $("send").disabled = false;
+  $("edit-state").textContent = "";
   status("Original recording restored.");
 };
 
@@ -440,7 +463,7 @@ function drawCrop() {
   canvas.width = Math.min(760, video.videoWidth);
   canvas.height = Math.round((canvas.width * video.videoHeight) / video.videoWidth);
   const ctx = canvas.getContext("2d");
-  if (blob === originalBlob) {
+  if (timeline.isOriginal() && video.readyState >= 2) {
     originalFrame = document.createElement("canvas");
     originalFrame.width = canvas.width;
     originalFrame.height = canvas.height;
@@ -466,9 +489,18 @@ function drawCrop() {
 }
 $("preview").onloadeddata = drawCrop;
 $("preview").onseeked = drawCrop;
-$("editing").ontoggle = drawCrop;
+$("crop-editing").ontoggle = () => {
+  if ($("crop-editing").open) {
+    timeline.original();
+    drawCrop();
+  }
+};
 for (const id of ["crop-left", "crop-top", "crop-width", "crop-height"])
-  $(id).oninput = drawCrop;
+  $(id).oninput = () => {
+    markEditsPending();
+    timeline.original();
+    drawCrop();
+  };
 let cropStart;
 const cropPoint = (event) => {
   const rect = $("crop-preview").getBoundingClientRect();
@@ -479,6 +511,7 @@ const cropPoint = (event) => {
 };
 $("crop-preview").onpointerdown = (event) => {
   if (exportController) return;
+  timeline.original();
   cropStart = cropPoint(event);
   $("crop-preview").setPointerCapture(event.pointerId);
 };
@@ -495,8 +528,17 @@ $("crop-preview").onpointermove = (event) => {
   ["crop-left", "crop-top", "crop-width", "crop-height"].forEach(
     (id, i) => ($(id).value = String(values[i])),
   );
+  markEditsPending();
   drawCrop();
 };
 $("crop-preview").onpointerup = $("crop-preview").onpointercancel = () => {
   cropStart = null;
 };
+
+let editsPending = false;
+function markEditsPending() {
+  editsPending = true;
+  $("send").disabled = true;
+  $("edit-state").textContent = "Previewing your selection · Apply edits before sending";
+}
+const timeline = createVideoTimeline({ onChange: markEditsPending, onError: status });

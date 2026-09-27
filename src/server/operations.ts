@@ -1,3 +1,4 @@
+import { manageThreadDeletion, cleanupDeletedObjects } from "./thread-deletion.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
 import {
@@ -130,6 +131,10 @@ export class Operations {
         if (name.startsWith("guestProjectLinks."))
           return manageGuestProjectLinks(db, a, name, i, this.config);
         if (name.startsWith("members.")) return members(db, a, name, i);
+        if (
+          ["threads.delete", "threads.deletions", "threads.retryDeletion"].includes(name)
+        )
+          return manageThreadDeletion(db, a, name, i);
         if (name.startsWith("threads.")) return feedback(db, a, name, i, this.config);
         if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
         if (name.startsWith("views.")) return views(db, a, name, i);
@@ -211,6 +216,8 @@ export class Operations {
         );
       })
       .then((result) => JSON.parse(JSON.stringify(result)));
+    if (name === "threads.delete" || name === "threads.retryDeletion")
+      return cleanupDeletedObjects(this.db, this.store, result.id);
     if (preview)
       result.image = await assetPreview(
         this.store,

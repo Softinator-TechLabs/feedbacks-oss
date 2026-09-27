@@ -97,6 +97,27 @@ test("screenshot asset metadata links numbered comments and drawing locations", 
       },
     ],
   };
+  for (const tool of ["highlighter", "steps", "blur", "sticker", "image"]) {
+    const visual = {
+      tool,
+      bounds: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+      endpoints: [
+        { x: 0.1, y: 0.2 },
+        { x: 0.4, y: 0.6 },
+      ],
+      ...(tool === "steps" ? { number: 3 } : {}),
+      ...(tool === "sticker" ? { text: "✓" } : {}),
+    };
+    const parsed = inputSchemas["assets.upload"].parse({
+      ...upload,
+      markings: [{ ...visual, source: "private-local-image-bytes" }],
+    });
+    assert.deepEqual(
+      parsed.markings,
+      [visual],
+      "visual type and geometry survive, private source does not",
+    );
+  }
   assert.deepEqual(inputSchemas["assets.upload"].parse(upload).markings, upload.markings);
   assert.deepEqual(
     inputSchemas["assets.upload"].parse(upload).captureSections,

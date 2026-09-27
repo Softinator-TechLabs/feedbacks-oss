@@ -128,3 +128,170 @@ video {
   touch-action: none;
   cursor: crosshair;
 }
+
+.timeline-heading,
+.timeline-playback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.timeline-heading span,
+.trim-bounds {
+  color: var(--muted);
+}
+.timeline-hint {
+  margin: 6px 0 20px;
+  font-size: 13px;
+}
+.timeline {
+  font-variant-numeric: tabular-nums;
+}
+#trim-track {
+  position: relative;
+  height: 72px;
+  margin: 0 20px;
+  background: var(--workbench);
+  touch-action: none;
+  cursor: pointer;
+}
+#trim-thumbnails {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+}
+#trim-selection {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border: 3px solid var(--focus);
+  background: transparent;
+  pointer-events: none;
+}
+#trim-playhead {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 2px;
+  background: var(--text);
+  box-shadow: 0 1px 3px var(--canvas);
+  pointer-events: none;
+}
+.trim-handle {
+  position: absolute;
+  top: -4px;
+  width: 40px;
+  height: 80px;
+  padding: 0;
+  transform: translateX(-50%);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  touch-action: none;
+  cursor: ew-resize;
+}
+.trim-handle span {
+  display: block;
+  margin: auto;
+  width: 18px;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--focus);
+}
+.trim-handle span::after {
+  content: "";
+  display: block;
+  position: relative;
+  top: 28px;
+  margin: auto;
+  height: 24px;
+  width: 2px;
+  background: white;
+}
+#trim-seek {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 0 20px;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+.timeline-playback {
+  justify-content: flex-start;
+  font-size: 13px;
+}
+.trim-bounds {
+  margin-left: auto;
+}
+#trim-play {
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  width: 44px;
+}
+#trim-play svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+#precise-trim,
+#crop-editing {
+  margin-top: 12px;
+}
+#editing summary {
+  display: list-item;
+  min-height: 32px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.edit-actions {
+  margin-top: 12px;
+}
+#edit-state {
+  font-size: 13px;
+}
+.edit-fields label {
+  margin: 0 0 8px;
+}
+@media (max-width: 480px) {
+  .trim-bounds {
+    display: none;
+  }
+  .edit-actions button {
+    flex: 1;
+    min-width: 130px;
+  }
+}
+.after-recording {
+  display: none;
+}
+.has-recording .before-recording,
+.has-recording #audio-options {
+  display: none;
+}
+.has-recording .after-recording {
+  display: inline;
+}
+.has-recording main {
+  margin-top: 20px;
+}
+.has-recording video {
+  max-height: 360px;
+}
+.has-recording #editing {
+  margin-top: 16px;
+}
+.has-recording .controls {
+  margin: 12px 0;
+}
+.has-recording #start {
+  background: var(--canvas);
+  color: var(--text);
+  border-color: var(--control-line);
+}
+.has-recording video {
+  max-height: min(360px, 38vh);
+}

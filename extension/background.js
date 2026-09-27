@@ -11,6 +11,7 @@ import {
   deleteDraftPages,
   pageDataUrl,
 } from "./page-store.js";
+import { redactInsertedImages } from "./screenshot-redaction.js";
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 import { formatPageQa } from "./page-qa.js";
 import { pageOverviewTarget } from "./page-overview.js";
@@ -84,7 +85,20 @@ function pointShapes(item, index, region, sx, sy) {
 }
 function summarizeMarkings(shapes, width, height, annotations = []) {
   return (shapes || []).flatMap((shape) => {
-    if (!["point", "pencil", "arrow", "rectangle", "text"].includes(shape.tool))
+    if (
+      ![
+        "point",
+        "pencil",
+        "arrow",
+        "rectangle",
+        "text",
+        "highlighter",
+        "steps",
+        "blur",
+        "sticker",
+        "image",
+      ].includes(shape.tool)
+    )
       return [];
     const points = (shape.points || []).filter(
       (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
@@ -94,7 +108,10 @@ function summarizeMarkings(shapes, width, height, annotations = []) {
     const ys = points.map((point) => unit(point.y, height));
     const x = Math.min(...xs);
     const y = Math.min(...ys);
-    const number = Number.isInteger(shape.number) ? shape.number : undefined;
+    const number =
+      Number.isInteger(shape.number) && shape.number >= 1 && shape.number <= 100
+        ? shape.number
+        : undefined;
     const endpoints = points.length === 1 ? [points[0]] : [points[0], points.at(-1)];
     return [
       {
@@ -105,11 +122,13 @@ function summarizeMarkings(shapes, width, height, annotations = []) {
           y: unit(point.y, height),
         })),
         ...(number ? { number } : {}),
-        ...(number && annotations[number - 1]
+        ...(number &&
+        (shape.tool === "point" || shape.origin === "element") &&
+        annotations[number - 1]
           ? { annotationId: annotations[number - 1].id }
           : {}),
         ...(shape.origin === "element" ? { origin: "element" } : {}),
-        ...(shape.tool === "text" && shape.text
+        ...(["text", "sticker"].includes(shape.tool) && shape.text
           ? { text: String(shape.text).slice(0, 200) }
           : {}),
       },
@@ -1295,6 +1314,10 @@ async function redactDraft(message) {
     });
     if (blob.size > (series ? 10 : 5) * 1024 * 1024)
       throw Error("The redacted screenshot exceeds the per-image size limit.");
+    const sanitizedShapes = await redactInsertedImages(
+      series ? draft.pageToolStates?.[index] : draft.toolState,
+      rectangles,
+    );
     if (series) {
       await putPage(draft.id, index, "source", blob);
       await deletePage(draft.id, index, "approved");
@@ -1302,10 +1325,11 @@ async function redactDraft(message) {
         ...draft,
         imageRevision: (draft.imageRevision || 0) + 1,
         approvedPageIndices: [],
+        // saveDraft also keeps a redundant current-page toolState. Clear it so
+        // an old embedded image cannot survive there after source sanitization.
+        toolState: [],
         pageToolStates: (draft.pageToolStates || []).map((shapes, page) =>
-          page === index
-            ? (shapes || []).filter((shape) => shape.tool !== "redact")
-            : shapes,
+          page === index ? sanitizedShapes : shapes,
         ),
       };
       await set({ draft: updated });
@@ -1319,7 +1343,7 @@ async function redactDraft(message) {
       ...draft,
       image: "data:image/png;base64," + btoa(binary),
       imageRevision: (draft.imageRevision || 0) + 1,
-      toolState: (draft.toolState || []).filter((shape) => shape.tool !== "redact"),
+      toolState: sanitizedShapes,
     };
     await set({ draft: updated });
     return updated;

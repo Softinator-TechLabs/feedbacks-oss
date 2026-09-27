@@ -228,7 +228,7 @@ canvas {
   cursor: crosshair;
   background: white;
 }
-#full-page-preview {
+.full-page-section {
   display: block;
   max-width: 100%;
   height: auto;
@@ -530,4 +530,100 @@ aside .hint {
 .point-notes textarea {
   min-height: 74px;
   resize: vertical;
+}
+
+.export-tools,
+.tool-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.export-tools label,
+.tool-options label {
+  width: auto;
+  margin: 0;
+  font-size: 13px;
+}
+.export-tools select,
+.tool-options select {
+  width: auto;
+  max-width: 100%;
+}
+.tool-options span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.download-menu {
+  position: relative;
+}
+.download-menu summary {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--control-line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.download-menu > div {
+  display: flex;
+  gap: 4px;
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  top: 100%;
+  background: var(--canvas);
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+#canvas-scroll[data-zoom="1"] canvas,
+#canvas-scroll[data-zoom="2"] canvas,
+#canvas-scroll[data-zoom="1"] .full-page-section,
+#canvas-scroll[data-zoom="2"] .full-page-section {
+  max-width: none;
+  margin: 0;
+}
+#preview-slot {
+  width: 100%;
+}
+#preview-slot .full-page-section {
+  border: 0;
+  border-radius: 0;
+}
+.export-tools [data-export] {
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .export-tools {
+    gap: 6px;
+  }
+  .export-tools select {
+    flex: 1;
+    min-width: 130px;
+  }
+}
+
+.more-tools {
+  position: relative;
+}
+.more-tools summary {
+  min-height: 44px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.more-tools > div {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  top: 100%;
+  width: 260px;
+  padding: 8px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }

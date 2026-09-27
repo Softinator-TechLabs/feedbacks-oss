@@ -7,6 +7,20 @@ import { chromium } from "playwright";
 import sharp from "sharp";
 
 const root = process.cwd();
+async function previewDimensions(page) {
+  await page.locator("#preview-slot:not([hidden]) img").first().waitFor();
+  await page.waitForFunction(() => {
+    const images = [...document.querySelectorAll("#preview-slot img")];
+    return (
+      images.length > 0 &&
+      images.every((image) => image.complete && image.naturalWidth > 0)
+    );
+  });
+  return page.locator("#preview-slot img").evaluateAll((images) => ({
+    width: images[0].naturalWidth,
+    height: images.reduce((sum, image) => sum + image.naturalHeight, 0),
+  }));
+}
 const publicCaptureUrl =
   process.env.FEEDBACKS_QA_PUBLIC_URL || "https://globaljournals.org/";
 const profile = await mkdtemp(join(tmpdir(), "feedbacks-extension-browser-"));
@@ -188,10 +202,7 @@ try {
       await review.locator("#page-select option").last().waitFor({ state: "attached" });
       await review.locator("#full-page-toggle:not([disabled])").waitFor();
       await review.getByRole("button", { name: "Full page preview" }).click();
-      await review.locator("#full-page-preview:visible").waitFor({ timeout: 60000 });
-      results.publicSite.previewHeight = await review
-        .locator("#full-page-preview")
-        .evaluate((image) => image.naturalHeight);
+      results.publicSite.previewHeight = (await previewDimensions(review)).height;
       assert.ok(results.publicSite.previewHeight > 1064);
       await review.getByRole("button", { name: "Back to sections" }).click();
       await review.locator("#include-combined").check();
@@ -1353,14 +1364,11 @@ try {
   await multiEditor.evaluate(() => scrollTo(0, 0));
 
   await multiEditor.getByRole("button", { name: "Full page preview" }).click();
-  await multiEditor.locator("#full-page-preview:visible").waitFor();
+  await previewDimensions(multiEditor);
   const continuousHeight = multiScrollDraft.capturePages
     .filter((item) => !item.annotationId)
     .reduce((sum, item) => sum + item.pixelHeight, 0);
-  assert.equal(
-    await multiEditor.locator("#full-page-preview").evaluate((img) => img.naturalHeight),
-    continuousHeight,
-  );
+  assert.equal((await previewDimensions(multiEditor)).height, continuousHeight);
   results.inlineReview.combinedExcludesOriginals = true;
   await multiEditor.close();
   await send({ type: "discard" });
@@ -1442,21 +1450,10 @@ try {
   await seriesEditor.locator(".page-thumbnail img[src]").first().waitFor();
   await seriesEditor.locator("#full-page-toggle:not([disabled])").waitFor();
   await seriesEditor.getByRole("button", { name: "Full page preview" }).click();
-  await seriesEditor
-    .locator("#full-page-preview:visible")
-    .waitFor()
-    .catch(async (error) => {
-      throw Error(
-        `Preview did not open: ${await seriesEditor.locator("#status").textContent()} (${error.message})`,
-      );
-    });
+  const seriesDimensions = await previewDimensions(seriesEditor);
   results.seriesReview = {
-    previewHeight: await seriesEditor
-      .locator("#full-page-preview")
-      .evaluate((image) => image.naturalHeight),
-    previewWidth: await seriesEditor
-      .locator("#full-page-preview")
-      .evaluate((image) => image.naturalWidth),
+    previewHeight: seriesDimensions.height,
+    previewWidth: seriesDimensions.width,
   };
   assert.ok(results.seriesReview.previewHeight > 650);
   assert.ok(results.seriesReview.previewWidth > 0);
@@ -1628,18 +1625,43 @@ try {
     "full-page-003-of-004.webp";
   await removableEditor.locator("#page-select").selectOption("0");
   await removableEditor.locator('[data-tool="rectangle"]').click();
-  const reviewImage = await removableEditor.locator("#canvas").boundingBox();
-  if (!reviewImage) throw Error("The screenshot is missing from the review editor");
-  await removableEditor.mouse.move(reviewImage.x + 32, reviewImage.y + 94);
+  await removableEditor.waitForFunction(
+    () =>
+      document.querySelector("#status")?.textContent ===
+      "Reviewing full-page-001-of-004.webp.",
+  );
+  await removableEditor.locator("#canvas").scrollIntoViewIfNeeded();
+  const reviewArea = await removableEditor.locator("#canvas").evaluate((canvas) => {
+    const image = canvas.getBoundingClientRect();
+    const viewport = document.querySelector("#canvas-scroll").getBoundingClientRect();
+    return {
+      left: Math.max(image.left, viewport.left, 0) + 8,
+      top: Math.max(image.top, viewport.top, 0) + 8,
+      right: Math.min(image.right, viewport.right, innerWidth) - 8,
+      bottom: Math.min(image.bottom, viewport.bottom, innerHeight) - 8,
+    };
+  });
+  assert.ok(reviewArea.right - reviewArea.left > 40, JSON.stringify(reviewArea));
+  assert.ok(reviewArea.bottom - reviewArea.top > 40, JSON.stringify(reviewArea));
+  const drawingStart = { x: reviewArea.left + 8, y: reviewArea.top + 8 };
+  assert.equal(
+    await removableEditor.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.id,
+      drawingStart,
+    ),
+    "canvas",
+  );
+  await removableEditor.mouse.move(drawingStart.x, drawingStart.y);
   await removableEditor.mouse.down();
-  await removableEditor.mouse.move(reviewImage.x + 115, reviewImage.y + 155, {
+  await removableEditor.mouse.move(reviewArea.right - 8, reviewArea.bottom - 8, {
     steps: 4,
   });
   await removableEditor.mouse.up();
   await removableEditor.getByRole("button", { name: "Full page preview" }).click();
-  await removableEditor.locator("#full-page-preview:visible").waitFor();
+  await previewDimensions(removableEditor);
   results.pageReview.previewMarkedPixels = await removableEditor
-    .locator("#full-page-preview")
+    .locator("#preview-slot img")
+    .first()
     .evaluate((image) => {
       const canvas = document.createElement("canvas");
       canvas.width = image.naturalWidth;
@@ -2050,6 +2072,12 @@ try {
   await recorderPage.waitForLoadState();
   await recorderPage.locator("#start:enabled").waitFor();
   await recorderPage.evaluate(() => {
+    window.qaPlaybackVideos = [];
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      window.qaPlaybackVideos.push(this);
+      return play.call(this);
+    };
     const tone = () => {
       const audio = new AudioContext();
       const oscillator = audio.createOscillator();
@@ -2116,9 +2144,51 @@ try {
   assert.ok(
     (await recorderPage.locator("#preview").getAttribute("src")).startsWith("blob:"),
   );
-  await recorderPage.locator("#editing summary").click();
+  // Trim with both drag handles, seek, and play only the selected interval.
+  await recorderPage.locator("#trim-start-handle").waitFor();
+  await recorderPage.locator("#trim-track").scrollIntoViewIfNeeded();
+  const trimTrack = await recorderPage.locator("#trim-track").boundingBox();
+  assert.ok(trimTrack);
+  const dragHandle = async (id, fraction) => {
+    const handle = await recorderPage.locator(id).boundingBox();
+    await recorderPage.mouse.move(
+      handle.x + handle.width / 2,
+      handle.y + handle.height / 2,
+    );
+    await recorderPage.mouse.down();
+    await recorderPage.mouse.move(
+      trimTrack.x + trimTrack.width * fraction,
+      trimTrack.y + 30,
+      { steps: 6 },
+    );
+    await recorderPage.mouse.up();
+  };
+  await dragHandle("#trim-start-handle", 0.2);
+  await dragHandle("#trim-end-handle", 0.3);
+  const trimStart = Number(await recorderPage.locator("#trim-start").inputValue());
+  const trimEnd = Number(await recorderPage.locator("#trim-end").inputValue());
+  assert.ok(trimStart > 5 && trimEnd > trimStart);
+  assert.equal(await recorderPage.locator("#send").isEnabled(), false);
+  await recorderPage.locator("#trim-play").click();
+  await recorderPage.locator("#trim-pause-icon:visible").waitFor();
+  await recorderPage.waitForFunction(() => document.querySelector("#preview").paused, {
+    timeout: 10000,
+  });
+  assert.ok(
+    Math.abs(
+      (await recorderPage.locator("#preview").evaluate((v) => v.currentTime)) - trimEnd,
+    ) < 0.15,
+  );
+  await recorderPage.locator("#trim-start-handle").focus();
+  await recorderPage.keyboard.press("ArrowRight");
+  assert.ok(Number(await recorderPage.locator("#trim-start").inputValue()) > trimStart);
+  await recorderPage.locator("#precise-trim summary").click();
+  await recorderPage.locator("#trim-end").fill("");
+  await recorderPage.locator("#trim-end").pressSequentially("30");
+  assert.equal(await recorderPage.locator("#trim-end").inputValue(), "30");
   await recorderPage.locator("#trim-start").fill("0.1");
   await recorderPage.locator("#trim-end").fill("0.5");
+  await recorderPage.locator("#crop-editing summary").click();
   await recorderPage.locator("#crop-width").fill("50");
   await recorderPage.locator("#apply-edit").click();
   await recorderPage
@@ -2127,7 +2197,7 @@ try {
     .waitFor({ timeout: 20000 })
     .catch(async (error) => {
       throw Error(
-        `${error.message}: ${await recorderPage.locator("#status").textContent()}`,
+        `${error.message}: ${await recorderPage.locator("#status").textContent()} ${JSON.stringify(await recorderPage.evaluate(() => window.qaPlaybackVideos.map((video) => ({ currentTime: video.currentTime, paused: video.paused, ended: video.ended, readyState: video.readyState, duration: video.duration, error: video.error?.message }))))}`,
       );
     });
   await recorderPage.locator("#preview").evaluate(
@@ -2140,6 +2210,25 @@ try {
   assert.equal(
     await recorderPage.locator("#preview").evaluate((video) => video.videoWidth),
     160,
+  );
+  // Crop again while the crop panel stays open: coordinates must remain original-based.
+  await recorderPage.locator("#crop-preview").scrollIntoViewIfNeeded();
+  const cropBoxVisible = await recorderPage.locator("#crop-preview").boundingBox();
+  await recorderPage.mouse.move(
+    cropBoxVisible.x + cropBoxVisible.width * 0.5,
+    cropBoxVisible.y + 10,
+  );
+  await recorderPage.mouse.down();
+  await recorderPage.mouse.move(
+    cropBoxVisible.x + cropBoxVisible.width * 0.75,
+    cropBoxVisible.y + cropBoxVisible.height - 10,
+    { steps: 4 },
+  );
+  await recorderPage.mouse.up();
+  assert.ok(Number(await recorderPage.locator("#crop-left").inputValue()) >= 49);
+  assert.ok(Number(await recorderPage.locator("#crop-width").inputValue()) <= 26);
+  await recorderPage.waitForFunction(
+    () => document.querySelector("#preview").videoWidth === 320,
   );
   await recorderPage.locator("#reset-edit").click();
   await recorderPage.locator("#preview").evaluate(
@@ -2154,7 +2243,8 @@ try {
     320,
   );
   await recorderPage.evaluate(() => {
-    document.getElementById("editing").open = false;
+    document.getElementById("precise-trim").open = false;
+    document.getElementById("crop-editing").open = false;
     window.scrollTo(0, 0);
   });
   await recorderPage.setViewportSize({ width: 1440, height: 1200 });
