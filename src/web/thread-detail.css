@@ -776,6 +776,14 @@
   height: auto;
   border-radius: 8px;
 }
+.review-evidence-target {
+  position: absolute;
+  z-index: 1;
+  border: 2px solid #2370b5;
+  background: #2370b51a;
+  border-radius: 3px;
+  pointer-events: none;
+}
 .review-evidence-pin {
   position: absolute;
   z-index: 2;
@@ -874,6 +882,92 @@
 .review-point-list p {
   margin: 0 0 5px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.markdown-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.markdown-text :first-child {
+  margin-top: 0;
+}
+.markdown-text :last-child {
+  margin-bottom: 0;
+}
+.markdown-text p,
+.markdown-text ul,
+.markdown-text ol,
+.markdown-text blockquote {
+  margin-block: 0 0.7em;
+}
+.markdown-text ul,
+.markdown-text ol {
+  padding-inline-start: 1.4em;
+}
+.markdown-text code {
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+.markdown-text pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.65em;
+  border-radius: 6px;
+  background: var(--surface);
+}
+.markdown-text blockquote {
+  padding: 0.35em 0.8em;
+  background: var(--surface);
+  color: var(--muted);
+}
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.markdown-toolbar button {
+  min-height: 30px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: inherit;
+  font-size: 0.78rem;
+}
+.markdown-toolbar button:hover {
+  border-color: var(--accent);
+}
+.markdown-toolbar span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-inline-start: 4px;
+}
+.review-point-kind {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.review-point-context {
+  margin: 6px 0;
+  font-size: 0.82rem;
+}
+.review-point-context summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.review-point-context dl {
+  display: grid;
+  grid-template-columns: minmax(70px, auto) minmax(0, 1fr);
+  gap: 4px 10px;
+  margin: 8px 0;
+}
+.review-point-context dt {
+  color: var(--muted);
+}
+.review-point-context dd {
+  margin: 0;
   overflow-wrap: anywhere;
 }
 .review-point-list button {

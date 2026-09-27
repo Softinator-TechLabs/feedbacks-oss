@@ -23,6 +23,8 @@ The public Store extension starts without a preset server. An unpacked developer
 
 Browser-protected pages cannot be captured. Some inaccessible frames permit coordinate-only evidence rather than a precise element. For local HTTP development, open the extension's **Advanced** section and enable the separate local-server allowance; use HTTPS for team servers.
 
+The popup keeps capture actions near the top. Expand **Chrome access** to inspect permissions and **More review tools** for QA, pin and viewport controls. A connected server appears as a short row; expand it to change the address. The address field suggests up to five recently connected servers from Chrome sync when available. A new unpacked extension with a different Chrome extension ID has separate storage, so its server address and authorization may need to be entered again. Chrome controls toolbar pinning: open its Extensions menu and pin Feedbacks there.
+
 ## Full-page screenshots
 
 Choose **Capture full page** to scroll through the current tab. The editor shows numbered screenshots in page order. Choose **Full page preview** to inspect the captured page as one scrollable image before sending; this local preview does not upload it. Return to a section from the list beside the image, then draw or redact on that section. The same marks appear in the optional combined full-page image. Use **Remove screenshot** to leave out a section before sending. Each retained image keeps its own numbered filename. If the page changes during capture, the editor keeps the pages collected so far and marks the capture incomplete; you can review those pages or retry on the original tab.

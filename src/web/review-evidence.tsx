@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { Thread } from "./api.js";
+import { MarkdownText } from "./markdown-text.js";
 
 type Asset = Thread["assets"][number];
 type Annotation = NonNullable<Thread["context"]["annotations"]>[number];
@@ -75,9 +76,17 @@ export function ReviewEvidence({ thread }: { thread: Thread }) {
     images.find((asset) => position(asset, item, thread.context));
   const active = annotations.find((item) => item.id === activeId);
   const activePosition = active && selected && position(selected, active, thread.context);
+  const activeBounds =
+    active &&
+    selected?.markings?.find(
+      (mark) => mark.origin === "element" && mark.annotationId === active.id,
+    )?.bounds;
   const marks = selected?.markings?.filter((mark) => mark.tool !== "point") || [];
-  const markSummary = [...new Set(marks.map((mark) => mark.tool))]
-    .map((tool) => `${marks.filter((mark) => mark.tool === tool).length} ${tool}`)
+  const markKinds = marks.map((mark) =>
+    mark.origin === "element" ? "selected element box" : mark.tool,
+  );
+  const markSummary = [...new Set(markKinds)]
+    .map((kind) => `${markKinds.filter((value) => value === kind).length} ${kind}`)
     .join(" · ");
 
   function show(item: Annotation) {
@@ -130,6 +139,18 @@ export function ReviewEvidence({ thread }: { thread: Thread }) {
               width={selected.width}
               height={selected.height}
             />
+            {activeBounds && (
+              <span
+                className="review-evidence-target"
+                aria-hidden="true"
+                style={{
+                  left: `${activeBounds.x * 100}%`,
+                  top: `${activeBounds.y * 100}%`,
+                  width: `${activeBounds.width * 100}%`,
+                  height: `${activeBounds.height * 100}%`,
+                }}
+              />
+            )}
             {annotations.flatMap((item, index) => {
               const point = position(selected, item, thread.context);
               return point
@@ -162,7 +183,7 @@ export function ReviewEvidence({ thread }: { thread: Thread }) {
                 }}
               >
                 <strong>Point {annotations.indexOf(active) + 1}</strong>
-                <p>{active.body}</p>
+                <MarkdownText body={active.body} />
               </div>
             )}
           </div>
@@ -187,7 +208,58 @@ export function ReviewEvidence({ thread }: { thread: Thread }) {
             <li key={item.id} className={activeId === item.id ? "active" : ""}>
               <span className="review-point-number">{index + 1}</span>
               <div>
-                <p>{item.body}</p>
+                <MarkdownText body={item.body} />
+                <span className="review-point-kind">
+                  {item.anchor.selector
+                    ? item.anchor.confidence === "unmatched"
+                      ? "Selected element · changed after selection"
+                      : "Selected element"
+                    : "Page position only"}
+                </span>
+                {item.anchor.selector && (
+                  <details className="review-point-context">
+                    <summary>Element and box details</summary>
+                    <dl>
+                      {item.anchor.tagName && (
+                        <>
+                          <dt>Element</dt>
+                          <dd>&lt;{item.anchor.tagName}&gt;</dd>
+                        </>
+                      )}
+                      <dt>Selector</dt>
+                      <dd>
+                        <code>{item.anchor.selector}</code>
+                      </dd>
+                      {item.anchor.rect && (
+                        <>
+                          <dt>Box on page</dt>
+                          <dd>
+                            {Math.round(item.anchor.rect.x)},{" "}
+                            {Math.round(item.anchor.rect.y)} ·{" "}
+                            {Math.round(item.anchor.rect.width)} ×{" "}
+                            {Math.round(item.anchor.rect.height)} px
+                          </dd>
+                        </>
+                      )}
+                      {item.anchor.styles?.borderStyle && (
+                        <>
+                          <dt>Border</dt>
+                          <dd>
+                            {item.anchor.styles.borderWidth}{" "}
+                            {item.anchor.styles.borderStyle}{" "}
+                            {item.anchor.styles.borderColor}
+                          </dd>
+                        </>
+                      )}
+                      {item.anchor.styles?.borderRadius && (
+                        <>
+                          <dt>Corner radius</dt>
+                          <dd>{item.anchor.styles.borderRadius}</dd>
+                        </>
+                      )}
+                    </dl>
+                  </details>
+                )}
                 {asset ? (
                   <button type="button" onClick={() => show(item)}>
                     Show on {asset.filename || "screenshot"}

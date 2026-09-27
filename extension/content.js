@@ -12,6 +12,7 @@
     categoryLists,
     sizes,
     targetBox,
+    freezeFrame,
     pointMenu,
     draftPin,
     draftPoints,
@@ -20,6 +21,7 @@
     draftList,
     pointRequest = false,
     pointSignature,
+    freezePending = false,
     active = false,
     choosing = false,
     chosen = null,
@@ -218,6 +220,7 @@
       style = el.ownerDocument.defaultView.getComputedStyle(el),
       record = recordKey(el);
     return {
+      tagName: el.tagName.toLowerCase(),
       selector: selector(el),
       fingerprint: evidenceFingerprint,
       ...(record ? { recordIdentity: record } : {}),
@@ -236,6 +239,10 @@
         fontSize: style.fontSize.slice(0, 50),
         color: style.color.slice(0, 100),
         backgroundColor: style.backgroundColor.slice(0, 100),
+        borderWidth: style.borderWidth.slice(0, 100),
+        borderStyle: style.borderStyle.slice(0, 100),
+        borderColor: style.borderColor.slice(0, 100),
+        borderRadius: style.borderRadius.slice(0, 100),
       },
     };
   }
@@ -282,6 +289,8 @@
   function closePointMenu(restoreFocus = false) {
     if (!pointMenu) return;
     pointMenu.classList.add("hidden");
+    freezeFrame.classList.add("hidden");
+    freezeFrame.removeAttribute("src");
     if (restoreFocus && chosen?.element?.isConnected)
       chosen.element.focus({ preventScroll: true });
   }
@@ -289,6 +298,9 @@
     if (token && chosen?.token !== token) return;
     chosen?.instantDispose?.();
     chosen = null;
+    freezePending = false;
+    freezeFrame?.classList.add("hidden");
+    freezeFrame?.removeAttribute("src");
     targetBox?.classList.add("hidden");
   }
   function choosePoint(el, x, y) {
@@ -416,7 +428,10 @@
   }
   function savePoint() {
     if (!chosen) throw Error("Right-click an element first.");
-    assertPoint(chosen.token);
+    // The selected element may disappear when a hover menu loses focus. Its
+    // geometry and selector were recorded at the right-click, before editing.
+    if (pointSignature !== signature())
+      throw Error("The page moved. Right-click the point again.");
     const body = pointText.value.trim();
     if (!body) {
       pointMenu.querySelector(".point-tip").textContent =
@@ -431,7 +446,14 @@
       body,
       anchor: {
         ...chosen.evidence,
-        confidence: chosen.fingerprint ? "element" : "coordinate-only",
+        confidence:
+          chosen.fingerprint &&
+          chosen.element.isConnected &&
+          fingerprint(chosen.element) === chosen.fingerprint
+            ? "element"
+            : chosen.snapshotOnly || chosen.fingerprint
+              ? "unmatched"
+              : "coordinate-only",
       },
     });
     pointText.value = "";
@@ -475,8 +497,9 @@
       pointRequest = false;
     }
   }
-  function openPointMenu(el, x, y) {
+  async function openPointMenu(el, x, y) {
     if (pointRequest || captureActive) return;
+    if (freezePending) return;
     if (chosen && pointText.value.trim()) {
       pointMenu.classList.remove("hidden");
       pointMenu.querySelector(".point-tip").textContent =
@@ -485,6 +508,25 @@
       return;
     }
     if (!choosePoint(el, x, y)) return;
+    const token = chosen.token;
+    freezePending = true;
+    host.style.visibility = "hidden";
+    try {
+      // Flush the hidden extension UI before Chrome captures the still-hovered
+      // website. The image remains local and is discarded on Save or Cancel.
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const { image } = await send({ type: "freezeView" });
+      if (chosen?.token === token && pointSignature === signature()) {
+        freezeFrame.src = image;
+        freezeFrame.classList.remove("hidden");
+      }
+    } catch {
+      // A denied screenshot must not prevent a text-only point from being saved.
+    } finally {
+      host.style.visibility = "";
+      freezePending = false;
+    }
+    if (chosen?.token !== token || pointSignature !== signature()) return;
     pointMenu.classList.remove("hidden");
     const r = pointMenu.getBoundingClientRect();
     pointMenu.style.left = `${Math.max(8, Math.min(x + 16, innerWidth - r.width - 8))}px`;
@@ -493,8 +535,11 @@
   }
   function renderChosenPoint() {
     draftPin.classList.add("hidden");
-    if (!chosen || chosen.record !== identity() || !chosen.element.isConnected) return;
-    const r = F.rect(chosen.element);
+    if (!chosen || chosen.record !== identity()) return;
+    const r =
+      chosen.snapshotOnly || !chosen.element.isConnected
+        ? chosen.evidence.rect
+        : F.rect(chosen.element);
     Object.assign(targetBox.style, {
       left: `${r.x}px`,
       top: `${r.y}px`,
@@ -626,6 +671,15 @@
     targetBox = document.createElement("div");
     targetBox.className = "target hidden";
     root.append(targetBox);
+    freezeFrame = document.createElement("img");
+    freezeFrame.className = "freeze-frame hidden";
+    freezeFrame.alt = "";
+    freezeFrame.setAttribute("aria-hidden", "true");
+    for (const event of ["wheel", "touchmove"])
+      freezeFrame.addEventListener(event, (action) => action.preventDefault(), {
+        passive: false,
+      });
+    root.append(freezeFrame);
     draftPin = document.createElement("span");
     draftPin.className = "pin draft-pin hidden";
     draftPin.setAttribute("aria-label", "Selected feedback point — not sent");
@@ -901,7 +955,7 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       // Also supports keyboard context-menu and macOS Control-click.
-      if (pointMenu.classList.contains("hidden")) {
+      if (pointMenu.classList.contains("hidden") && !freezePending) {
         const el = event.target;
         if (el?.nodeType !== 1) return;
         const r = F.rect(el);
@@ -1076,21 +1130,43 @@
       }
       if (message.type === "instantCapturePoint") {
         const p = globalThis.feedbacksInstantPoint;
-        if (!active || !p || p.signature !== signature() || !p.valid?.())
+        if (!active || !p || p.signature !== signature())
           throw Error("The page moved. Right-click again.");
-        const r = F.rect(p.element);
-        if (
-          ["x", "y", "width", "height"].some((k) => Math.abs(r[k] - p.rect[k]) > 1) ||
-          !choosePoint(p.element, p.x, p.y)
-        )
-          throw Error("The element moved. Right-click again.");
-        chosen.instantValid = p.valid;
-        chosen.instantDispose = p.dispose;
+        const stable =
+          p.valid?.() &&
+          ["x", "y", "width", "height"].every(
+            (key) => Math.abs(F.rect(p.element)[key] - p.rect[key]) <= 1,
+          );
+        if (stable && choosePoint(p.element, p.x, p.y)) {
+          chosen.instantValid = p.valid;
+          chosen.instantDispose = p.dispose;
+        } else {
+          clearChosenPoint();
+          chosen = {
+            token: crypto.randomUUID(),
+            element: p.element,
+            record: identity(),
+            fingerprint: null,
+            point: p.point,
+            evidence: p.evidence,
+            snapshotOnly: true,
+            instantDispose: p.dispose,
+          };
+          pointSignature = signature();
+          renderChosenPoint();
+        }
+        if (p.frozen) {
+          freezeFrame.src = p.frozen;
+          freezeFrame.classList.remove("hidden");
+        }
         return { pointToken: chosen.token };
       }
       if (message.type === "openInlinePoint") {
-        if (!chosen?.element?.isConnected) throw Error("Right-click the element again.");
-        const r = F.rect(chosen.element);
+        if (!chosen) throw Error("Right-click the element again.");
+        const r =
+          chosen.snapshotOnly || !chosen.element.isConnected
+            ? chosen.evidence.rect
+            : F.rect(chosen.element);
         pointMenu.classList.remove("hidden");
         const x = r.x + r.width * chosen.point.x;
         const y = r.y + r.height * chosen.point.y;

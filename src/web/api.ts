@@ -198,10 +198,13 @@ export type Context = {
     id: string;
     body: string;
     anchor: {
+      tagName?: string;
       selector?: string;
       confidence?: string;
       fingerprint?: string;
       recordIdentity?: string;
+      rect?: { x: number; y: number; width: number; height: number };
+      styles?: Record<string, string>;
       screenshotPoint?: { x: number; y: number };
       pagePoint?: { x: number; y: number };
     };
@@ -307,6 +310,7 @@ export type Thread = {
       endpoints: Array<{ x: number; y: number }>;
       number?: number;
       annotationId?: string;
+      origin?: "element";
       text?: string;
     }>;
   }>;

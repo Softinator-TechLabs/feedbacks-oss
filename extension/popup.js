@@ -17,7 +17,7 @@ let tab,
   activeServer = "",
   pairingPending = false,
   serverEdited = false;
-$("installed-version").textContent = `Installed extension ${installedVersion}`;
+$("installed-version").textContent = `v${installedVersion}`;
 $("check-updates").hidden = managedUpdates;
 if (managedUpdates)
   $("update-status").textContent = "Chrome manages updates for this installation.";
@@ -26,6 +26,34 @@ const connectionKey = (state) =>
 function showAccess(id, state, label) {
   $(id).className = `is-${state}`;
   $(id).textContent = label;
+}
+async function recentServers() {
+  const { recentServers = [] } = await chrome.storage.sync.get("recentServers");
+  return Array.isArray(recentServers)
+    ? recentServers.filter((value) => typeof value === "string").slice(0, 5)
+    : [];
+}
+async function showRecentServers() {
+  const servers = await recentServers();
+  $("recent-servers").replaceChildren(
+    ...servers.map((server) => {
+      const option = document.createElement("option");
+      option.value = server;
+      return option;
+    }),
+  );
+  return servers;
+}
+async function rememberServer(server) {
+  try {
+    const servers = await recentServers();
+    await chrome.storage.sync.set({
+      recentServers: [server, ...servers.filter((value) => value !== server)].slice(0, 5),
+    });
+    await showRecentServers();
+  } catch {
+    // Browser sync may be unavailable; a successful connection still stands.
+  }
 }
 function hideUpdateNotice() {
   $("update-notice").hidden = true;
@@ -113,7 +141,14 @@ async function refresh() {
     activeServer = state.server;
     loadedConnection = connectionKey(state);
     pairingPending = state.pending;
-    if (!serverEdited) $("server").value = state.serverDraft ?? state.server;
+    if (!serverEdited) {
+      const servers = await showRecentServers().catch(() => []);
+      $("server").value = state.serverDraft || state.server || servers[0] || "";
+    }
+    $("server-summary").textContent = state.server
+      ? `Server · ${new URL(state.server).host}`
+      : "Choose a Feedbacks server";
+    if (!state.connected) $("server-settings").open = true;
     $("allow-local").checked = !!state.allowLocal;
     $("app").href = state.server + "/";
     $("app").hidden = !state.server;
@@ -152,6 +187,10 @@ async function refresh() {
       state.instantReview && allSites ? "On" : "Off",
     );
     showAccess("tab-access", "off", "Not started");
+    $("access-summary").textContent =
+      !state.server || !serverAllowed ? "Needs attention" : "Ready";
+    $("access-summary").className =
+      !state.server || !serverAllowed ? "needs-attention" : "ready";
     $("restore-server-access").hidden = !state.connected || serverAllowed;
     $("instant").hidden = !state.connected || (state.instantReview && allSites);
     $("instant-help").hidden = $("instant").hidden;
@@ -201,6 +240,8 @@ async function connect(server) {
     throw Error("Allow access to your Feedbacks server to connect.");
   }
   await send({ type: "finishPair" });
+  await rememberServer(server);
+  $("server-settings").open = false;
   await refresh();
 }
 action("pair", () => connect($("server").value));

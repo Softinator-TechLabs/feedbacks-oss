@@ -98,9 +98,10 @@ chrome.runtime.onMessage.addListener((message) => {
 });
 function drawShape(s, surface = ctx, width = canvas.width) {
   const ctx = surface;
-  ctx.strokeStyle = "#b92332";
+  ctx.strokeStyle = s.origin === "element" ? "#2370b5" : "#b92332";
   ctx.fillStyle = s.tool === "redact" ? "#202c37" : "#b92332";
-  ctx.lineWidth = Math.max(3, width / 450);
+  ctx.lineWidth =
+    s.origin === "element" ? Math.max(2, width / 700) : Math.max(3, width / 450);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   const a = s.points[0],
@@ -230,11 +231,18 @@ async function showFullPagePreview() {
   }
 }
 function payload() {
+  const annotations = (draft.context.annotations || []).map((item, index) => ({
+    id: item.id,
+    body: $("point-notes").querySelectorAll("textarea")[index]?.value.trim() || "",
+  }));
+  if (annotations.some((item) => !item.body))
+    throw Error("Each point needs a comment before this draft can be saved.");
   return {
     type: "saveDraft",
     id: draft.id,
     imageRevision: draft.imageRevision || 0,
     body: $("body").value,
+    annotations,
     category: $("category").value,
     tags: $("tags").value,
     includeDiagnostics: $("include-diagnostics").checked,
@@ -256,7 +264,14 @@ function payload() {
 function persist() {
   clearTimeout(saveTimer);
   if (!draft || draft.frozen) return saving;
-  const message = payload();
+  let message;
+  try {
+    message = payload();
+  } catch (error) {
+    dirty = true;
+    status(error.message, "error");
+    return Promise.reject(error);
+  }
   saving = saving
     .catch(() => {})
     .then(() => send(message))
@@ -275,6 +290,30 @@ function schedule() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => persist().catch(() => {}), 250);
 }
+const markdownFormats = {
+  bold: ["**", "**", "bold text"],
+  italic: ["*", "*", "italic text"],
+  link: ["[", "](https://example.com)", "link text"],
+  list: ["- ", "", "list item"],
+  code: ["`", "`", "code"],
+};
+document.querySelectorAll("[data-md-format]").forEach((button) => {
+  button.addEventListener("mousedown", (event) => event.preventDefault());
+  button.addEventListener("click", () => {
+    const textarea = $("body");
+    const [prefix, suffix, placeholder] = markdownFormats[button.dataset.mdFormat];
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const content = textarea.value.slice(start, end) || placeholder;
+    textarea.setRangeText(`${prefix}${content}${suffix}`, start, end, "select");
+    textarea.focus();
+    textarea.setSelectionRange(
+      start + prefix.length,
+      start + prefix.length + content.length,
+    );
+    schedule();
+  });
+});
 function redactionRectangle(shape) {
   const a = shape.points[0],
     b = shape.points.at(-1);
@@ -819,11 +858,17 @@ async function init() {
   pointNotes.hidden = comments.length === 0;
   comments.forEach((item, index) => {
     const row = document.createElement("li");
-    const heading = document.createElement("strong");
-    heading.textContent = `Point ${index + 1}`;
-    const note = document.createElement("p");
-    note.textContent = item.body;
-    row.append(heading, note);
+    const label = document.createElement("label");
+    label.htmlFor = `point-note-${index}`;
+    label.textContent = `Point ${index + 1}`;
+    const note = document.createElement("textarea");
+    note.id = `point-note-${index}`;
+    note.value = item.body;
+    note.rows = 2;
+    note.maxLength = 4000;
+    note.required = true;
+    note.addEventListener("input", schedule);
+    row.append(label, note);
     pointNotes.append(row);
   });
   $("body-label").textContent = comments.length

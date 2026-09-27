@@ -42,6 +42,44 @@ function captureUrl(value) {
   return url.href;
 }
 const unit = (value, size) => Math.max(0, Math.min(1, value / Math.max(1, size)));
+function pointShapes(item, index, region, sx, sy) {
+  const anchor = item.anchor || {};
+  const point = anchor.pagePoint;
+  if (!point || point.y < region.startY || point.y >= region.endY) return [];
+  const shapes = [];
+  const rect = anchor.rect;
+  if (
+    anchor.selector &&
+    rect &&
+    anchor.screenshotPoint &&
+    [rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) &&
+    rect.width > 0 &&
+    rect.height > 0
+  ) {
+    const pageX = point.x - anchor.screenshotPoint.x + rect.x;
+    const pageY = point.y - anchor.screenshotPoint.y + rect.y;
+    const left = Math.max(0, Math.min(region.width, pageX));
+    const right = Math.max(0, Math.min(region.width, pageX + rect.width));
+    const top = Math.max(region.startY, Math.min(region.endY, pageY));
+    const bottom = Math.max(region.startY, Math.min(region.endY, pageY + rect.height));
+    if (right > left && bottom > top)
+      shapes.push({
+        tool: "rectangle",
+        origin: "element",
+        number: index + 1,
+        points: [
+          { x: left * sx, y: (top - region.startY) * sy },
+          { x: right * sx, y: (bottom - region.startY) * sy },
+        ],
+      });
+  }
+  shapes.push({
+    tool: "point",
+    number: index + 1,
+    points: [{ x: point.x * sx, y: (point.y - region.startY) * sy }],
+  });
+  return shapes;
+}
 function summarizeMarkings(shapes, width, height, annotations = []) {
   return (shapes || []).flatMap((shape) => {
     if (!["point", "pencil", "arrow", "rectangle", "text"].includes(shape.tool))
@@ -68,6 +106,7 @@ function summarizeMarkings(shapes, width, height, annotations = []) {
         ...(number && annotations[number - 1]
           ? { annotationId: annotations[number - 1].id }
           : {}),
+        ...(shape.origin === "element" ? { origin: "element" } : {}),
         ...(shape.tool === "text" && shape.text
           ? { text: String(shape.text).slice(0, 200) }
           : {}),
@@ -687,18 +726,19 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
         captureError: null,
         captureNotice: `${plan.pages.length} ordered ${plan.pages.length === 1 ? "screenshot" : "screenshots"}. Review each page before sending.`,
         pageToolStates: pending.capturePages.map((page) =>
-          (before.context.annotations || []).flatMap((item, index) => {
-            const point = item.anchor?.pagePoint;
-            return point && point.y >= page.startY && point.y < page.endY
-              ? [
-                  {
-                    tool: "point",
-                    number: index + 1,
-                    points: [{ x: point.x * sx, y: (point.y - page.startY) * sy }],
-                  },
-                ]
-              : [];
-          }),
+          (before.context.annotations || []).flatMap((item, index) =>
+            pointShapes(
+              item,
+              index,
+              {
+                startY: page.startY,
+                endY: page.endY,
+                width: before.context.viewport.width,
+              },
+              sx,
+              sy,
+            ),
+          ),
         ),
       };
       await set({ draft });
@@ -768,16 +808,29 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       body: pending.body,
       toolState: before.context.annotations?.length
         ? before.context.annotations.flatMap((item, index) => {
-            const point = item.anchor?.pagePoint;
-            const x = point?.x - before.context.scroll.x;
-            const y = point?.y - before.context.scroll.y;
-            return point &&
-              x >= 0 &&
-              y >= 0 &&
-              x <= before.context.viewport.width &&
-              y <= before.context.viewport.height
-              ? [{ tool: "point", number: index + 1, points: [{ x: x * sx, y: y * sy }] }]
-              : [];
+            const anchor = item.anchor;
+            if (!anchor?.pagePoint) return [];
+            const visible = {
+              ...item,
+              anchor: {
+                ...anchor,
+                pagePoint: {
+                  x: anchor.pagePoint.x - before.context.scroll.x,
+                  y: anchor.pagePoint.y - before.context.scroll.y,
+                },
+              },
+            };
+            return pointShapes(
+              visible,
+              index,
+              {
+                startY: 0,
+                endY: before.context.viewport.height,
+                width: before.context.viewport.width,
+              },
+              sx,
+              sy,
+            );
           })
         : pending.pointCapture && before.context.anchor?.screenshotPoint
           ? [
@@ -911,6 +964,29 @@ async function saveDraft(message) {
     toolState: message.toolState,
     projectId: message.projectId,
   };
+  if (message.annotations !== undefined) {
+    const original = draft.context.annotations || [];
+    if (
+      !Array.isArray(message.annotations) ||
+      message.annotations.length !== original.length ||
+      message.annotations.some(
+        (item, index) =>
+          item?.id !== original[index].id ||
+          typeof item.body !== "string" ||
+          !item.body.trim() ||
+          item.body.trim().length > 4000,
+      )
+    )
+      throw Error("Point comments changed unexpectedly. Reopen the saved draft.");
+    if (original.length)
+      allowed.context = {
+        ...draft.context,
+        annotations: original.map((item, index) => ({
+          ...item,
+          body: message.annotations[index].body.trim(),
+        })),
+      };
+  }
   if (draft.capturePages?.length) {
     const pageIndex = message.pageIndex;
     if (
@@ -1507,7 +1583,25 @@ async function route(message, sender) {
       await chrome.tabs.sendMessage(sender.tab.id, { type: "openInlinePoint" });
       return { inline: true };
     }
+    if (sender.tab && sender.frameId === 0 && message.type === "freezeInstantView") {
+      const state = await get();
+      if (
+        !state.instantReview ||
+        !(await chrome.permissions.contains({ origins: ["<all_urls>"] }))
+      )
+        throw Error("Enable instant right-click in Feedbacks first.");
+      const tab = await chrome.tabs.get(sender.tab.id);
+      if (!tab.active || tab.windowId !== sender.tab.windowId)
+        throw Error("Keep this tab active while commenting.");
+      return { image: await captureVisibleTab(tab.windowId) };
+    }
     const session = await sessionFor(sender);
+    if (message.type === "freezeView") {
+      const tab = await chrome.tabs.get(sender.tab.id);
+      if (!tab.active || tab.windowId !== sender.tab.windowId)
+        throw Error("Keep the review tab active while commenting.");
+      return { image: await captureVisibleTab(tab.windowId) };
+    }
     if (message.type === "stopReview") return review.stop(sender.tab.id);
     if (message.type === "capture")
       return writeDraft(() =>

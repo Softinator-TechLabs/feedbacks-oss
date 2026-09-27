@@ -102,8 +102,23 @@ button:focus-visible {
   background: #17324d;
   color: #fff;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font:
+    700 13px/1 system-ui,
+    sans-serif;
   border: 2px solid white;
   z-index: 2147483646;
+}
+.freeze-frame {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: fill;
+  pointer-events: auto;
+  z-index: 2147483644;
 }
 .preview {
   position: fixed;

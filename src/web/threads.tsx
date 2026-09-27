@@ -20,6 +20,7 @@ import {
   ThreadDiagnostics,
 } from "./review-tools.js";
 import { MentionInput } from "./mention-input.js";
+import { MarkdownText } from "./markdown-text.js";
 import {
   mentionIds,
   reconcileMentionRanges,
@@ -953,7 +954,7 @@ export function ThreadDetail({
                   <span>{labels[t.category] ?? t.category}</span>
                 </div>
               )}
-              <p className="message">{t.body}</p>
+              <MarkdownText body={t.body} className="message" />
               {!!t.tags?.length && (
                 <div className="tag-list">
                   {t.tags.map((tag) => (
@@ -1151,7 +1152,7 @@ export function ThreadDetail({
                           </span>
                           <HumanTime at={r.createdAt} />
                         </div>
-                        <p className="message">{r.body}</p>
+                        <MarkdownText body={r.body} className="message" />
                         <DiscussionLike
                           threadId={t.id}
                           replyId={r.id}

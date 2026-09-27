@@ -68,6 +68,7 @@ export const reviewFiltersSchema = z.object({
 });
 export type ReviewFilters = z.infer<typeof reviewFiltersSchema>;
 export const anchorSchema = z.object({
+  tagName: z.string().max(40).optional(),
   selector: z.string().max(2000).optional(),
   fingerprint: z.string().max(500).optional(),
   recordIdentity: z.string().max(200).optional(),
@@ -84,6 +85,10 @@ export const anchorSchema = z.object({
       fontSize: z.string().max(50).optional(),
       color: z.string().max(100).optional(),
       backgroundColor: z.string().max(100).optional(),
+      borderWidth: z.string().max(100).optional(),
+      borderStyle: z.string().max(100).optional(),
+      borderColor: z.string().max(100).optional(),
+      borderRadius: z.string().max(100).optional(),
     })
     .optional(),
 });
@@ -127,6 +132,7 @@ export const screenshotMarkSchema = z.object({
   endpoints: z.array(normalizedPointSchema).min(1).max(2),
   number: z.number().int().positive().max(100).optional(),
   annotationId: id.optional(),
+  origin: z.enum(["element"]).optional(),
   text: z.string().max(200).optional(),
 });
 export const captureRegionSchema = z.object({

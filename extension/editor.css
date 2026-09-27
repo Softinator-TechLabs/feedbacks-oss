@@ -258,6 +258,24 @@ h1 {
 }
 #body {
   min-height: 190px;
+  margin-bottom: 24px;
+}
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 7px 0;
+}
+.markdown-toolbar button {
+  min-height: 30px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.markdown-toolbar span {
+  color: #9fb0bd;
+  font-size: 12px;
+  margin-left: 4px;
 }
 aside .check {
   margin: 16px 0 4px;
@@ -438,15 +456,14 @@ aside .hint {
   list-style: none;
 }
 .point-notes li {
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border, #4b5d6b);
 }
-.point-notes strong {
+.point-notes label:not(.check) {
   display: block;
-  margin-bottom: 3px;
+  margin: 0 0 6px;
 }
-.point-notes p {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+.point-notes textarea {
+  min-height: 74px;
+  resize: vertical;
 }

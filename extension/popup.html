@@ -7,9 +7,10 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <h1>Feedbacks</h1>
-    <p class="intro">Right-click. Comment. Done.</p>
-    <p id="installed-version" class="version"></p>
+    <header class="popup-header">
+      <h1>Feedbacks</h1>
+      <span id="installed-version" class="version"></span>
+    </header>
     <aside id="update-notice" role="status" aria-live="polite" hidden>
       <strong id="available-version"></strong>
       <div class="update-links">
@@ -18,64 +19,54 @@
       </div>
     </aside>
     <p id="connection" role="status"></p>
-    <label for="server">Your Feedbacks server</label>
-    <input
-      id="server"
-      type="url"
-      placeholder="https://feedback.example.com"
-      aria-describedby="server-help"
-      autocomplete="url"
-    />
-    <p id="server-help" class="hint">
-      Use your team's Feedbacks address. You need an account on that server.
-      <a
-        href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/self-hosting.md"
-        target="_blank"
-        rel="noreferrer"
-        >Set up your own</a
-      >.
-    </p>
-    <button id="pair" class="primary">Connect to server</button>
-    <section class="access-status" aria-label="Chrome access">
-      <h2>Chrome access</h2>
-      <p><span>Feedbacks server</span><strong id="server-access">Checking</strong></p>
-      <p>
-        <span>This tab · right-click &amp; capture</span
-        ><strong id="tab-access">Checking</strong>
+    <details id="server-settings" class="server-settings">
+      <summary id="server-summary">Choose a Feedbacks server</summary>
+      <label for="server">Your Feedbacks server</label>
+      <input
+        id="server"
+        type="url"
+        list="recent-servers"
+        placeholder="https://feedback.example.com"
+        aria-describedby="server-help"
+        autocomplete="url"
+      />
+      <datalist id="recent-servers"></datalist>
+      <p id="server-help" class="hint">
+        Use your team's Feedbacks address. You need an account on that server.
+        <a
+          href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/self-hosting.md"
+          target="_blank"
+          rel="noreferrer"
+          >Set up your own</a
+        >.
       </p>
-      <p>
-        <span>Right-click on every site</span><strong id="site-access">Checking</strong>
-      </p>
-      <button id="restore-server-access" hidden>Allow server access</button>
-      <small>Capture on this tab uses your click. All-site access is optional.</small>
-    </section>
+      <button id="pair" class="primary">Connect to server</button>
+    </details>
     <div id="project-choice" hidden>
       <label for="project">Save to</label>
       <select id="project" aria-describedby="routing"></select>
     </div>
     <p id="routing" role="status"></p>
-    <button id="instant" hidden>Enable right-click on all websites</button>
-    <p id="instant-help" class="hint" hidden>
-      Optional Chrome permission. Loads existing pins from your server; new screenshots
-      and comments are shared only when you choose Send.
-    </p>
     <button id="retry" hidden>Try this page again</button>
     <button id="draft" hidden>Continue draft</button>
     <section id="review-controls" hidden aria-label="Review controls">
       <button id="capture" class="primary">Capture this page</button>
       <button id="capture-full">Capture full page</button>
       <button id="record-video">Record a short tab video</button>
-      <button id="qa-scan">Scan page for QA findings</button>
-      <button id="choose">Choose a point</button>
-      <div class="control-row">
-        <button id="pins">Hide pins</button><button id="resolved">Show resolved</button>
-      </div>
-      <div class="control-row" aria-label="Preview size">
-        <button id="mobile" title="Mobile">M</button
-        ><button id="tablet" title="Tablet">T</button>
-        <button id="desktop" title="Desktop">D</button
-        ><button id="wide" title="Restore width">W</button>
-      </div>
+      <details class="more-actions">
+        <summary>More review tools</summary>
+        <button id="qa-scan">Scan page for QA findings</button>
+        <button id="choose">Choose a point</button>
+        <div class="control-row">
+          <button id="pins">Hide pins</button><button id="resolved">Show resolved</button>
+        </div>
+        <div class="control-row" aria-label="Preview size">
+          <button id="mobile" title="Mobile">M</button
+          ><button id="tablet" title="Tablet">T</button>
+          <button id="desktop" title="Desktop">D</button
+          ><button id="wide" title="Restore width">W</button>
+        </div>
+      </details>
       <details class="diagnostic-controls">
         <summary>Console &amp; network diagnostics</summary>
         <p class="hint">
@@ -89,6 +80,24 @@
       <a id="page-feedback" target="_blank" rel="noreferrer">View project comments</a>
     </section>
     <p id="message" role="status"></p>
+    <details class="access-status" aria-label="Chrome access">
+      <summary>Chrome access <span id="access-summary">Checking</span></summary>
+      <p><span>Feedbacks server</span><strong id="server-access">Checking</strong></p>
+      <p>
+        <span>This tab · right-click &amp; capture</span
+        ><strong id="tab-access">Checking</strong>
+      </p>
+      <p>
+        <span>Right-click on every site</span><strong id="site-access">Checking</strong>
+      </p>
+      <button id="restore-server-access" hidden>Allow server access</button>
+      <small>Capture on this tab uses your click. All-site access is optional.</small>
+      <button id="instant" hidden>Enable right-click on all websites</button>
+      <p id="instant-help" class="hint" hidden>
+        Optional Chrome permission. Loads existing pins from your server; new screenshots
+        and comments are shared only when you choose Send.
+      </p>
+    </details>
     <details id="connection-settings">
       <summary>Advanced</summary>
       <label class="check"

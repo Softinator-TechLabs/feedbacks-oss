@@ -127,8 +127,16 @@
           aria-label="Comments on selected elements"
           hidden
         ></ol>
-        <label id="body-label" for="body">Comment</label
-        ><textarea
+        <label id="body-label" for="body">Comment</label>
+        <div class="markdown-toolbar" role="toolbar" aria-label="Format comment">
+          <button type="button" data-md-format="bold">Bold</button>
+          <button type="button" data-md-format="italic">Italic</button>
+          <button type="button" data-md-format="link">Link</button>
+          <button type="button" data-md-format="list">List</button>
+          <button type="button" data-md-format="code">Code</button>
+          <span>Markdown</span>
+        </div>
+        <textarea
           id="body"
           rows="7"
           maxlength="12000"

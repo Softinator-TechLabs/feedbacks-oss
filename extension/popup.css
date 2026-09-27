@@ -1,22 +1,23 @@
 body {
   width: 368px;
-  padding: 24px;
+  padding: 16px;
+}
+.popup-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 h1 {
-  font-size: 23px;
+  font-size: 21px;
   letter-spacing: -0.025em;
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--accent);
-}
-.intro {
-  color: var(--muted);
-  font-size: 14px;
-  margin: 0 0 20px;
 }
 .version {
   color: var(--muted);
   font-size: 12px;
-  margin: -12px 0 18px;
+  margin: 0;
 }
 #update-notice {
   border: 1px solid var(--line);
@@ -41,7 +42,7 @@ h1 {
 }
 button {
   width: 100%;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 .control-row {
   display: flex;
@@ -58,7 +59,7 @@ button {
   text-align: center;
 }
 #connection {
-  margin: 0;
+  margin: 0 0 10px;
 }
 .connected {
   color: var(--accent);
@@ -74,12 +75,49 @@ button {
   margin-right: 8px;
 }
 .access-status {
-  margin: 16px 0 18px;
+  border-top: 1px solid var(--line);
+  margin: 14px 0 0;
+  padding-top: 10px;
 }
-.access-status h2 {
-  margin: 0 0 8px;
+.access-status summary,
+.server-settings summary,
+.more-actions summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.access-status summary {
   font-size: 13px;
   color: var(--muted);
+}
+.access-status summary span.ready {
+  float: right;
+  color: var(--success);
+}
+.access-status summary span.needs-attention {
+  float: right;
+  color: var(--error);
+}
+.access-status[open] summary {
+  margin-bottom: 8px;
+}
+.server-settings {
+  margin-bottom: 10px;
+}
+.server-settings summary {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.server-settings label {
+  margin-top: 10px;
+}
+.more-actions {
+  margin-top: 10px;
+}
+.more-actions summary {
+  color: var(--accent);
 }
 .access-status p {
   display: flex;
@@ -124,7 +162,7 @@ button {
   margin-top: 8px;
 }
 #project-choice {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 #instant-help {
   margin: 8px 0 16px;
@@ -133,7 +171,7 @@ button {
 #connection-settings {
   border-top: 1px solid var(--line);
   padding-top: 12px;
-  margin-top: 20px;
+  margin-top: 12px;
 }
 #connection-settings > summary {
   font-weight: 500;
@@ -151,7 +189,7 @@ button {
   min-height: 1.3em;
 }
 #routing {
-  margin: 10px 0 12px;
+  margin: 8px 0 10px;
 }
 #message {
   margin: 12px 0;
@@ -174,7 +212,7 @@ footer {
   display: flex;
   justify-content: center;
   gap: 20px;
-  margin-top: 20px;
+  margin-top: 12px;
   font-size: 12px;
 }
 [hidden] {

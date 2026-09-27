@@ -122,10 +122,14 @@ try {
       mode === "clipped"
         ? '<style>html{overflow-x:hidden;scroll-behavior:smooth}body{overflow-x:hidden;position:relative}.wide-carousel{position:absolute;top:100px;width:6000px}</style><div class="wide-carousel"><video></video></div><script>window.qaMotion=setInterval(()=>{document.querySelector("video").dispatchEvent(new Event("resize"));document.querySelector(".wide-carousel").dispatchEvent(new Event("scroll"))},100)</script>'
         : "";
+    const hover =
+      mode === "hover"
+        ? '<style>#hover-menu{display:none;position:absolute;top:48px;left:20px;width:320px;padding:20px;background:#eef;border:2px solid #356}#hover-host:hover #hover-menu{display:block}</style><nav id="hover-host" style="position:absolute;top:160px;left:20px;width:420px;height:80px;background:#ddd">About<div id="hover-menu">Research ethics menu</div></nav>'
+        : "";
     return route.fulfill({
       status: 200,
       contentType: "text/html",
-      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px;position:relative}#lower{position:absolute;top:${Math.max(160, height - 260)}px;left:30px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a><button id="lower">Bottom action</button></main>${change}${clipped}`,
+      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px;position:relative}#lower{position:absolute;top:${Math.max(160, height - 260)}px;left:30px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a>${hover}<button id="lower">Bottom action</button></main>${change}${clipped}`,
     });
   });
   const page = context.pages()[0] ?? (await context.newPage());
@@ -239,6 +243,14 @@ try {
 
   await toFixture();
   await mkdir(join(root, ".local/remaining-todos-qa"), { recursive: true });
+  await control.reload();
+  await control.locator("#review-controls:visible").waitFor();
+  const fullCaptureButton = await control.locator("#capture-full").boundingBox();
+  assert.ok(
+    fullCaptureButton && fullCaptureButton.y + fullCaptureButton.height < 600,
+    "Primary capture actions should fit without scrolling in a compact popup",
+  );
+  assert.equal(await control.locator(".access-status").getAttribute("open"), null);
   await control.screenshot({
     path: join(root, ".local/remaining-todos-qa/access-status.png"),
   });
@@ -253,13 +265,43 @@ try {
             const shadow = attach.call(this, options);
             if (this.id === "feedbacks-review-root")
               globalThis.__feedbacksQaRoot = shadow;
+            else globalThis.__feedbacksInstantRoot = shadow;
             return shadow;
           };
         },
       });
     }, id);
+  const inspectReview = () =>
+    worker.evaluate(async (tabId) => {
+      const [entry] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const root = globalThis.__feedbacksQaRoot;
+          return {
+            ready: !!root?.querySelector(".point-menu:not(.hidden)"),
+            frozen: !!root?.querySelector(".freeze-frame:not(.hidden)"),
+            points: root?.querySelectorAll(".draft-section li").length || 0,
+            notice: root?.querySelector(".notice")?.textContent || "",
+            tip: root?.querySelector(".point-tip")?.textContent || "",
+          };
+        },
+      });
+      return entry.result;
+    }, id);
+  const waitReview = async (predicate) => {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const state = await inspectReview();
+      if (predicate(state)) return state;
+      await page.waitForTimeout(100);
+    }
+    throw Error(
+      `Review UI did not reach expected state: ${JSON.stringify(await inspectReview())}`,
+    );
+  };
   const saveInlinePoint = async (target, body) => {
+    const before = (await inspectReview()).points;
     await target.click({ button: "right" });
+    await waitReview((state) => state.ready);
     const result = await worker.evaluate(
       async ({ tabId, body }) => {
         const [entry] = await chrome.scripting.executeScript({
@@ -288,7 +330,7 @@ try {
       { tabId: id, body },
     );
     assert.equal(result.ready, true, `Inline comment field did not open: ${body}`);
-    return result.count;
+    return (await waitReview((state) => state.points === before + 1)).points;
   };
   results.qa = await send({ type: "popupAction", tabId: id, action: "qa-scan" });
   const qaDraft = await draft();
@@ -299,22 +341,117 @@ try {
   };
   await send({ type: "discard" });
 
+  mode = "hover";
+  await toFixture();
+  await exposeReviewRoot();
+  await send({ type: "activate", tabId: id });
+  await page.locator("#hover-host").hover();
+  await page.locator("#hover-menu").click({ button: "right" });
+  await waitReview((state) => state.ready);
+  await page.mouse.move(700, 500);
+  assert.equal(await page.locator("#hover-menu").isVisible(), false);
+  assert.equal(
+    (await inspectReview()).frozen,
+    true,
+    "The selected hover state should stay visible while writing the point",
+  );
+  await page.keyboard.type("Keep this menu visible for review");
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const menu = globalThis.__feedbacksQaRoot.querySelector(".point-menu");
+        [...menu.querySelectorAll("button")]
+          .find((button) => button.textContent === "Save point")
+          .click();
+      },
+    });
+  }, id);
+  await waitReview((state) => state.points === 1);
+  assert.equal(
+    (await inspectReview()).frozen,
+    false,
+    "The frozen view should clear after saving",
+  );
+  results.hoverPoint = { saved: true, frozenWhileWriting: true };
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  mode = "hover";
+  await toFixture();
+  await exposeReviewRoot();
+  await send({ type: "enableInstant", tabId: id });
+  await page.locator("#hover-host").hover();
+  await page.locator("#hover-menu").click({ button: "right" });
+  let instantState;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    instantState = await worker.evaluate(async (tabId) => {
+      const [entry] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => ({
+          installed: globalThis.feedbacksInstantInstalled,
+          active: globalThis.feedbacksReviewActive,
+          root: !!globalThis.__feedbacksInstantRoot,
+          menu: !!globalThis.__feedbacksInstantRoot?.querySelector(".menu"),
+          frozen: !!globalThis.__feedbacksInstantRoot?.querySelector(".freeze[src]"),
+        }),
+      });
+      return entry.result;
+    }, id);
+    if (instantState.frozen && instantState.menu) break;
+    await page.waitForTimeout(100);
+  }
+  assert.ok(instantState.frozen && instantState.menu, JSON.stringify(instantState));
+  await page.mouse.move(700, 500);
+  assert.equal(await page.locator("#hover-menu").isVisible(), false);
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => globalThis.__feedbacksInstantRoot.querySelector(".menu button").click(),
+    });
+  }, id);
+  await waitReview((state) => state.ready && state.frozen);
+  await page.keyboard.type("Instant hover point");
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () =>
+        [...globalThis.__feedbacksQaRoot.querySelectorAll(".point-menu button")]
+          .find((button) => button.textContent === "Save point")
+          .click(),
+    });
+  }, id);
+  await waitReview((state) => state.points === 1);
+  results.instantHoverPoint = { saved: true, frozenWhileWriting: true };
+  await send({ type: "popupAction", tabId: id, action: "stop" });
+  await send({ type: "disableInstant" });
+  mode = "long";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
   await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
+  await waitReview((state) => state.ready);
   await page.screenshot({
     path: join(root, ".local/remaining-todos-qa/inline-comment-desktop.png"),
   });
-  await page.keyboard.type("Make this heading shorter");
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Enter");
-  await page
-    .getByRole("link", { name: "Broken same-origin link" })
-    .click({ button: "right" });
-  await page.keyboard.type("Repair this link");
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Enter");
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const menu = globalThis.__feedbacksQaRoot.querySelector(".point-menu");
+        menu.querySelector("textarea").value = "Make this heading shorter";
+        [...menu.querySelectorAll("button")]
+          .find((button) => button.textContent === "Save point")
+          .click();
+      },
+    });
+  }, id);
+  await waitReview((state) => state.points === 1);
+  assert.equal(
+    await saveInlinePoint(
+      page.getByRole("link", { name: "Broken same-origin link" }),
+      "Repair this link",
+    ),
+    2,
+  );
   assert.equal(await draft(), undefined, "The editor must not open after each point");
   const inlineCapture = await send({ type: "popupAction", tabId: id, action: "capture" });
   const inlineDraft = await draft();
@@ -327,23 +464,79 @@ try {
     inlineDraft.context.annotations[0].anchor.selector,
     inlineDraft.context.annotations[1].anchor.selector,
   );
+  for (const candidate of context
+    .pages()
+    .filter((candidate) =>
+      candidate.url().startsWith(`chrome-extension://${extensionId}/editor.html`),
+    ))
+    await candidate.close();
   const inlineEditor = await context.newPage();
   await inlineEditor.goto(`chrome-extension://${extensionId}/editor.html`);
-  await inlineEditor.getByText("Make this heading shorter").waitFor();
-  await inlineEditor.getByText("Repair this link").waitFor();
+  await inlineEditor.locator("#point-notes textarea").first().waitFor();
+  assert.deepEqual(
+    await inlineEditor
+      .locator("#point-notes textarea")
+      .evaluateAll((nodes) => nodes.map((node) => node.value)),
+    ["Make this heading shorter", "Repair this link"],
+  );
+  await inlineEditor
+    .locator("#point-notes textarea")
+    .first()
+    .fill("Make this heading **clearer**");
+  await inlineEditor.waitForFunction(
+    async () =>
+      (await chrome.storage.local.get("draft")).draft?.context.annotations?.[0]?.body ===
+      "Make this heading **clearer**",
+  );
+  await inlineEditor.waitForTimeout(600);
+  assert.equal(
+    (await draft()).context.annotations[0].body,
+    "Make this heading **clearer**",
+  );
+  await inlineEditor.reload();
+  await inlineEditor.waitForFunction(() => {
+    const canvas = document.getElementById("canvas");
+    return canvas?.width > 0 && !document.getElementById("send")?.disabled;
+  });
+  assert.equal(
+    await inlineEditor.locator("#point-notes textarea").first().inputValue(),
+    "Make this heading **clearer**",
+  );
   assert.equal(await inlineEditor.locator("#body").inputValue(), "");
-  const inlineCanvas = await inlineEditor.locator("#canvas").boundingBox();
-  assert.ok(inlineCanvas);
   await inlineEditor.locator('[data-tool="arrow"]').click();
-  await inlineEditor.mouse.move(inlineCanvas.x + 110, inlineCanvas.y + 260);
+  await inlineEditor.locator("#canvas").scrollIntoViewIfNeeded();
+  const arrowCanvas = await inlineEditor.locator("#canvas").boundingBox();
+  assert.ok(arrowCanvas);
+  await inlineEditor.mouse.move(
+    arrowCanvas.x + arrowCanvas.width * 0.2,
+    arrowCanvas.y + arrowCanvas.height * 0.3,
+  );
   await inlineEditor.mouse.down();
-  await inlineEditor.mouse.move(inlineCanvas.x + 210, inlineCanvas.y + 300);
+  await inlineEditor.mouse.move(
+    arrowCanvas.x + arrowCanvas.width * 0.4,
+    arrowCanvas.y + arrowCanvas.height * 0.4,
+  );
   await inlineEditor.mouse.up();
   await inlineEditor.locator('[data-tool="pencil"]').click();
-  await inlineEditor.mouse.move(inlineCanvas.x + 250, inlineCanvas.y + 320);
+  await inlineEditor.locator("#canvas").scrollIntoViewIfNeeded();
+  const pencilCanvas = await inlineEditor.locator("#canvas").boundingBox();
+  assert.ok(pencilCanvas);
+  await inlineEditor.mouse.move(
+    pencilCanvas.x + pencilCanvas.width * 0.5,
+    pencilCanvas.y + pencilCanvas.height * 0.5,
+  );
   await inlineEditor.mouse.down();
-  await inlineEditor.mouse.move(inlineCanvas.x + 300, inlineCanvas.y + 345, { steps: 4 });
+  await inlineEditor.mouse.move(
+    pencilCanvas.x + pencilCanvas.width * 0.6,
+    pencilCanvas.y + pencilCanvas.height * 0.6,
+    { steps: 4 },
+  );
   await inlineEditor.mouse.up();
+  await inlineEditor.waitForTimeout(500);
+  assert.ok(
+    (await draft()).toolState.some((mark) => mark.tool === "arrow"),
+    `Arrow annotation was not saved: ${JSON.stringify((await draft()).toolState.map((mark) => mark.tool))}`,
+  );
   await inlineEditor.locator("#send").click();
   await inlineEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
   const inlineThreadUrl = await inlineEditor.locator("#thread").getAttribute("href");
@@ -353,7 +546,13 @@ try {
     .data;
   assert.deepEqual(
     inlineThread.context.annotations.map(({ body }) => body),
-    ["Make this heading shorter", "Repair this link"],
+    ["Make this heading **clearer**", "Repair this link"],
+  );
+  assert.equal(inlineThread.context.annotations[0].anchor.tagName, "h1");
+  assert.ok(inlineThread.context.annotations[0].anchor.rect.width > 0);
+  assert.equal(
+    typeof inlineThread.context.annotations[0].anchor.styles.borderStyle,
+    "string",
   );
   assert.equal(inlineThread.assets.length, 1);
   assert.deepEqual(
@@ -364,6 +563,12 @@ try {
   );
   assert.ok(inlineThread.assets[0].markings.some((mark) => mark.tool === "arrow"));
   assert.ok(inlineThread.assets[0].markings.some((mark) => mark.tool === "pencil"));
+  assert.deepEqual(
+    inlineThread.assets[0].markings
+      .filter((mark) => mark.origin === "element")
+      .map((mark) => mark.annotationId),
+    inlineThread.context.annotations.map((item) => item.id),
+  );
   assert.equal(inlineThread.assets[0].captureRegion.pageWidth, 900);
   results.inlineReview = {
     points: inlineThread.context.annotations.length,
@@ -375,7 +580,7 @@ try {
   await inlineEditor.close();
   await page.bringToFront();
   await send({ type: "activate", tabId: id });
-  const hoverComments = ["Make this heading shorter", "Repair this link"];
+  const hoverComments = ["Make this heading **clearer**", "Repair this link"];
   const inspectPin = (body) =>
     worker.evaluate(
       async ({ tabId, body }) => {
@@ -428,7 +633,7 @@ try {
     1,
   );
   await page.locator("#lower").scrollIntoViewIfNeeded();
-  assert.equal(await saveInlinePoint(page.locator("#lower"), "Bottom point"), 1);
+  assert.equal(await saveInlinePoint(page.locator("#lower"), "Bottom point"), 2);
   await page.bringToFront();
   await worker.evaluate((tabId) => chrome.tabs.update(tabId, { active: true }), id);
   const multiScroll = await send({
@@ -926,7 +1131,7 @@ try {
   await inlineThreadPage.locator(".review-evidence-pin").first().hover();
   await inlineThreadPage
     .locator(".review-evidence-popover")
-    .getByText("Make this heading shorter")
+    .getByText("Make this heading clearer")
     .waitFor();
   await inlineThreadPage.screenshot({
     path: join(root, ".local/remaining-todos-qa/thread-inline-desktop.png"),
