@@ -2297,6 +2297,38 @@ try {
   const inlineThreadPage = await context.newPage();
   await inlineThreadPage.goto(`${access.url}/threads/${inlineThreadId}`);
   await inlineThreadPage.getByRole("heading", { name: "Review on the page" }).waitFor();
+  await inlineThreadPage.getByRole("combobox", { name: "Assigned member" }).waitFor();
+  await inlineThreadPage.getByRole("group", { name: "Feedback actions" }).waitFor();
+  await inlineThreadPage.getByRole("button", { name: "Archive thread" }).waitFor();
+  await inlineThreadPage.getByRole("combobox", { name: "Status" }).waitFor();
+  await inlineThreadPage.getByRole("button", { name: "Copy task for agent" }).waitFor();
+  await inlineThreadPage
+    .getByRole("button", { name: "Create a guest discussion link" })
+    .waitFor();
+  for (const width of [900, 1200, 1351, 1440]) {
+    await inlineThreadPage.setViewportSize({ width, height: 800 });
+    const headerLayout = await inlineThreadPage
+      .locator(".thread-header-actions")
+      .evaluate((bar) => ({
+        rows: new Set(
+          [...bar.children]
+            .filter((child) => child.getBoundingClientRect().width > 0)
+            .map((child) => Math.round(child.getBoundingClientRect().top)),
+        ).size,
+        overflow: bar.scrollWidth > bar.clientWidth + 1,
+      }));
+    assert.equal(
+      headerLayout.rows,
+      1,
+      `thread actions should occupy one row at ${width}px`,
+    );
+    assert.equal(
+      headerLayout.overflow,
+      false,
+      `thread actions should not overflow at ${width}px`,
+    );
+  }
+  await inlineThreadPage.setViewportSize({ width: 900, height: 650 });
   assert.equal(await inlineThreadPage.locator(".review-main-capture").count(), 1);
   assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
   assert.equal(
