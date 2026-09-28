@@ -722,6 +722,11 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
   font-weight: 500;
 }
+@media (max-width: 480px) {
+  .review-dock .recording-hint {
+    display: none;
+  }
+}
 .review-dock > .recording-controls button {
   min-height: 40px;
   border: 1px solid #bdc5cc;

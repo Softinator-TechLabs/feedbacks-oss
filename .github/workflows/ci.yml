@@ -84,6 +84,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Install video fixture encoder
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: npm run build
       - run: npm run qa:recording-browser
       - run: npm run qa:extension-browser

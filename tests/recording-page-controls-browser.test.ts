@@ -192,8 +192,23 @@ test(
       });
       await page.setViewportSize({ width: 375, height: 740 });
       await page.emulateMedia({ colorScheme: "dark" });
-      const mobile = (await dock.boundingBox())!;
-      assert.ok(mobile.x >= 0 && mobile.x + mobile.width <= 375 && mobile.height <= 64);
+      for (const width of [375, 320]) {
+        await page.setViewportSize({ width, height: 740 });
+        for (const font of ["system-ui", "Verdana"]) {
+          await dock.evaluate((node, font) => {
+            (node as HTMLElement).style.fontFamily = font;
+          }, font);
+          const mobile = (await dock.boundingBox())!;
+          assert.ok(
+            mobile.x >= 0 && mobile.x + mobile.width <= width && mobile.height <= 64,
+            `${font} at ${width}px: ${JSON.stringify(mobile)}`,
+          );
+        }
+      }
+      await dock.evaluate((node) => {
+        (node as HTMLElement).style.fontFamily = "";
+      });
+      await page.setViewportSize({ width: 375, height: 740 });
       await mkdir("output/playwright/recording-page-controls", { recursive: true });
       await page.screenshot({
         path: "output/playwright/recording-page-controls/mobile-dark.png",
@@ -605,6 +620,14 @@ test(
         path: "output/playwright/recording-annotations/paused-desktop.png",
       });
       await page.setViewportSize({ width: 375, height: 740 });
+      // Chromium dispatches resize on the next frame; let the editor's resize
+      // handler clamp its stored position before measuring the resulting layout.
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
       const mobileEditor = (await editor.boundingBox())!;
       assert.ok(mobileEditor.x >= 0 && mobileEditor.x + mobileEditor.width <= 375);
       await page.screenshot({
