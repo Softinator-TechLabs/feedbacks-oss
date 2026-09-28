@@ -167,7 +167,7 @@ textarea::placeholder {
 }
 .thread-filters {
   align-items: end;
-  gap: 12px;
+  gap: 10px 12px;
   padding: 12px 0 0;
   margin: 0;
   border: 0;
@@ -175,23 +175,30 @@ textarea::placeholder {
   background: transparent;
 }
 .thread-filters > .field {
-  flex: 0 1 170px;
-  min-width: 140px;
+  flex: 1 1 145px;
+  min-width: 125px;
   margin: 0;
 }
 .thread-filters > .field:first-child {
-  flex: 1 1 260px;
+  flex: 0 1 300px;
+  min-width: 200px;
+}
+.thread-filters > .field:nth-child(4) {
+  flex: 0 1 145px;
+}
+.thread-filters > .field:nth-child(5) {
+  flex: 0 1 175px;
 }
 .thread-filter-clear {
   border-color: transparent;
   background: transparent;
 }
-.thread-filters .advanced-filters {
-  flex: 0 0 auto;
-  min-width: 0;
+.thread-filters .thread-filter-clear {
+  margin-left: 2px;
 }
-.thread-filters .advanced-filters[open] {
-  flex-basis: 100%;
+.thread-filters .advanced-filters {
+  flex: 0 0 100%;
+  min-width: 0;
 }
 .thread-filters .advanced-filters summary {
   width: fit-content;
@@ -217,16 +224,18 @@ textarea::placeholder {
     flex-basis: 100%;
   }
   .thread-filters > .field {
-    flex: 1 1 130px;
+    flex: 1 1 calc(50% - 12px);
+    min-width: 0;
   }
-  .thread-filters > .thread-filter-apply {
-    flex: 1 1 130px;
+  .thread-filters > .field:nth-child(4),
+  .thread-filters > .field:nth-child(5) {
+    flex: 1 1 calc(50% - 12px);
   }
   .thread-filters > .thread-filter-clear {
     flex: 0 1 auto;
   }
   .thread-filters .advanced-filters {
-    flex-basis: auto;
+    flex-basis: 100%;
   }
   .advanced-filter-fields {
     grid-template-columns: 1fr;

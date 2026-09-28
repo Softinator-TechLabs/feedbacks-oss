@@ -275,7 +275,7 @@ function App() {
             </nav>
           </div>
         )}
-        <main id="content" tabIndex={-1} key={pageLocation}>
+        <main id="content" tabIndex={-1} key={path}>
           <ActionState action={a} />
           {publicPage || path.replace(/\/$/, "") === "/help" ? (
             path.replace(/\/$/, "") === "/help" ? (

@@ -1714,17 +1714,13 @@ legend {
     flex: 1 0 100%;
   }
   .thread-filters > .field:nth-child(2),
-  .thread-filters > .field:nth-child(3) {
+  .thread-filters > .field:nth-child(3),
+  .thread-filters > .field:nth-child(4),
+  .thread-filters > .field:nth-child(5) {
     flex: 1 1 calc(50% - 12px);
     min-width: 0;
   }
-  .thread-filters > .thread-filter-apply {
-    flex: 1 1 90px;
-  }
   .thread-filters > .advanced-filters {
-    flex: 0 0 auto;
-  }
-  .thread-filters > .advanced-filters[open] {
     flex-basis: 100%;
   }
   .thread-row {

@@ -23,6 +23,8 @@ The sandbox verifies migrations, sign-in, project/thread creation, readback, ano
 
 After installing Chromium with `npx playwright install chromium`, `npm run qa:extension-browser` loads the extension runtime in isolated Chromium against a disposable local sandbox and synthetic page. Its temporary manifest grants host access solely to bypass headless permission prompts; it tests feature behavior, not the production permission flow or Chrome Web Store package. It writes a full-page sample under ignored `.local/remaining-todos-qa/` for optional visual inspection.
 
+After building the app, `npm run qa:app-filters` checks live category, tag, status, search and device filtering in a disposable sandbox, including badge keyboard activation, search debounce and focus, and desktop/mobile layout. It writes synthetic screenshots under ignored `output/playwright/`.
+
 Keep source, local checks, exact-revision CI, package integrity, deployment and live verification as separate receipt fields. A skipped native database test must be reported as skipped. CI runs it separately; a local PGlite pass does not replace it. Never report an automated check as visual review.
 
 ## CI behavior
