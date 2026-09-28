@@ -91,7 +91,6 @@ try {
   await setup.setViewportSize({ width: 420, height: 560 });
   await setup.goto(`chrome-extension://${extensionId}/popup.html`);
   await setup.locator("#server").waitFor();
-  await shot(setup, "connect-1");
   await setup.locator("#server").fill("https://feedback.example.com");
   await shot(setup, "connect-2");
   await setup.close();
@@ -181,6 +180,8 @@ try {
   await shot(page, "capture-2", { clip: { x: 495, y: 385, width: 405, height: 340 } });
   await inRoot("Save point");
   await page.waitForTimeout(400);
+  await page.mouse.move(40, 40);
+  await page.waitForTimeout(250);
   await shot(page, "capture-3");
   await inRoot("Review & send");
   await page.waitForTimeout(1800);
@@ -229,6 +230,9 @@ try {
     await app
       .getByRole("button", { name: "Create key & copy prompt", exact: true })
       .waitFor();
+    await sharp(await app.locator("#review-with-extension").screenshot())
+      .webp({ quality: 85 })
+      .toFile("public/learn/connect-1.webp");
     await sharp(await app.locator(".help-agent").screenshot())
       .webp({ quality: 85 })
       .toFile("public/learn/agent-1.webp");

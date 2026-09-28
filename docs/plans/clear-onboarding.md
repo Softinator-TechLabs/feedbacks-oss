@@ -47,3 +47,13 @@ The user rejected the first landing revision as generic and too wordy. Their rep
 - Screenshot provenance and a reproducible isolated capture script live in [website assets](../website-assets.md). No customer data or production server was used.
 - Setup and technical-guide links stay inside the published docs. `scripts/publish-docs.mjs` publishes canonical source manuals at build time so they are not separately maintained copies.
 - Verification: site and docs build, comparison consistency, harness/docs checks, three-scene switching, screenshot dialog/Escape, playback/pause, reduced motion, onsite bootstrap navigation and responsive overflow at 390/790/1059/1440 pixels. Independent review scored all four requested corrections resolved (first viewport, precise pencil pointers, craft floor and design persistence), with disposition ship scoped to those fixes. No-JavaScript content, font fallback and 200% CSS zoom also passed. Build, harness/docs, release and formatting checks passed. Live deployment remains unperformed.
+
+## Action motion — 28 September 2026
+
+The user rejected screenshot swapping as insufficient instruction. Preserve real product captures but animate the action: a moving cursor, a visible left/right click, typing in the relevant field, a pencil highlight and the resulting UI state. Autoplay by default; clicking the player or its Play/Pause button stops or resumes the same moment. No media-production labels.
+
+- Focal sequence: right-click a button → type the change → Save point → Review & send → Send feedback.
+- Reuse the same motion player for install/pin, server connection, owner setup and personal agent connection across landing, docs and Help.
+- Keep the stage dimensions stable, align cues to the actual screenshot coordinates, and use an external stylesheet and versioned assets compatible with production CSP/CDN caching.
+- Pause when hidden/offscreen; reduced motion shows a readable final state. Use one requestAnimationFrame loop per visible player, with no new runtime dependency.
+- Verify actual cursor movement, click cues, progressive typing, pause/resume, resizing, every frame under production CSP, desktop/mobile layout and the live default URL before release completion.
