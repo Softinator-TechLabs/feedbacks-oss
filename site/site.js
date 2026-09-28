@@ -46,8 +46,9 @@ function toggleDemo() {
   play.querySelector(".play-label").textContent = watching
     ? "Still image"
     : "Watch steps";
-  play.setAttribute("aria-label", watching ? "Show still image" : "Watch the steps");
+  play.setAttribute("aria-label", watching ? "View screenshot" : "Watch walkthrough");
   play.setAttribute("aria-pressed", String(watching));
+  play.querySelector(".play-icon").style.display = watching ? "none" : "";
 }
 function show(index) {
   demo.setAttribute("step", ["capture", "send", "agent"][index]);
