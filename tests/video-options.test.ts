@@ -23,6 +23,7 @@ test("crop rejects off-frame and invalid regions", () => {
 for (const tabAudio of [false, true])
   for (const mic of [false, true]) {
     test(`audio sources tab=${tabAudio}, microphone=${mic}; five-minute active timer and cleanup`, async () => {
+      const published: any[] = [];
       const html = await readFile(
         new URL("../extension/video.html", import.meta.url),
         "utf8",
@@ -122,7 +123,10 @@ for (const tabAudio of [false, true])
           interval = fn;
         },
         location: { href: "chrome-extension://test/video.html?sourceTabId=10" },
-        document: { getElementById: (id: string) => nodes[id] },
+        document: {
+          body: { classList: { add() {}, remove() {}, toggle() {} } },
+          getElementById: (id: string) => nodes[id],
+        },
         window: { addEventListener() {} },
         AudioContext: class {
           createMediaStreamDestination() {
@@ -156,7 +160,9 @@ for (const tabAudio of [false, true])
             connect: () => ({
               onMessage: { addListener() {} },
               onDisconnect: { addListener() {} },
-              postMessage() {},
+              postMessage(message: any) {
+                published.push(message);
+              },
             }),
             sendMessage: async () => ({
               ok: true,
@@ -197,10 +203,24 @@ for (const tabAudio of [false, true])
       }
       clock = 60000;
       nodes.pause.onclick();
+      assert.notEqual(
+        published.at(-1)?.state,
+        "paused",
+        "Pause acknowledgement waits for the native event",
+      );
+      constructed.onpause();
+      assert.equal(published.at(-1)?.state, "paused");
       clock = 180000;
       interval();
       assert.equal(constructed.state, "paused");
       nodes.pause.onclick();
+      assert.equal(
+        published.at(-1)?.state,
+        "paused",
+        "Resume acknowledgement waits for the native event",
+      );
+      constructed.onresume();
+      assert.equal(published.at(-1)?.state, "recording");
       clock = 419000;
       interval();
       assert.equal(constructed.state, "recording", "pause time excluded");

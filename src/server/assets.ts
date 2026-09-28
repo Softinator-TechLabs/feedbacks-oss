@@ -185,8 +185,15 @@ async function checkRecordingFrame(db: Database, thread: any, input: any) {
     [frame.recordingId, thread.id, thread.project_id],
   );
   const recording = row?.summary;
-  if (!recording?.video || frame.atMs > recording.durationMs)
-    fail("VALIDATION", "Frame must belong to a video recording on this feedback thread");
+  if (!recording || frame.atMs > recording.durationMs)
+    fail("VALIDATION", "Frame must belong to a recording on this feedback thread");
+  if (recording.mode === "session") {
+    if (frame.videoTimeMs !== undefined)
+      fail("VALIDATION", "A session screenshot cannot claim a video timestamp");
+    return;
+  }
+  if (!recording.video || !Number.isFinite(frame.videoTimeMs))
+    fail("VALIDATION", "A video frame requires its linked video timestamp");
   const video = await db.one(
     "SELECT data FROM assets WHERE id=$1 AND thread_id=$2 AND project_id=$3 AND status='validated' AND data->>'contentType'='video/webm'",
     [recording.video.assetId, thread.id, thread.project_id],

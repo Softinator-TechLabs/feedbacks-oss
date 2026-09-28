@@ -305,6 +305,11 @@ test(
       );
       const frame = await inner.evaluate((node: HTMLIFrameElement) => ({
         sandbox: node.getAttribute("sandbox"),
+        viewportFits: (() => {
+          const root = document.getElementById("replay")!;
+          const rect = root.getBoundingClientRect();
+          return rect.bottom <= innerHeight + 1 && rect.right <= innerWidth + 1;
+        })(),
         text: node.contentDocument?.body?.textContent,
         color: node.contentWindow?.getComputedStyle(node.contentDocument!.body).color,
         fontSize: node.contentWindow?.getComputedStyle(node.contentDocument!.body)
@@ -318,6 +323,11 @@ test(
           ?.getAttribute("data-feedbacks-media"),
       }));
       assert.equal(frame.sandbox, "allow-same-origin");
+      assert.equal(
+        frame.viewportFits,
+        true,
+        "the entire captured viewport fits the preview",
+      );
       assert.match(frame.text ?? "", /Extension replay proof/);
       assert.equal(frame.color, "rgb(18, 52, 86)");
       assert.equal(frame.fontSize, "19px");

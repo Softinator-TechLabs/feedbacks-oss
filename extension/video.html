@@ -13,7 +13,8 @@
     <main>
       <h1>
         <span class="before-recording">Record a tab video</span
-        ><span class="after-recording">Review video</span>
+        ><span class="after-recording">Review video</span
+        ><span class="during-recording">Recording tab video</span>
       </h1>
       <p id="target"></p>
       <p class="hint before-recording">
@@ -27,8 +28,8 @@
       <fieldset id="debug-options" class="audio-options before-recording">
         <legend>Debug context</legend>
         <label
-          ><input id="debug-context" type="checkbox" checked /> Capture DOM replay,
-          console &amp; network</label
+          ><input id="debug-context" type="checkbox" checked /> Capture clicks, typing,
+          page loading, console, network &amp; replay</label
         >
         <label><input id="mask-inputs" type="checkbox" /> Mask input values</label>
         <label><input id="mask-text" type="checkbox" /> Mask page text</label>
@@ -64,6 +65,10 @@
         <button id="discard" hidden>Discard recording</button>
       </div>
       <p id="timer" role="status"></p>
+      <div id="capture-health" class="hint" hidden>
+        <span id="capture-health-counts"></span>
+        <p id="capture-health-warning" role="status"></p>
+      </div>
       <details class="hint before-recording">
         <summary>Recording &amp; privacy</summary>
         <p>

@@ -13,6 +13,7 @@ import {
   mapVideoToRecordingTime,
   networkExchanges,
   prepareReplayEvents,
+  recordingAnnotation,
   type Recording,
   type RecordingChannel,
   type RecordingSummary,
@@ -56,6 +57,10 @@ function activityTitle(entry: Record<string, unknown>): string {
   const action = String(entry.action ?? "activity");
   const target = entry.label ?? entry.id ?? entry.testId ?? entry.role ?? entry.tag;
   const name = target ? String(target) : "";
+  if (action === "loading")
+    return `Loading: ${String(entry.phase || "page")} · ${String(entry.url || "")}`;
+  if (action === "annotation")
+    return `Comment: ${String(entry.body || "Screenshot comment")}`;
   if (action === "input") {
     const inputType = String(entry.inputType ?? "");
     const verb =
@@ -122,7 +127,12 @@ function NetworkDetail({ exchange }: { exchange: NetworkExchange }) {
 type FrameAsset = {
   id: string;
   url: string;
-  recordingFrame: { recordingId: string; atMs: number; videoTimeMs: number };
+  recordingFrame: {
+    recordingId: string;
+    atMs: number;
+    videoTimeMs?: number;
+    annotationId?: string;
+  };
 };
 type PendingFrame = {
   imageBase64: string;
@@ -247,6 +257,15 @@ export function ThreadRecordings({
     () => (recording ? prepareReplayEvents(recording.events) : []),
     [recording],
   );
+  const replayStoppedAtMs =
+    recording?.environment &&
+    typeof recording.environment === "object" &&
+    "replayStoppedAtMs" in recording.environment &&
+    typeof recording.environment.replayStoppedAtMs === "number" &&
+    Number.isFinite(recording.environment.replayStoppedAtMs)
+      ? recording.environment.replayStoppedAtMs
+      : null;
+  const replayExpired = replayStoppedAtMs !== null && cursorMs >= replayStoppedAtMs;
   const exchanges = useMemo(
     () => (recording ? networkExchanges(recording.events) : []),
     [recording],
@@ -270,15 +289,26 @@ export function ThreadRecordings({
     >
   ).filter(
     (asset) =>
-      asset.recordingFrame?.recordingId === recording?.id &&
+      !!recording &&
+      !!asset.recordingFrame &&
+      asset.recordingFrame.recordingId === recording.id &&
       asset.contentType.startsWith("image/"),
   );
   const displayedFrame =
     savedFrame?.recordingFrame.recordingId === recording?.id
       ? savedFrame
-      : linkedFrames.length
-        ? (linkedFrames[linkedFrames.length - 1] as FrameAsset)
+      : linkedFrames.filter((frame) => !frame.recordingFrame?.annotationId).length
+        ? (linkedFrames
+            .filter((frame) => !frame.recordingFrame?.annotationId)
+            .at(-1) as FrameAsset)
         : null;
+  const annotationFrames = linkedFrames.flatMap((frame) => {
+    const annotation = recordingAnnotation(
+      recording?.events || [],
+      frame.recordingFrame!,
+    );
+    return annotation ? [{ frame, annotation }] : [];
+  });
 
   useEffect(() => {
     setReplayError("");
@@ -779,9 +809,18 @@ export function ThreadRecordings({
                             <div
                               className="recording-stage"
                               ref={stageRef}
+                              hidden={replayExpired}
                               role="img"
                               aria-label="Sandboxed page replay"
                             />
+                            {replayExpired && (
+                              <p className="recording-state" role="status">
+                                DOM capture ended at{" "}
+                                {formatRecordingTime(replayStoppedAtMs!)}. This later
+                                moment has no page reconstruction. Use the video or
+                                diagnostic events for the remaining recording.
+                              </p>
+                            )}
                             {replayError && <p role="alert">{replayError}</p>}
                             <p className="recording-footnote">
                               Captured page resources are withheld during replay. Layout
@@ -892,6 +931,38 @@ export function ThreadRecordings({
                   </div>
                 </div>
                 <div className="recording-diagnostics">
+                  {annotationFrames.length > 0 && (
+                    <section
+                      aria-label="Screenshot comments"
+                      className="recording-tab-content"
+                    >
+                      <h4>Screenshot comments ({annotationFrames.length})</h4>
+                      <ol className="recording-events">
+                        {annotationFrames.map(({ frame, annotation }) => (
+                          <li key={frame.id}>
+                            <button type="button" onClick={() => seek(annotation.atMs)}>
+                              <time>{formatRecordingTime(annotation.atMs)}</time>
+                              <span>{annotation.body}</span>
+                            </button>
+                            <div className="recording-saved-frame">
+                              <a
+                                href={frame.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <img
+                                  src={frame.url}
+                                  alt={`Screenshot for comment at ${formatRecordingTime(annotation.atMs)}`}
+                                  loading="lazy"
+                                />
+                                <span>Open screenshot</span>
+                              </a>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                  )}
                   <div
                     className="recording-tabs"
                     role="group"

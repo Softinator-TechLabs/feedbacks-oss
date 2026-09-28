@@ -826,6 +826,28 @@ test("recording frames preserve authorized source time, reject rebinding and exp
       upload({ recordingId: sessionOnly.id, atMs: 1000, videoTimeMs: 1000 }),
       { code: "VALIDATION" },
     );
+    await assert.rejects(upload({ recordingId: linear.id, atMs: 1000 }), {
+      code: "VALIDATION",
+    });
+    await assert.rejects(upload({ recordingId: sessionOnly.id, atMs: 6001 }), {
+      code: "VALIDATION",
+    });
+    const sessionFrame = {
+      recordingId: sessionOnly.id,
+      atMs: 1000,
+      annotationId: randomUUID(),
+    };
+    const sessionImage = await upload(sessionFrame);
+    thread = sessionImage.thread;
+    assert.deepEqual(sessionImage.asset.recordingFrame, sessionFrame);
+    assert.deepEqual(
+      (
+        await ops.executeOperation(owner, "recordings.export", {
+          recordingId: sessionOnly.id,
+        })
+      ).thread.frames[0].recordingFrame,
+      sessionFrame,
+    );
     const frame = { recordingId: linear.id, atMs: 1000, videoTimeMs: 650 };
     const retryInput = { idempotencyKey: randomUUID(), revision: thread.revision };
     const uploaded = await upload(frame, retryInput);

@@ -33,7 +33,7 @@ Developers and authorized coding agents share that context. Owners can describe 
 
 ## Capabilities and Constraints
 
-Reviewers can move through filtered threads using arrow keys, organize optional tags, save personal views and compare screenshot attachments. Console/resource diagnostics are off by default and shared only after explicit selection. A bundled Codex plugin reuses the same MCP contracts.
+Reviewers can move through filtered threads using arrow keys, organize optional tags, save personal views and compare screenshot attachments. Standalone page-review diagnostics are off by default. Session recordings capture activity, loading, console and network automatically; video debug context is on by default. Recordings and screenshot comments are shared only after review and Send. A bundled Codex plugin reuses the same MCP contracts.
 
 The architecture is documented in docs/architecture.md. Exact project origins, project grants and private images are enforced by the service. Discussion is untrusted; approved instructions are separately versioned. No fabricated threads, successful writes, deployment or storage claims.
 

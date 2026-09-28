@@ -1,4 +1,5 @@
 export const CAPTURE_MAX_BYTES = 12 * 1024 * 1024;
+export const CAPTURE_REPLAY_BYTES = 10 * 1024 * 1024;
 export const CAPTURE_SNAPSHOT_BYTES = 6 * 1024 * 1024;
 export const CAPTURE_BATCH_BYTES = CAPTURE_SNAPSHOT_BYTES + 128 * 1024;
 export const captureByteLength = (value) => new TextEncoder().encode(value).byteLength;
@@ -19,6 +20,12 @@ export function captureNodeCount(value, limit) {
   return nodes;
 }
 
+// Session clocks omit annotation editing; video keeps its native source clock.
+export function captureElapsed(s, now = Date.now()) {
+  const session = s.recording?.mode === "session";
+  const end = session ? (s.annotationPause?.startedAt ?? now) : now;
+  return Math.max(0, Math.min(300000, end - s.started - (session ? s.pausedMs || 0 : 0)));
+}
 const KEY = "feedbacksSessionCaptureV1";
 const SECRET =
   /password|passwd|secret|token|authorization|cookie|api[-_]?key|credential|session[-_]?id/i;
@@ -130,6 +137,7 @@ export function createCaptureStore({
   maxEvents = 45000,
   maxEventBytes = 1024 * 1024,
   maxSnapshotBytes = CAPTURE_SNAPSHOT_BYTES,
+  maxReplayBytes = Math.min(CAPTURE_REPLAY_BYTES, Math.floor((maxBytes * 5) / 6)),
   maxMs = 300000,
 }) {
   let queue = Promise.resolve();
@@ -179,13 +187,36 @@ export function createCaptureStore({
     if (existing) Object.assign(existing, { status, detail });
     else s.recording.coverage.push({ channel, status, detail });
   };
+  const freezeReplay = (s, detail, occurredAt) => {
+    if (!s.replayDisabled) {
+      s.replayDisabled = true;
+      s.recording.environment.replayStoppedAtMs = Math.max(
+        0,
+        Math.min(maxMs, occurredAt - s.started),
+      );
+      coverage(
+        s,
+        "replay",
+        s.recording.events.some((e) => e.type === "replay" && e.data.type === 2)
+          ? "partial"
+          : "unavailable",
+        detail + " Activity, console and network capture continue.",
+      );
+    }
+    return s;
+  };
   const stop = (s, detail) => {
     s.active = false;
     s.recording.events.sort((a, b) => a.atMs - b.atMs || a.seq - b.seq);
     s.recording.events.forEach((event, seq) => {
       event.seq = seq;
     });
-    s.recording.durationMs = Math.max(1, Math.min(maxMs, now() - s.started));
+    s.recording.durationMs = Math.max(
+      1,
+      s.recording.mode === "session"
+        ? captureElapsed(s, now())
+        : Math.min(maxMs, now() - s.started),
+    );
     if (detail) coverage(s, "capture", "partial", detail);
     if (
       !s.recording.events.some(
@@ -258,7 +289,13 @@ export function createCaptureStore({
     append: (event, tabId, url) =>
       serial(async () => {
         const s = await read();
-        if (!s?.active || !s.scopeActive || s.target.sourceTabId !== tabId) return s;
+        if (
+          !s?.active ||
+          s.annotationPause ||
+          !s.scopeActive ||
+          s.target.sourceTabId !== tabId
+        )
+          return s;
         try {
           if (!originAllowed(s.target, url)) return s;
         } catch {
@@ -284,8 +321,30 @@ export function createCaptureStore({
           : event.type === "replay" && Number.isFinite(event.data.timestamp)
             ? event.data.timestamp
             : now();
-        if (occurredAt - s.started >= maxMs)
+        if (
+          (s.annotationIntervals || []).some(
+            (p) => occurredAt >= p.start && occurredAt <= p.end,
+          )
+        )
+          return s;
+        if (
+          occurredAt -
+            s.started -
+            (s.recording.mode === "session" ? s.pausedMs || 0 : 0) >=
+          maxMs
+        )
           return save(stop(s, "5 minute duration limit reached."));
+        if (event.data.action === "replay-unavailable" && event.type === "activity") {
+          if (event.pageSeq !== undefined) s.lastPageSeq = event.pageSeq;
+          return save(
+            freezeReplay(
+              s,
+              String(event.data.detail || "DOM replay limit reached.").slice(0, 500),
+              occurredAt,
+            ),
+          );
+        }
+        if (event.type === "replay" && s.replayDisabled) return s;
         let raw;
         try {
           raw = JSON.stringify(event.data);
@@ -293,10 +352,20 @@ export function createCaptureStore({
           return s;
         }
         const eventBytes = captureByteLength(raw);
-        const eventLimit =
-          event.type === "replay" && event.data.type === 2
-            ? maxSnapshotBytes
-            : maxEventBytes;
+        const eventLimit = event.type === "replay" ? maxSnapshotBytes : maxEventBytes;
+        if (
+          event.type === "replay" &&
+          (eventBytes > eventLimit || s.bytes + eventBytes > maxReplayBytes)
+        ) {
+          s.dropped++;
+          return save(
+            freezeReplay(
+              s,
+              `DOM snapshot/event ${eventBytes} bytes exceeds replay budget (event limit ${eventLimit}, replay budget ${maxReplayBytes}); no earlier events were evicted.`,
+              occurredAt,
+            ),
+          );
+        }
         if (
           eventBytes > eventLimit ||
           s.recording.events.length >= maxEvents ||
@@ -304,12 +373,7 @@ export function createCaptureStore({
         ) {
           s.dropped++;
           return save(
-            stop(
-              s,
-              event.type === "replay"
-                ? `DOM snapshot/event ${eventBytes} bytes exceeds available capture budget (event limit ${eventLimit}, total ${maxBytes}); replay is incomplete. No earlier events were evicted.`
-                : "Capture size/event limit reached. No earlier events were evicted.",
-            ),
+            stop(s, "Capture size/event limit reached. No earlier events were evicted."),
           );
         }
         if (
@@ -327,10 +391,16 @@ export function createCaptureStore({
         if (captureNodeCount(event.data, nodeLimit) > nodeLimit) {
           s.dropped++;
           return save(
-            stop(
-              s,
-              `Capture event exceeds JSON node limit ${nodeLimit}; no partial event was saved.`,
-            ),
+            event.type === "replay"
+              ? freezeReplay(
+                  s,
+                  `DOM event exceeds JSON node limit ${nodeLimit}; no partial event was saved.`,
+                  occurredAt,
+                )
+              : stop(
+                  s,
+                  `Capture event exceeds JSON node limit ${nodeLimit}; no partial event was saved.`,
+                ),
           );
         }
         const data = sanitizeCapture(
@@ -341,16 +411,18 @@ export function createCaptureStore({
         if (event.type === "replay" && JSON.stringify(data).includes("[depth limit]")) {
           s.dropped++;
           return save(
-            stop(
+            freezeReplay(
               s,
-              "DOM snapshot exceeds the supported nesting depth; replay is incomplete. No malformed DOM event was saved.",
+              "DOM snapshot exceeds the supported nesting depth; no malformed DOM event was saved.",
+              occurredAt,
             ),
           );
         }
         const atMs = Math.min(
           maxMs,
-          Math.max(0, Math.min(now(), occurredAt) - s.started),
+          Math.max(0, Math.min(now(), occurredAt) - s.started - (s.pausedMs || 0)),
         );
+        if (event.type === "replay" && s.pausedMs) data.timestamp -= s.pausedMs;
         s.recording.events.push({
           seq: s.recording.events.length,
           atMs,

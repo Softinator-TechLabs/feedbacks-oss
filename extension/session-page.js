@@ -3,6 +3,7 @@ import {
   semanticTarget,
   inputActivity,
   CAPTURE_MAX_BYTES,
+  CAPTURE_REPLAY_BYTES,
   CAPTURE_SNAPSHOT_BYTES,
   CAPTURE_BATCH_BYTES,
   captureByteLength,
@@ -18,6 +19,8 @@ export function installSessionRecorder(record, config) {
     pending = [],
     bytes = 0,
     count = 0;
+  let replayDisabled = !!config.replayDisabled,
+    stopRecord;
   const postMessage = window.postMessage.bind(window);
   const flush = () => {
     if (events.length) {
@@ -35,7 +38,7 @@ export function installSessionRecorder(record, config) {
     }
   };
   const emit = (type, data, occurredAt = Date.now()) => {
-    if (!active) return;
+    if (!active || (type === "replay" && replayDisabled)) return;
     let clean;
     try {
       clean = sanitizeCapture(
@@ -52,11 +55,32 @@ export function installSessionRecorder(record, config) {
         : CAPTURE_DIAGNOSTIC_NODES;
     const eventNodes = captureNodeCount(data, nodeLimit);
     const size = captureByteLength(JSON.stringify(clean));
-    const limit =
-      type === "replay" && data.type === 2 ? CAPTURE_SNAPSHOT_BYTES : 1024 * 1024;
+    const limit = type === "replay" ? CAPTURE_SNAPSHOT_BYTES : 1024 * 1024;
     if (
-      (bytes += size) > CAPTURE_MAX_BYTES ||
-      ++count > 45000 ||
+      type === "replay" &&
+      (size > limit ||
+        bytes + size > CAPTURE_REPLAY_BYTES ||
+        eventNodes > nodeLimit ||
+        JSON.stringify(clean).includes("[depth limit]"))
+    ) {
+      replayDisabled = true;
+      // rrweb may emit its initial snapshot synchronously before returning its
+      // disposer. Stop it after this emission has unwound; keep diagnostics alive.
+      queueMicrotask(() => stopRecord?.());
+      emit(
+        "activity",
+        {
+          action: "replay-unavailable",
+          detail: `DOM replay limit reached: event ${size} bytes (limit ${limit}), nodes ${eventNodes} (limit ${nodeLimit}), page budget ${CAPTURE_REPLAY_BYTES}.`,
+        },
+        occurredAt,
+      );
+      flush();
+      return;
+    }
+    if (
+      bytes + size > CAPTURE_MAX_BYTES ||
+      count + 1 > 45000 ||
       size > limit ||
       eventNodes > nodeLimit
     ) {
@@ -87,7 +111,13 @@ export function installSessionRecorder(record, config) {
       stop();
       return;
     }
-    if (type === "replay" && data.type === 2) flush();
+    if (
+      (type === "replay" && data.type === 2) ||
+      captureByteLength(JSON.stringify(events)) + size + 256 > CAPTURE_BATCH_BYTES
+    )
+      flush();
+    bytes += size;
+    count++;
     events.push({
       type,
       pageSeq: count,
@@ -151,6 +181,7 @@ export function installSessionRecorder(record, config) {
       },
       x: e.clientX,
       y: e.clientY,
+      viewport: { width: innerWidth, height: innerHeight, devicePixelRatio },
     }),
   );
   listen("input", (e) => emit("activity", inputActivity(e.target, e, config.privacy)));
@@ -193,9 +224,26 @@ export function installSessionRecorder(record, config) {
         );
       }
     });
-    observer.observe({ entryTypes: ["resource", "longtask", "navigation"] });
+    observer.observe({ entryTypes: ["resource", "longtask", "navigation", "paint"] });
+    for (const entry of performance.getEntriesByType("navigation")) {
+      if (performance.timeOrigin + entry.startTime < config.startedAt) continue;
+      emit(
+        "performance",
+        {
+          entryType: "navigation",
+          name: entry.name,
+          durationMs: entry.duration,
+          domContentLoadedMs: entry.domContentLoadedEventEnd,
+          loadEventMs: entry.loadEventEnd,
+          responseStartMs: entry.responseStart,
+          responseEndMs: entry.responseEnd,
+          transferSize: entry.transferSize,
+          phase: "timing",
+        },
+        performance.timeOrigin + entry.startTime,
+      );
+    }
   } catch {}
-  let stopRecord;
   const timer = setInterval(flush, 100);
   const limitTimer = setTimeout(
     () => {
@@ -227,23 +275,32 @@ export function installSessionRecorder(record, config) {
     emit("activity", { action: "document-unload" });
     stop();
   });
-  stopRecord = record({
-    emit: (event) => emit("replay", event),
-    maskAllInputs: config.privacy.maskInputs,
-    maskInputOptions: { password: true, hidden: true },
-    maskTextSelector: config.privacy.maskText
-      ? "*"
-      : config.privacy.maskInputs
-        ? '[contenteditable],[role="textbox"]'
-        : undefined,
-    blockSelector:
-      'script,iframe,input[type="password"],input[type="hidden"],[autocomplete="current-password"],[autocomplete="new-password"],[name*="token" i],[name*="secret" i],[name*="password" i],[name*="api_key" i],[name*="otp" i],[id*="password" i],[id*="secret" i],[id*="token" i],[autocomplete="one-time-code"],[autocomplete="cc-number"],[autocomplete="cc-csc"],[aria-label*="password" i],#feedbacks-root,[data-feedbacks]',
-    inlineStylesheet: true,
-    collectFonts: false,
-    recordCanvas: false,
-    recordCrossOriginIframes: false,
-    sampling: { mousemove: 100, scroll: 150, input: "all" },
-  });
+  try {
+    if (!replayDisabled)
+      stopRecord = record({
+        emit: (event) => emit("replay", event),
+        maskAllInputs: config.privacy.maskInputs,
+        maskInputOptions: { password: true, hidden: true },
+        maskTextSelector: config.privacy.maskText
+          ? "*"
+          : config.privacy.maskInputs
+            ? '[contenteditable],[role="textbox"]'
+            : undefined,
+        blockSelector:
+          'script,iframe,input[type="password"],input[type="hidden"],[autocomplete="current-password"],[autocomplete="new-password"],[name*="token" i],[name*="secret" i],[name*="password" i],[name*="api_key" i],[name*="otp" i],[id*="password" i],[id*="secret" i],[id*="token" i],[autocomplete="one-time-code"],[autocomplete="cc-number"],[autocomplete="cc-csc"],[aria-label*="password" i],#feedbacks-root,#feedbacks-review-root,[data-feedbacks]',
+        inlineStylesheet: true,
+        collectFonts: false,
+        recordCanvas: false,
+        recordCrossOriginIframes: false,
+        sampling: { mousemove: 100, scroll: 150, input: "all" },
+      });
+  } catch {
+    replayDisabled = true;
+    emit("activity", {
+      action: "replay-unavailable",
+      detail: "DOM recorder failed to initialize.",
+    });
+  }
   emit("activity", { action: "document-start", url: location.href });
   flush();
 }

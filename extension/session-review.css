@@ -76,6 +76,75 @@
   border: 1px solid var(--line);
   background: white;
 }
+.review-annotations {
+  max-height: 340px;
+  overflow: auto;
+  margin: 16px 0;
+}
+.review-annotations h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.review-annotation {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.review-annotation > button {
+  flex: 0 0 108px;
+  padding: 0;
+  overflow: hidden;
+}
+.review-annotation img {
+  display: block;
+  width: 108px;
+  height: 72px;
+  object-fit: cover;
+}
+.review-annotation > div {
+  min-width: 0;
+  flex: 1;
+}
+.review-annotation p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.review-annotation > div button {
+  padding: 6px 9px;
+  font-size: 12px;
+}
+.review-annotation-dialog {
+  width: min(1080px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--canvas);
+}
+.review-annotation-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+.review-annotation-dialog h3 {
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+.review-annotation-dialog img {
+  display: block;
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  margin-top: 16px;
+}
+.review-annotation-dialog p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 @media (max-width: 480px) {
   .session-review {
     padding: 12px;

@@ -26,6 +26,7 @@
     pointSignature,
     freezePending = false,
     active = false,
+    recordingOnly = false,
     reviewShortcuts = true,
     choosing = false,
     chosen = null,
@@ -50,6 +51,13 @@
     navigationButton,
     recordingControls,
     recordingState = "idle",
+    recordingMode = "video",
+    recordingElapsedMs = 0,
+    recordingUpdatedAt = 0,
+    recordingTimer,
+    recordingClock,
+    recordingError,
+    recordingFocusAction,
     highlightEnabled = true,
     highlightButton,
     clickIndicators = true,
@@ -99,8 +107,14 @@
       updatePinOcclusion();
     });
   }
+  const recordingBusy = (state = recordingState) =>
+    ["starting", "recording", "paused", "stopping"].includes(state);
   function revealDrawer(open = true) {
     if (!bar) return;
+    if (recordingOnly || recordingBusy()) {
+      reviewDock.hidden = false;
+      open = false;
+    }
     if (open && bar.classList.contains("hidden")) void updateDiagnostics("status");
     if (open) reviewDock.hidden = false;
     bar.classList.toggle("hidden", !open);
@@ -133,7 +147,13 @@
       navigationButton.textContent = value ? "Navigation locked" : "Navigation allowed";
   }
   function blockNavigation(event) {
-    if (!active || !navigationLocked || event.composedPath?.().includes(host)) return;
+    if (
+      !active ||
+      recordingOnly ||
+      !navigationLocked ||
+      event.composedPath?.().includes(host)
+    )
+      return;
     event.preventDefault();
     notice.textContent = "Navigation locked. Use Navigation allowed to follow links.";
     revealDrawer();
@@ -183,45 +203,179 @@
       diagnosticsButton.disabled = false;
     }
   }
-  function renderRecording(state = recordingState) {
-    const recording = ["recording", "paused"].includes(state);
-    if (recording && !beforeRecording) {
+  const recordingPointAllowed = () => ["recording", "paused"].includes(recordingState);
+  function syncRecordingAnnotationControls() {
+    const editing = !!(chosen?.recordingAnnotation || chosen?.recordingAnnotationPending);
+    for (const control of recordingControls?.querySelectorAll(
+      "[data-recording-action]",
+    ) || []) {
+      control.disabled = editing;
+      control.title = editing
+        ? "Save or cancel this point before changing the recording."
+        : "";
+    }
+    const hint = recordingControls?.querySelector(".recording-hint");
+    if (hint)
+      hint.textContent = editing ? "Save or cancel point" : "Right-click to comment";
+  }
+  function updateRecordingClock() {
+    if (!recordingClock) return;
+    const elapsed =
+      recordingElapsedMs +
+      (recordingState === "recording" ? performance.now() - recordingUpdatedAt : 0);
+    const seconds = Math.max(0, Math.floor(elapsed / 1000));
+    recordingClock.textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  }
+  function renderRecording(
+    state = recordingState,
+    elapsedMs,
+    captureMode = recordingMode,
+  ) {
+    const nextMode = captureMode === "session" ? "session" : "video";
+    const busy = recordingBusy(state);
+    const compact = busy || recordingOnly;
+    if (compact && !beforeRecording) {
       beforeRecording = { highlightEnabled, navigationLocked, clickIndicators };
-      setHighlight(defaults.recordingHighlightEnabled === true);
-      setNavigationLock(defaults.recordingNavigationLocked === true);
+      setHighlight(false);
+      setNavigationLock(!recordingOnly && defaults.recordingNavigationLocked === true);
       setClicks(defaults.recordingClickIndicators !== false);
-    } else if (!recording && beforeRecording) {
+    } else if (!compact && beforeRecording) {
       setHighlight(beforeRecording.highlightEnabled);
       setNavigationLock(beforeRecording.navigationLocked);
       setClicks(beforeRecording.clickIndicators);
       beforeRecording = null;
     }
+    const changed =
+      state !== recordingState ||
+      nextMode !== recordingMode ||
+      !recordingControls?.childElementCount;
+    const now = performance.now();
+    recordingElapsedMs = Number.isFinite(elapsedMs)
+      ? Math.max(0, elapsedMs)
+      : !["idle", "starting"].includes(state)
+        ? recordingElapsedMs +
+          (recordingState === "recording" ? now - recordingUpdatedAt : 0)
+        : 0;
+    recordingUpdatedAt = now;
     recordingState = state;
+    recordingMode = nextMode;
+    clearInterval(recordingTimer);
+    if (state === "recording" && active)
+      recordingTimer = setInterval(updateRecordingClock, 250);
     if (!recordingControls) return;
+    // Heartbeats update the clock without replacing the focused Pause/Stop button.
+    if (!changed) {
+      updateRecordingClock();
+      syncRecordingAnnotationControls();
+      return;
+    }
+    const focusedAction =
+      root.activeElement?.dataset.recordingAction || recordingFocusAction;
+    recordingFocusAction = null;
     recordingControls.replaceChildren();
-    const busy = ["recording", "paused"].includes(state);
-    if (busy) {
+    recordingClock = null;
+    recordingError = null;
+    reviewDock.dataset.recording = compact ? state : "";
+    reviewDock.setAttribute("role", "group");
+    reviewDock.setAttribute(
+      "aria-label",
+      compact
+        ? `Feedbacks ${recordingMode} recording · ${project.name}`
+        : "Feedbacks review controls",
+    );
+    drawerHandle.setAttribute(
+      "aria-label",
+      compact
+        ? `Move ${recordingMode} recording controls`
+        : "Feedbacks review controls — drag to move",
+    );
+    if (compact) {
+      reviewDock.append(recordingControls);
+      reviewDock.hidden = false;
+      revealDrawer(false);
+      const status = document.createElement("span");
+      status.className = "recording-status";
+      const label = document.createElement("span");
+      label.setAttribute("role", "status");
+      label.textContent = {
+        starting: `Starting ${recordingMode}`,
+        recording: "Recording",
+        paused: "Paused",
+        stopping: `Saving ${recordingMode}`,
+        ready: recordingMode === "session" ? "Session ready" : "Video ready",
+        idle: "Recorder",
+      }[state];
+      recordingClock = document.createElement("span");
+      recordingClock.className = "recording-clock";
+      recordingClock.setAttribute("aria-label", "Recording duration");
+      status.append(label, recordingClock);
+      if (["recording", "paused"].includes(state)) {
+        const hint = document.createElement("span");
+        hint.className = "recording-hint";
+        status.append(hint);
+      }
+      recordingControls.append(status);
+      if (["recording", "paused"].includes(state)) {
+        if (recordingMode === "video") {
+          const pause = button(
+            state === "paused" ? "Resume" : "Pause",
+            () =>
+              send({
+                type: "recordingControl",
+                action: state === "paused" ? "resume" : "pause",
+              }),
+            recordingControls,
+          );
+          pause.dataset.recordingAction = "pause";
+          pause.setAttribute(
+            "aria-label",
+            state === "paused" ? "Resume video" : "Pause video",
+          );
+        }
+        const stop = button(
+          "Stop",
+          () => send({ type: "recordingControl", action: "stop" }),
+          recordingControls,
+        );
+        stop.setAttribute("aria-label", `Stop ${recordingMode}`);
+        stop.className = "recording-stop";
+        stop.dataset.recordingAction = "stop";
+      }
+      if (state === "ready")
+        button(
+          `Review ${recordingMode}`,
+          () =>
+            send({
+              type: recordingMode === "session" ? "openSessionReview" : "openRecorder",
+            }),
+          recordingControls,
+        );
+      recordingError = document.createElement("span");
+      recordingError.className = "recording-error";
+      recordingError.setAttribute("role", "alert");
+      recordingControls.append(recordingError);
+    } else {
+      if (navigationButton?.parentElement?.parentElement === bar)
+        bar.insertBefore(recordingControls, navigationButton.parentElement);
       button(
-        state === "paused" ? "Resume video" : "Pause video",
+        state === "ready" ? `Review ${recordingMode}` : "Record video",
         () =>
           send({
-            type: "recordingControl",
-            action: state === "paused" ? "resume" : "pause",
+            type:
+              state === "ready" && recordingMode === "session"
+                ? "openSessionReview"
+                : "openRecorder",
           }),
         recordingControls,
       );
-      button(
-        "Stop video",
-        () => send({ type: "recordingControl", action: "stop" }),
-        recordingControls,
-      );
-    } else
-      button(
-        state === "ready" ? "Review video" : "Record video",
-        () => send({ type: "openRecorder" }),
-        recordingControls,
-      );
-    reviewDock.dataset.recording = busy ? state : "";
+    }
+    updateRecordingClock();
+    syncRecordingAnnotationControls();
+    positionControls();
+    if (focusedAction)
+      recordingControls
+        .querySelector(`[data-recording-action="${focusedAction}"]`)
+        ?.focus({ preventScroll: true });
   }
   function positionControls() {
     if (!reviewDock || reviewDock.hidden) return;
@@ -512,14 +666,29 @@
     b.textContent = text;
     b.onclick = async () => {
       notice.textContent = "";
+      if (recordingError) recordingError.textContent = "";
+      const restoreRecordingFocus =
+        (recordingOnly || recordingBusy()) &&
+        root.activeElement === b &&
+        b.dataset.recordingAction;
+      if (restoreRecordingFocus) recordingFocusAction = b.dataset.recordingAction;
       b.disabled = true;
       try {
         await action(b);
       } catch (e) {
-        notice.textContent = e.message;
-        revealDrawer();
+        if ((recordingOnly || recordingBusy()) && recordingControls.contains(b))
+          recordingError.textContent = e.message;
+        else if (chosen?.recordingAnnotation && pointMenu.contains(b)) {
+          pointMenu.classList.remove("hidden");
+          pointMenu.querySelector(".point-tip").textContent = e.message;
+        } else {
+          notice.textContent = e.message;
+          revealDrawer();
+        }
       } finally {
         b.disabled = false;
+        if (restoreRecordingFocus && b.isConnected && !root.activeElement)
+          b.focus({ preventScroll: true });
       }
     };
     parent.append(b);
@@ -563,8 +732,10 @@
     freezeFrame?.classList.add("hidden");
     freezeFrame?.removeAttribute("src");
     targetBox?.classList.add("hidden");
+    draftPin?.classList.add("hidden");
+    syncRecordingAnnotationControls();
   }
-  function choosePoint(el, x, y) {
+  function choosePoint(el, x, y, deferOverlay = false) {
     if (el?.nodeType !== 1 || !el.isConnected) return false;
     const r = F.rect(el);
     if (!r.width || !r.height) return false;
@@ -590,6 +761,7 @@
       chosen.fingerprint || `evidence-v1:${crypto.randomUUID()}`,
     );
     pointSignature = signature();
+    if (deferOverlay) return true;
     Object.assign(targetBox.style, {
       left: `${r.x}px`,
       top: `${r.y}px`,
@@ -892,13 +1064,50 @@
     if (!chosen) throw Error("Right-click an element first.");
     // The selected element may disappear when a hover menu loses focus. Its
     // geometry and selector were recorded at the right-click, before editing.
-    if (pointSignature !== signature())
+    if (pointSignature !== signature() && !selection.recordingAnnotation)
       throw Error("The page moved. Right-click the point again.");
     const body = pointText.value.trim();
     if (!body) {
       pointMenu.querySelector(".point-tip").textContent =
         "Write a comment for this point first.";
       pointText.focus();
+      return;
+    }
+    const anchor = {
+      ...chosen.evidence,
+      viewport: chosen.viewport,
+      capturedAt: chosen.capturedAt,
+      confidence:
+        chosen.fingerprint &&
+        chosen.element.isConnected &&
+        fingerprint(chosen.element) === chosen.fingerprint
+          ? "element"
+          : chosen.snapshotOnly || chosen.fingerprint
+            ? "unmatched"
+            : "coordinate-only",
+    };
+    if (selection.recordingAnnotation) {
+      if (!selection.snapshot) await captureRecordingPoint(selection);
+      if (!selection.snapshot)
+        throw Error(
+          "The original view is required. Save point retries its capture; Cancel returns to the recording.",
+        );
+      if (selection.annotationAction) return;
+      selection.annotationAction = "save";
+      try {
+        await send({
+          type: "recordingAnnotationSave",
+          annotationId: selection.recordingAnnotation.annotationId,
+          key: selection.token,
+          body,
+          anchor,
+        });
+      } finally {
+        selection.annotationAction = null;
+      }
+      closePointMenu();
+      pointText.value = "";
+      clearChosenPoint();
       return;
     }
     if (annotations.length >= 100)
@@ -908,19 +1117,7 @@
       body,
       element: chosen.element,
       snapshot: chosen.snapshot,
-      anchor: {
-        ...chosen.evidence,
-        viewport: chosen.viewport,
-        capturedAt: chosen.capturedAt,
-        confidence:
-          chosen.fingerprint &&
-          chosen.element.isConnected &&
-          fingerprint(chosen.element) === chosen.fingerprint
-            ? "element"
-            : chosen.snapshotOnly || chosen.fingerprint
-              ? "unmatched"
-              : "coordinate-only",
-      },
+      anchor,
     });
     pointText.value = "";
     pointMenu.querySelector(".point-tip").textContent =
@@ -1023,25 +1220,88 @@
       for (const motion of motions) if (motion.playState === "paused") motion.play();
     };
   }
+  async function captureRecordingPoint(selection) {
+    try {
+      const { snapshot } = await send({
+        type: "recordingFreezeView",
+        key: selection.token,
+      });
+      if (chosen !== selection) return;
+      if (!snapshot) throw Error("Screenshot capture did not return an original view.");
+      selection.snapshot = snapshot;
+      pointMenu.querySelector(".point-tip").textContent =
+        "Original saved · Save point adds it to this recording.";
+    } catch (error) {
+      if (chosen === selection)
+        pointMenu.querySelector(".point-tip").textContent =
+          `Original view could not be saved: ${error.message} Save point retries the capture; Cancel returns to the recording.`;
+    }
+  }
+  async function cancelPoint() {
+    const selection = chosen;
+    if (selection?.recordingAnnotation) {
+      if (selection.annotationAction) return;
+      selection.annotationAction = "cancel";
+      await selection.snapshotTask;
+      try {
+        await send({
+          type: "recordingAnnotationCancel",
+          annotationId: selection.recordingAnnotation.annotationId,
+        });
+      } catch (error) {
+        pointMenu.classList.remove("hidden");
+        pointMenu.querySelector(".point-tip").textContent = error.message;
+        throw error;
+      } finally {
+        selection.annotationAction = null;
+      }
+    }
+    releasePointImage(selection);
+    closePointMenu(true);
+    pointText.value = "";
+    clearChosenPoint();
+    renderPins();
+  }
   async function openPointMenu(el, x, y) {
     hoverTarget = null;
     hoverBox?.classList.add("hidden");
-    if (pointRequest || captureActive) return;
-    if (pendingReview) {
+    if (pointRequest || captureActive || freezePending) return;
+    const recordingPoint = recordingPointAllowed();
+    if (pendingReview && !recordingPoint) {
       await send({ type: "openCapturedReview" });
       return;
     }
-    if (freezePending) return;
-    if (chosen && pointText.value.trim()) {
+    if (chosen && (chosen.recordingAnnotation || pointText.value.trim())) {
       pointMenu.classList.remove("hidden");
       pointMenu.querySelector(".point-tip").textContent =
         "Save or cancel your current point before selecting another.";
       pointText.focus({ preventScroll: true });
       return;
     }
-    if (!choosePoint(el, x, y)) return;
-    chosen.releaseView = holdPointView(el);
-    const token = chosen.token;
+    if (!choosePoint(el, x, y, recordingPoint)) return;
+    const selection = chosen;
+    const token = selection.token;
+    if (recordingPoint) {
+      freezePending = true;
+      selection.recordingAnnotationPending = true;
+      syncRecordingAnnotationControls();
+      try {
+        selection.recordingAnnotation = await send({
+          type: "recordingAnnotationBegin",
+          key: token,
+        });
+        if (chosen !== selection) return;
+      } catch (error) {
+        if (recordingError) recordingError.textContent = error.message;
+        clearChosenPoint(token);
+        return;
+      } finally {
+        freezePending = false;
+        selection.recordingAnnotationPending = false;
+        syncRecordingAnnotationControls();
+      }
+    }
+    selection.releaseView = holdPointView(el);
     host.setAttribute("data-editing-point", "");
     pointThumbnail.hidden = true;
     pointThumbnail.removeAttribute("src");
@@ -1051,12 +1311,11 @@
     pointMenu.style.left = `${Math.max(8, Math.min(x + 16, innerWidth - r.width - 8))}px`;
     pointMenu.style.top = `${Math.max(8, Math.min(y + 16, innerHeight - r.height - 8))}px`;
     pointText.focus({ preventScroll: true });
-    // Paint and focus first. Chrome's capture throttle, encoding and disk writes
-    // must not hold the comment editor off screen.
-    chosen.snapshotTask = (async () => {
+    selection.snapshotTask = (async () => {
       await new Promise((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(resolve)),
       );
+      if (recordingPoint) return captureRecordingPoint(selection);
       try {
         const { snapshot } = await send({ type: "freezeView", key: token });
         if (chosen?.token === token) {
@@ -1073,6 +1332,10 @@
   function renderChosenPoint() {
     draftPin.classList.add("hidden");
     if (!chosen || chosen.record !== identity()) return;
+    if (chosen.recordingAnnotation || chosen.recordingAnnotationPending) {
+      targetBox.classList.add("hidden");
+      return;
+    }
     const r =
       chosen.releaseView || chosen.snapshotOnly || !chosen.element.isConnected
         ? chosen.evidence.rect
@@ -1371,17 +1634,7 @@
     pointText.setAttribute("aria-label", "Comment on selected element");
     pointMenu.append(pointText);
     button("Save point", savePoint, pointMenu).className = "primary";
-    button(
-      "Cancel",
-      () => {
-        releasePointImage(chosen);
-        closePointMenu(true);
-        pointText.value = "";
-        clearChosenPoint();
-        renderPins();
-      },
-      pointMenu,
-    );
+    button("Cancel", cancelPoint, pointMenu);
     const tip = document.createElement("p");
     tip.className = "point-tip";
     tip.setAttribute("role", "status");
@@ -1413,7 +1666,7 @@
     document.documentElement.append(host);
   }
   async function loadPins() {
-    if (!active || document.visibilityState !== "visible") return;
+    if (!active || recordingOnly || document.visibilityState !== "visible") return;
     const request = {
       generation: activationGeneration,
       projectId: project.id,
@@ -1461,7 +1714,7 @@
     }
   }
   function renderPins() {
-    if (!active) return;
+    if (!active || recordingOnly) return;
     occlusionPins = occlusionPins.filter((entry) => entry.kind === "draft");
     pinLayer.replaceChildren();
     targetBox.classList.add("hidden");
@@ -1726,19 +1979,30 @@
   F.listen(
     "pointerdown",
     (event) => {
-      if (!active || event.composedPath().includes(host)) return;
+      if (
+        !active ||
+        ((recordingOnly || recordingBusy()) && !recordingPointAllowed()) ||
+        event.composedPath().includes(host)
+      )
+        return;
       if (event.button === 2 && !event.shiftKey) {
         event.preventDefault();
         event.stopImmediatePropagation();
         openPointMenu(event.target, event.clientX, event.clientY);
-      } else closePointMenu();
+      } else if (!chosen?.recordingAnnotation) closePointMenu();
     },
     true,
   );
   F.listen(
     "contextmenu",
     (event) => {
-      if (!active || event.shiftKey || event.composedPath().includes(host)) return;
+      if (
+        !active ||
+        ((recordingOnly || recordingBusy()) && !recordingPointAllowed()) ||
+        event.shiftKey ||
+        event.composedPath().includes(host)
+      )
+        return;
       event.preventDefault();
       event.stopImmediatePropagation();
       // Also supports keyboard context-menu and macOS Control-click.
@@ -1758,7 +2022,13 @@
   F.listen(
     "click",
     (event) => {
-      if (!active || event.composedPath().includes(host)) return;
+      if (
+        !active ||
+        recordingOnly ||
+        recordingBusy() ||
+        event.composedPath().includes(host)
+      )
+        return;
       const quick = event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
       if (!choosing && !quick) return;
       event.preventDefault();
@@ -1786,7 +2056,13 @@
   F.listen(
     "click",
     (event) => {
-      if (!active || !navigationLocked || event.composedPath().includes(host)) return;
+      if (
+        !active ||
+        recordingOnly ||
+        !navigationLocked ||
+        event.composedPath().includes(host)
+      )
+        return;
       const link = event.target.closest?.("a[href],area[href]");
       if (
         !link ||
@@ -1807,6 +2083,18 @@
     "keydown",
     (event) => {
       if (!active) return;
+      if (
+        event.key === "Escape" &&
+        chosen?.recordingAnnotation &&
+        !event.isComposing &&
+        !event.repeat
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void cancelPoint().catch(() => {});
+        return;
+      }
+      if (recordingOnly || recordingBusy()) return;
       if (event.key === "Escape") {
         if (event.isComposing || event.repeat) return;
         event.preventDefault();
@@ -1873,6 +2161,8 @@
         if (
           !active ||
           !highlightEnabled ||
+          recordingOnly ||
+          recordingBusy() ||
           freezePending ||
           captureActive ||
           hoverTarget?.nodeType !== 1 ||
@@ -1953,7 +2243,12 @@
   F.listen("resize", (event) => {
     if (event.target !== window) return;
     positionControls();
-    closePointMenu();
+    if (!chosen?.recordingAnnotation) closePointMenu();
+    else {
+      const rect = pointMenu.getBoundingClientRect();
+      pointMenu.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - rect.width - 8))}px`;
+      pointMenu.style.top = `${Math.max(8, Math.min(rect.top, innerHeight - rect.height - 8))}px`;
+    }
     repaint();
   });
   addEventListener("popstate", () => loadPins().catch(() => {}));
@@ -1978,6 +2273,7 @@
         "preparePointImage",
         "pointImageCaptured",
         "recordingState",
+        "prepareRecordingResume",
         "fullPageMetrics",
         "fullPageScroll",
         "qaScan",
@@ -1990,8 +2286,42 @@
     )
       return;
     (async () => {
+      if (
+        recordingOnly &&
+        ![
+          "activate",
+          "deactivate",
+          "recordingState",
+          "reviewPreferences",
+          "popupControls",
+          "metrics",
+        ].includes(message.type) &&
+        !(
+          chosen?.recordingAnnotation &&
+          [
+            "captureContext",
+            "captureCheck",
+            "preparePointImage",
+            "pointImageCaptured",
+            "prepareRecordingResume",
+          ].includes(message.type)
+        )
+      )
+        throw Error("Only recording controls are available on this redirected page.");
+      if (message.type === "prepareRecordingResume") {
+        if (chosen?.recordingAnnotation?.annotationId !== message.annotationId)
+          throw Error("The recording point changed before resuming.");
+        closePointMenu();
+        targetBox.classList.add("hidden");
+        draftPin.classList.add("hidden");
+        root.activeElement?.blur();
+        await new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        );
+        return {};
+      }
       if (message.type === "recordingState") {
-        renderRecording(message.state);
+        renderRecording(message.state, message.elapsedMs, message.mode || "video");
         return {};
       }
       if (message.type === "draftPrepared") {
@@ -2006,9 +2336,12 @@
       }
       if (message.type === "popupControls") {
         if (!active) throw Error("Open Feedbacks to connect this page.");
+        if (recordingOnly && message.action && message.action !== "show-controls")
+          throw Error("Only recording controls are available on this redirected page.");
         if (message.action === "show-controls") revealDrawer(true);
         if (message.action === "navigation") setNavigationLock(!navigationLocked);
-        if (message.action === "highlight") setHighlight(!highlightEnabled);
+        if (message.action === "highlight")
+          setHighlight(recordingOnly || recordingBusy() ? false : !highlightEnabled);
         if (message.action === "clicks") setClicks(!clickIndicators);
         if (message.action === "pins") {
           showPins = !showPins;
@@ -2037,11 +2370,14 @@
       if (message.type === "activate") {
         reviewShortcuts = message.reviewShortcuts !== false;
         const wasActive = active && host?.isConnected;
-        if (!wasActive || project?.id !== message.project.id) {
+        const modeChanged = recordingOnly !== (message.recordingOnly === true);
+        recordingOnly = message.recordingOnly === true;
+        if (!wasActive || modeChanged || project?.id !== message.project.id) {
           // A retiring recorder belongs to the previous review. Its later idle
           // notification must not restore that review's controls over these defaults.
           beforeRecording = null;
           recordingState = "idle";
+          recordingMode = "video";
           defaults = message.reviewDefaults || {};
           setNavigationLock(defaults.navigationLocked !== false);
           setHighlight(defaults.highlightEnabled !== false);
@@ -2066,6 +2402,10 @@
           annotations = [];
           host?.remove();
         }
+        if (modeChanged) {
+          closePointMenu();
+          host?.remove();
+        }
         project = message.project;
         if (!host?.isConnected) setup(message.css);
         const styleSelect = root?.querySelector(
@@ -2080,8 +2420,9 @@
           sizeSelect.disabled = captureMarkerStyle === "none";
         }
         renderPins();
-        if (!wasActive) revealDrawer(false);
+        if (!wasActive || modeChanged) revealDrawer(false);
         clearInterval(timer);
+        if (recordingOnly) return {};
         timer = setInterval(
           () => loadPins().catch((e) => (notice.textContent = e.message)),
           15000,
@@ -2154,6 +2495,8 @@
         active = false;
         globalThis.feedbacksReviewActive = false;
         clearInterval(timer);
+        clearInterval(recordingTimer);
+        recordingClock = null;
         clearTimeout(drawerTimer);
         host?.remove();
         return {};

@@ -205,3 +205,27 @@ test("replay preserves event timestamps but removes resource URLs and executable
     "data:,",
   );
 });
+test("screenshot comments associate by annotation identity even at the same timestamp", async () => {
+  const { recordingAnnotation } = await import("../src/web/recording-model.js");
+  const events: any[] = [
+    {
+      seq: 0,
+      type: "activity",
+      atMs: 100,
+      data: { action: "annotation", annotationId: "a", body: "First" },
+    },
+    {
+      seq: 1,
+      type: "activity",
+      atMs: 100,
+      data: { action: "annotation", annotationId: "b", body: "Second" },
+    },
+  ];
+  assert.equal(
+    recordingAnnotation(events, { annotationId: "b", atMs: 100 })?.body,
+    "Second",
+  );
+  assert.equal(recordingAnnotation(events, { annotationId: "missing", atMs: 100 }), null);
+  assert.equal(recordingAnnotation(events, { annotationId: "a", atMs: 200 }), null);
+  assert.equal(recordingAnnotation(events, { atMs: 100 }), null);
+});

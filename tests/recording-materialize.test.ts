@@ -246,6 +246,75 @@ test("saved frames are independently authorized and exported even when video is 
   }
 });
 
+test("session comment screenshots export without video and retain exact comment identity", async () => {
+  const base = await mkdtemp(join(tmpdir(), "feedbacks-comment-bundle-"));
+  const annotationId = "33333333-3333-4333-8333-333333333333";
+  const frame = {
+    id: assetId,
+    contentType: "image/webp",
+    recordingFrame: { recordingId: id, atMs: 90, annotationId },
+  };
+  const data = snapshot();
+  data.recording.events.push({
+    seq: 4,
+    atMs: 90,
+    type: "activity",
+    data: {
+      action: "annotation",
+      annotationId,
+      body: "Align this heading",
+      anchor: { selector: "h1" },
+    },
+  });
+  data.thread.frames = [frame];
+  try {
+    const result = await materializeRecording(
+      async (name) => (name === "recordings.export" ? data : { ...frame, threadId: id }),
+      { recordingId: id },
+      {
+        baseDirectory: base,
+        downloadAsset: async () => Buffer.from("comment-screenshot"),
+      },
+    );
+    assert.equal(result.complete, true);
+    const frames = JSON.parse(
+      await readFile(join(result.directory, "frames/index.json"), "utf8"),
+    );
+    assert.equal(frames[0].status, "downloaded");
+    assert.equal(frames[0].recordingFrame.videoTimeMs, undefined);
+    assert.equal(frames[0].annotation.annotationId, annotationId);
+    assert.equal(frames[0].annotation.body, "Align this heading");
+    assert.equal(frames[0].annotation.anchor.selector, "h1");
+    assert.match(
+      await readFile(join(result.directory, "README.md"), "utf8"),
+      /annotationId/,
+    );
+    const changed = await materializeRecording(
+      async (name) =>
+        name === "recordings.export"
+          ? data
+          : {
+              ...frame,
+              threadId: id,
+              recordingFrame: {
+                ...frame.recordingFrame,
+                annotationId: "44444444-4444-4444-8444-444444444444",
+              },
+            },
+      { recordingId: id },
+      {
+        baseDirectory: base,
+        downloadAsset: async () => {
+          throw Error("Must reject before download");
+        },
+      },
+    );
+    assert.equal(changed.complete, false);
+  } finally {
+    await rm(base, { recursive: true, force: true });
+  }
+});
+
 test("frame identity mismatch, denied download and truncated list produce an honest partial bundle", async () => {
   const base = await mkdtemp(join(tmpdir(), "feedbacks-frame-partial-"));
   const frame = {

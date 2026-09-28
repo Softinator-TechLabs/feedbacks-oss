@@ -1,6 +1,8 @@
 import { prepareCaptureOrigins } from "./session-origins.js";
 import { createSessionReview } from "./session-review.js";
-let inspector, inspectedRecording;
+let inspector,
+  inspectedRecording,
+  annotationsReady = false;
 const $ = (id) => document.getElementById(id);
 const sourceTabId = Number(new URL(location.href).searchParams.get("sourceTabId"));
 let target,
@@ -15,7 +17,7 @@ async function send(message) {
 function status(text) {
   $("status").textContent = text;
 }
-function render(s) {
+async function render(s) {
   current = s;
   target = s?.target || target;
   if (target) $("target").textContent = `${target.url} · selected project`;
@@ -37,6 +39,7 @@ function render(s) {
   $("discard").hidden = !recording;
   $("review").hidden = !recording || active;
   if (active) {
+    annotationsReady = false;
     status(
       `Recording · ${Math.floor((Date.now() - s.started) / 1000)} seconds · ${recording.events.length.toLocaleString()} events · ${(s.bytes / 1024 / 1024).toFixed(1)} MiB`,
     );
@@ -51,10 +54,35 @@ function render(s) {
       }),
     );
     $("evidence").textContent = JSON.stringify(recording, null, 2);
-    if (inspectedRecording !== recording.startedAt) {
+    if (inspectedRecording !== recording.id) {
+      annotationsReady = false;
+      $("send").disabled = true;
       inspector?.dispose();
-      inspectedRecording = recording.startedAt;
-      inspector = createSessionReview($("capture-inspector"), { recording });
+      try {
+        const annotations = await send({ type: "recordingAnnotations" });
+        if (current?.recording?.id !== recording.id) return;
+        if (annotations.recordingId !== recording.id)
+          throw Error(
+            "Screenshot comments belong to another recording. Reload this review.",
+          );
+        inspector = createSessionReview($("capture-inspector"), {
+          recording,
+          annotations: annotations.items,
+        });
+        inspectedRecording = recording.id;
+        annotationsReady = true;
+        $("send").disabled = false;
+      } catch (error) {
+        if (current?.recording?.id !== recording.id) return;
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.textContent = "Reload screenshot comments";
+        retry.onclick = () =>
+          void render(current).catch((error) => status(error.message));
+        $("capture-inspector").hidden = false;
+        $("capture-inspector").replaceChildren(retry);
+        throw error;
+      }
     }
     if (s.submission) {
       $("comment").value = s.submission.body;
@@ -72,7 +100,7 @@ async function action(fn) {
     status(e.message);
   } finally {
     busy = false;
-    $("send").disabled = false;
+    $("send").disabled = !annotationsReady;
     if (!current?.recording) {
       $("privacy").disabled = false;
       $("redirect-origins").disabled = false;
@@ -109,6 +137,7 @@ $("discard").onclick = () =>
     current = null;
     inspector?.dispose();
     inspectedRecording = null;
+    annotationsReady = false;
     $("comment").readOnly = false;
     render(null);
     $("start").disabled = false;
@@ -116,6 +145,7 @@ $("discard").onclick = () =>
   });
 $("send").onclick = () =>
   action(async () => {
+    if (!annotationsReady) throw Error("Wait for screenshot comments to finish loading.");
     $("send").disabled = true;
     const result = await send({ type: "sessionSubmit", body: $("comment").value });
     submitted = true;
@@ -134,7 +164,7 @@ setInterval(async () => {
   if (busy || submitted) return;
   try {
     const s = await send({ type: "sessionStatus" });
-    if (s?.active || current?.active) render(s);
+    if (s?.active || current?.active) await render(s);
   } catch (e) {
     status(e.message);
   }

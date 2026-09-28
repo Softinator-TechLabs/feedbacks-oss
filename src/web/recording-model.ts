@@ -32,6 +32,29 @@ export type Recording = RecordingSummary & {
   events: RecordingEvent[];
 };
 
+export function recordingAnnotation(
+  events: RecordingEvent[],
+  frame: { annotationId?: string; atMs: number },
+): { id: string; body: string; atMs: number } | null {
+  if (!frame.annotationId) return null;
+  const event = events.find((event) => {
+    const data = event.data as Record<string, unknown> | null;
+    return (
+      event.type === "activity" &&
+      event.atMs === frame.atMs &&
+      data?.action === "annotation" &&
+      data.annotationId === frame.annotationId
+    );
+  });
+  if (!event) return null;
+  const data = event.data as Record<string, unknown>;
+  return {
+    id: frame.annotationId,
+    body: typeof data.body === "string" ? data.body : "Screenshot comment",
+    atMs: event.atMs,
+  };
+}
+
 export function clampTime(atMs: number, durationMs: number): number {
   return Math.min(Math.max(Number.isFinite(atMs) ? atMs : 0, 0), Math.max(durationMs, 0));
 }
@@ -220,9 +243,21 @@ function safeNode(value: unknown, parentKey = ""): unknown {
 // A detached CSSOM parse resolves escaped functions before property filtering.
 // rrweb stores fetched linked stylesheets in _cssText; retain their resource-free
 // layout rules without allowing the replay to refetch the original stylesheet.
-const replaySafeProperty =
-  /^(?:display|visibility|position|top|right|bottom|left|inset(?:-(?:top|right|bottom|left))?|(?:min-|max-)?(?:width|height)|box-sizing|(?:margin|padding)(?:-(?:top|right|bottom|left))?|border(?:-(?:top|right|bottom|left))?(?:-(?:width|style|color))?|border-radius|overflow(?:-[xy])?|opacity|z-index|color|background-color|font-(?:size|weight|family|style)|line-height|letter-spacing|text-(?:align|decoration|transform|overflow|indent|shadow)|white-space|word-(?:break|wrap)|flex(?:-(?:basis|direction|grow|shrink|wrap|flow))?|grid-(?:template-(?:columns|rows|areas)|column|row|area|auto-(?:columns|rows|flow))|(?:row-|column-)?gap|align-(?:items|self|content)|justify-(?:content|items|self)|place-(?:items|self|content)|object-fit|vertical-align|transform|transform-origin|box-shadow)$/i;
+// CSSOM validates property syntax. Resource safety is enforced on every value,
+// including custom properties, so var() cannot smuggle a resource into a rule.
 const replaySafeFunctions = new Set([
+  "var",
+  "repeat",
+  "minmax",
+  "fit-content",
+  "linear-gradient",
+  "radial-gradient",
+  "conic-gradient",
+  "repeating-linear-gradient",
+  "repeating-radial-gradient",
+  "cubic-bezier",
+  "steps",
+  "env",
   "rgb",
   "rgba",
   "hsl",
@@ -247,7 +282,7 @@ const replaySafeFunctions = new Set([
 ]);
 
 function replayDeclarationValue(value: string): boolean {
-  if (!/^[a-z\d\s#.,%+*/()\-]+$/i.test(value)) return false;
+  if (!/^[a-z\d\s#.,%+*/()"'\[\]_\-]+$/i.test(value)) return false;
   for (const match of value.matchAll(/([a-z][a-z\d-]*)\s*\(/gi))
     if (!replaySafeFunctions.has(match[1]!.toLowerCase())) return false;
   return true;
@@ -255,10 +290,25 @@ function replayDeclarationValue(value: string): boolean {
 
 function replayDeclarations(style: CSSStyleDeclaration): string {
   const kept: string[] = [];
-  for (const property of style) {
-    if (!replaySafeProperty.test(property)) continue;
+  // Unresolved var() shorthands enumerate as empty longhands in CSSOM.
+  // Read the serialized shorthand name too, otherwise gap/background/font vanish.
+  const properties = new Set([
+    ...style,
+    ...Array.from(
+      style.cssText.matchAll(/(?:^|;)\s*([\w-]+)\s*:/g),
+      (match) => match[1]!,
+    ),
+  ]);
+  for (const property of properties) {
+    // Seeking applies recorded positions immediately; page easing must not
+    // animate those updates on a separate clock and move targets under the cursor.
+    if (/^(?:scroll-behavior|animation(?:-.+)?|transition(?:-.+)?)$/.test(property))
+      continue;
     const value = style.getPropertyValue(property);
-    if (replayDeclarationValue(value)) kept.push(`${property}:${value}`);
+    if (replayDeclarationValue(value))
+      kept.push(
+        `${property}:${value}${style.getPropertyPriority(property) ? " !important" : ""}`,
+      );
   }
   return kept.join(";");
 }
@@ -375,6 +425,9 @@ function sanitizeReplayCopies(
       styleElementIds.add(current.id);
     const attributes = replayRecord(current.attributes);
     scrubReplayAttributes(attributes);
+    // Preserve the absent layout box of rrweb's redacted hidden controls.
+    if (attributes?.rr_width === "0px" && attributes?.rr_height === "0px")
+      attributes.style = `${attributes.style || ""};display:none!important`;
     if (current.type === 2 && attributes?._cssText) {
       current.tagName = "link";
       current.attributes = { _cssText: attributes._cssText };

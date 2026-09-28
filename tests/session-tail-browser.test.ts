@@ -91,3 +91,54 @@ test(
     }
   },
 );
+
+test(
+  "MAIN oversized DOM leaves clicks, inputs and console collection running",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const bundle = await build({
+      stdin: {
+        contents: `import {installSessionRecorder} from './extension/session-page.js'; window.run = () => installSessionRecorder(({emit}) => { window.replayEmit=emit; emit({type:2,timestamp:Date.now(),data:{text:'x'.repeat(7*1024*1024)}}); return () => {window.replayStopped=true;}; }, {token:'test',debugger:false,remainingMs:300000,startedAt:Date.now(),privacy:{maskInputs:false,maskText:false}});`,
+        resolveDir: process.cwd(),
+      },
+      bundle: true,
+      write: false,
+      format: "iife",
+    });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.route("https://example.test/", (route) =>
+        route.fulfill({
+          contentType: "text/html",
+          body: '<button>Continue</button><input aria-label="Title">',
+        }),
+      );
+      await page.goto("https://example.test/");
+      await page.addScriptTag({ content: bundle.outputFiles[0].text });
+      await page.evaluate(() => (window as any).run());
+      await page.getByRole("button").click();
+      await page.getByLabel("Title").fill("After DOM limit");
+      const result = await page.evaluate(() => {
+        console.warn("after-limit");
+        const events = (window as any).__feedbacksSessionPageTake();
+        (window as any).__feedbacksSessionPageStop();
+        return { events, replayStopped: (window as any).replayStopped };
+      });
+      assert.ok(
+        result.events.some((e: any) => e.data.action === "click"),
+        "click after oversized DOM remains captured",
+      );
+      assert.ok(result.events.some((e: any) => e.data.value === "After DOM limit"));
+      assert.ok(
+        result.events.some(
+          (e: any) => e.type === "console" && e.data.args.includes("after-limit"),
+        ),
+      );
+      assert.ok(result.events.some((e: any) => e.data.action === "replay-unavailable"));
+      assert.equal(result.replayStopped, true);
+    } finally {
+      await browser.close();
+    }
+  },
+);

@@ -2,9 +2,21 @@ import { safeReplay } from "./session-review.js";
 
 // Extension pages do not reliably enforce a late meta CSP in rrweb's about:blank
 // frame. Admit only resource-free CSS; the complete capture remains unchanged.
-const safeProperty =
-  /^(?:display|visibility|position|top|right|bottom|left|inset(?:-(?:top|right|bottom|left))?|(?:min-|max-)?(?:width|height)|box-sizing|(?:margin|padding)(?:-(?:top|right|bottom|left))?|border(?:-(?:top|right|bottom|left))?(?:-(?:width|style|color))?|border-radius|overflow(?:-[xy])?|opacity|z-index|color|background-color|font-(?:size|weight|family|style)|line-height|letter-spacing|text-(?:align|decoration|transform|overflow|indent|shadow)|white-space|word-(?:break|wrap)|flex(?:-(?:basis|direction|grow|shrink|wrap|flow))?|grid-(?:template-(?:columns|rows|areas)|column|row|area|auto-(?:columns|rows|flow))|(?:row-|column-)?gap|align-(?:items|self|content)|justify-(?:content|items|self)|place-(?:items|self|content)|object-fit|vertical-align|transform|transform-origin|box-shadow)$/i;
+// CSSOM validates property syntax. Resource safety is enforced on every value,
+// including custom properties, so var() cannot smuggle a resource into a rule.
 const safeFunctions = new Set([
+  "var",
+  "repeat",
+  "minmax",
+  "fit-content",
+  "linear-gradient",
+  "radial-gradient",
+  "conic-gradient",
+  "repeating-linear-gradient",
+  "repeating-radial-gradient",
+  "cubic-bezier",
+  "steps",
+  "env",
   "rgb",
   "rgba",
   "hsl",
@@ -29,7 +41,7 @@ const safeFunctions = new Set([
 ]);
 
 function safeDeclarationValue(value) {
-  if (!/^[a-z\d\s#.,%+*/()\-]+$/i.test(value)) return false;
+  if (!/^[a-z\d\s#.,%+*/()"'\[\]_\-]+$/i.test(value)) return false;
   for (const match of value.matchAll(/([a-z][a-z\d-]*)\s*\(/gi)) {
     if (!safeFunctions.has(match[1].toLowerCase())) return false;
   }
@@ -38,10 +50,22 @@ function safeDeclarationValue(value) {
 
 function safeDeclarations(style) {
   const kept = [];
-  for (const property of style) {
-    if (!safeProperty.test(property)) continue;
+  // Unresolved var() shorthands enumerate as empty longhands in CSSOM.
+  // Read the serialized shorthand name too, otherwise gap/background/font vanish.
+  const properties = new Set([
+    ...style,
+    ...Array.from(style.cssText.matchAll(/(?:^|;)\s*([\w-]+)\s*:/g), (match) => match[1]),
+  ]);
+  for (const property of properties) {
+    // Seeking applies recorded positions immediately; page easing must not
+    // animate those updates on a separate clock and move targets under the cursor.
+    if (/^(?:scroll-behavior|animation(?:-.+)?|transition(?:-.+)?)$/.test(property))
+      continue;
     const value = style.getPropertyValue(property);
-    if (safeDeclarationValue(value)) kept.push(`${property}:${value}`);
+    if (safeDeclarationValue(value))
+      kept.push(
+        `${property}:${value}${style.getPropertyPriority(property) ? " !important" : ""}`,
+      );
   }
   return kept.join(";");
 }
@@ -76,8 +100,8 @@ function safeStylesheet(value) {
           const nested = rules(rule.cssRules);
           if (nested) kept.push(`@media ${rule.conditionText}{${nested}}`);
         }
-        // Imports, font faces, custom properties, keyframes and unknown at-rules
-        // can fetch assets or synthesize resource-bearing values.
+        // Imports and font faces can fetch assets. Animation timelines are not
+        // synchronized to the recording, so omit keyframes as well.
       }
       return kept.join("\n");
     };
@@ -151,6 +175,10 @@ export function sanitizeSessionReplay(events) {
     if (value.type === 2 && String(value.tagName).toLowerCase() === "style")
       styleElementIds.add(value.id);
     scrubAttributes(value.attributes);
+    // rrweb redacts hidden credentials into zero-sized INPUT placeholders, but
+    // without type=hidden the browser adds input borders and a whole line box.
+    if (value.attributes?.rr_width === "0px" && value.attributes?.rr_height === "0px")
+      value.attributes.style = `${value.attributes.style || ""};display:none!important`;
     // rrweb serializes fetched link stylesheets as _cssText. The generic
     // resource scrubber turns <link> into <div>; restore only this inlined,
     // CSSOM-filtered form so rrweb can rebuild it as a local <style>.
@@ -235,7 +263,10 @@ export function installSessionReplay(Replayer) {
   };
   const scale = () => {
     const width = Number(player?.iframe?.width) || 1024;
-    root.style.transform = `scale(${Math.min(1, innerWidth / width)})`;
+    const height = Number(player?.iframe?.height) || 768;
+    root.style.width = `${width}px`;
+    root.style.height = `${height}px`;
+    root.style.transform = `scale(${Math.min(1, innerWidth / width, innerHeight / height)})`;
   };
   window.addEventListener("resize", scale);
   window.addEventListener("message", (message) => {
@@ -259,12 +290,14 @@ export function installSessionReplay(Replayer) {
           blockClass: "feedbacks-replay-block",
           UNSAFE_replayCanvas: false,
           mouseTail: false,
+          triggerFocus: false,
         });
         policy();
         player.on("fullsnapshot-rebuilded", () => {
           policy();
           scale();
         });
+        player.on("resize", scale);
         player.pause(0);
         scale();
         send("loaded");

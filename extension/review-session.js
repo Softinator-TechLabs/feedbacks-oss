@@ -103,6 +103,67 @@ export function createReviewController({ get, set, authenticated, defaultServer 
       activations.delete(tabId);
     }
   }
+  async function restoreRecording(tabId, target) {
+    if (target?.sourceTabId !== tabId)
+      throw Error("The recording belongs to another tab.");
+    const tab = await chrome.tabs.get(tabId);
+    const origin = originOf(tab.url);
+    const allowedOrigins = target.allowedOrigins || [target.origin];
+    if (!Array.isArray(allowedOrigins) || !allowedOrigins.includes(origin))
+      throw Error("The page is outside the approved recording origins.");
+    const state = await get();
+    const server = target.server;
+    const token = state.accounts?.[server]?.token;
+    const assertReview = (current) => {
+      const session = current.sessions?.[tabId];
+      if (
+        (current.server || defaultServer) !== server ||
+        !token ||
+        current.accounts?.[server]?.token !== token
+      )
+        throw Error("The recording connection changed.");
+      if (
+        !target.reviewId ||
+        session?.reviewId !== target.reviewId ||
+        session?.projectId !== target.projectId ||
+        session?.server !== server
+      )
+        throw Error("The original recording review changed.");
+      return session;
+    };
+    assertReview(state);
+    const { items } = await authenticated("projects.list", {}, server);
+    // Redirect authorization extends capture scope, never project routing.
+    const project = items.find(
+      (item) => item.id === target.projectId && item.permissions.canWrite,
+    );
+    if (!project) throw Error("The original recording project is no longer writable.");
+    css ||= await (await fetch(chrome.runtime.getURL("content.css"))).text();
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["utils.js", "frame-dom.js", "content.js"],
+    });
+    const current = await chrome.tabs.get(tabId);
+    if (current.url !== tab.url)
+      throw Error("The page changed while restoring recording controls.");
+    const latest = await get();
+    const session = assertReview(latest);
+    const result = await chrome.tabs.sendMessage(tabId, {
+      type: "activate",
+      reviewShortcuts: latest.reviewShortcuts !== false,
+      reviewDefaults: reviewDefaults(latest.reviewDefaults),
+      project: {
+        id: project.id,
+        name: project.name,
+        canResolve: project.permissions.canResolve,
+      },
+      css,
+      reviewId: session.reviewId,
+      recordingOnly: origin !== session.origin,
+    });
+    if (result?.error) throw Error(result.error);
+    return { project, origin };
+  }
   function syncInstant() {
     const work = instantSync.catch(() => {}).then(applyInstant);
     instantSync = work;
@@ -153,5 +214,5 @@ export function createReviewController({ get, set, authenticated, defaultServer 
     await chrome.action.setBadgeText({ tabId, text: "" }).catch(() => {});
     return {};
   }
-  return { activate, syncInstant, enableInstant, stop, originOf };
+  return { activate, restoreRecording, syncInstant, enableInstant, stop, originOf };
 }

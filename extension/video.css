@@ -295,3 +295,27 @@ video {
 .has-recording video {
   max-height: min(360px, 38vh);
 }
+
+#capture-health {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin-block: 12px 20px;
+}
+#capture-health-warning {
+  margin-block: 6px 0;
+  color: var(--text);
+}
+#capture-health-warning:empty {
+  display: none;
+}
+
+.during-recording,
+.recording-active .before-recording,
+.recording-active .after-recording,
+.recording-active #audio-options,
+.recording-active #start {
+  display: none;
+}
+.recording-active .during-recording {
+  display: inline;
+}
