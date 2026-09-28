@@ -5,9 +5,95 @@ import type { Request, Response } from "express";
 import { agentOperations, operationRegistry, type Actor } from "../shared/contracts.js";
 import type { Operations } from "./operations.js";
 import { DomainError } from "./errors.js";
-export function mcpServer(execute: (name: string, input: unknown) => Promise<any>) {
-  const server = new McpServer({ name: "feedbacks", version: "0.1.0" });
-  for (const name of agentOperations) {
+import { z } from "zod";
+import { agentGuides } from "../shared/agent-guides.generated.js";
+import {
+  AgentWorkflowError,
+  agentServerInstructions,
+  agentToolSchemas,
+  agentToolDescriptions,
+  runAgentTool,
+  type AgentTool,
+} from "../shared/agent-workflow.js";
+
+function toolResult(data: any) {
+  const { image, ...metadata } = data;
+  const { data: _pixels, ...preview } = image ?? {};
+  const result = image ? { ...metadata, preview } : data;
+  return {
+    structuredContent: result,
+    content: [
+      { type: "text" as const, text: JSON.stringify(result) },
+      ...(image
+        ? [{ type: "image" as const, data: image.data, mimeType: image.mimeType }]
+        : []),
+    ],
+  };
+}
+function toolError(error: unknown) {
+  const e =
+    error instanceof DomainError || error instanceof AgentWorkflowError
+      ? error
+      : new DomainError("INTERNAL", "Operation failed", 500);
+  return {
+    isError: true,
+    content: [{ type: "text" as const, text: `${e.code}: ${e.message}` }],
+  };
+}
+export function mcpServer(
+  execute: (name: string, input: unknown) => Promise<any>,
+  profile: "full" | "compact" = "full",
+) {
+  const server = new McpServer(
+    { name: "feedbacks", version: "0.1.0" },
+    { instructions: agentServerInstructions },
+  );
+  for (const [topic, guide] of Object.entries(agentGuides)) {
+    server.registerResource(
+      `Feedbacks ${topic}`,
+      `feedbacks://guide/${topic}`,
+      { mimeType: "text/markdown", description: `Secret-free Feedbacks skill: ${topic}` },
+      async (uri) => ({
+        contents: [{ uri: uri.href, mimeType: "text/markdown", text: guide.content }],
+      }),
+    );
+  }
+  server.registerPrompt(
+    "review-feedback",
+    {
+      description:
+        "Discover the project's Feedbacks queue, discuss priorities, then process authorized tasks sequentially.",
+    },
+    async () => ({
+      messages: [
+        { role: "user", content: { type: "text", text: agentGuides.start.content } },
+      ],
+    }),
+  );
+  if (profile === "compact") {
+    for (const tool of Object.keys(agentToolSchemas) as AgentTool[])
+      server.registerTool(
+        `feedbacks_${tool}`,
+        {
+          description: agentToolDescriptions[tool],
+          inputSchema: agentToolSchemas[tool],
+          outputSchema: z.object({}).passthrough(),
+          annotations: {
+            readOnlyHint: tool !== "execute",
+            destructiveHint: tool === "execute",
+            openWorldHint: tool === "execute",
+          },
+        },
+        async (input: any) => {
+          try {
+            return toolResult(await runAgentTool(execute, tool, input));
+          } catch (error) {
+            return toolError(error);
+          }
+        },
+      );
+  }
+  for (const name of profile === "full" ? agentOperations : []) {
     server.registerTool(
       name,
       {
@@ -23,29 +109,9 @@ export function mcpServer(execute: (name: string, input: unknown) => Promise<any
       async (input: any) => {
         try {
           const data = await execute(name, input);
-          const { image, ...metadata } =
-            name === "assets.get" ? data : { ...data, image: undefined };
-          return {
-            structuredContent: image ? metadata : data,
-            content: [
-              {
-                type: "text" as const,
-                text: `${name} completed${data.id ? ` (${data.id}, revision ${data.revision ?? "n/a"})` : ""}.`,
-              },
-              ...(image
-                ? [{ type: "image" as const, data: image.data, mimeType: image.mimeType }]
-                : []),
-            ],
-          };
+          return toolResult(data);
         } catch (error) {
-          const e =
-            error instanceof DomainError
-              ? error
-              : new DomainError("INTERNAL", "Operation failed", 500);
-          return {
-            isError: true,
-            content: [{ type: "text" as const, text: `${e.code}: ${e.message}` }],
-          };
+          return toolError(error);
         }
       },
     );
@@ -58,7 +124,15 @@ export async function remoteMcp(
   ops: Operations,
   actor: Actor,
 ) {
-  const server = mcpServer((name, input) => ops.executeOperation(actor, name, input));
+  if (
+    req.query.profile !== undefined &&
+    !["full", "compact"].includes(req.query.profile as string)
+  )
+    throw new DomainError("VALIDATION", "Unknown MCP profile", 400);
+  const server = mcpServer(
+    (name, input) => ops.executeOperation(actor, name, input),
+    req.query.profile === "compact" ? "compact" : "full",
+  );
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

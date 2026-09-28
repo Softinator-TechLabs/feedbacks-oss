@@ -57,7 +57,17 @@ export const surveyQuestionsSchema = z
   );
 export const reviewFiltersSchema = z.object({
   search: z.string().max(200).default(""),
-  sort: z.enum(["newest", "activity", "likes", "priority"]).default("activity"),
+  sort: z
+    .enum(["newest", "activity", "likes", "priority", "topPriority"])
+    .default("activity"),
+  authorId: id.optional(),
+  createdAfter: z.string().datetime({ offset: true }).optional(),
+  createdBefore: z.string().datetime({ offset: true }).optional(),
+  activityAfter: z.string().datetime({ offset: true }).optional(),
+  workState: z
+    .enum(["open", "in_progress", "ready_for_review", "resolved", "declined"])
+    .optional(),
+  topPriority: z.boolean().optional(),
   showResolved: z.boolean().default(false),
   archived: z.boolean().optional(),
   url: z.string().url().max(4096).optional(),
@@ -398,12 +408,20 @@ export const inputSchemas = {
     pairingId: id,
     deviceSecret: z.string().min(20).max(200),
   }),
-  "threads.list": z.object({
-    projectId: id,
-    includeSummary: z.boolean().default(false),
-    ...page,
-    ...reviewFiltersSchema.shape,
-  }),
+  "threads.list": z
+    .object({
+      projectId: id,
+      includeSummary: z.boolean().default(false),
+      ...page,
+      ...reviewFiltersSchema.shape,
+    })
+    .refine(
+      (i) =>
+        !i.createdAfter ||
+        !i.createdBefore ||
+        Date.parse(i.createdAfter) < Date.parse(i.createdBefore),
+      { message: "createdAfter must precede createdBefore" },
+    ),
   "threads.neighbors": z.object({ threadId: id, ...reviewFiltersSchema.shape }),
   "threads.organize": z.object({
     ...tm,
@@ -599,6 +617,14 @@ export const inputSchemas = {
     assetId: id,
     includeImage: z.boolean().default(false),
     maxDimension: z.number().int().min(256).max(2048).default(1600),
+    crop: z
+      .object({
+        left: z.number().int().min(0),
+        top: z.number().int().min(0),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      })
+      .optional(),
   }),
   "instructions.get": z.object({ projectId: id }),
   "instructions.publish": z.object({
@@ -655,15 +681,24 @@ const assetMetadataOutput = z.object({
   projectId: id.optional(),
   threadId: id.optional(),
 });
-const assetOutput = assetMetadataOutput.extend({
-  image: z
+const imagePreviewOutput = z.object({
+  mimeType: z.literal("image/webp"),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  sourceWidth: z.number().int().positive().optional(),
+  sourceHeight: z.number().int().positive().optional(),
+  crop: z
     .object({
-      data: z.string().max(2800000),
-      mimeType: z.literal("image/webp"),
+      left: z.number().int().min(0),
+      top: z.number().int().min(0),
       width: z.number().int().positive(),
       height: z.number().int().positive(),
     })
     .optional(),
+});
+const assetOutput = assetMetadataOutput.extend({
+  image: imagePreviewOutput.extend({ data: z.string().max(2800000) }).optional(),
+  preview: imagePreviewOutput.optional(),
 });
 const deletionOutput = z.object({
   id,

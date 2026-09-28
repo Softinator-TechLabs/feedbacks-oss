@@ -4,6 +4,8 @@ Exact schemas and callable operation names are in the [API reference](api.md). T
 
 ## Independent status dimensions
 
+The optional compact profile (`/mcp?profile=compact`, or stdio `FEEDBACKS_MCP_PROFILE=compact`) provides progressive project/queue/thread/media access over these same operation scopes. See [compact tools and CLI](agents.md#compact-profile-and-cli). Both profiles expose the same static skill resources and prompt. Compact calls do not mint scopes or bypass authorization. Read `expectedRevision`, `expectedContentVersion`, `nextOffset` and `nextTextOffset` before continuing section reads. Native image metadata includes preview dimensions and optional original-pixel crop.
+
 | Dimension      | States / data                                                                                                   | Changes pin visibility?                     |
 | -------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | Response       | `unanswered`, `responded`, `needs-follow-up`; last request/response actor and time                              | No                                          |

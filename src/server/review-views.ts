@@ -30,10 +30,25 @@ export function threadQuery(projectId: string, i: ReviewFilters) {
   let filter = `project_id=$1 AND COALESCE((data->>'archived')::boolean,false)=${i.archived === true ? "true" : "false"}`;
   if (i.search) {
     args.push(`%${i.search}%`);
-    filter += ` AND (data->>'body' ILIKE $${args.length} OR EXISTS(SELECT 1 FROM replies r WHERE r.thread_id=threads.id AND r.data->>'body' ILIKE $${args.length}))`;
+    filter += ` AND (data->>'body' ILIKE $${args.length} OR EXISTS(SELECT 1 FROM replies r WHERE r.thread_id=threads.id AND r.data->>'body' ILIKE $${args.length}) OR EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(data->'context'->'annotations','[]'::jsonb)) point WHERE point->>'body' ILIKE $${args.length}))`;
   }
-  if (!i.showResolved)
+  if (!i.showResolved && !i.workState)
     filter += " AND data->'work'->>'state' NOT IN ('resolved','declined')";
+  for (const [value, expression] of [
+    [i.authorId, "data->'author'->>'userId'="],
+    [i.createdAfter, "created_at>="],
+    [i.createdBefore, "created_at<"],
+    [i.activityAfter, "updated_at>="],
+    [i.workState, "data->'work'->>'state'="],
+  ] as const) {
+    if (value === undefined) continue;
+    args.push(value);
+    filter += ` AND ${expression}$${args.length}`;
+  }
+  if (i.topPriority !== undefined) {
+    args.push(i.topPriority);
+    filter += ` AND COALESCE((data->>'topPriority')::boolean,false)=$${args.length}`;
+  }
   for (const key of ["url", "domain", "hostname", "deviceClass"] as const) {
     if (!i[key]) continue;
     args.push(key === "url" ? normalizeUrl(i.url!) : i[key]!.toLowerCase());
@@ -52,9 +67,11 @@ export function threadQuery(projectId: string, i: ReviewFilters) {
       ? "created_at DESC"
       : i.sort === "likes"
         ? "(SELECT count(*) FROM view_likes v WHERE v.project_id=threads.project_id AND v.fingerprint=threads.data->'context'->>'fingerprint') DESC,updated_at DESC"
-        : i.sort === "priority"
-          ? `CASE WHEN threads.data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,COALESCE((threads.data->>'topPriority')::boolean,false) DESC,${priorityScore} DESC,updated_at DESC`
-          : "updated_at DESC") + ",id";
+        : i.sort === "topPriority"
+          ? "CASE WHEN data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,COALESCE((data->>'topPriority')::boolean,false) DESC,updated_at DESC"
+          : i.sort === "priority"
+            ? `CASE WHEN threads.data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,COALESCE((threads.data->>'topPriority')::boolean,false) DESC,${priorityScore} DESC,updated_at DESC`
+            : "updated_at DESC") + ",id";
   return { filter, args, order };
 }
 

@@ -45,7 +45,7 @@ export const operationDescriptions: Record<string, string> = {
   "widget.submit":
     "Public website feedback submission. Requires an approved Origin, page URL matching it, Turnstile verification and remaining link capacity. Accepts optional explicit screenshot data; never reads existing feedback.",
   "threads.list":
-    "List feedback summaries; follow pagination and sort by activity to find recent replies/uploads. Use threads.get for full discussion, attachment metadata and available reviewer context.",
+    "List full feedback records with pagination. Prefer feedbacks_queue for bounded summaries. Filter authorId, createdAfter (inclusive), createdBefore (exclusive), activityAfter, workState, topPriority, page URL or search (body/replies/points). Sort priority needs policy access; topPriority sorts explicit flags without policy weights. Today requires timezone-derived midnight bounds; includeSummary counts threads/points independently of pagination.",
   "threads.neighbors":
     "Find previous and next thread in the same filtered and sorted inbox, across pagination. Returns null neighbors if the thread is outside current filters. This is a live view, not an immutable queue.",
   "threads.organize":

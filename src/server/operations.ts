@@ -76,7 +76,13 @@ export class Operations {
       );
     if (name === "context.export" && !(parsed.data as any).snapshotId)
       await reserveExportRequest(this.db, actor, (parsed.data as any).projectId);
-    let preview: { objectKey: string; maxDimension: number } | undefined;
+    let preview:
+      | {
+          objectKey: string;
+          maxDimension: number;
+          crop?: { left: number; top: number; width: number; height: number };
+        }
+      | undefined;
     const result = await this.db
       .transaction(async (db) => {
         // Serialize before current-auth reads under READ COMMITTED, including exports:
@@ -144,7 +150,11 @@ export class Operations {
             const row = await assetRow(db, a, i.assetId);
             if (row.data.contentType !== "image/webp")
               fail("VALIDATION", "Video has no image preview");
-            preview = { objectKey: row.object_key, maxDimension: i.maxDimension };
+            preview = {
+              objectKey: row.object_key,
+              maxDimension: i.maxDimension,
+              crop: i.crop,
+            };
           }
           return result;
         }
@@ -223,6 +233,7 @@ export class Operations {
         this.store,
         preview.objectKey,
         preview.maxDimension,
+        preview.crop,
       );
     return result;
   }

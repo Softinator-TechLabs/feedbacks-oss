@@ -10,6 +10,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 test("HTTP session requires origin and CSRF; scoped MCP performs read after write and rejects writes", async () => {
   const { createApp } = await import("../src/server/app.js");
   const pg = new PGlite(),
@@ -203,38 +205,86 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
       result.result.structuredContent.diagnostics,
       created.data.diagnostics,
     );
-    for (const adapterArgs of [
-      ["--import", "tsx", "src/cli/mcp.ts"],
-      ["dist/codex-plugin/feedbacks/mcp.mjs"],
-    ]) {
-      const stdio = new Client({ name: "stdio-verification", version: "1" });
-      try {
-        await stdio.connect(
-          new StdioClientTransport({
-            command: process.execPath,
-            args: adapterArgs,
-            env: {
-              PATH: process.env.PATH ?? "",
-              FEEDBACKS_URL: base,
-              FEEDBACKS_TOKEN: token.data.token,
-            },
-            stderr: "pipe",
-          }),
-        );
-        assert.ok((await stdio.listTools()).tools.length > 10);
-        const stdioRead = await stdio.callTool({
-          name: "threads.get",
-          arguments: { threadId: created.data.id },
-        });
-        assert.equal((stdioRead.structuredContent as any).id, created.data.id);
-        assert.deepEqual(
-          (stdioRead.structuredContent as any).diagnostics,
-          created.data.diagnostics,
-        );
-      } finally {
-        await stdio.close();
+    const compactRpc = async (method: string, params: any) =>
+      (
+        await fetch(`${base}/mcp?profile=compact`, {
+          method: "POST",
+          headers: {
+            ...bearer,
+            "Content-Type": "application/json",
+            Accept: "application/json, text/event-stream",
+          },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 10, method, params }),
+        })
+      ).json();
+    const compactCatalog = await compactRpc("tools/list", {});
+    assert.equal(compactCatalog.result.tools.length, 7);
+    const compactRead = await compactRpc("tools/call", {
+      name: "feedbacks_thread",
+      arguments: { threadId: created.data.id },
+    });
+    assert.equal(compactRead.result.structuredContent.id, created.data.id);
+    assert.deepEqual(
+      JSON.parse(compactRead.result.content[0].text),
+      compactRead.result.structuredContent,
+    );
+    const compactDenied = await compactRpc("tools/call", {
+      name: "feedbacks_execute",
+      arguments: {
+        operation: "threads.status",
+        input: { threadId: created.data.id, revision: 1, state: "in_progress" },
+      },
+    });
+    assert.equal(compactDenied.result.isError, true);
+    assert.match(compactDenied.result.content[0].text, /FORBIDDEN/);
+    for (const profile of ["full", "compact"])
+      for (const adapterArgs of [
+        ["--import", "tsx", "src/cli/mcp.ts"],
+        ["dist/codex-plugin/feedbacks/mcp.mjs"],
+      ]) {
+        const stdio = new Client({ name: "stdio-verification", version: "1" });
+        try {
+          await stdio.connect(
+            new StdioClientTransport({
+              command: process.execPath,
+              args: adapterArgs,
+              env: {
+                PATH: process.env.PATH ?? "",
+                FEEDBACKS_URL: base,
+                FEEDBACKS_TOKEN: token.data.token,
+                FEEDBACKS_MCP_PROFILE: profile,
+              },
+              stderr: "pipe",
+            }),
+          );
+          assert.ok(
+            profile === "compact"
+              ? (await stdio.listTools()).tools.length === 7
+              : (await stdio.listTools()).tools.length > 10,
+          );
+          const stdioRead = await stdio.callTool({
+            name: profile === "compact" ? "feedbacks_thread" : "threads.get",
+            arguments: { threadId: created.data.id },
+          });
+          assert.equal((stdioRead.structuredContent as any).id, created.data.id);
+          if (profile === "full")
+            assert.deepEqual(
+              (stdioRead.structuredContent as any).diagnostics,
+              created.data.diagnostics,
+            );
+        } finally {
+          await stdio.close();
+        }
       }
-    }
+    const cliCall = promisify(execFile)(
+      process.execPath,
+      ["--import", "tsx", "src/cli/feedbacks.ts", "--agent", "workspace"],
+      { env: { ...process.env, FEEDBACKS_URL: base, FEEDBACKS_TOKEN: token.data.token } },
+    );
+    cliCall.child.stdin?.end("{}");
+    const cliData = JSON.parse((await cliCall).stdout);
+    assert.equal(cliData.ok, true);
+    assert.equal(cliData.data.items[0].id, p.data.id);
     await post("tokens.revoke", { tokenId: token.data.id }, headers);
     assert.equal(
       (await post("threads.get", { threadId: created.data.id }, bearer)).status,

@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Context-efficient agent workflow](agent-workflow.md)
+
 - [Review defaults and accessible page controls](review-defaults-controls.md)
 
 - [Five-minute review recordings](five-minute-recording.md)
