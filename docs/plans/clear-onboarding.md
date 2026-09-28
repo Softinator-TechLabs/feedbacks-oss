@@ -64,4 +64,4 @@ The hero now pairs its introduction and bounded walkthrough side by side on lapt
 
 Verification covers all hero scene bounds at 1280×640, 1280×720, 1366×768, 1512×850 and 1024×768, mobile overflow, multi-player pause, scene changes and navigation persistence.
 
-Follow-up: apply the shared select treatment to inline controls too. Group Screenshot and Points selectors under the review heading; stack them on mobile. Help readiness remains tied to the selected project and only offers setup guidance when required.
+Follow-up: apply the shared select treatment to inline controls too. Keep the incoming inline point screenshots; style the remaining Points filter consistently and expand it on mobile. Help readiness remains tied to the selected project and only offers setup guidance when required.

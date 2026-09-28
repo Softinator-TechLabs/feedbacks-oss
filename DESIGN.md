@@ -189,4 +189,4 @@ Navigation preserves applied filters and protects unsaved drafts. Thread rows ke
 
 The landing opening is a two-column composition on desktop: positioning and setup action on the left, a complete viewport-bounded walkthrough on the right. Below 900px it stacks. Keep the three workflow choices and player controls visible together at laptop heights. Comparisons are an open section and primary navigation destination. Landing, docs and Help expose a shared Pause all / Play all control.
 
-All native selects inherit the shared form control border, surface and 44px minimum height. The Help project switcher uses a 48px full-width field; review evidence groups Screenshot and Points as labelled fields in a responsive toolbar. Keep native keyboard and mobile selection behavior.
+All native selects inherit the shared form control border, surface and 44px minimum height. The Help project switcher uses a 48px full-width field; review evidence keeps the Points filter labelled and responsive beside its counts, with each screenshot shown inline by its point. Keep native keyboard and mobile selection behavior.

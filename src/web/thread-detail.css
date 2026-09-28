@@ -730,104 +730,52 @@
   margin: 4px 0 0;
   font-size: 0.86rem;
 }
-.review-evidence-controls label {
-  display: grid;
-  gap: 4px;
-  min-width: min(220px, 100%);
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-.review-evidence-controls select {
-  width: 100%;
-  max-width: 100%;
-}
-.review-evidence-figure {
+.review-main-capture,
+.review-point-figure,
+.review-extra-captures figure {
   margin: 0;
   min-width: 0;
+  scroll-margin-top: 90px;
 }
-.review-evidence-image {
-  position: relative;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface);
-}
-.review-evidence-image img {
+.review-main-capture img,
+.review-point-figure img,
+.review-extra-captures img {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 8px;
-}
-.review-evidence-target {
-  position: absolute;
-  z-index: 1;
-  border: 2px solid #2370b5;
-  background: #2370b51a;
-  border-radius: 3px;
-  pointer-events: none;
-}
-.review-evidence-pin {
-  position: absolute;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  min-height: 30px;
-  padding: 0;
-  border: 2px solid white;
-  border-radius: 50%;
-  background: #17324d;
-  color: white;
-  font-size: 0.8rem;
-  font-weight: 700;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 1px 6px #102a3c80;
-}
-.review-evidence-pin.baked {
-  background: #17324d38;
-  color: transparent;
-}
-.review-evidence-pin:hover,
-.review-evidence-pin:focus-visible,
-.review-evidence-pin.active {
-  background: #17324d;
-  color: white;
-  outline: 3px solid #f8cc70;
-  outline-offset: 2px;
-}
-.review-evidence-popover {
-  position: absolute;
-  z-index: 3;
-  width: min(230px, calc(100% - 16px));
-  max-height: 180px;
-  overflow: auto;
-  padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface);
-  color: inherit;
-  box-shadow: 0 8px 22px #102a3c38;
-  transform: translateY(22px);
-  pointer-events: none;
 }
-.review-evidence-popover.above {
-  transform: translateY(calc(-100% - 20px));
+.review-main-capture img {
+  max-height: 520px;
+  object-fit: contain;
+  object-position: left top;
 }
-.review-evidence-popover strong {
-  display: block;
-  margin-bottom: 4px;
-}
-.review-evidence-popover p {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.review-evidence-figure figcaption,
-.review-mark-summary {
+.review-main-capture figcaption,
+.review-point-figure figcaption,
+.review-extra-captures figcaption {
   margin: 7px 0 0;
   color: var(--muted);
   font-size: 0.82rem;
   overflow-wrap: anywhere;
+}
+.review-extra-captures {
+  margin-top: 12px;
+}
+.review-extra-captures summary {
+  color: var(--accent);
+  cursor: pointer;
+}
+.review-extra-captures figure {
+  margin-top: 12px;
+}
+.review-extra-captures img {
+  max-height: 320px;
+  object-fit: contain;
+  object-position: left top;
+}
+.review-point-figure {
+  margin-top: 12px;
 }
 .review-point-list {
   list-style: none;
@@ -843,10 +791,6 @@
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-}
-.review-point-list li.active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
 }
 .review-point-number {
   flex: none;
@@ -905,8 +849,7 @@
 .review-point-actions {
   margin-top: 8px;
 }
-.review-point-list li.resolved .review-point-number,
-.review-evidence-pin.resolved {
+.review-point-list li.resolved .review-point-number {
   background: #456750;
 }
 .review-point-list li.removed .review-point-number {
@@ -1017,29 +960,11 @@
     order: 1;
     margin-block: 10px 14px;
   }
-  .review-evidence-controls label,
-  .review-evidence-controls select {
-    width: 100%;
-    max-width: none;
-  }
-  .review-evidence-pin {
-    width: 36px;
-    height: 36px;
-  }
 }
-:root[data-theme="dark"] .review-evidence-pin,
 :root[data-theme="dark"] .review-point-number {
   background: #cbddeb;
   color: #17324d;
   border-color: #171e26;
-}
-:root[data-theme="dark"] .review-evidence-pin.baked {
-  background: #cbddeb38;
-  color: transparent;
-}
-:root[data-theme="dark"] .review-evidence-pin.baked:is(:hover, :focus-visible, .active) {
-  background: #cbddeb;
-  color: #17324d;
 }
 :root[data-theme="dark"] .review-point-list button {
   background: transparent;
@@ -1332,27 +1257,25 @@
   color: var(--text);
 }
 
-.review-evidence-controls {
+/* The inline point filter uses the same touch-sized field as the rest of the app. */
+.review-point-overview {
+  align-items: end;
+  margin-block: 16px;
+}
+.review-point-overview label {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 12px;
-  margin-block: 16px 12px;
-}
-.review-evidence-controls label {
-  min-width: 0;
   gap: 6px;
-  font-size: 0.875rem;
-  color: var(--muted);
+  min-width: 200px;
+  font-weight: 600;
 }
-.review-evidence-controls select {
+.review-point-overview select {
+  width: 100%;
   font-size: 1rem;
   font-weight: 400;
 }
-.review-point-overview {
-  margin-bottom: 12px;
-}
 @media (max-width: 600px) {
-  .review-evidence-controls {
-    grid-template-columns: minmax(0, 1fr);
+  .review-point-overview label {
+    width: 100%;
+    min-width: 0;
   }
 }
