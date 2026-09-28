@@ -30,34 +30,34 @@
 
 ### Task 1: Persist point plans
 
-**Files:** `src/shared/contracts.ts`, `src/server/feedback.ts`, `src/server/annotation-status.ts`, `src/shared/operation-descriptions.ts`, `src/web/api.ts`, `tests/annotation-status.test.ts`.
+**Files:** `src/shared/contracts.ts`, `src/server/feedback.ts`, `src/server/annotation-status.ts`, `src/shared/operation-descriptions.ts`, `src/web/api.ts`, `tests/work-planning.test.ts`.
 
 **Interfaces:** `annotationPlans?: Record<string, WorkPlan>` on `Thread`; `threads.annotationPlan` accepts `threadId`, `revision`, `annotationId`, and `workPlan`, returning the updated thread.
 
-- [ ] Add a failing server test for plan save/read, missing point, stale revision, and project write permission.
-- [ ] Run the focused test to observe failure.
-- [ ] Implement the contract, point existence check, write, event payload, and scope description.
-- [ ] Run the focused test to pass and commit.
+- [x] Add a failing server test for plan save/read, missing point, stale revision, and project write permission.
+- [x] Run the focused test to observe failure.
+- [x] Implement the contract, point existence check, write, event payload, and scope description.
+- [x] Run the focused test to pass and commit.
 
 ### Task 2: Derive and display progress
 
-**Files:** `src/web/point-progress.tsx`, `src/web/point-progress.css`, `src/web/threads.tsx`, `src/web/review-evidence.tsx`, `tests/point-progress.test.ts`.
+**Files:** `src/web/point-progress.ts`, `src/web/point-progress-ring.tsx`, `src/web/point-progress.css`, `src/web/threads.tsx`, `tests/point-progress.test.ts`.
 
-**Interfaces:** `pointProgress(thread, today)` returns total, resolved, urgent, later, remaining counts; `<PointProgressRing thread={thread} />` renders the accessible ring.
+**Interfaces:** `pointProgress(thread, now)` returns total, resolved, urgent, later, remaining, unscheduled, closed counts; `<PointProgressRing thread={thread} />` renders the accessible ring.
 
-- [ ] Add failing category tests for the example and the five review-focus cases.
-- [ ] Run them to observe failure.
-- [ ] Implement the shared model, ring, tooltip and header/list placements.
-- [ ] Run focused tests and commit.
+- [x] Add failing category tests for the example and the five review-focus cases.
+- [x] Run them to observe failure.
+- [x] Implement the shared model, ring, tooltip and header/list placements.
+- [x] Run focused tests and commit.
 
 ### Task 3: Plan each point
 
 **Files:** `src/web/point-work-plan.tsx`, `src/web/thread-detail.css`, `src/web/review-evidence.tsx`, `scripts/extension-browser-qa.mjs`.
 
-**Interfaces:** `<PointWorkPlan thread={thread} annotationId={id} onSaved={setThread} canWrite={boolean} />` uses the Task 1 operation and existing work-plan model.
+**Interfaces:** `<PointWorkPlan thread={thread} annotationId={id} number={number} onSaved={setThread} />` uses the Task 1 operation and existing work-plan model; the parent renders it only for writable open points.
 
-- [ ] Add browser assertions that a point timing/priority choice persists and changes both rings.
-- [ ] Run to observe failure.
-- [ ] Implement compact point controls and revision-conflict recovery.
-- [ ] Run browser QA and inspect desktop/mobile light/dark screenshots.
+- [x] Add browser assertions that a point timing/priority choice persists and changes both rings.
+- [x] Run to observe failure.
+- [x] Implement compact point controls and revision-conflict recovery.
+- [x] Run browser QA and inspect desktop/mobile light/dark screenshots.
 - [ ] Run `npm run check`, commit, open PR, pass CI, merge and verify deployment/live behavior.

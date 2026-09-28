@@ -7,6 +7,7 @@ export type PointProgress = {
   urgent: number;
   later: number;
   remaining: number;
+  unscheduled: number;
   closed: number;
 };
 
@@ -24,6 +25,7 @@ export function pointProgress(thread: ProgressThread, now = new Date()): PointPr
     urgent: 0,
     later: 0,
     remaining: 0,
+    unscheduled: 0,
     closed: 0,
   };
   for (const point of thread.context.annotations ?? []) {
@@ -35,9 +37,10 @@ export function pointProgress(thread: ProgressThread, now = new Date()): PointPr
     } else if (thread.work.state === "resolved" || state === "resolved") {
       counts.resolved++;
     } else {
+      counts.remaining++;
       const plan = thread.annotationPlans?.[point.id];
       if (!plan) {
-        counts.remaining++;
+        counts.unscheduled++;
         continue;
       }
       const today = calendarDate(now, plan.timeZone);
@@ -49,7 +52,7 @@ export function pointProgress(thread: ProgressThread, now = new Date()): PointPr
       ) {
         counts.urgent++;
       } else {
-        counts.remaining++;
+        counts.unscheduled++;
       }
     }
   }
@@ -57,6 +60,6 @@ export function pointProgress(thread: ProgressThread, now = new Date()): PointPr
 }
 
 export function pointProgressLabel(progress: PointProgress) {
-  const { total, resolved, urgent, later, remaining, closed } = progress;
-  return `${resolved} of ${total} points resolved · ${urgent} urgent · ${later} later · ${remaining} remaining${closed ? ` · ${closed} closed` : ""}`;
+  const { total, resolved, urgent, later, remaining, unscheduled, closed } = progress;
+  return `${resolved} of ${total} points resolved · ${remaining} remaining: ${urgent} urgent, ${later} later, ${unscheduled} unscheduled${closed ? ` · ${closed} closed` : ""}`;
 }

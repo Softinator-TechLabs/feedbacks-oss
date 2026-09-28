@@ -2,7 +2,7 @@
   --point-progress-resolved: #42a879;
   --point-progress-urgent: #df776d;
   --point-progress-later: #d8aa5c;
-  --point-progress-remaining: #687b8c;
+  --point-progress-unscheduled: #687b8c;
   --point-progress-closed: #9aa8b5;
   position: relative;
   display: inline-grid;
@@ -42,8 +42,8 @@
 .point-progress-later {
   stroke: var(--point-progress-later);
 }
-.point-progress-remaining {
-  stroke: var(--point-progress-remaining);
+.point-progress-unscheduled {
+  stroke: var(--point-progress-unscheduled);
 }
 .point-progress-closed {
   stroke: var(--point-progress-closed);
@@ -59,6 +59,6 @@
   font-size: 0.58rem;
 }
 :root[data-theme="dark"] .point-progress-ring {
-  --point-progress-remaining: #657687;
+  --point-progress-unscheduled: #657687;
   --point-progress-closed: #8695a4;
 }

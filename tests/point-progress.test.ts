@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pointProgress } from "../src/web/point-progress.js";
+import { pointProgress, pointProgressLabel } from "../src/web/point-progress.js";
 
 const normal = {
   priority: "normal" as const,
@@ -32,14 +32,17 @@ test("progress separates resolved, urgent, later and unscheduled points", () => 
       },
     },
   };
-  assert.deepEqual(pointProgress(thread, at), {
+  const progress = pointProgress(thread, at);
+  assert.deepEqual(progress, {
     total: 8,
     resolved: 2,
     urgent: 1,
     later: 2,
-    remaining: 3,
+    remaining: 6,
+    unscheduled: 3,
     closed: 0,
   });
+  assert.match(pointProgressLabel(progress), /6 remaining.*3 unscheduled/);
 });
 
 test("removed points leave the denominator and closed threads retain honest counts", () => {
@@ -55,6 +58,7 @@ test("removed points leave the denominator and closed threads retain honest coun
     urgent: 0,
     later: 0,
     remaining: 1,
+    unscheduled: 1,
     closed: 0,
   });
   assert.deepEqual(pointProgress({ ...thread, work: { state: "resolved" } }, at), {
@@ -63,6 +67,7 @@ test("removed points leave the denominator and closed threads retain honest coun
     urgent: 0,
     later: 0,
     remaining: 0,
+    unscheduled: 0,
     closed: 0,
   });
   assert.deepEqual(pointProgress({ ...thread, work: { state: "declined" } }, at), {
@@ -71,6 +76,7 @@ test("removed points leave the denominator and closed threads retain honest coun
     urgent: 0,
     later: 0,
     remaining: 0,
+    unscheduled: 0,
     closed: 2,
   });
 });
@@ -95,7 +101,8 @@ test("due dates use their saved timezone and future high priority stays later", 
     resolved: 0,
     urgent: 2,
     later: 1,
-    remaining: 0,
+    remaining: 3,
+    unscheduled: 0,
     closed: 0,
   });
   assert.equal(

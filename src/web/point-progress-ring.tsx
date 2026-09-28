@@ -16,7 +16,7 @@ export function PointProgressRing({
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
   const segments = (
-    ["resolved", "urgent", "later", "remaining", "closed"] as const
+    ["resolved", "urgent", "later", "unscheduled", "closed"] as const
   ).flatMap((kind) => {
     const count = progress[kind];
     if (!count) return [];
