@@ -1332,15 +1332,8 @@
   margin-bottom: 12px;
 }
 
-.thread-work-tools {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: -4px 0 18px;
-}
 .thread-task-copy {
+  position: relative;
   max-width: 100%;
 }
 .thread-task-copy .error {

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { buildTaskHandoff, type HandoffAssignments } from "../shared/task-handoff.js";
+import { Icon } from "./icons.js";
 import { api, type Project, type Thread } from "./api.js";
 import { ErrorNotice, showToast, useAction } from "./ui.js";
 
@@ -54,8 +55,15 @@ export function ThreadTaskCopy({
   }
   return (
     <div className="thread-task-copy">
-      <button type="button" disabled={action.busy} onClick={() => void copy()}>
-        {action.busy ? "Preparing task…" : "Copy task for agent"}
+      <button
+        type="button"
+        className="thread-icon-button"
+        aria-label={action.busy ? "Preparing task…" : "Copy task for agent"}
+        data-tooltip={action.busy ? "Preparing task…" : "Copy task for agent"}
+        disabled={action.busy}
+        onClick={() => void copy()}
+      >
+        <Icon name="copy" />
       </button>
       <ErrorNotice error={action.error} />
       <dialog ref={dialog} className="task-copy-dialog" aria-labelledby="task-copy-title">

@@ -1005,6 +1005,16 @@ export function ThreadDetail({
               onSaved={setThread}
             />
           )}
+          {project && (
+            <>
+              <ThreadWorkPlan
+                thread={t}
+                onSaved={setThread}
+                canWrite={project.permissions.canWrite}
+              />
+              <ThreadTaskCopy thread={t} project={project} />
+            </>
+          )}
           {project?.reviewEnabled && (
             <ThreadReview
               key={`review:${t.id}`}
@@ -1131,16 +1141,6 @@ export function ThreadDetail({
           </div>
         </div>
       </div>
-      {project && (
-        <div className="thread-work-tools">
-          <ThreadWorkPlan
-            thread={t}
-            onSaved={setThread}
-            canWrite={project.permissions.canWrite}
-          />
-          <ThreadTaskCopy thread={t} project={project} />
-        </div>
-      )}
       <ErrorNotice error={error} />
       {projectError && (
         <section>

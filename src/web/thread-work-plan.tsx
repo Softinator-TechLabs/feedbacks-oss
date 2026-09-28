@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { WorkPlan } from "../shared/contracts.js";
 import { api, type Thread } from "./api.js";
-import { ErrorNotice, Field, showToast, useAction } from "./ui.js";
+import { ErrorNotice, showToast, useAction } from "./ui.js";
 import { useUnsavedChanges } from "./navigation.js";
 import {
   defaultWorkPlan,
@@ -16,6 +16,7 @@ import {
   timingSelection,
   type PlanField,
 } from "./work-plan-model.js";
+import { Icon } from "./icons.js";
 import "./thread-work-plan.css";
 
 type PlanDraft = { workPlan: WorkPlan; revision: number; field: PlanField };
@@ -117,7 +118,12 @@ export function ThreadWorkPlan({
       aria-busy={action.busy}
     >
       <div className="work-plan-controls">
-        <Field label="Priority">
+        <label
+          className="work-plan-icon"
+          data-tooltip={`Priority: ${planPriorities[current.priority]}`}
+          data-active={current.priority !== "normal" || undefined}
+        >
+          <Icon name="flag" />
           <select
             aria-label="Work priority"
             value={current.priority}
@@ -139,8 +145,13 @@ export function ThreadWorkPlan({
               </option>
             ))}
           </select>
-        </Field>
-        <Field label="Timing">
+        </label>
+        <label
+          className="work-plan-icon"
+          data-tooltip={`Timing: ${timingLabel(current)}${current.scheduledFor ? ` · ${plannedDateLabel(current.scheduledFor)} · ${current.timeZone}` : ""}`}
+          data-active={current.schedule !== "unscheduled" || undefined}
+        >
+          <Icon name="calendar" />
           <select
             aria-label="Work timing"
             value={choice}
@@ -169,95 +180,94 @@ export function ThreadWorkPlan({
               </option>
             )}
           </select>
-        </Field>
+        </label>
         {action.busy && (
           <span className="muted" role="status">
             Saving…
           </span>
         )}
       </div>
-      {current.scheduledFor && (
-        <small className="work-plan-date">
-          {plannedDateLabel(current.scheduledFor)} · {current.timeZone}
-        </small>
-      )}
-      <ErrorNotice error={action.error} />
-      {draft && !action.busy && (
-        <div className="work-plan-recovery">
-          {fresh ? (
-            <>
-              <p>
-                Current plan: <WorkPlanSummary workPlan={fresh.workPlan} />
-              </p>
-              <p>
-                Your choice:{" "}
-                {draft.field === "priority"
-                  ? `${planPriorities[draft.workPlan.priority]} priority`
-                  : timingLabel(draft.workPlan)}
-                . Other planning choices will stay as shown above.
-              </p>
-              <div className="actions">
-                <button
-                  type="button"
-                  disabled={!canWrite}
-                  onClick={() =>
-                    void save({
-                      revision: fresh.revision,
-                      field: draft.field,
-                      workPlan: rebaseWorkPlanChoice(
-                        draft.workPlan,
-                        defaultWorkPlan(fresh.workPlan, timeZone),
-                        draft.field,
-                      ),
-                    })
-                  }
-                >
-                  Apply my {draft.field} choice
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDraft(undefined);
-                    setLatest(undefined);
-                    action.setError("");
-                  }}
-                >
-                  Use current plan
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p>
-                {conflict
-                  ? "This thread changed. Your planning choice is preserved."
-                  : "Your planning choice has not been confirmed saved."}
-              </p>
-              <div className="actions">
-                {!conflict && (
-                  <button
-                    type="button"
-                    disabled={!canWrite}
-                    onClick={() => void save(draft)}
-                  >
-                    Retry planning update
-                  </button>
-                )}
-                <button type="button" onClick={() => void loadLatest()}>
-                  Load current plan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDraft(undefined);
-                    setLatest(undefined);
-                    action.setError("");
-                  }}
-                >
-                  Discard my choice
-                </button>
-              </div>
-            </>
+      {(action.error || (draft && !action.busy)) && (
+        <div className="work-plan-feedback">
+          <ErrorNotice error={action.error} />
+          {draft && !action.busy && (
+            <div className="work-plan-recovery">
+              {fresh ? (
+                <>
+                  <p>
+                    Current plan: <WorkPlanSummary workPlan={fresh.workPlan} />
+                  </p>
+                  <p>
+                    Your choice:{" "}
+                    {draft.field === "priority"
+                      ? `${planPriorities[draft.workPlan.priority]} priority`
+                      : timingLabel(draft.workPlan)}
+                    . Other planning choices will stay as shown above.
+                  </p>
+                  <div className="actions">
+                    <button
+                      type="button"
+                      disabled={!canWrite}
+                      onClick={() =>
+                        void save({
+                          revision: fresh.revision,
+                          field: draft.field,
+                          workPlan: rebaseWorkPlanChoice(
+                            draft.workPlan,
+                            defaultWorkPlan(fresh.workPlan, timeZone),
+                            draft.field,
+                          ),
+                        })
+                      }
+                    >
+                      Apply my {draft.field} choice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraft(undefined);
+                        setLatest(undefined);
+                        action.setError("");
+                      }}
+                    >
+                      Use current plan
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p>
+                    {conflict
+                      ? "This thread changed. Your planning choice is preserved."
+                      : "Your planning choice has not been confirmed saved."}
+                  </p>
+                  <div className="actions">
+                    {!conflict && (
+                      <button
+                        type="button"
+                        disabled={!canWrite}
+                        onClick={() => void save(draft)}
+                      >
+                        Retry planning update
+                      </button>
+                    )}
+                    <button type="button" onClick={() => void loadLatest()}>
+                      Load current plan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraft(undefined);
+                        setLatest(undefined);
+                        action.setError("");
+                      }}
+                    >
+                      Discard my choice
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       )}
