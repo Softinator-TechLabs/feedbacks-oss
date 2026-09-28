@@ -12,6 +12,7 @@ import { issueDraft } from "./issue-draft.js";
 import { requireConnectedGithubRepo } from "./github-repositories.js";
 import { reportedIssue } from "./issue-links.js";
 import { documentRow } from "./documents.js";
+import { assertProjectCategory } from "./projects.js";
 import { figmaReferenceUrl } from "./figma-reference.js";
 import { annotationSummary, setAnnotationStatus } from "./annotation-status.js";
 import type { Config } from "./config.js";
@@ -373,6 +374,7 @@ export async function feedback(
     await db.query("SELECT id FROM projects WHERE id=$1 FOR UPDATE", [i.projectId]);
     const prior = await retry(db, a, op, i);
     if (prior) return fullThread(db, a, await threadRow(db, a, prior));
+    assertProjectCategory(p, i.category);
     const u = await db.one(
       "SELECT u.policy,u.policy_version,g.policy AS override FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1 WHERE u.id=$2",
       [i.projectId, a.userId],
@@ -465,6 +467,7 @@ export async function feedback(
   if (op === "threads.annotationStatus") {
     await setAnnotationStatus(db, a, row, i);
   } else if (op === "threads.organize") {
+    assertProjectCategory(await access(db, a, row.project_id), i.category, data.category);
     data.category = i.category;
     data.tags = i.tags;
   } else if (op === "threads.plan") {

@@ -318,7 +318,19 @@ function App() {
               <ProjectSettings
                 project={project}
                 actor={actor}
-                onSaved={() => setVersion((v) => v + 1)}
+                onSaved={(saved) => {
+                  session.setData((current) =>
+                    current
+                      ? {
+                          ...current,
+                          projects: current.projects.map((item) =>
+                            item.id === saved.id ? saved : item,
+                          ),
+                        }
+                      : current,
+                  );
+                  setVersion((v) => v + 1);
+                }}
               />
             ) : section === "github" ? (
               <ProjectGithub project={project} onSaved={() => setVersion((v) => v + 1)} />

@@ -1045,6 +1045,9 @@ for (const id of [
   "include-diagnostics",
 ])
   $(id).oninput = schedule;
+$("project").addEventListener("change", () => {
+  loadProjectCategories("general");
+});
 $("no-image").addEventListener("change", () => {
   canvas.style.opacity = $("no-image").checked ? ".35" : "1";
   $("include-combined").disabled = $("no-image").checked;
@@ -1262,6 +1265,29 @@ function renderDiagnostics() {
     }
   }
 }
+let projectCategories = new Map();
+function loadProjectCategories(selected = "general") {
+  const field = $("category");
+  field.replaceChildren();
+  const categories = [
+    { id: "general", name: "General" },
+    { id: "visualDesign", name: "Visual design" },
+    { id: "productWorkflow", name: "Product workflow" },
+    { id: "usabilityAccessibility", name: "Usability & accessibility" },
+    ...(projectCategories.get($("project").value) || []),
+  ];
+  for (const category of categories)
+    if (!category.archived || category.id === selected)
+      field.add(
+        new Option(
+          category.archived ? `${category.name} (archived)` : category.name,
+          category.id,
+        ),
+      );
+  field.value = [...field.options].some((option) => option.value === selected)
+    ? selected
+    : "general";
+}
 async function init() {
   draft = await send({ type: "draft" });
   if (!draft) {
@@ -1272,9 +1298,15 @@ async function init() {
   const { items } = await send({ type: "draftProjects" }),
     origin = new URL(draft.context.url).origin;
   for (const p of items)
-    if (p.permissions.canWrite && (p.origins.includes(origin) || p.captureMode === "any"))
+    if (
+      p.permissions.canWrite &&
+      (p.origins.includes(origin) || p.captureMode === "any")
+    ) {
       $("project").add(new Option(p.name, p.id));
+      projectCategories.set(p.id, p.taxonomy?.categories || []);
+    }
   $("project").value = draft.projectId;
+  loadProjectCategories(draft.category || "general");
   $("body").value = draft.body;
   const pointNotes = $("point-notes");
   pointNotes.replaceChildren();

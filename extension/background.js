@@ -1132,14 +1132,15 @@ async function saveDraft(message) {
     throw Error("Redactions must be permanently saved before continuing.");
   const allowed = {
     body: String(message.body || "").slice(0, 12000),
-    category: [
-      "general",
-      "visualDesign",
-      "productWorkflow",
-      "usabilityAccessibility",
-    ].includes(message.category)
-      ? message.category
-      : "general",
+    category:
+      ["general", "visualDesign", "productWorkflow", "usabilityAccessibility"].includes(
+        message.category,
+      ) ||
+      /^custom:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+        message.category,
+      )
+        ? message.category
+        : "general",
     tags: String(message.tags || "")
       .slice(0, 394)
       .split(",")
