@@ -1296,3 +1296,38 @@
 .assignment-conflict .check {
   min-height: 44px;
 }
+
+.thread-assignee-slot {
+  min-width: 0;
+}
+.thread-assignee {
+  position: relative;
+  margin: 0;
+}
+.thread-assignee > select {
+  width: 180px;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 5px 9px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.thread-assignee-error {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 5;
+  width: 280px;
+  max-width: 85vw;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.thread-assignments[hidden] {
+  display: none;
+}
+.assignment-extra > summary {
+  cursor: pointer;
+  margin-bottom: 12px;
+}

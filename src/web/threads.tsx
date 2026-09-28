@@ -5,11 +5,7 @@ import {
 } from "./thread-deletion.js";
 import React, { useEffect, useRef, useState } from "react";
 import { ThreadStatus } from "./thread-status.js";
-import {
-  ThreadAssignments,
-  ProjectAssignments,
-  canAssignThread,
-} from "./thread-assignments.js";
+import { ThreadAssignments, ProjectAssignments } from "./thread-assignments.js";
 import { ThreadReview } from "./thread-review.js";
 import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
@@ -780,7 +776,7 @@ export function ThreadDetail({
   onProject: (p: Project) => void;
 }) {
   const [version, setVersion] = useState(0),
-    [assignmentRequest, setAssignmentRequest] = useState(0),
+    [assignmentToolbar, setAssignmentToolbar] = useState<HTMLDivElement | null>(null),
     [projectVersion, setProjectVersion] = useState(0),
     [memberVersion, setMemberVersion] = useState(0),
     {
@@ -963,14 +959,7 @@ export function ThreadDetail({
               />
             </>
           )}
-          {project?.permissions.canWrite && canAssignThread(t) && (
-            <button
-              type="button"
-              onClick={() => setAssignmentRequest((value) => value + 1)}
-            >
-              Assign work
-            </button>
-          )}
+          <div ref={setAssignmentToolbar} className="thread-assignee-slot" />
           {project?.permissions.canWrite && (
             <ThreadStatus
               key={`status:${t.id}`}
@@ -1134,7 +1123,7 @@ export function ThreadDetail({
           key={t.id}
           thread={t}
           project={project}
-          request={assignmentRequest}
+          toolbar={assignmentToolbar}
           onRefresh={async () => {
             const latest = await api<Thread>("threads.get", { threadId: t.id });
             setThread(latest);
