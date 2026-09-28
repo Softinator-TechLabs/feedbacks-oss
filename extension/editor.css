@@ -46,16 +46,17 @@ main {
   grid-template-columns: minmax(0, 1fr) clamp(340px, 25vw, 400px);
 }
 .image-workspace {
-  padding: 20px 24px;
+  padding: 12px 20px 20px;
   min-width: 0;
   background: var(--workbench);
 }
 #tools {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
+  flex-wrap: nowrap;
+  min-width: 0;
   align-items: center;
+  overflow: visible;
 }
 #tools button {
   font-size: 14px;
@@ -90,30 +91,31 @@ main {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 0 0 16px;
-  flex-wrap: wrap;
+  margin: 0;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 .page-navigation[hidden] {
   display: none;
 }
 .page-navigation label {
-  width: auto;
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .page-navigation select {
-  width: min(100%, 340px);
+  width: clamp(150px, 12vw, 190px);
+  min-width: 130px;
 }
 .page-navigation button {
-  border: 0;
-  padding: 8px 4px;
+  flex: none;
   background: transparent;
 }
 .page-navigation #full-page-toggle {
-  padding: 8px 12px;
   background: var(--hover);
-  border-radius: 8px;
 }
 .page-navigation #full-page-toggle[aria-pressed="true"] {
   background: var(--accent);
@@ -532,13 +534,58 @@ aside .hint {
   resize: vertical;
 }
 
+/* The annotation toolbar and capture controls occupy two stable rows. */
+.editor-controls {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  overflow: visible;
+}
 .export-tools,
 .tool-options {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   align-items: center;
-  margin-bottom: 16px;
+  gap: 6px;
+}
+.export-tools {
+  flex: none;
+  white-space: nowrap;
+}
+.tool-options {
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.export-tools .control-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 44px;
+  flex: none;
+  color: var(--muted);
+}
+.control-label svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .export-tools label,
 .tool-options label {
@@ -551,31 +598,86 @@ aside .hint {
   width: auto;
   max-width: 100%;
 }
+#zoom {
+  width: 145px;
+}
+#export-scope {
+  width: 180px;
+}
 .tool-options span {
   color: var(--muted);
   font-size: 13px;
 }
-.download-menu {
-  position: relative;
+.icon-action {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
-.download-menu summary {
-  min-height: 44px;
+.icon-action svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.download-menu,
+.more-tools {
+  position: relative;
+  flex: none;
+}
+.more-tools {
+  margin-inline: 8px;
+}
+.more-tools summary {
   padding: 10px 14px;
+}
+.download-menu summary,
+.more-tools summary {
+  min-height: 44px;
   border: 1px solid var(--control-line);
   border-radius: 8px;
   cursor: pointer;
+  list-style: none;
 }
-.download-menu > div {
+.download-menu[open] > summary,
+.more-tools[open] > summary {
+  margin-bottom: 0;
+}
+.download-menu summary::-webkit-details-marker,
+.more-tools summary::-webkit-details-marker {
+  display: none;
+}
+.download-menu summary:focus-visible,
+.more-tools summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.download-menu > div,
+.more-tools > div {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
   position: absolute;
-  z-index: 5;
-  right: 0;
-  top: 100%;
-  background: var(--canvas);
+  z-index: 20;
+  top: calc(100% + 4px);
+  width: max-content;
+  max-width: min(300px, calc(100vw - 32px));
   padding: 8px;
-  border: 1px solid var(--line);
+  background: var(--canvas);
   border-radius: 8px;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.18);
+}
+.download-menu > div {
+  right: 0;
+}
+.more-tools > div {
+  left: 0;
 }
 #canvas-scroll[data-zoom="1"] canvas,
 #canvas-scroll[data-zoom="2"] canvas,
@@ -594,36 +696,37 @@ aside .hint {
 .export-tools [data-export] {
   white-space: nowrap;
 }
-@media (max-width: 480px) {
-  .export-tools {
-    gap: 6px;
+@media (max-width: 720px) {
+  .control-row {
+    gap: 10px;
   }
-  .export-tools select {
-    flex: 1;
-    min-width: 130px;
+  #zoom {
+    width: 130px;
+  }
+  #export-scope {
+    width: 160px;
   }
 }
 
-.more-tools {
-  position: relative;
-}
-.more-tools summary {
-  min-height: 44px;
-  padding: 10px 12px;
-  cursor: pointer;
-  font-size: 14px;
-}
-.more-tools > div {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+/* Context guidance stays available to assistive tech without adding a third toolbar row. */
+#series-guide,
+#preview-guide {
   position: absolute;
-  z-index: 6;
-  left: 0;
-  top: 100%;
-  width: 260px;
-  padding: 8px;
-  background: var(--canvas);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 1250px) {
+  #tools,
+  .control-row,
+  .export-tools,
+  .page-navigation {
+    flex-wrap: wrap;
+  }
+  .export-tools {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
