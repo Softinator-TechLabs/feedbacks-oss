@@ -24,6 +24,28 @@ export function Notice({ children }: { children: ReactNode }) {
     </p>
   );
 }
+export function showToast(message: string) {
+  window.dispatchEvent(new CustomEvent("feedbacks:toast", { detail: message }));
+}
+export function ToastHost() {
+  const [toast, setToast] = useState<{ message: string } | null>(null);
+  useEffect(() => {
+    const receive = (event: Event) =>
+      setToast({ message: (event as CustomEvent<string>).detail });
+    window.addEventListener("feedbacks:toast", receive);
+    return () => window.removeEventListener("feedbacks:toast", receive);
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+  return toast ? (
+    <div className="app-toast" role="status">
+      {toast.message}
+    </div>
+  ) : null;
+}
 export function ErrorNotice({ error }: { error: string }) {
   return error ? (
     <p className="error" role="alert">

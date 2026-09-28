@@ -42,8 +42,12 @@ export async function manageThreadDeletion(
   await access(db, actor, input.projectId, "maintain");
   if (name === "threads.deletions") {
     const rows = await db.query(
-      `SELECT d.id FROM thread_deletions d WHERE project_id=$1
-      ORDER BY EXISTS(SELECT 1 FROM thread_deletion_objects o WHERE o.deletion_id=d.id AND o.state!='complete') DESC,created_at DESC LIMIT 100`,
+      input.activeOnly
+        ? `SELECT d.id FROM thread_deletions d WHERE d.project_id=$1
+          AND EXISTS(SELECT 1 FROM thread_deletion_objects o WHERE o.deletion_id=d.id AND o.state!='complete')
+          ORDER BY d.created_at DESC LIMIT 100`
+        : `SELECT d.id FROM thread_deletions d WHERE d.project_id=$1
+          ORDER BY EXISTS(SELECT 1 FROM thread_deletion_objects o WHERE o.deletion_id=d.id AND o.state!='complete') DESC,d.created_at DESC LIMIT 100`,
       [input.projectId],
     );
     return { items: await Promise.all(rows.map((row) => deletionReceipt(db, row.id))) };

@@ -313,7 +313,7 @@ These operations use the same HTTP, MCP and CLI dispatch. Explicit token scopes 
 ### Permanent thread deletion
 
 - `threads.delete {projectId, threads:[{threadId,revision}], idempotencyKey, confirmation:"DELETE"}` accepts 1–50 distinct threads. It requires a signed-in human maintainer, validates the complete selection atomically, removes owned application records and returns a durable cleanup receipt.
-- `threads.deletions {projectId}` lists up to 100 receipts with unfinished cleanup first. `threads.retryDeletion {projectId,deletionId}` resumes up to 12 pending or failed current-object removals; both require current human maintainer access.
+- `threads.deletions {projectId,activeOnly?}` lists up to 100 receipts with unfinished cleanup first; `activeOnly: true` returns only unfinished batches. `threads.retryDeletion {projectId,deletionId}` resumes up to 12 pending or failed current-object removals; both require current human maintainer access.
 - A receipt contains `{id,projectId,deletedCount,createdAt,cleanup:{state,total,remaining,failed}}`; state is `pending`, `failed` or `complete`. Completion concerns current-object delete requests only. Versioned/retention-locked storage and backups follow operator policies. Shared documents and external issues are retained.
 - `threads.list` and `threads.neighbors` accept `archived:true` to select Archive instead of the inbox. Use `showResolved:true` to include archived threads of every status. Saved review views preserve the archive filter.
 

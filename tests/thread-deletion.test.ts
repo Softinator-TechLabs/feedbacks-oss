@@ -135,6 +135,7 @@ test("thread deletion is authorized, atomic, retryable and preserves shared docu
       (
         await restarted.executeOperation(owner, "threads.deletions", {
           projectId: project.id,
+          activeOnly: true,
         })
       ).items[0].cleanup.state,
       "failed",
@@ -318,6 +319,15 @@ test("cleanup is bounded and bulk deletion rejects cross-project, duplicate and 
       await ops.executeOperation(owner, "threads.deletions", { projectId: project.id })
     ).items[0];
     assert.equal(complete.cleanup.state, "complete");
+    assert.deepEqual(
+      (
+        await ops.executeOperation(owner, "threads.deletions", {
+          projectId: project.id,
+          activeOnly: true,
+        })
+      ).items,
+      [],
+    );
     assert.equal(removed.size, 14);
     assert.equal(
       (await ops.executeOperation(owner, "threads.get", { threadId: outside.id })).id,
