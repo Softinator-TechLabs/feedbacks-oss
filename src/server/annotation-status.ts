@@ -38,6 +38,26 @@ export async function setAnnotationStatus(
   };
 }
 
+export async function setAnnotationPlan(
+  db: Database,
+  actor: Actor,
+  row: any,
+  input: any,
+) {
+  if (
+    !row.data.context.annotations?.some((point: any) => point.id === input.annotationId)
+  )
+    fail("NOT_FOUND", "Point not found in this thread", 404);
+  await access(db, actor, row.project_id, "write");
+  if (
+    ["resolved", "declined"].includes(row.data.work.state) ||
+    (row.data.annotationStates?.[input.annotationId]?.state ?? "open") !== "open"
+  )
+    fail("VALIDATION", "Reopen the point and thread before planning it");
+  row.data.annotationPlans ??= {};
+  row.data.annotationPlans[input.annotationId] = input.workPlan;
+}
+
 export async function annotationSummary(
   db: Database,
   projectId: string,

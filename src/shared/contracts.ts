@@ -623,6 +623,11 @@ export const inputSchemas = {
     tags: tagsSchema,
   }),
   "threads.plan": z.object({ ...tm, workPlan: workPlanSchema }),
+  "threads.annotationPlan": z.object({
+    ...tm,
+    annotationId: id,
+    workPlan: workPlanSchema,
+  }),
   "threads.priority": z.object({ ...tm, topPriority: z.boolean() }),
   "reviewViews.list": z.object({ projectId: id }),
   "reviewViews.save": z.object({
@@ -922,6 +927,7 @@ export const threadOutput = z
         }),
       )
       .optional(),
+    annotationPlans: z.record(z.string().uuid(), workPlanSchema).optional(),
     body: z.string(),
     // Older immutable export snapshots may predate explicit priority.
     topPriority: z.boolean().optional(),
@@ -1501,6 +1507,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   }),
   "threads.organize": threadOutput,
   "threads.plan": threadOutput,
+  "threads.annotationPlan": threadOutput,
   "threads.priority": threadOutput,
   "reviewViews.list": z.object({ items: z.array(reviewViewOutput) }),
   "reviewViews.save": reviewViewOutput,
@@ -1593,6 +1600,7 @@ export const agentTokenScopes = [
   "projects.taxonomy.get",
   ...scopedAgentOperations,
   "threads.annotationStatus",
+  "threads.annotationPlan",
   "qa.get",
   "qa.runs",
   "qa.baselineGet",

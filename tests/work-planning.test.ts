@@ -136,6 +136,70 @@ test("thread planning validates real calendar dates and zones, protects revision
   }
 });
 
+test("point plans persist independently with project write access, revision checks and an audit event", async () => {
+  const f = await fixture();
+  const { call, writer, viewer, outsider, project, db } = f;
+  try {
+    const thread = await f.thread("Plan individual points");
+    const annotationId = thread.context.annotations[0].id;
+    const workPlan = {
+      priority: "high",
+      schedule: "today",
+      scheduledFor: "2026-09-28",
+      timeZone: "Asia/Kolkata",
+    };
+    const request = {
+      threadId: thread.id,
+      revision: thread.revision,
+      annotationId,
+      workPlan,
+    };
+    for (const actor of [viewer, outsider])
+      await assert.rejects(call(actor, "threads.annotationPlan", request), {
+        code: "FORBIDDEN",
+      });
+    await assert.rejects(
+      call(writer, "threads.annotationPlan", { ...request, annotationId: randomUUID() }),
+      { code: "NOT_FOUND" },
+    );
+    const changed = await call(writer, "threads.annotationPlan", request);
+    assert.deepEqual(changed.annotationPlans[annotationId], workPlan);
+    assert.equal(changed.annotationPlans[thread.context.annotations[1].id], undefined);
+    assert.equal(changed.revision, thread.revision + 1);
+    assert.deepEqual(
+      (await call(writer, "threads.get", { threadId: thread.id })).annotationPlans,
+      changed.annotationPlans,
+    );
+    assert.deepEqual(
+      (await call(writer, "threads.list", { projectId: project.id })).items[0]
+        .annotationPlans,
+      changed.annotationPlans,
+    );
+    await assert.rejects(call(writer, "threads.annotationPlan", request), {
+      code: "CONFLICT",
+    });
+    const resolved = await call(f.owner, "threads.annotationStatus", {
+      threadId: thread.id,
+      revision: changed.revision,
+      annotationId,
+      state: "resolved",
+    });
+    await assert.rejects(
+      call(writer, "threads.annotationPlan", { ...request, revision: resolved.revision }),
+      { code: "VALIDATION" },
+    );
+    assert.deepEqual(resolved.annotationPlans[annotationId], workPlan);
+    const event = await db.one(
+      "SELECT data FROM events WHERE entity_id=$1 AND kind='threads.annotationPlan'",
+      [thread.id],
+    );
+    assert.equal(event.data.annotationId, annotationId);
+    assert.deepEqual(event.data.workPlan, workPlan);
+  } finally {
+    await f.pg.close();
+  }
+});
+
 test("assigned work is filtered and human plans ordered in SQL before pagination and neighbor navigation", async () => {
   const f = await fixture();
   const { call, owner, writer, project, db } = f;

@@ -72,6 +72,8 @@ export const operationDescriptions: Record<string, string> = {
     "Replace optional category and tags using the current revision. Read existing tags first to preserve relevant labels. Does not change workflow status.",
   "threads.plan":
     "Set human-selected work priority and timing using the current thread revision. Requires project write access and explicit user intent. Persist dated choices as calendar scheduledFor plus originating IANA timeZone; unscheduled/later use null. Does not start work, change ownership/status or schedule automatic execution. Preserve choices unless the user asks to change them.",
+  "threads.annotationPlan":
+    "Set human-selected priority and timing for one existing open point in an open thread using the current thread revision. Requires project write access. Dated choices keep their calendar date and IANA timezone. Does not change status, assignment or start work.",
   "projects.taxonomy.get":
     "Read this project's active and archived category names, used tags and their project colors. Requires project access.",
   "projects.taxonomy.update":

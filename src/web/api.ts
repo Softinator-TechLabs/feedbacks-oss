@@ -233,6 +233,7 @@ export type Thread = {
     string,
     { state: "open" | "resolved" | "removed"; actor: Actor; at: string }
   >;
+  annotationPlans?: Record<string, import("../shared/contracts.js").WorkPlan>;
   projectId: string;
   workPlan?: import("../shared/contracts.js").WorkPlan;
   priorityScore?: number;
