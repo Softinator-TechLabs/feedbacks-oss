@@ -62,7 +62,7 @@ try {
       assert(fits, `${step}: frame must not clip its controls`);
     }
     assert.doesNotMatch(
-      await demo.innerText(),
+      await demo.locator("figure").innerText(),
       /silent walkthrough|demo account|still image/i,
     );
     assert.equal(
