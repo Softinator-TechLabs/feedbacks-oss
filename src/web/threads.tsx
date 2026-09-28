@@ -5,6 +5,7 @@ import {
 } from "./thread-deletion.js";
 import React, { useEffect, useRef, useState } from "react";
 import { ThreadStatus } from "./thread-status.js";
+import { ThreadAssignments, ProjectAssignments } from "./thread-assignments.js";
 import { ThreadReview } from "./thread-review.js";
 import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
@@ -184,6 +185,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           }}
         />
       )}
+      <ProjectAssignments key={project.id} project={project} />
       <section
         className={`thread-filter-panel${filtersOpen ? " is-expanded" : ""}`}
         aria-label="Feedback filters and views"
@@ -774,6 +776,7 @@ export function ThreadDetail({
   onProject: (p: Project) => void;
 }) {
   const [version, setVersion] = useState(0),
+    [assignmentToolbar, setAssignmentToolbar] = useState<HTMLDivElement | null>(null),
     [projectVersion, setProjectVersion] = useState(0),
     [memberVersion, setMemberVersion] = useState(0),
     {
@@ -956,6 +959,7 @@ export function ThreadDetail({
               />
             </>
           )}
+          <div ref={setAssignmentToolbar} className="thread-assignee-slot" />
           {project?.permissions.canWrite && (
             <ThreadStatus
               key={`status:${t.id}`}
@@ -1113,6 +1117,26 @@ export function ThreadDetail({
             Reload latest before retrying
           </button>
         </Notice>
+      )}
+      {project && (
+        <ThreadAssignments
+          key={t.id}
+          thread={t}
+          project={project}
+          toolbar={assignmentToolbar}
+          onRefresh={async () => {
+            const latest = await api<Thread>("threads.get", { threadId: t.id });
+            setThread(latest);
+            return latest;
+          }}
+          onGithub={() => {
+            const dialog = document.getElementById(
+              "thread-github",
+            ) as HTMLDialogElement | null;
+            if (dialog) dialog.showModal();
+            else openDetail("thread-issues");
+          }}
+        />
       )}
       <div className="thread-content">
         <div className={`detail-grid ${panel === "details" ? "showing-details" : ""}`}>

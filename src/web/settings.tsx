@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   agentTokenScopes,
   selfAgentTokenScopes,
+  selfAgentOptionalScopes,
   profileOnlyAgentScopes,
 } from "../shared/contracts.js";
 import { AgentSetupPrompt, type AgentIssuance } from "./agent-setup.js";
@@ -1000,21 +1001,31 @@ export function Account({
               <fieldset>
                 <legend>Allowed operations</legend>
                 <div className="scope-grid">
-                  {(actor.owner ? agentTokenScopes : selfAgentTokenScopes).map((s) => (
+                  {(actor.owner
+                    ? agentTokenScopes
+                    : [...selfAgentTokenScopes, ...selfAgentOptionalScopes]
+                  ).map((s) => (
                     <label className="check" key={s}>
                       <input
                         name="scopes"
                         type="checkbox"
                         value={s}
                         defaultChecked={
-                          !!projects.length ||
-                          (profileOnlyAgentScopes as readonly string[]).includes(s)
+                          s !== "github.issueCreate" &&
+                          (!!projects.length ||
+                            (profileOnlyAgentScopes as readonly string[]).includes(s))
                         }
                       />
-                      {s}
+                      {s === "github.issueCreate"
+                        ? "Create GitHub issues (explicit permission)"
+                        : s}
                     </label>
                   ))}
                 </div>
+                <p className="muted">
+                  Creating GitHub issues requires maintainer access in the chosen
+                  projects. This permission is off until you select it.
+                </p>
               </fieldset>
               <label className="check">
                 <input

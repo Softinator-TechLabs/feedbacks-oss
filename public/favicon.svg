@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .bubble { fill: #17324d; }
+    .message { fill: #fff; }
+    @media (prefers-color-scheme: dark) {
+      .bubble { fill: #fff; }
+      .message { fill: #17324d; }
+    }
+  </style>
+  <path class="bubble" d="M5 3h22a2 2 0 0 1 2 2v17a2 2 0 0 1-2 2H13l-8 6v-6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/>
+  <path class="message" d="M9 10h14v3H9zm0 6h10v3H9z"/>
+</svg>

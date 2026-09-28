@@ -250,7 +250,75 @@ const assignmentOutput = z.object({
   expiresAt: z.string(),
   updatedAt: z.string(),
 });
+const delegationActorOutput = z.object({
+  userId: id,
+  memberName: z.string(),
+  agentId: id.nullable(),
+  agentName: z.string().nullable(),
+});
+const delegationOutput = z.object({
+  id,
+  projectId: id,
+  threadId: id,
+  annotationIds: z.array(id),
+  userId: id,
+  memberName: z.string(),
+  summary: z.string(),
+  category: categorySchema,
+  tags: z.array(z.string()),
+  githubDecision: z.enum(["undecided", "create_issue", "not_needed", "already_linked"]),
+  githubRationale: z.string(),
+  state: z.enum(["active", "cancelled"]),
+  revision,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  updatedBy: delegationActorOutput,
+});
+export type Delegation = z.output<typeof delegationOutput>;
+export type DelegationActor = z.output<typeof delegationActorOutput>;
+const delegationPage = {
+  offset: z.number().int().min(0).max(100000).default(0),
+  limit: z.number().int().min(1).max(50).default(10),
+};
 export const inputSchemas = {
+  "assignments.delegations": z.object({
+    projectId: id,
+    threadId: id.optional(),
+    userId: id.optional(),
+    state: z.enum(["active", "all"]).default("active"),
+    ...delegationPage,
+  }),
+  "assignments.assign": z
+    .object({
+      threadId: id,
+      threadRevision: revision,
+      delegationId: id.optional(),
+      revision: revision.optional(),
+      annotationIds: z.array(id).max(100).default([]),
+      userId: id,
+      summary: z.string().trim().min(1).max(500),
+      category: categorySchema,
+      tags: tagsSchema,
+      githubDecision: z.enum([
+        "undecided",
+        "create_issue",
+        "not_needed",
+        "already_linked",
+      ]),
+      githubRationale: z.string().trim().min(1).max(1000),
+      idempotencyKey: z.string().min(1).max(200),
+    })
+    .refine(
+      (i) => !!i.delegationId === !!i.revision,
+      "Reassignment requires both delegationId and revision",
+    ),
+  "assignments.cancel": z.object({
+    delegationId: id,
+    revision,
+    reason: z.string().trim().min(1).max(500),
+    idempotencyKey: z.string().min(1).max(200),
+  }),
+  "assignments.history": z.object({ delegationId: id, ...delegationPage }),
   "assignments.list": z.object({
     projectId: id,
     threadId: id.optional(),
@@ -927,6 +995,29 @@ const documentOutput = z.object({
   url: z.string(),
 });
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
+  "assignments.delegations": z.object({
+    items: z.array(delegationOutput),
+    total: z.number(),
+    nextOffset: z.number().nullable(),
+  }),
+  "assignments.assign": delegationOutput,
+  "assignments.cancel": delegationOutput,
+  "assignments.history": z.object({
+    items: z.array(
+      z.object({
+        id,
+        delegationId: id,
+        action: z.enum(["assigned", "reassigned", "cancelled"]),
+        revision,
+        actor: delegationActorOutput,
+        reason: z.string().nullable(),
+        assignment: delegationOutput,
+        createdAt: z.string(),
+      }),
+    ),
+    total: z.number(),
+    nextOffset: z.number().nullable(),
+  }),
   "assignments.list": z.object({
     items: z.array(assignmentOutput),
     total: z.number(),
@@ -1417,6 +1508,10 @@ export const scopedAgentOperations = [
 ] as const;
 
 export const agentTokenScopes = [
+  "assignments.delegations",
+  "assignments.assign",
+  "assignments.cancel",
+  "assignments.history",
   "assignments.list",
   "assignments.claim",
   "assignments.renew",
@@ -1450,6 +1545,7 @@ export const agentTokenScopes = [
 ] as const;
 
 // Self-service never delegates owner-only policy visibility or external GitHub writes.
+export const selfAgentOptionalScopes = ["github.issueCreate"] as const;
 export const selfAgentTokenScopes = agentTokenScopes.filter(
   (name) => !["context.policy", "context.reviewers", "github.issueCreate"].includes(name),
 );
@@ -1494,6 +1590,8 @@ export const ownerTokenScopes = [
   "context.policy",
 ];
 const readOperations = new Set<string>([
+  "assignments.delegations",
+  "assignments.history",
   "assignments.list",
   "members.profile.get",
   "members.responsibility.get",

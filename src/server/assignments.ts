@@ -4,6 +4,7 @@ import type { Actor } from "../shared/contracts.js";
 import { access, event } from "./access.js";
 import { hash } from "./auth.js";
 import { threadRow } from "./feedback.js";
+import { delegations, checkDelegatedOwnership } from "./delegations.js";
 import { fail } from "./errors.js";
 
 function receipt(r: any) {
@@ -27,6 +28,15 @@ function receipt(r: any) {
   };
 }
 export async function assignments(db: Database, a: Actor, op: string, i: any) {
+  if (
+    [
+      "assignments.delegations",
+      "assignments.assign",
+      "assignments.cancel",
+      "assignments.history",
+    ].includes(op)
+  )
+    return delegations(db, a, op, i);
   const select =
     "SELECT c.*,u.name AS member_name FROM work_claims c JOIN users u ON u.id=c.user_id";
   const read = (id: string) => db.one(`${select} WHERE c.id=$1`, [id]);
@@ -83,6 +93,7 @@ export async function assignments(db: Database, a: Actor, op: string, i: any) {
       const state = t.data.annotationStates?.[point]?.state ?? "open";
       if (state !== "open") fail("CONFLICT", "Selected point is not open", 409);
     }
+    await checkDelegatedOwnership(db, t.id, points, a.userId);
     const active = await db.query(
       "SELECT annotation_ids FROM work_claims WHERE thread_id=$1 AND state='active' AND expires_at>now()",
       [i.threadId],
@@ -138,6 +149,7 @@ export async function assignments(db: Database, a: Actor, op: string, i: any) {
       const t = await threadRow(db, a, row.thread_id, "write");
       if (t.data.archived || ["resolved", "declined"].includes(t.data.work.state))
         fail("CONFLICT", "Thread is closed; release this claim", 409);
+      await checkDelegatedOwnership(db, t.id, row.annotation_ids, a.userId);
       await db.query(
         "UPDATE work_claims SET expires_at=now()+interval '2 hours',updated_at=now(),revision=revision+1 WHERE id=$1",
         [row.id],
