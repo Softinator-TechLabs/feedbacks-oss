@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, uid, type Thread } from "./api.js";
-import { ActionState, useAction, useLoad, ErrorNotice } from "./ui.js";
+import { ActionState, useAction, useLoad, ErrorNotice, Notice } from "./ui.js";
 
 type Receipt = {
   id: string;
@@ -8,6 +8,32 @@ type Receipt = {
   createdAt: string;
   cleanup: { state: "pending" | "failed" | "complete"; total: number; remaining: number };
 };
+
+function completedReceiptIds(projectId: string): Set<string> {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(`feedbacks-seen-deletion-cleanup:${projectId}`) ?? "[]",
+    );
+    return new Set(
+      Array.isArray(saved) ? saved.filter((id) => typeof id === "string") : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberCompletedReceipts(projectId: string, ids: string[]) {
+  try {
+    const seen = completedReceiptIds(projectId);
+    ids.forEach((id) => seen.add(id));
+    localStorage.setItem(
+      `feedbacks-seen-deletion-cleanup:${projectId}`,
+      JSON.stringify([...seen]),
+    );
+  } catch {
+    // The current page still dismisses the notice when storage is unavailable.
+  }
+}
 export function DeleteThreadsButton({
   projectId,
   threads,
@@ -131,6 +157,7 @@ export function ThreadDeletionCleanup({
   version: number;
 }) {
   const [refresh, setRefresh] = useState(0);
+  const [hidden, setHidden] = useState<Record<string, string[]>>({});
   const action = useAction();
   const { data, error } = useLoad(
     () => api<{ items: Receipt[] }>("threads.deletions", { projectId }),
@@ -138,11 +165,27 @@ export function ThreadDeletionCleanup({
     true,
   );
   const pending = data?.items.filter((item) => item.cleanup.state !== "complete") ?? [];
+  const seen = completedReceiptIds(projectId);
+  const completed =
+    data?.items.filter(
+      (item) =>
+        item.cleanup.state === "complete" &&
+        !seen.has(item.id) &&
+        !hidden[projectId]?.includes(item.id),
+    ) ?? [];
+  const completedIds = completed.map((item) => item.id).join("\0");
   useEffect(() => {
-    if (!pending.length) return;
-    const timer = window.setInterval(() => setRefresh((value) => value + 1), 30000);
-    return () => window.clearInterval(timer);
-  }, [pending.length]);
+    if (!completedIds) return;
+    const ids = completedIds.split("\0");
+    const timer = window.setTimeout(() => {
+      rememberCompletedReceipts(projectId, ids);
+      setHidden((previous) => ({
+        ...previous,
+        [projectId]: [...new Set([...(previous[projectId] ?? []), ...ids])],
+      }));
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [projectId, completedIds]);
   return (
     <>
       <ErrorNotice
@@ -152,6 +195,12 @@ export function ThreadDeletionCleanup({
         <button onClick={() => setRefresh((value) => value + 1)}>
           Retry cleanup status
         </button>
+      )}
+      {completed.length > 0 && (
+        <Notice>
+          Deleted feedback · Current storage objects removed for {completed.length}{" "}
+          cleanup {completed.length === 1 ? "batch" : "batches"}.
+        </Notice>
       )}
       {pending.length > 0 && (
         <details className="thread-cleanup" open>
