@@ -116,7 +116,12 @@ export function SavedReviewViews({
             <Field label="Name for current filters">
               <input name="name" required maxLength={80} placeholder="Mobile checkout" />
             </Field>
-            <button disabled={a.busy}>Save</button>
+            <button disabled={a.busy || (!!filters.url && !URL.canParse(filters.url))}>
+              Save
+            </button>
+            {!!filters.url && !URL.canParse(filters.url) && (
+              <small>Complete Page URL before saving this view.</small>
+            )}
           </form>
           {view && (
             <button

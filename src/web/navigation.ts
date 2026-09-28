@@ -19,9 +19,10 @@ const dirty = () =>
 const mayLeave = () =>
   !dirty() || confirm("Leave this page? Your unsent changes will be lost.");
 
-function publish() {
+function publish(preservePosition = false) {
   current = snapshot();
   for (const listener of listeners) listener();
+  if (preservePosition) return;
   requestAnimationFrame(() => {
     if (location.hash) {
       document.getElementById(location.hash.slice(1))?.scrollIntoView();
@@ -32,12 +33,22 @@ function publish() {
   });
 }
 
-export function navigate(href: string) {
+export function navigate(
+  href: string,
+  options: { replace?: boolean; preservePosition?: boolean } = {},
+) {
   const url = new URL(href, location.origin);
-  if (url.origin !== location.origin || !ordinaryPage(url.pathname) || !mayLeave())
+  if (
+    url.origin !== location.origin ||
+    !ordinaryPage(url.pathname) ||
+    (url.pathname !== location.pathname && !mayLeave())
+  )
     return false;
-  history.pushState({ feedbacksPosition: ++position }, "", url);
-  publish();
+  if (url.pathname + url.search === snapshot()) return true;
+  if (options.replace)
+    history.replaceState({ ...history.state, feedbacksPosition: position }, "", url);
+  else history.pushState({ feedbacksPosition: ++position }, "", url);
+  publish(options.preservePosition);
   return true;
 }
 
@@ -76,7 +87,11 @@ window.addEventListener("popstate", (event) => {
     return;
   }
   const next = event.state?.feedbacksPosition;
-  if (snapshot() !== current && !mayLeave()) {
+  if (
+    snapshot() !== current &&
+    new URL(current, location.origin).pathname !== location.pathname &&
+    !mayLeave()
+  ) {
     if (Number.isInteger(next)) {
       restoring = true;
       history.go(position - next);

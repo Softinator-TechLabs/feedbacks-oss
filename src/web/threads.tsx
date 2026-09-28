@@ -36,8 +36,10 @@ import { api, uid, date, labels, type Actor, type Project, type Thread } from ".
 import {
   builtInCategories,
   categoryName,
+  colorForTag,
   type ProjectTaxonomy,
 } from "../shared/taxonomy.js";
+import type { ReviewFilters } from "../shared/contracts.js";
 import { TagBadge, TagPicker } from "./project-taxonomy.js";
 import { HumanTime } from "./human-time.js";
 import {
@@ -84,9 +86,15 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
   } = filters;
   const [creating, setCreating] = useState(false),
     [filtersOpen, setFiltersOpen] = useState(false),
+    [draft, setDraft] = useState<ReviewFilters>(filters),
     [version, setVersion] = useState(0),
     [selected, setSelected] = useState<Set<string>>(new Set());
+  const filterTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => setSelected(new Set()), [project.id, query]);
+  useEffect(() => {
+    setDraft(readFilters(query));
+    return () => clearTimeout(filterTimer.current);
+  }, [project.id, query]);
   const activeFilterCount = [
     search,
     url,
@@ -134,10 +142,36 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     loaded?.query === query && loaded.projectId === project.id
       ? loaded.result
       : undefined;
-  const apply = (next = filters, nextOffset = 0) =>
-    navigate(
-      `/projects/${project.id}${filterQuery(next.sort === "workPlan" && !next.planningDate ? { ...next, planningDate: calendarDate(new Date(), localTimeZone()) } : next, nextOffset)}`,
+  const apply = (
+    next = filters,
+    nextOffset = 0,
+    navigationOptions: { replace?: boolean; preservePosition?: boolean } = {},
+  ) => {
+    clearTimeout(filterTimer.current);
+    const safeNext =
+      next.url && !URL.canParse(next.url)
+        ? {
+            ...next,
+            url: filters.url && URL.canParse(filters.url) ? filters.url : undefined,
+          }
+        : next;
+    return navigate(
+      `/projects/${project.id}${filterQuery(safeNext.sort === "workPlan" && !safeNext.planningDate ? { ...safeNext, planningDate: calendarDate(new Date(), localTimeZone()) } : safeNext, nextOffset)}`,
+      navigationOptions,
     );
+  };
+  const updateFilter = (next: ReviewFilters, debounceMs = 0, editingUrl = false) => {
+    setDraft(next);
+    clearTimeout(filterTimer.current);
+    const invalidUrl = !!next.url && !URL.canParse(next.url);
+    if (editingUrl && invalidUrl) return;
+    if (debounceMs) {
+      filterTimer.current = setTimeout(
+        () => apply(next, 0, { replace: true, preservePosition: true }),
+        debounceMs,
+      );
+    } else apply(next, 0, { preservePosition: true });
+  };
   return (
     <>
       <div className="page-heading thread-list-heading">
@@ -244,41 +278,90 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
         </button>
         <form
           id="feedback-filter-form"
-          key={`${project.id}:${query}`}
           className="filters thread-filters"
           onSubmit={(e) => {
             e.preventDefault();
-            const f = new FormData(e.currentTarget),
-              p = new URLSearchParams();
-            for (const [key, value] of f) if (String(value)) p.set(key, String(value));
-            setFiltersOpen(false);
-            apply(readFilters(p.toString()));
+            updateFilter(draft);
           }}
         >
-          {filters.assignedTo && (
-            <input type="hidden" name="assignedTo" value={filters.assignedTo} />
-          )}
-          {filters.planningDate && (
-            <input type="hidden" name="planningDate" value={filters.planningDate} />
-          )}
-          {filters.archived && <input type="hidden" name="archived" value="true" />}
           <Field label="Search feedback">
             <input
               name="search"
               type="search"
               placeholder="Search discussion"
-              defaultValue={search}
+              value={draft.search ?? ""}
+              onChange={(event) =>
+                updateFilter({ ...draft, search: event.currentTarget.value }, 350)
+              }
               maxLength={200}
             />
           </Field>
+          <Field label="Category">
+            <select
+              name="category"
+              value={draft.category ?? ""}
+              onChange={(event) =>
+                updateFilter({
+                  ...draft,
+                  category: event.currentTarget.value || undefined,
+                })
+              }
+            >
+              <option value="">All categories</option>
+              {(taxonomy?.categories ?? builtInCategories).map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Tag">
+            <select
+              name="tag"
+              value={draft.tag ?? ""}
+              onChange={(event) =>
+                updateFilter({ ...draft, tag: event.currentTarget.value || undefined })
+              }
+            >
+              <option value="">All tags</option>
+              {[
+                ...new Set([
+                  ...(draft.tag ? [draft.tag] : []),
+                  ...(taxonomy?.tags ?? []).map((item) => item.name),
+                ]),
+              ].map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="Status">
-            <select name="showResolved" defaultValue={String(showResolved)}>
+            <select
+              name="showResolved"
+              value={String(draft.showResolved)}
+              onChange={(event) =>
+                updateFilter({
+                  ...draft,
+                  showResolved: event.currentTarget.value === "true",
+                })
+              }
+            >
               <option value="false">Active</option>
               <option value="true">All statuses</option>
             </select>
           </Field>
           <Field label="Sort">
-            <select name="sort" defaultValue={sort}>
+            <select
+              name="sort"
+              value={draft.sort}
+              onChange={(event) =>
+                updateFilter({
+                  ...draft,
+                  sort: event.currentTarget.value as ReviewFilters["sort"],
+                })
+              }
+            >
               <option value="activity">Latest activity</option>
               <option value="newest">Newest</option>
               <option value="likes">Most liked views</option>
@@ -286,35 +369,53 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
               {actor.owner && <option value="priority">Reviewer signals</option>}
             </select>
           </Field>
-          <button className="thread-filter-apply primary">Apply</button>
           <button
             className="thread-filter-clear"
             type="button"
             onClick={() => {
-              setFiltersOpen(false);
-              apply(readFilters(""));
+              updateFilter(readFilters(""));
             }}
           >
             Clear
           </button>
           <details
             className="advanced-filters"
-            open={
-              !!(url || domain || hostname || deviceClass || category || tag) || undefined
-            }
+            open={!!(url || domain || hostname || deviceClass) || undefined}
           >
             <summary>
               More filters
-              {url || domain || hostname || deviceClass || category || tag
-                ? " · active"
-                : ""}
+              {url || domain || hostname || deviceClass ? " · active" : ""}
             </summary>
             <div className="advanced-filter-fields">
-              <Field label="Page URL">
-                <input name="url" type="url" placeholder="All pages" defaultValue={url} />
+              <Field
+                label="Page URL"
+                hint={
+                  draft.url && !URL.canParse(draft.url)
+                    ? "Enter a complete URL to filter."
+                    : undefined
+                }
+              >
+                <input
+                  name="url"
+                  type="url"
+                  placeholder="All pages"
+                  value={draft.url ?? ""}
+                  onChange={(event) =>
+                    updateFilter({ ...draft, url: event.currentTarget.value }, 400, true)
+                  }
+                />
               </Field>
               <Field label="Domain">
-                <select name="domain" defaultValue={domain ?? ""}>
+                <select
+                  name="domain"
+                  value={draft.domain ?? ""}
+                  onChange={(event) =>
+                    updateFilter({
+                      ...draft,
+                      domain: event.currentTarget.value || undefined,
+                    })
+                  }
+                >
                   <option value="">All domains</option>
                   {[
                     ...new Set([
@@ -327,7 +428,16 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                 </select>
               </Field>
               <Field label="Hostname">
-                <select name="hostname" defaultValue={hostname ?? ""}>
+                <select
+                  name="hostname"
+                  value={draft.hostname ?? ""}
+                  onChange={(event) =>
+                    updateFilter({
+                      ...draft,
+                      hostname: event.currentTarget.value || undefined,
+                    })
+                  }
+                >
                   <option value="">All hostnames</option>
                   {[
                     ...new Set([
@@ -340,39 +450,33 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                 </select>
               </Field>
               <Field label="Device">
-                <select name="deviceClass" defaultValue={deviceClass ?? ""}>
+                <select
+                  name="deviceClass"
+                  value={draft.deviceClass ?? ""}
+                  onChange={(event) =>
+                    updateFilter({
+                      ...draft,
+                      deviceClass:
+                        (event.currentTarget.value as ReviewFilters["deviceClass"]) ||
+                        undefined,
+                    })
+                  }
+                >
                   <option value="">All devices</option>
                   {["mobile", "tablet", "desktop"].map((v) => (
                     <option key={v}>{v}</option>
                   ))}
                 </select>
               </Field>
-              <Field label="Category">
-                <select name="category" defaultValue={category ?? ""}>
-                  <option value="">All categories</option>
-                  {(taxonomy?.categories ?? builtInCategories).map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Tag">
-                <input
-                  name="tag"
-                  defaultValue={tag}
-                  maxLength={32}
-                  placeholder="Any tag"
-                />
-              </Field>
             </div>
           </details>
         </form>
         <SavedReviewViews
           projectId={project.id}
-          filters={filters}
+          filters={draft}
           onApply={(next) => {
             setFiltersOpen(false);
+            setDraft(next);
             apply(next);
           }}
         />
@@ -493,17 +597,6 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                             t.workPlan.schedule !== "unscheduled") && (
                             <WorkPlanSummary workPlan={t.workPlan} />
                           )}
-                        <div className="thread-taxonomy">
-                          <span className="category-badge">
-                            {categoryName(
-                              taxonomy?.categories ?? builtInCategories,
-                              t.category,
-                            )}
-                          </span>
-                          {(t.tags ?? []).map((tag) => (
-                            <TagBadge name={tag} tags={taxonomy?.tags ?? []} key={tag} />
-                          ))}
-                        </div>
                         {t.topPriority && !project.permissions.canMaintain && (
                           <span className="thread-priority-label">Top priority</span>
                         )}
@@ -526,6 +619,46 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                         <HumanTime at={t.updatedAt} />
                       </div>
                     </a>
+                    <div
+                      className="thread-taxonomy"
+                      aria-label="Filter by category or tag"
+                    >
+                      <button
+                        type="button"
+                        className="category-badge thread-taxonomy-filter"
+                        aria-label={`Filter by ${categoryName(taxonomy?.categories ?? builtInCategories, t.category)} category`}
+                        aria-pressed={category === t.category}
+                        onClick={() =>
+                          apply({
+                            ...draft,
+                            category:
+                              draft.category === t.category ? undefined : t.category,
+                          })
+                        }
+                      >
+                        {categoryName(
+                          taxonomy?.categories ?? builtInCategories,
+                          t.category,
+                        )}
+                      </button>
+                      {(t.tags ?? []).map((name) => (
+                        <button
+                          type="button"
+                          className={`tag tag-color-${colorForTag(taxonomy?.tags ?? [], name)} thread-taxonomy-filter`}
+                          aria-label={`Filter by ${name} tag`}
+                          aria-pressed={tag === name}
+                          onClick={() =>
+                            apply({
+                              ...draft,
+                              tag: draft.tag === name ? undefined : name,
+                            })
+                          }
+                          key={name}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
                     <div className="thread-row-evidence">
                       <ExternalLink href={t.context.url}>Open website ↗</ExternalLink>
                       <span>

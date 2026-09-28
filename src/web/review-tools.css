@@ -230,6 +230,26 @@
   font-size: 12px;
   font-weight: 600;
 }
+.thread-row-content > .thread-taxonomy {
+  margin: 6px 0 0;
+}
+.thread-taxonomy-filter {
+  min-height: 28px;
+  margin: 0;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.thread-taxonomy-filter:hover,
+.thread-taxonomy-filter[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.thread-taxonomy-filter:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
 .thread-taxonomy-edit {
   min-height: 28px;
   padding: 2px 6px;
