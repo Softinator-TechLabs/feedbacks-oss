@@ -43,7 +43,7 @@
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
     </script>
-    <script defer src="/learn/demo.js?v=20260928-3"></script>
+    <script defer src="/learn/demo.js?v=20260928-4"></script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -55,79 +55,73 @@
         ></a
       >
       <nav aria-label="Main navigation">
-        <a href="#workflow">See it work</a><a href="/docs/">Docs</a
+        <a href="#comparisons">Compare tools</a><a href="/docs/">Docs</a
         ><a href="https://github.com/Softinator-TechLabs/feedbacks-oss"
           >GitHub
           <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 19 19 5M6 5h13v13" /></svg
         ></a>
+        <feedbacks-motion-control></feedbacks-motion-control>
       </nav>
     </header>
     <main id="main">
-      <section class="intro wrap" aria-labelledby="hero-title">
-        <h1 id="hero-title">
-          Less “which button?”<br />More
-          <span class="marked"
-            >fixing.<svg viewBox="0 0 300 24" aria-hidden="true">
-              <path d="M4 15Q98 2 290 9M16 23Q161 10 283 17" /></svg
-          ></span>
-        </h1>
-        <div class="intro-aside">
-          <p>Point out a UI change. <br />Give your AI agent the full picture.</p>
-          <a class="start-button" href="/docs/guide/getting-started"
-            >Set up Feedbacks
-            <span aria-hidden="true"
-              ><svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 19 19 5M6 5h13v13" /></svg></span
-          ></a>
-          <p class="setup-note">Open source. Your team’s server first.</p>
-        </div>
-      </section>
-      <section class="story wrap" id="workflow" aria-labelledby="workflow-title">
-        <h2 class="sr-only" id="workflow-title">From a click to context</h2>
-        <div
-          class="story-controls"
-          role="group"
-          aria-label="Follow the feedback workflow"
-        >
-          <button data-scene="0" aria-pressed="true"><span>01</span> Point it out</button
-          ><svg class="step-arrow" viewBox="0 0 32 24" aria-hidden="true">
-            <path d="M3 12h24m-6-6 6 6-6 6" />
-          </svg>
-          <button data-scene="1" aria-pressed="false">
-            <span>02</span> Check &amp; send</button
-          ><svg class="step-arrow" viewBox="0 0 32 24" aria-hidden="true">
-            <path d="M3 12h24m-6-6 6 6-6 6" />
-          </svg>
-          <button data-scene="2" aria-pressed="false">
-            <span>03</span> Fix with your agent
-          </button>
-        </div>
-        <div class="story-stage" data-active="0">
-          <div class="screen-stack">
-            <feedbacks-demo id="story-demo" step="capture"></feedbacks-demo>
-            <span class="screen-label" id="screen-label"
-              >Chrome extension · on your website</span
-            >
-          </div>
-          <div class="story-note" aria-live="polite">
-            <div class="pencil-note" id="pencil-note">this button, right here.</div>
-            <h3 id="scene-title">Right-click. <br />Say what needs changing.</h3>
-            <p id="scene-copy">
-              Click the pinned extension. Right-click an element, write your note, then
-              Save point.
-            </p>
-            <p class="context-slip" id="context-slip">
-              The screenshot + exact element come along.
-            </p>
-            <a id="scene-guide" href="/docs/guide/chrome-extension"
-              >Install &amp; pin the extension
-              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 19 19 5M6 5h13v13" /></svg
+      <div class="hero wrap">
+        <section class="intro" aria-labelledby="hero-title">
+          <h1 id="hero-title">
+            Less “which button?”<br />More
+            <span class="marked"
+              >fixing.<svg viewBox="0 0 300 24" aria-hidden="true">
+                <path d="M4 15Q98 2 290 9M16 23Q161 10 283 17" /></svg
+            ></span>
+          </h1>
+          <div class="intro-aside">
+            <p>Point out a UI change. <br />Give your AI agent the full picture.</p>
+            <a class="start-button" href="/docs/guide/getting-started"
+              >Set up Feedbacks
+              <span aria-hidden="true"
+                ><svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 19 19 5M6 5h13v13" /></svg></span
             ></a>
+            <p class="setup-note">Open source. Your team’s server first.</p>
           </div>
-        </div>
-      </section>
+        </section>
+        <section class="story" id="workflow" aria-labelledby="workflow-title">
+          <h2 class="sr-only" id="workflow-title">From a click to context</h2>
+          <div
+            class="story-controls"
+            role="group"
+            aria-label="Follow the feedback workflow"
+          >
+            <button data-scene="0" aria-pressed="true">
+              <span>01</span> Point it out</button
+            ><svg class="step-arrow" viewBox="0 0 32 24" aria-hidden="true">
+              <path d="M3 12h24m-6-6 6 6-6 6" />
+            </svg>
+            <button data-scene="1" aria-pressed="false">
+              <span>02</span> Check &amp; send</button
+            ><svg class="step-arrow" viewBox="0 0 32 24" aria-hidden="true">
+              <path d="M3 12h24m-6-6 6 6-6 6" />
+            </svg>
+            <button data-scene="2" aria-pressed="false">
+              <span>03</span> Fix with your agent
+            </button>
+          </div>
+          <div class="story-stage" data-active="0">
+            <div class="screen-stack">
+              <feedbacks-demo id="story-demo" step="capture"></feedbacks-demo>
+            </div>
+            <div class="story-note" aria-live="polite">
+              <div class="pencil-note" id="pencil-note">this button, right here.</div>
+              <h3 id="scene-title">Right-click. <br />Say what needs changing.</h3>
+              <a id="scene-guide" href="/docs/guide/chrome-extension"
+                >Install &amp; pin the extension
+                <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 19 19 5M6 5h13v13" /></svg
+              ></a>
+            </div>
+          </div>
+        </section>
+      </div>
       <section class="handoff wrap" aria-labelledby="handoff-title">
         <div class="handoff-heading">
           <h2 id="handoff-title">“Make <span class="circled">this</span> darker.”</h2>
@@ -220,40 +214,39 @@
           </div>
         </div>
       </section>
+      <section class="comparisons wrap" id="comparisons" aria-labelledby="compare-title">
+        <div class="comparison-heading">
+          <h2 id="compare-title">Compare your options.</h2>
+          <a href="/compare/"
+            >See the full comparison <span aria-hidden="true">→</span></a
+          >
+        </div>
+        <p>Compare capture, hosting and AI-agent workflows.</p>
+        <nav class="comparison-links" aria-label="Compare Feedbacks with other tools">
+          <a href="/compare/bugherd.html">BugHerd</a>
+          <a href="/compare/marker-io.html">Marker.io</a>
+          <a href="/compare/markup-io.html">MarkUp.io</a>
+          <a href="/compare/markup-hero.html">Markup Hero</a>
+          <a href="/compare/redpen-ai.html">Redpen.ai</a>
+          <a href="/compare/pastel.html">Pastel</a>
+          <a href="/compare/ruttl.html">Ruttl</a>
+          <a href="/compare/superflow.html">Superflow</a>
+          <a href="/compare/usersnap.html">Usersnap</a>
+          <a href="/compare/userback.html">Userback</a>
+          <a href="/compare/atarim.html">Atarim</a>
+          <a href="/compare/bugpin.html">BugPin</a>
+          <a href="/compare/fasterfixes.html">FasterFixes</a>
+          <a href="/compare/siteping.html">SitePing</a>
+          <a href="/compare/openreplay.html">OpenReplay + Spot</a>
+        </nav>
+      </section>
     </main>
     <footer class="site-footer wrap landing-footer">
       <div>
         <a class="wordmark" href="/">feedbacks.</a>
         <p>By <a href="https://softinator.ai">Softinator</a>. Built in the open.</p>
       </div>
-      <details class="compare-disclosure">
-        <summary>Compare tools</summary>
-        <nav class="footer-comparisons" aria-label="Compare Feedbacks with other tools">
-          <strong
-            ><a href="/compare/"
-              >Compare Feedbacks with
-              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 19 19 5M6 5h13v13" /></svg></a
-          ></strong>
-          <div>
-            <a href="/compare/bugherd.html">BugHerd</a>
-            <a href="/compare/marker-io.html">Marker.io</a>
-            <a href="/compare/markup-io.html">MarkUp.io</a>
-            <a href="/compare/markup-hero.html">Markup Hero</a>
-            <a href="/compare/redpen-ai.html">Redpen.ai</a>
-            <a href="/compare/pastel.html">Pastel</a>
-            <a href="/compare/ruttl.html">Ruttl</a>
-            <a href="/compare/superflow.html">Superflow</a>
-            <a href="/compare/usersnap.html">Usersnap</a>
-            <a href="/compare/userback.html">Userback</a>
-            <a href="/compare/atarim.html">Atarim</a>
-            <a href="/compare/bugpin.html">BugPin</a>
-            <a href="/compare/fasterfixes.html">FasterFixes</a>
-            <a href="/compare/siteping.html">SitePing</a>
-            <a href="/compare/openreplay.html">OpenReplay + Spot</a>
-          </div>
-        </nav>
-      </details>
+
       <nav aria-label="Footer navigation">
         <a
           href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/CONTRIBUTING.md"

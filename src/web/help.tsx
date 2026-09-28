@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Icon } from "./icons.js";
 import {
   ownerTokenScopes,
   selfAgentTokenScopes,
@@ -168,7 +169,11 @@ function ProjectReadiness({ actor, project }: { actor: Actor; project: Project }
   }, [project.id, actor.userId]);
   return (
     <>
-      <h2>Great, your project is created!</h2>
+      {data && (
+        <p className="help-readiness-title">
+          {data.colleagues && data.context ? "Project ready" : "Finish project setup"}
+        </p>
+      )}
       {!data && !error && (
         <p className="muted">Checking teammates and project context…</p>
       )}
@@ -179,10 +184,12 @@ function ProjectReadiness({ actor, project }: { actor: Actor; project: Project }
         </p>
       )}
       {data && (
-        <div className="help-project-status">
+        <div className="help-project-status" role="status">
           <span>
             {data.colleagues ? (
-              "Teammates already have access."
+              <>
+                <Icon name="check" /> Teammates already have access.
+              </>
             ) : actor.owner ? (
               <a href={`/projects/${project.id}/members`}>Add teammates</a>
             ) : (
@@ -191,7 +198,9 @@ function ProjectReadiness({ actor, project }: { actor: Actor; project: Project }
           </span>
           <span>
             {data.context ? (
-              "Project context is set."
+              <>
+                <Icon name="check" /> Project context is set.
+              </>
             ) : project.permissions.canMaintain ? (
               <a href={`/projects/${project.id}/instructions`}>Add project context</a>
             ) : (
@@ -199,6 +208,9 @@ function ProjectReadiness({ actor, project }: { actor: Actor; project: Project }
             )}
           </span>
         </div>
+      )}
+      {data && actor.owner && (!data.colleagues || !data.context) && (
+        <WatchStep step="project" title="Show project setup" />
       )}
     </>
   );
@@ -226,34 +238,43 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
     <article className="reading help-page help-quickstart">
       <div className="help-simple-heading">
         <h1>Let’s get you connected</h1>
-        <a href="https://feedbacks.softinator.ai/docs/">Docs</a>
+        <div className="help-heading-actions">
+          {React.createElement("feedbacks-motion-control")}
+          <a href="https://feedbacks.softinator.ai/docs/">Docs</a>
+        </div>
       </div>
       <p className="muted">Your team’s server is already set up.</p>
       <ol className="help-steps">
         <li>
           {project && actor ? (
             <>
-              {projects.length > 1 && (
-                <label className="help-project-picker">
-                  Project
-                  <select
-                    aria-label="Project"
-                    value={project.id}
-                    onChange={(event) => setProjectId(event.target.value)}
-                  >
-                    {projects.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
+              <div className="help-project-switcher">
+                {projects.length > 1 ? (
+                  <label className="help-project-picker">
+                    <span>Choose a project</span>
+                    <select
+                      aria-label="Project"
+                      value={project.id}
+                      onChange={(event) => setProjectId(event.target.value)}
+                    >
+                      {projects.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <div className="help-project-picker">
+                    <span>Your project</span>
+                    <strong>{project.name}</strong>
+                  </div>
+                )}
+                <a className="help-open-project" href={`/projects/${project.id}`}>
+                  Open project <Icon name="external" />
+                </a>
+              </div>
               <ProjectReadiness key={project.id} actor={actor} project={project} />
-              {actor.owner && <WatchStep step="project" title="Show project setup" />}
-              {projects.length === 1 && (
-                <a href={`/projects/${project.id}`}>{project.name}</a>
-              )}
             </>
           ) : (
             <>
@@ -271,12 +292,19 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
           )}
         </li>
         <li id="review-with-extension">
-          <h2>Connect the extension</h2>
-          <p>
-            <a href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer">
-              Install Feedbacks
+          <div className="help-step-heading">
+            <h2>Connect the extension</h2>
+            <a
+              className="button"
+              href={chromeWebStoreUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Install extension <Icon name="external" />
             </a>
-            , pin it in Chrome, then paste this URL into the extension and choose{" "}
+          </div>
+          <p>
+            Pin it in Chrome. Paste this URL into the extension, then choose{" "}
             <strong>Connect to server</strong>.
           </p>
           <div className="help-server-copy">

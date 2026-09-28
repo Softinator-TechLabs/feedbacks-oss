@@ -1256,3 +1256,26 @@
   background: var(--surface);
   color: var(--text);
 }
+
+/* The inline point filter uses the same touch-sized field as the rest of the app. */
+.review-point-overview {
+  align-items: end;
+  margin-block: 16px;
+}
+.review-point-overview label {
+  display: grid;
+  gap: 6px;
+  min-width: 200px;
+  font-weight: 600;
+}
+.review-point-overview select {
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 400;
+}
+@media (max-width: 600px) {
+  .review-point-overview label {
+    width: 100%;
+    min-width: 0;
+  }
+}

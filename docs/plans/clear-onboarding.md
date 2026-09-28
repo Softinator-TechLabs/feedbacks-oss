@@ -57,3 +57,11 @@ The user rejected screenshot swapping as insufficient instruction. Preserve real
 - Keep the stage dimensions stable, align cues to the actual screenshot coordinates, and use an external stylesheet and versioned assets compatible with production CSP/CDN caching.
 - Pause when hidden/offscreen; reduced motion shows a readable final state. Use one requestAnimationFrame loop per visible player, with no new runtime dependency.
 - Verify actual cursor movement, click cues, progressive typing, pause/resume, resizing, every frame under production CSP, desktop/mobile layout and the live default URL before release completion.
+
+## First screen and shared playback — 28 September 2026
+
+The hero now pairs its introduction and bounded walkthrough side by side on laptops, with all three scenes and playback controls inside the first viewport. Mobile remains stacked. Comparisons are visible in navigation and an open section. Landing, guides and Help share a tab-persistent Pause all / Play all control. Help presents project selection as a full-width labelled field with a direct Open project action, truthful readiness and setup guidance only when needed.
+
+Verification covers all hero scene bounds at 1280×640, 1280×720, 1366×768, 1512×850 and 1024×768, mobile overflow, multi-player pause, scene changes and navigation persistence.
+
+Follow-up: apply the shared select treatment to inline controls too. Keep the incoming inline point screenshots; style the remaining Points filter consistently and expand it on mobile. Help readiness remains tied to the selected project and only offers setup guidance when required.

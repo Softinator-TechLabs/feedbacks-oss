@@ -8,13 +8,13 @@ const server = createServer(async (request, response) => {
   try {
     response.setHeader(
       "Content-Security-Policy",
-      "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'",
+      "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; frame-ancestors 'none'",
     );
     const path = new URL(request.url, "http://localhost").pathname;
     if (path === "/") {
       response.setHeader("Content-Type", "text/html; charset=utf-8");
       response.end(
-        '<!doctype html><meta name="viewport" content="width=device-width"><main><feedbacks-demo step="install"></feedbacks-demo></main><script defer src="/learn/demo.js"></script>',
+        '<!doctype html><meta name="viewport" content="width=device-width"><feedbacks-motion-control></feedbacks-motion-control><main><feedbacks-demo step="install"></feedbacks-demo></main><script defer src="/learn/demo.js"></script>',
       );
     } else if (/^\/learn\/[a-z0-9-]+\.(js|css|webp)$/.test(path)) {
       response.setHeader(
@@ -26,6 +26,19 @@ const server = createServer(async (request, response) => {
             : "image/webp",
       );
       response.end(await readFile(new URL(`../public${path}`, import.meta.url)));
+    } else if (path === "/landing" || /^\/(assets|fonts)\/[a-zA-Z0-9_.-]+$/.test(path)) {
+      const file = path === "/landing" ? "/index.html" : path;
+      response.setHeader(
+        "Content-Type",
+        file.endsWith(".html")
+          ? "text/html"
+          : file.endsWith(".js")
+            ? "text/javascript"
+            : file.endsWith(".css")
+              ? "text/css"
+              : "font/ttf",
+      );
+      response.end(await readFile(new URL(`../dist/site${file}`, import.meta.url)));
     } else {
       response.writeHead(404);
       response.end();
@@ -180,9 +193,58 @@ try {
   await demo.evaluate((element) => (element.hidden = true));
   await page.waitForTimeout(3900);
   assert.equal(await demo.locator(".caption").textContent(), caption);
+  await demo.evaluate((element) => (element.hidden = false));
+  await page.evaluate(() => {
+    const second = document.createElement("feedbacks-demo");
+    second.setAttribute("step", "capture");
+    document.querySelector("main").append(second);
+  });
+  const allDemos = page.locator("feedbacks-demo");
+  const master = page.locator("feedbacks-motion-control");
+  await master.getByRole("button", { name: "Pause all animations" }).click();
+  assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Play", "Play"]);
+  // A newly selected scene, new player and page navigation retain the pause choice.
+  await allDemos.nth(1).evaluate((element) => element.setAttribute("step", "connect"));
+  assert.equal(await allDemos.nth(1).locator(".play").innerText(), "Play");
+  await page.reload();
+  assert.equal(await page.locator("feedbacks-demo .play").innerText(), "Play");
+  await master.getByRole("button", { name: "Play all animations" }).click();
+  assert.equal(await page.locator("feedbacks-demo .play").innerText(), "Pause");
+  for (const [width, height] of [
+    [1280, 640],
+    [1280, 720],
+    [1366, 768],
+    [1512, 850],
+    [1024, 768],
+    [390, 844],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto(`http://127.0.0.1:${server.address().port}/landing`);
+    await page.locator("feedbacks-demo .frame > *").waitFor();
+    await page.evaluate(() => document.fonts.ready);
+    for (const button of await page.locator("[data-scene]").all()) {
+      await button.click();
+      const bounds = await page.evaluate(() => ({
+        heroBottom:
+          document.querySelector(".hero").getBoundingClientRect().bottom + scrollY,
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      }));
+      assert.equal(bounds.overflow, false, `${width}: no horizontal overflow`);
+      if (width > 900)
+        assert(
+          bounds.heroBottom <= height,
+          `${width}x${height}: complete hero must fit, got ${bounds.heroBottom}`,
+        );
+    }
+    assert.equal(await page.locator("#comparisons a").count(), 16);
+    assert.equal(
+      await page.locator("#comparisons").evaluate((e) => !!e.closest("details")),
+      false,
+    );
+  }
   assert.deepEqual(errors, []);
   console.log(
-    "Silent walkthroughs passed: seven scenes, images, unclipped mobile diagrams, cursor movement, right-click cue, progressive typing, exact pause/resume, reduced motion, hidden pause, zoom and keyboard focus.",
+    "Walkthroughs passed: seven scenes, cursor/click/typing cues, exact pause/resume, global playback and navigation persistence, reduced motion, keyboard focus, mobile bounds and complete laptop hero.",
   );
 } finally {
   await browser.close();
