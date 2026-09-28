@@ -198,6 +198,12 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
   }
   return {
     ...data,
+    workPlan: data.workPlan ?? {
+      priority: "normal",
+      schedule: "unscheduled",
+      scheduledFor: null,
+      timeZone: "UTC",
+    },
     topPriority: data.topPriority === true,
     review: data.review ?? { round: 1, state: "open", history: [] },
     figmaReference: data.figmaReference ?? null,
@@ -305,8 +311,8 @@ export async function feedback(
     const row = await threadRow(db, a, i.threadId);
     if (i.sort === "priority" && !canReadPolicy(a))
       fail("FORBIDDEN", "Priority order requires approved policy access", 403);
-    const { filter, args, order } = threadQuery(row.project_id, i);
-    args.push(row.id);
+    const { filter, args, order, orderArgs } = threadQuery(row.project_id, i);
+    args.push(...orderArgs, row.id);
     const result = await db.one(
       `WITH ordered AS (
       SELECT id, lag(id) OVER (ORDER BY ${order}) AS previous,
@@ -323,12 +329,12 @@ export async function feedback(
     await access(db, a, i.projectId);
     if (i.sort === "priority" && !canReadPolicy(a))
       fail("FORBIDDEN", "Priority order requires approved policy access", 403);
-    const { filter, args, order } = threadQuery(i.projectId, i);
+    const { filter, args, order, orderArgs } = threadQuery(i.projectId, i);
     const count = await db.one(
       `SELECT count(*)::integer AS total FROM threads WHERE ${filter}`,
       args,
     );
-    args.push(i.limit, i.offset);
+    args.push(...orderArgs, i.limit, i.offset);
     const rows = await db.query(
       `SELECT threads.*${i.sort === "priority" ? `,${priorityScore} AS priority_score` : ""} FROM threads WHERE ${filter} ORDER BY ${order} LIMIT $${args.length - 1} OFFSET $${args.length}`,
       args,
@@ -461,6 +467,8 @@ export async function feedback(
   } else if (op === "threads.organize") {
     data.category = i.category;
     data.tags = i.tags;
+  } else if (op === "threads.plan") {
+    data.workPlan = i.workPlan;
   } else if (op === "threads.priority") {
     data.topPriority = i.topPriority;
   } else if (op === "threads.reply") {
@@ -585,11 +593,13 @@ export async function feedback(
     a,
     row,
     op,
-    op === "threads.priority"
-      ? { topPriority: i.topPriority }
-      : op === "threads.annotationStatus"
-        ? { annotationId: i.annotationId, state: i.state }
-        : {},
+    op === "threads.plan"
+      ? { workPlan: i.workPlan }
+      : op === "threads.priority"
+        ? { topPriority: i.topPriority }
+        : op === "threads.annotationStatus"
+          ? { annotationId: i.annotationId, state: i.state }
+          : {},
   );
   await remember(db, a, op, i, row.id);
   return fullThread(db, a, saved);

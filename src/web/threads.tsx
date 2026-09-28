@@ -4,6 +4,9 @@ import {
   ArchiveThreadButton,
 } from "./thread-deletion.js";
 import React, { useEffect, useRef, useState } from "react";
+import { ThreadTaskCopy } from "./thread-task-copy.js";
+import { ThreadWorkPlan, WorkPlanSummary } from "./thread-work-plan.js";
+import { calendarDate, localTimeZone } from "./work-plan-model.js";
 import { ThreadStatus } from "./thread-status.js";
 import { ThreadAssignments, ProjectAssignments } from "./thread-assignments.js";
 import { ThreadReview } from "./thread-review.js";
@@ -66,6 +69,8 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     query = pageLocation.split("?")[1] ?? "";
   const filters = readFilters(query),
     offset = readOffset(query);
+  if (filters.sort === "workPlan" && !filters.planningDate)
+    filters.planningDate = calendarDate(new Date(), localTimeZone());
   const {
     search,
     url,
@@ -91,6 +96,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     category,
     tag,
     sort !== "activity",
+    filters.assignedTo,
     showResolved,
   ].filter(Boolean).length;
   const {
@@ -125,7 +131,9 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
       ? loaded.result
       : undefined;
   const apply = (next = filters, nextOffset = 0) =>
-    navigate(`/projects/${project.id}${filterQuery(next, nextOffset)}`);
+    navigate(
+      `/projects/${project.id}${filterQuery(next.sort === "workPlan" && !next.planningDate ? { ...next, planningDate: calendarDate(new Date(), localTimeZone()) } : next, nextOffset)}`,
+    );
   return (
     <>
       <div className="page-heading thread-list-heading">
@@ -149,6 +157,23 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
         <div className="thread-list-quick-actions">
           <button
             type="button"
+            aria-pressed={filters.assignedTo === actor.userId}
+            onClick={() =>
+              apply({
+                ...filters,
+                assignedTo:
+                  filters.assignedTo === actor.userId ? undefined : actor.userId,
+                sort: "workPlan",
+                planningDate: calendarDate(new Date(), localTimeZone()),
+                showResolved: false,
+                archived: false,
+              })
+            }
+          >
+            Assigned to me
+          </button>
+          <button
+            type="button"
             aria-pressed={!!filters.archived}
             onClick={() =>
               apply({
@@ -167,7 +192,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
               title="Sort active feedback by current reviewer importance and view support"
               onClick={() => apply({ ...filters, sort: "priority", showResolved: false })}
             >
-              Top priority
+              Reviewer signals
             </button>
           )}
           {project.permissions.canWrite && (
@@ -216,6 +241,12 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
             apply(readFilters(p.toString()));
           }}
         >
+          {filters.assignedTo && (
+            <input type="hidden" name="assignedTo" value={filters.assignedTo} />
+          )}
+          {filters.planningDate && (
+            <input type="hidden" name="planningDate" value={filters.planningDate} />
+          )}
           {filters.archived && <input type="hidden" name="archived" value="true" />}
           <Field label="Search feedback">
             <input
@@ -237,7 +268,8 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
               <option value="activity">Latest activity</option>
               <option value="newest">Newest</option>
               <option value="likes">Most liked views</option>
-              {actor.owner && <option value="priority">Top priority</option>}
+              <option value="workPlan">Work priority & timing</option>
+              {actor.owner && <option value="priority">Reviewer signals</option>}
             </select>
           </Field>
           <button className="thread-filter-apply primary">Apply</button>
@@ -442,6 +474,11 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                       )}
                       <div className="thread-summary">
                         <h2>{t.body}</h2>
+                        {t.workPlan &&
+                          (t.workPlan.priority !== "normal" ||
+                            t.workPlan.schedule !== "unscheduled") && (
+                            <WorkPlanSummary workPlan={t.workPlan} />
+                          )}
                         {t.topPriority && !project.permissions.canMaintain && (
                           <span className="thread-priority-label">Top priority</span>
                         )}
@@ -1094,6 +1131,16 @@ export function ThreadDetail({
           </div>
         </div>
       </div>
+      {project && (
+        <div className="thread-work-tools">
+          <ThreadWorkPlan
+            thread={t}
+            onSaved={setThread}
+            canWrite={project.permissions.canWrite}
+          />
+          <ThreadTaskCopy thread={t} project={project} />
+        </div>
+      )}
       <ErrorNotice error={error} />
       {projectError && (
         <section>

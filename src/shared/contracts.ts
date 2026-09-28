@@ -55,12 +55,44 @@ export const surveyQuestionsSchema = z
     (questions) => new Set(questions.map((q) => q.id)).size === questions.length,
     "Question IDs must be distinct",
   );
+export const calendarDateSchema = z.iso
+  .date()
+  .refine((value) => !value.startsWith("0000-"), "Calendar year must be at least 0001");
+export const workPlanSchema = z
+  .object({
+    priority: z.enum(["low", "normal", "high"]),
+    schedule: z.enum(["unscheduled", "today", "tomorrow", "next_week", "later"]),
+    scheduledFor: calendarDateSchema.nullable(),
+    timeZone: z
+      .string()
+      .min(1)
+      .max(100)
+      .refine((value) => {
+        if (/^[+-]/.test(value)) return false;
+        try {
+          new Intl.DateTimeFormat("en", { timeZone: value });
+          return true;
+        } catch {
+          return false;
+        }
+      }, "Use a valid IANA timezone"),
+  })
+  .refine(
+    (plan) =>
+      ["unscheduled", "later"].includes(plan.schedule)
+        ? plan.scheduledFor === null
+        : plan.scheduledFor !== null,
+    "Dated schedules require scheduledFor; unscheduled and later require null",
+  );
+export type WorkPlan = z.infer<typeof workPlanSchema>;
 export const reviewFiltersSchema = z.object({
   search: z.string().max(200).default(""),
   sort: z
-    .enum(["newest", "activity", "likes", "priority", "topPriority"])
+    .enum(["newest", "activity", "likes", "priority", "topPriority", "workPlan"])
     .default("activity"),
   authorId: id.optional(),
+  assignedTo: id.optional(),
+  planningDate: calendarDateSchema.optional(),
   createdAfter: z.string().datetime({ offset: true }).optional(),
   createdBefore: z.string().datetime({ offset: true }).optional(),
   activityAfter: z.string().datetime({ offset: true }).optional(),
@@ -567,6 +599,7 @@ export const inputSchemas = {
     category: categorySchema.default("general"),
     tags: tagsSchema,
   }),
+  "threads.plan": z.object({ ...tm, workPlan: workPlanSchema }),
   "threads.priority": z.object({ ...tm, topPriority: z.boolean() }),
   "reviewViews.list": z.object({ projectId: id }),
   "reviewViews.save": z.object({
@@ -891,6 +924,7 @@ export const threadOutput = z
         ]),
       })
       .passthrough(),
+    workPlan: workPlanSchema.optional(),
     // Older immutable export snapshots predate review rounds.
     review: z
       .object({
@@ -1435,6 +1469,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     total: z.number().int(),
   }),
   "threads.organize": threadOutput,
+  "threads.plan": threadOutput,
   "threads.priority": threadOutput,
   "reviewViews.list": z.object({ items: z.array(reviewViewOutput) }),
   "reviewViews.save": reviewViewOutput,
@@ -1537,6 +1572,7 @@ export const agentTokenScopes = [
   "threads.neighbors",
   "threads.issueDraft",
   "github.issueCreate",
+  "threads.plan",
   "threads.organize",
   "threads.priority",
   "reviewViews.list",

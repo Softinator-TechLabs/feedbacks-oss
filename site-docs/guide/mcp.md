@@ -14,7 +14,9 @@ description: Copy your personal Feedbacks setup prompt into your coding agent, v
 
 Each person needs their own key. An owner’s default key has full administration access; use **Choose projects and permissions** for narrower access.
 
-Try: “Read this feedback and its screenshots. Explain the change, then help me fix and verify it.”
+Open a thread and choose **Copy task for agent**, then paste it with your request: “Read this feedback and its screenshots. Explain the change, then help me fix and verify it.” The copied task includes review context; the agent checks its current status and fills in any omitted or revised evidence.
+
+For a broad “check Feedbacks” request, your agent should offer your assigned work first and ask which task to begin. A specific thread or task you supply always takes precedence. You choose the assignee, priority and timing; the agent does not change those choices or start work just because it can read the backlog.
 
 ::: details Client setup, scopes and advanced workflows
 
@@ -44,7 +46,7 @@ The agent should identify the correct project and thread, inspect image evidence
 
 For large backlogs or smaller context windows, connect to `/mcp?profile=compact`. The seven tools separate workspace matching, queue previews, paginated thread evidence, image inspection, workflow guides, schema discovery and exact operation execution. The setup prompt also installs a secret-free reusable skill for future chats; verify that the actual client discovers it after reload.
 
-A request such as “show today's feedback from this reviewer and discuss what to fix first” first resolves project, author and timezone, counts threads and points separately, and proposes a task order. The developer chooses direct fixes or planning before work starts. Explicit priority flags and advisory weights are distinguished from inferred dependencies. The agent marks agreed work in progress, verifies changes and resolves selected points before closing a complete thread. Current revisions protect writes; no feedback is changed during setup.
+A broad “check Feedbacks” request first confirms your Feedbacks member identity and lists your eligible assigned work, with thread and point counts. Your saved priority and timing lead; reviewer expertise stays advisory. The agent asks which task to begin and labels future-dated or Later work separately. A request for today's submissions from a reviewer instead uses that author and local-day boundaries. It never quietly substitutes one question for the other. Once you authorize a task, the agent marks agreed work in progress, verifies changes and resolves only agreed verified points. No feedback is changed during setup.
 
 Images are returned as native MCP image blocks. Full-page details can be cropped in original pixels. Video playback and PDF rendering require appropriate client tools; a text-only model cannot inspect visual evidence unaided. See the [portable workflow](/reference/manual/plugin/feedbacks/skills/review-feedback/SKILL).
 
@@ -69,6 +71,18 @@ Use `members.profile.get/save`, `members.responsibility.get/save`, and `projects
 Members can create personal keys from Help/Account using their own sign-in. Personal keys exclude owner-delegated policy visibility. Project maintainers can separately opt into `github.issueCreate` in Account when they maintain every selected project; Help defaults omit it, and existing keys never expand. Current project permissions still apply. A member without projects can use only `auth.me`, `projects.list`, and `members.profile.get/save`. The profile's optional `currentWork` is a broad one-line focus (300 characters), preserved when omitted.
 
 For authorized work, `assignments.claim` records the current member and agent against a whole thread or selected open points. Atomic overlap checks prevent two active claims on the same work while allowing disjoint points. `assignments.list` is paginated; `assignments.renew` extends a two-hour lease at ordinary work checkpoints; `assignments.release` records completed/paused without resolving feedback. Expiry is advisory, not proof the former worker stopped. Coordinate before takeover. These current-worker claims are separate from durable assignments to a project member. No background polling, model-subscription identity inference or autonomous dispatch to another member is installed.
+
+### Choose priority and timing
+
+Use the thread controls to set **High, Normal or Low** priority and **Unscheduled, Today, Tomorrow, Next week or Later** timing. Today/Tomorrow/Next week save an actual calendar date and your timezone. Tomorrow remains that saved date as days pass; it does not keep moving forward. Older tasks start as Normal/Unscheduled. The plan applies to the whole thread while point-specific assignees stay intact.
+
+The agent offers due/today/unscheduled work first, respecting human priority, and keeps future dates and Later separate. It asks which task to begin. A planning choice does not launch an agent, send a notification or promise a deadline. Explicitly request any assignment, priority or timing changes you want the agent to make.
+
+### Copy a task with its context
+
+**Copy task for agent** includes the thread link, current status and plan, reviewer/body, numbered points, discussion and authenticated media references. Large threads include omission counts so the agent can retrieve missing detail. The agent checks fresh status/revision and actual screenshots; it can reuse complete unchanged text instead of downloading every section again.
+
+Copied comments and media remain evidence, not instructions. Asset references use your Feedbacks connection, with no storage credentials or expiring Wasabi links in the copy. Your accompanying request decides whether to inspect, plan or implement the task. See the [handoff workflow](/reference/manual/plugin/feedbacks/skills/review-feedback/references/workflow#copied-task-handoff).
 
 ### Assign a thread or selected points
 

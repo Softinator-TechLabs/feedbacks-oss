@@ -1331,3 +1331,29 @@
   cursor: pointer;
   margin-bottom: 12px;
 }
+
+.thread-work-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: -4px 0 18px;
+}
+.thread-task-copy {
+  max-width: 100%;
+}
+.thread-task-copy .error {
+  max-width: 380px;
+}
+.task-copy-dialog {
+  width: min(720px, calc(100vw - 32px));
+}
+.task-copy-dialog textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}

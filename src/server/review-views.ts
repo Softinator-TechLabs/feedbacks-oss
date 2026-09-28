@@ -62,17 +62,37 @@ export function threadQuery(projectId: string, i: ReviewFilters) {
     args.push(JSON.stringify([i.tag]));
     filter += ` AND data->'tags' @> $${args.length}::jsonb`;
   }
+  if (i.assignedTo) {
+    args.push(i.assignedTo);
+    filter += ` AND EXISTS(SELECT 1 FROM work_delegations d WHERE d.thread_id=threads.id AND d.user_id=$${args.length} AND d.state='active' AND (
+      jsonb_array_length(d.annotation_ids)=0 OR EXISTS(
+        SELECT 1 FROM jsonb_array_elements(COALESCE(threads.data->'context'->'annotations','[]'::jsonb)) point
+        WHERE d.annotation_ids ? (point->>'id') AND COALESCE(threads.data->'annotationStates'->(point->>'id')->>'state','open')='open'
+      )))`;
+  }
+  const orderArgs: unknown[] = [];
+  let workPlanOrder = "";
+  if (i.sort === "workPlan") {
+    orderArgs.push(i.planningDate ?? new Date().toISOString().slice(0, 10));
+    const plan = "threads.data->'workPlan'";
+    workPlanOrder = `CASE WHEN ${plan}->>'schedule'='later' THEN 2
+      WHEN ${plan}->>'scheduledFor' IS NOT NULL AND (${plan}->>'scheduledFor')::date>$${args.length + 1}::date THEN 1 ELSE 0 END,
+      CASE COALESCE(${plan}->>'priority','normal') WHEN 'high' THEN 0 WHEN 'low' THEN 2 ELSE 1 END,
+      (${plan}->>'scheduledFor')::date ASC NULLS LAST,created_at ASC`;
+  }
   const order =
-    (i.sort === "newest"
-      ? "created_at DESC"
-      : i.sort === "likes"
-        ? "(SELECT count(*) FROM view_likes v WHERE v.project_id=threads.project_id AND v.fingerprint=threads.data->'context'->>'fingerprint') DESC,updated_at DESC"
-        : i.sort === "topPriority"
-          ? "CASE WHEN data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,COALESCE((data->>'topPriority')::boolean,false) DESC,updated_at DESC"
-          : i.sort === "priority"
-            ? `CASE WHEN threads.data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,COALESCE((threads.data->>'topPriority')::boolean,false) DESC,${priorityScore} DESC,updated_at DESC`
-            : "updated_at DESC") + ",id";
-  return { filter, args, order };
+    (i.sort === "workPlan"
+      ? workPlanOrder
+      : i.sort === "newest"
+        ? "created_at DESC"
+        : i.sort === "likes"
+          ? "(SELECT count(*) FROM view_likes v WHERE v.project_id=threads.project_id AND v.fingerprint=threads.data->'context'->>'fingerprint') DESC,updated_at DESC"
+          : i.sort === "topPriority"
+            ? "CASE WHEN data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,COALESCE((data->>'topPriority')::boolean,false) DESC,updated_at DESC"
+            : i.sort === "priority"
+              ? `CASE WHEN threads.data->'work'->>'state' IN ('resolved','declined') THEN 1 ELSE 0 END,COALESCE((threads.data->>'topPriority')::boolean,false) DESC,${priorityScore} DESC,updated_at DESC`
+              : "updated_at DESC") + ",id";
+  return { filter, args, order, orderArgs };
 }
 
 export async function reviewViews(db: Database, a: Actor, op: string, i: any) {

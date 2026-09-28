@@ -1,0 +1,57 @@
+.thread-work-plan {
+  min-width: 0;
+}
+.work-plan-controls {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.work-plan-controls .field {
+  margin: 0;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+.work-plan-controls select {
+  min-height: 44px;
+  padding: 8px 10px;
+  max-width: 100%;
+}
+.work-plan-controls .field:first-child {
+  min-width: 104px;
+}
+.work-plan-controls .field:nth-child(2) {
+  min-width: 138px;
+}
+.work-plan-date,
+.work-plan-summary {
+  color: var(--muted);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.work-plan-date {
+  display: block;
+  margin-top: 5px;
+}
+.work-plan-recovery {
+  max-width: 440px;
+  font-size: 0.88rem;
+  margin-top: 8px;
+}
+.work-plan-recovery p {
+  margin: 8px 0;
+}
+.work-plan-recovery button {
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .thread-work-plan {
+    max-width: 100%;
+  }
+  .work-plan-controls .field {
+    flex: 1;
+  }
+  .work-plan-controls select {
+    width: 100%;
+  }
+}
