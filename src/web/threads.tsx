@@ -13,6 +13,7 @@ import { ThreadReview } from "./thread-review.js";
 import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
 import { ReviewEvidence } from "./review-evidence.js";
+import { PointProgressRing } from "./point-progress-ring.js";
 import { usePageLocation, navigate, useUnsavedChanges } from "./navigation.js";
 import { readFilters, readOffset, filterQuery } from "./review-filters.js";
 import {
@@ -610,6 +611,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                         </div>
                       </div>
                       <div className="thread-stats">
+                        <PointProgressRing thread={t} compact />
                         <span>
                           {t.view?.uniqueLikes ?? 0}{" "}
                           {t.view?.uniqueLikes === 1 ? "view like" : "view likes"} ·{" "}
@@ -1132,9 +1134,12 @@ export function ThreadDetail({
               ← Feedback
             </a>
           </h1>
-          <p>
-            {t.author?.name} · <HumanTime at={t.createdAt} />
-          </p>
+          <div className="thread-heading-meta">
+            <p>
+              {t.author?.name} · <HumanTime at={t.createdAt} />
+            </p>
+            <PointProgressRing thread={t} />
+          </div>
         </div>
         <div
           className="thread-header-actions"

@@ -325,6 +325,11 @@
   margin: 2px 0 0;
   font-size: 0.83rem;
 }
+.thread-heading-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .thread-header-actions {
   display: flex;
   align-items: center;
