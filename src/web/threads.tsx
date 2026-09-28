@@ -4,6 +4,7 @@ import {
   ArchiveThreadButton,
 } from "./thread-deletion.js";
 import React, { useEffect, useRef, useState } from "react";
+import { ThreadMove } from "./thread-move.js";
 import { ThreadTaskCopy } from "./thread-task-copy.js";
 import { ThreadWorkPlan, WorkPlanSummary } from "./thread-work-plan.js";
 import { calendarDate, localTimeZone } from "./work-plan-model.js";
@@ -984,13 +985,14 @@ export function ThreadDetail({
       [threadId, version],
       true,
     ),
-    { data: project, error: projectError } = useLoad(
+    { data: loadedProject, error: projectError } = useLoad(
       () =>
         t?.id === threadId
           ? api<Project>("projects.get", { projectId: t.projectId })
           : Promise.resolve(undefined),
       [threadId, t?.projectId, projectVersion],
     );
+  const project = loadedProject?.id === t?.projectId ? loadedProject : undefined;
   const { data: taxonomy, error: taxonomyError } = useLoad<ProjectTaxonomy | undefined>(
     () =>
       project
@@ -1247,6 +1249,18 @@ export function ThreadDetail({
                 <Icon name="more" />
               </summary>
               <div className="thread-action-menu-panel">
+                {project?.permissions.canMaintain && (
+                  <ThreadMove
+                    thread={t}
+                    onMoved={(updated) => {
+                      setThread(updated);
+                      navigate(`/threads/${updated.id}`, {
+                        replace: true,
+                        preservePosition: true,
+                      });
+                    }}
+                  />
+                )}
                 {project?.permissions.canMaintain && (
                   <button
                     type="button"
@@ -1930,7 +1944,7 @@ export function ThreadDetail({
             </div>
           </div>
         </div>
-        <ThreadNavigation key={threadId} threadId={threadId} />
+        <ThreadNavigation key={`${threadId}:${t.projectId}`} threadId={threadId} />
       </div>
     </>
   );
