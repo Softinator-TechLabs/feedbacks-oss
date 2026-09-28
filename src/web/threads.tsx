@@ -857,13 +857,11 @@ export function ThreadDetail({
       location.hash === "#recorded-context" ? "details" : "discussion",
     ),
     [reply, setReply] = useState(""),
-    [replyIntent, setReplyIntent] = useState<"request" | "response">("request"),
     [mentions, setMentions] = useState<MentionRange[]>([]),
     replyEditVersion = useRef(0),
     replyRetry = useRef<
       | {
           body: string;
-          intent: "request" | "response";
           revision: number;
           key: string;
           mentions: string[];
@@ -1429,13 +1427,11 @@ export function ThreadDetail({
                         e.preventDefault();
                         if (
                           replyRetry.current?.body !== reply ||
-                          replyRetry.current?.intent !== replyIntent ||
                           JSON.stringify(replyRetry.current?.mentions) !==
                             JSON.stringify(mentionIds(mentions))
                         )
                           replyRetry.current = {
                             body: reply,
-                            intent: replyIntent,
                             revision: t.revision,
                             key: uid(),
                             mentions: mentionIds(mentions),
@@ -1448,7 +1444,6 @@ export function ThreadDetail({
                               threadId,
                               revision: pending.revision,
                               body: pending.body,
-                              intent: pending.intent,
                               idempotencyKey: pending.key,
                               mentions: pending.mentions,
                             }),
@@ -1489,21 +1484,6 @@ export function ThreadDetail({
                         </>
                       )}
                       <div className="reply-actions">
-                        <details className="reply-options">
-                          <summary>Options</summary>
-                          <Field label="This reply">
-                            <select
-                              value={replyIntent}
-                              onChange={(e) => {
-                                replyEditVersion.current++;
-                                setReplyIntent(e.target.value as "request" | "response");
-                              }}
-                            >
-                              <option value="request">Requests follow-up</option>
-                              <option value="response">Answers the request</option>
-                            </select>
-                          </Field>
-                        </details>
                         <button className="primary" disabled={a.busy || !reply.trim()}>
                           {a.busy ? "Saving…" : "Post reply"}
                         </button>
