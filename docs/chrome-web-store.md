@@ -74,3 +74,7 @@ Use current product captures with synthetic data. Show these in order: server pr
 ## Publication checks
 
 Confirm the packaged manifest title and summary, blank default server, version, permissions and bundled code. Keep the privacy questionnaire consistent with actual collection of submitted screenshots, comments and page context. Follow the Store dashboard's current field limits and review requirements at submission time. This document does not claim a Store submission or approval.
+
+## Help download fallback
+
+Help reads the server's packaged extension release metadata and offers that exact version for manual installation. The Store link remains available. The notice says the Store may lag while an update is under review; it does not claim a live Store review status that the app cannot verify. The manual steps are ZIP extraction, Chrome's Developer mode, and Load unpacked. Existing unpacked installations use Reload after replacing their files.
