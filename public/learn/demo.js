@@ -99,7 +99,7 @@
       this.index = 0;
       this.motion = matchMedia("(prefers-reduced-motion: reduce)");
       this.paused = this.motion.matches;
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css"><figure><div class="screen"></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260928-2"><figure><div class="screen"></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         caption = q(".caption"),
