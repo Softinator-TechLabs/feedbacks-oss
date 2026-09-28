@@ -12,6 +12,7 @@ const managedUpdates = Boolean(manifest.update_url);
 const releaseGate = createReleaseSelectionGate();
 let tab,
   refreshing = false,
+  detectionAttempted = false,
   loadedConnection,
   noticeServer = "",
   activeServer = "",
@@ -175,7 +176,21 @@ async function refresh() {
   if (refreshing) return;
   refreshing = true;
   try {
-    const state = await send({ type: "settings" });
+    let state = await send({ type: "settings" });
+    if (!detectionAttempted) {
+      detectionAttempted = true;
+      [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id && (!state.server || tab.url?.startsWith(state.server + "/"))) {
+        const detected = await send({ type: "detectServer", tabId: tab.id }).catch(
+          () => ({}),
+        );
+        if (detected.status === "set") {
+          state = await send({ type: "settings" });
+          $("message").textContent =
+            "Server detected from this Feedbacks page. Choose Connect to server to continue.";
+        }
+      }
+    }
     activeServer = state.server;
     document.body.classList.toggle("is-paired", state.connected);
     loadedConnection = connectionKey(state);

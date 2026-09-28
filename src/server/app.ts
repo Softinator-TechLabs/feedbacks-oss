@@ -154,6 +154,10 @@ export function createApp(config: Config, database: Database, assets: AssetStore
     if (req.get("Origin") !== config.appOrigin)
       fail("ORIGIN_DENIED", "Use the Feedbacks web app for account authentication", 403);
   };
+  app.get("/.well-known/feedbacks.json", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({ product: "feedbacks", setupVersion: 1 });
+  });
   app.get("/healthz", (_req, res) => res.json({ ok: true }));
   for (const name of ["extension-release.json", "feedbacks-extension.zip"]) {
     app.get(`/downloads/${name}`, (_req, res) => {
