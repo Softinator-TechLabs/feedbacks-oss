@@ -1,5 +1,25 @@
 // Shared discovery guidance for MCP and the JSON CLI; authorization stays in domain services.
 export const operationDescriptions: Record<string, string> = {
+  "assignments.list":
+    "List bounded current or historical member/agent work claims for a project, optionally one thread or member. Active claims expire after two hours unless renewed; expired claims are not proof work stopped. Claims are advisory coordination, not completed fixes.",
+  "assignments.claim":
+    "Claim authorized work as this credential's member and agent, for a whole thread (annotationIds empty) or selected open points. Requires current thread revision and unique idempotencyKey. Atomically rejects overlapping active claims; disjoint points can proceed. Read assignment owners and coordinate on conflicts. Does not change feedback status or assign another employee.",
+  "assignments.renew":
+    "Renew your own active work claim for two hours using its current claim revision. Use during authorized work checkpoints, not background polling. Expired claims must be rechecked and claimed again.",
+  "assignments.release":
+    "Release your own claim, or another claim with project-maintainer authority and explicit intent, using current claim revision. Outcome completed/paused describes the claim only; it does not resolve feedback. Read back and separately verify thread/point status.",
+  "members.profile.get":
+    "Read a bounded advisory profile. Omit userId for yourself. Reading another member requires a shared projectId or owner administration. Separate from private notes, reviewer guidance and policy.",
+  "members.profile.save":
+    "Replace your own advisory profile and optional one-line currentWork (300 characters), or another profile as owner administrator, using its current revision (0 if absent). Preserve existing context. Does not change name, account permissions, expertise weights or policy. Requires explicit update intent.",
+  "members.responsibility.get":
+    "Read one current project member's advisory responsibilities; userId defaults to yourself. Requires project access. No task assignment or policy changes.",
+  "members.responsibility.save":
+    "Replace your own responsibilities in a writable project, or another current member's as a maintainer, using current revision. Does not grant project membership or assign tasks. Read before writing and preserve context.",
+  "projects.context.get":
+    "Read bounded collaborative project context and its provenance/revision. This is advisory data, separate from instructions.get approved instructions.",
+  "projects.context.save":
+    "Replace collaborative project context using current revision (0 if absent). Requires project write access and explicit update intent. Does not publish approved instructions or change project configuration.",
   "qa.get":
     "Read a project's opt-in daily public-page QA configuration. Requires project maintainer access and an explicit qa.get scope for bearer keys.",
   "qa.configure":
@@ -45,7 +65,7 @@ export const operationDescriptions: Record<string, string> = {
   "widget.submit":
     "Public website feedback submission. Requires an approved Origin, page URL matching it, Turnstile verification and remaining link capacity. Accepts optional explicit screenshot data; never reads existing feedback.",
   "threads.list":
-    "List feedback summaries; follow pagination and sort by activity to find recent replies/uploads. Use threads.get for full discussion, attachment metadata and available reviewer context.",
+    "List full feedback records with pagination. Prefer feedbacks_queue for bounded summaries. Filter authorId, createdAfter (inclusive), createdBefore (exclusive), activityAfter, workState, topPriority, page URL or search (body/replies/points). Sort priority needs policy access; topPriority sorts explicit flags without policy weights. Today requires timezone-derived midnight bounds; includeSummary counts threads/points independently of pagination.",
   "threads.neighbors":
     "Find previous and next thread in the same filtered and sorted inbox, across pagination. Returns null neighbors if the thread is outside current filters. This is a live view, not an immutable queue.",
   "threads.organize":

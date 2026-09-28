@@ -57,7 +57,17 @@ export const surveyQuestionsSchema = z
   );
 export const reviewFiltersSchema = z.object({
   search: z.string().max(200).default(""),
-  sort: z.enum(["newest", "activity", "likes", "priority"]).default("activity"),
+  sort: z
+    .enum(["newest", "activity", "likes", "priority", "topPriority"])
+    .default("activity"),
+  authorId: id.optional(),
+  createdAfter: z.string().datetime({ offset: true }).optional(),
+  createdBefore: z.string().datetime({ offset: true }).optional(),
+  activityAfter: z.string().datetime({ offset: true }).optional(),
+  workState: z
+    .enum(["open", "in_progress", "ready_for_review", "resolved", "declined"])
+    .optional(),
+  topPriority: z.boolean().optional(),
   showResolved: z.boolean().default(false),
   archived: z.boolean().optional(),
   url: z.string().url().max(4096).optional(),
@@ -206,7 +216,78 @@ const reviewerContextOutput = z.object({
     }),
   ),
 });
+const contextTextInput = {
+  body: z.string().max(8000),
+  revision: z.number().int().min(0),
+};
+const contextTextOutput = z.object({
+  currentWork: z.string().optional(),
+  body: z.string(),
+  revision: z.number(),
+  userId: id.optional(),
+  projectId: id.optional(),
+  updatedBy: id.nullable(),
+  updatedAt: z.string().nullable(),
+  trust: z.enum([
+    "self_authored_advisory",
+    "owner_authored_advisory",
+    "maintainer_authored_advisory",
+    "member_authored_advisory",
+  ]),
+});
+const assignmentOutput = z.object({
+  id,
+  projectId: id,
+  threadId: id,
+  annotationIds: z.array(id),
+  userId: id,
+  memberName: z.string(),
+  agentId: id,
+  agentName: z.string(),
+  summary: z.string(),
+  state: z.enum(["active", "completed", "paused", "expired"]),
+  revision: z.number(),
+  expiresAt: z.string(),
+  updatedAt: z.string(),
+});
 export const inputSchemas = {
+  "assignments.list": z.object({
+    projectId: id,
+    threadId: id.optional(),
+    userId: id.optional(),
+    state: z.enum(["active", "all"]).default("active"),
+    offset: z.number().int().min(0).max(100000).default(0),
+    limit: z.number().int().min(1).max(50).default(10),
+  }),
+  "assignments.claim": z.object({
+    threadId: id,
+    revision,
+    annotationIds: z.array(id).max(100).default([]),
+    summary: z.string().min(1).max(500),
+    idempotencyKey: z.string().min(1).max(200),
+  }),
+  "assignments.renew": z.object({ assignmentId: id, revision }),
+  "assignments.release": z.object({
+    assignmentId: id,
+    revision,
+    outcome: z.enum(["completed", "paused"]),
+  }),
+
+  "members.profile.get": z.object({ userId: id.optional(), projectId: id.optional() }),
+  "members.profile.save": z.object({
+    userId: id.optional(),
+    ...contextTextInput,
+    currentWork: z.string().max(300).optional(),
+  }),
+  "members.responsibility.get": z.object({ projectId: id, userId: id.optional() }),
+  "members.responsibility.save": z.object({
+    projectId: id,
+    userId: id.optional(),
+    ...contextTextInput,
+  }),
+  "projects.context.get": z.object({ projectId: id }),
+  "projects.context.save": z.object({ projectId: id, ...contextTextInput }),
+
   "auth.login": z.object({
     email: z.string().trim().min(1).max(254),
     password: z.string().max(1024),
@@ -398,12 +479,20 @@ export const inputSchemas = {
     pairingId: id,
     deviceSecret: z.string().min(20).max(200),
   }),
-  "threads.list": z.object({
-    projectId: id,
-    includeSummary: z.boolean().default(false),
-    ...page,
-    ...reviewFiltersSchema.shape,
-  }),
+  "threads.list": z
+    .object({
+      projectId: id,
+      includeSummary: z.boolean().default(false),
+      ...page,
+      ...reviewFiltersSchema.shape,
+    })
+    .refine(
+      (i) =>
+        !i.createdAfter ||
+        !i.createdBefore ||
+        Date.parse(i.createdAfter) < Date.parse(i.createdBefore),
+      { message: "createdAfter must precede createdBefore" },
+    ),
   "threads.neighbors": z.object({ threadId: id, ...reviewFiltersSchema.shape }),
   "threads.organize": z.object({
     ...tm,
@@ -599,6 +688,14 @@ export const inputSchemas = {
     assetId: id,
     includeImage: z.boolean().default(false),
     maxDimension: z.number().int().min(256).max(2048).default(1600),
+    crop: z
+      .object({
+        left: z.number().int().min(0),
+        top: z.number().int().min(0),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      })
+      .optional(),
   }),
   "instructions.get": z.object({ projectId: id }),
   "instructions.publish": z.object({
@@ -655,15 +752,24 @@ const assetMetadataOutput = z.object({
   projectId: id.optional(),
   threadId: id.optional(),
 });
-const assetOutput = assetMetadataOutput.extend({
-  image: z
+const imagePreviewOutput = z.object({
+  mimeType: z.literal("image/webp"),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  sourceWidth: z.number().int().positive().optional(),
+  sourceHeight: z.number().int().positive().optional(),
+  crop: z
     .object({
-      data: z.string().max(2800000),
-      mimeType: z.literal("image/webp"),
+      left: z.number().int().min(0),
+      top: z.number().int().min(0),
       width: z.number().int().positive(),
       height: z.number().int().positive(),
     })
     .optional(),
+});
+const assetOutput = assetMetadataOutput.extend({
+  image: imagePreviewOutput.extend({ data: z.string().max(2800000) }).optional(),
+  preview: imagePreviewOutput.optional(),
 });
 const deletionOutput = z.object({
   id,
@@ -821,6 +927,20 @@ const documentOutput = z.object({
   url: z.string(),
 });
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
+  "assignments.list": z.object({
+    items: z.array(assignmentOutput),
+    total: z.number(),
+    nextOffset: z.number().nullable(),
+  }),
+  "assignments.claim": assignmentOutput,
+  "assignments.renew": assignmentOutput,
+  "assignments.release": assignmentOutput,
+  "members.profile.get": contextTextOutput,
+  "members.profile.save": contextTextOutput,
+  "members.responsibility.get": contextTextOutput,
+  "members.responsibility.save": contextTextOutput,
+  "projects.context.get": contextTextOutput,
+  "projects.context.save": contextTextOutput,
   "auth.resetPassword": z.object({
     changed: z.boolean(),
     signInRequired: z.boolean(),
@@ -1297,6 +1417,18 @@ export const scopedAgentOperations = [
 ] as const;
 
 export const agentTokenScopes = [
+  "assignments.list",
+  "assignments.claim",
+  "assignments.renew",
+  "assignments.release",
+  "auth.me",
+  "members.list",
+  "members.profile.get",
+  "members.profile.save",
+  "members.responsibility.get",
+  "members.responsibility.save",
+  "projects.context.get",
+  "projects.context.save",
   ...scopedAgentOperations,
   "threads.annotationStatus",
   "qa.get",
@@ -1315,6 +1447,17 @@ export const agentTokenScopes = [
   "reviewViews.list",
   "reviewViews.save",
   "reviewViews.delete",
+] as const;
+
+// Self-service never delegates owner-only policy visibility or external GitHub writes.
+export const selfAgentTokenScopes = agentTokenScopes.filter(
+  (name) => !["context.policy", "context.reviewers", "github.issueCreate"].includes(name),
+);
+export const profileOnlyAgentScopes = [
+  "auth.me",
+  "projects.list",
+  "members.profile.get",
+  "members.profile.save",
 ] as const;
 
 // Authentication and browser/device transport are deliberately separate from
@@ -1351,6 +1494,10 @@ export const ownerTokenScopes = [
   "context.policy",
 ];
 const readOperations = new Set<string>([
+  "assignments.list",
+  "members.profile.get",
+  "members.responsibility.get",
+  "projects.context.get",
   "threads.deletions",
   "auth.me",
   "projects.list",

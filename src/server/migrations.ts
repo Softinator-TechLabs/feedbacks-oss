@@ -241,5 +241,41 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       );
       await tx.query("INSERT INTO migrations(version) VALUES(18)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=19"))) {
+      await tx.query(`CREATE TABLE member_profiles(
+        user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        body text NOT NULL, revision integer NOT NULL DEFAULT 1,
+        trust text NOT NULL, updated_by uuid NOT NULL REFERENCES users(id), updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(`CREATE TABLE project_context(
+        project_id uuid PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        body text NOT NULL, revision integer NOT NULL DEFAULT 1,
+        trust text NOT NULL, updated_by uuid NOT NULL REFERENCES users(id), updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(`CREATE TABLE member_responsibilities(
+        project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body text NOT NULL, revision integer NOT NULL DEFAULT 1,
+        trust text NOT NULL, updated_by uuid NOT NULL REFERENCES users(id), updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY(project_id,user_id)
+      )`);
+      await tx.query("INSERT INTO migrations(version) VALUES(19)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=20"))) {
+      await tx.query(
+        "ALTER TABLE member_profiles ADD COLUMN current_work text NOT NULL DEFAULT ''",
+      );
+      await tx.query(`CREATE TABLE work_claims(
+        id uuid PRIMARY KEY, project_id uuid NOT NULL REFERENCES projects(id), thread_id uuid NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+        annotation_ids jsonb NOT NULL, user_id uuid NOT NULL REFERENCES users(id),agent_id uuid NOT NULL,agent_name text NOT NULL,
+        summary text NOT NULL,state text NOT NULL DEFAULT 'active',revision integer NOT NULL DEFAULT 1,
+        request_key text NOT NULL,input_hash text NOT NULL,expires_at timestamptz NOT NULL DEFAULT now()+interval '2 hours',updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE(agent_id,request_key)
+      )`);
+      await tx.query(
+        "CREATE INDEX work_claims_project ON work_claims(project_id,state,expires_at)",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(20)");
+    }
   });
 }

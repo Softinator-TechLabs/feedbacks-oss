@@ -14,7 +14,7 @@ export type AgentIssuance = Readonly<{
 }>;
 
 export function agentSetupPrompt(issued: AgentIssuance, instructions: string): string {
-  const endpoint = new URL("/mcp", issued.origin).href;
+  const endpoint = new URL("/mcp?profile=compact", issued.origin).href;
   // Labels are data, never interpolated into instructions or executable code.
   // Escape fence/HTML characters so a project label cannot end this JSON block.
   const metadata = JSON.stringify(

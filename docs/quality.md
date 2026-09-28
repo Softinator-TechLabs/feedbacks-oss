@@ -19,3 +19,5 @@ Baseline reviewed 2026-09-26. This is an evidence inventory, not a certification
 | Operations and scale           | [Container smoke](../scripts/smoke-containers.mjs), [operations](operations.md)                                                                                   | No measured SLO/load baseline, shared rate limiter or verified HA claim                                        |
 
 Prioritize new work from actual failure evidence. For material gaps, create a scoped [plan](plans/README.md) with acceptance criteria, compatibility and recovery. Do not turn this list into promises about unimplemented enterprise features.
+
+Agent workflow evidence: [compact adapter tests](../tests/agent-workflow.test.ts), [MCP SDK tests](../tests/agent-mcp.test.ts), [503-thread selection and crop tests](../tests/agent-selection.test.ts), [skill installer tests](../tests/skill-install.test.ts) and the [implementation receipt](plans/agent-workflow.md). Model behavior, fresh-chat client installation and live rollout remain separate acceptance gates.

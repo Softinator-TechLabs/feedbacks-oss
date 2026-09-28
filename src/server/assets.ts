@@ -33,8 +33,23 @@ export async function assetPreview(
   store: AssetStore,
   objectKey: string,
   maxDimension: number,
+  crop?: { left: number; top: number; width: number; height: number },
 ) {
-  const { data, info } = await sharp(await store.get(objectKey))
+  const source = sharp(await store.get(objectKey));
+  const metadata = await source.metadata();
+  if (
+    crop &&
+    (!Object.values(crop).every(Number.isSafeInteger) ||
+      crop.left < 0 ||
+      crop.top < 0 ||
+      crop.width <= 0 ||
+      crop.height <= 0 ||
+      crop.left + crop.width > metadata.width! ||
+      crop.top + crop.height > metadata.height!)
+  )
+    fail("VALIDATION", "Crop must fit within the original image dimensions");
+  if (crop) source.extract(crop);
+  const { data, info } = await source
     .resize({
       width: maxDimension,
       height: maxDimension,
@@ -54,6 +69,9 @@ export async function assetPreview(
     mimeType: "image/webp" as const,
     width: info.width,
     height: info.height,
+    sourceWidth: metadata.width,
+    sourceHeight: metadata.height,
+    ...(crop ? { crop } : {}),
   };
 }
 

@@ -4,6 +4,12 @@ import { z } from "zod";
 import { businessOperations, operationRegistry } from "../shared/contracts.js";
 import { DomainError } from "../server/errors.js";
 import { apiClient } from "./client.js";
+import {
+  AgentWorkflowError,
+  agentToolSchemas,
+  runAgentTool,
+  type AgentTool,
+} from "../shared/agent-workflow.js";
 
 try {
   const args = process.argv.slice(2);
@@ -11,7 +17,7 @@ try {
   if (args.length === 0 || (args.length === 1 && args[0] === "--help")) {
     data = {
       usage:
-        "npm run --silent cli -- <operation> [--input file.json]; JSON input defaults to stdin (empty input means {}). --list; --describe <operation>",
+        "npm run --silent cli -- <operation> [--input file.json]; JSON input defaults to stdin (empty input means {}). --list; --describe <operation>; --agent guide|workspace|queue|thread|asset|describe|execute [--input file.json]",
       credentials:
         "FEEDBACKS_TOKEN environment or owned mode-0600 ~/.config/feedbacks/config.json with {url,token}; FEEDBACKS_URL and FEEDBACKS_CONFIG override defaults. Never put secrets in arguments.",
     };
@@ -36,10 +42,14 @@ try {
       outputSchema: z.toJSONSchema(entry.output),
     };
   } else {
-    const [name, flag, file] = args;
+    const isAgent = args[0] === "--agent";
+    const callArgs = isAgent ? args.slice(1) : args;
+    const [name, flag, file] = callArgs;
     if (
-      !businessOperations.includes(name as any) ||
-      !(args.length === 1 || (args.length === 3 && flag === "--input" && file))
+      !(isAgent
+        ? Object.hasOwn(agentToolSchemas, name)
+        : businessOperations.includes(name as any)) ||
+      !(callArgs.length === 1 || (callArgs.length === 3 && flag === "--input" && file))
     )
       throw new DomainError(
         "USAGE",
@@ -55,9 +65,9 @@ try {
           throw new DomainError("VALIDATION", "Input exceeds 20 MiB", 413);
       }
     }
-    const parsed = operationRegistry[name].input.safeParse(
-      JSON.parse(raw.trim() || "{}"),
-    );
+    const parsed = (
+      isAgent ? agentToolSchemas[name as AgentTool] : operationRegistry[name].input
+    ).safeParse(JSON.parse(raw.trim() || "{}"));
     if (!parsed.success)
       throw new DomainError(
         "VALIDATION",
@@ -66,9 +76,16 @@ try {
           .join("; "),
         400,
       );
-    const execute = await apiClient();
-    data = await execute(name, parsed.data);
-    if (!operationRegistry[name].output.safeParse(data).success)
+    const execute =
+      isAgent && ["guide", "describe"].includes(name)
+        ? async () => {
+            throw new Error("Static tool must not execute");
+          }
+        : await apiClient();
+    data = isAgent
+      ? await runAgentTool(execute, name as AgentTool, parsed.data)
+      : await execute(name, parsed.data);
+    if (!isAgent && !operationRegistry[name].output.safeParse(data).success)
       throw new DomainError(
         "PROTOCOL",
         "Server returned an invalid operation result",
@@ -78,7 +95,7 @@ try {
   process.stdout.write(`${JSON.stringify({ ok: true, data })}\n`);
 } catch (error) {
   const e =
-    error instanceof DomainError
+    error instanceof DomainError || error instanceof AgentWorkflowError
       ? error
       : new DomainError(
           "CLIENT_ERROR",

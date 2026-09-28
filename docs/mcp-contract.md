@@ -4,6 +4,8 @@ Exact schemas and callable operation names are in the [API reference](api.md). T
 
 ## Independent status dimensions
 
+The optional compact profile (`/mcp?profile=compact`, or stdio `FEEDBACKS_MCP_PROFILE=compact`) provides progressive project/queue/thread/media access over these same operation scopes. See [compact tools and CLI](agents.md#compact-profile-and-cli). Both profiles expose the same static skill resources and prompt. Compact calls do not mint scopes or bypass authorization. Read `expectedRevision`, `expectedContentVersion`, `nextOffset` and `nextTextOffset` before continuing section reads. Native image metadata includes preview dimensions and optional original-pixel crop.
+
 | Dimension      | States / data                                                                                                   | Changes pin visibility?                     |
 | -------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | Response       | `unanswered`, `responded`, `needs-follow-up`; last request/response actor and time                              | No                                          |
@@ -56,3 +58,13 @@ Incoming feedback never creates an Issue automatically. Feedbacks does not recei
 `M`, `T`, `D` and `W` act only in active review mode outside text inputs. The extension records both the selected preset and the measured viewport. Shared Feedbacks links restore that context in an authorized review window; the original website URL is preserved without adding internal feedback parameters. A page opened in a narrow desktop Chrome window is labelled a responsive preview, not an emulated mobile browser.
 
 Resolved pins disappear on connected clients but stay discoverable under Show resolved. Reopen restores them. Other-device and unmatched-anchor threads remain accessible without placing misleading pins on the current layout.
+
+## Protocol and client compatibility
+
+Verified locally on 2026-09-28: runtime packages `@modelcontextprotocol/server` and `@modelcontextprotocol/node` 2.1.0 serve both [2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning) and initialization-based legacy clients. Remote HTTP uses the SDK's request classification and modern handler while preserving stateless JSON responses for legacy callers. Stdio uses the SDK's `serveStdio` entry point, which chooses the protocol era from the opening exchange. Both paths retain the same authenticated operation closure and full/compact tool profiles; no protocol version is invented by application code.
+
+[HTTP integration tests](../tests/http.test.ts) use the real v2 client to assert modern negotiation, discovery, schema-bearing tools, guide access, authorized reads and denied writes. They exercise full and compact profiles over remote HTTP and both source and bundled stdio, while retaining v1 SDK clients and legacy initialization/JSON HTTP calls. [MCP result tests](../tests/agent-mcp.test.ts) cover native image blocks, text metadata and output schemas in both eras, plus modern input validation. These are SDK-level compatibility receipts; an installed Codex, Claude or Antigravity session and deployment acceptance remain separate checks.
+
+The migration follows the official TypeScript SDK [v2 upgrade guide](https://github.com/modelcontextprotocol/typescript-sdk/blob/main/docs/migration/upgrade-to-v2.md) and [2026-07-28 support guide](https://github.com/modelcontextprotocol/typescript-sdk/blob/main/docs/migration/support-2026-07-28.md), accessed 2026-09-28. Feedbacks uses explicit bearer keys rather than implementing an OAuth authorization server; protocol support is not a claim to implement every optional MCP capability or OAuth flow.
+
+The small catalog, bounded reads, shared operation contracts and executable checks apply the progressive-disclosure and environment-validation principles in [OpenAI harness engineering](https://openai.com/index/harness-engineering/). They are not a guarantee that every small model or client succeeds. See the tracked workflow plan for measured fixtures and verification boundaries.
