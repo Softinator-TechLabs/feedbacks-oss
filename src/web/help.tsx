@@ -21,6 +21,63 @@ function WatchStep({ step, title }: { step: string; title: string }) {
   );
 }
 
+function LatestExtension() {
+  const { data: version } = useLoad(async () => {
+    const response = await fetch("/downloads/extension-release.json", {
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const release = await response.json();
+    return typeof release.version === "string" &&
+      /^\d+(?:\.\d+){0,3}$/.test(release.version) &&
+      release.downloadPath === "/downloads/feedbacks-extension.zip"
+      ? release.version
+      : null;
+  }, []);
+  if (!version) return null;
+  return (
+    <div className="help-latest-extension">
+      <p>
+        <strong>Need the latest version?</strong> Chrome Web Store may be a version behind
+        while an update is under review.
+      </p>
+      <a
+        className="button"
+        href={`/downloads/feedbacks-extension.zip?v=${encodeURIComponent(version)}`}
+        download
+      >
+        Download latest · v{version}
+      </a>
+      <details
+        className="help-watch"
+        id="update-extension"
+        open={location.hash === "#update-extension" || undefined}
+      >
+        <summary>Install manually in Chrome</summary>
+        <ol>
+          <li>
+            Download the ZIP above and <strong>extract it</strong>.
+          </li>
+          <li>
+            Open <code>chrome://extensions</code> and turn on{" "}
+            <strong>Developer mode</strong>.
+          </li>
+          <li>
+            Choose <strong>Load unpacked</strong> and select the extracted folder.
+          </li>
+        </ol>
+        <p className="muted">
+          If both copies appear, turn off the Store copy and pin the manual one.
+        </p>
+        <p className="muted">
+          Already installed manually? Replace the files in that folder, then click{" "}
+          <strong>Reload</strong> in Chrome. Finish unsent reviews first.
+        </p>
+      </details>
+    </div>
+  );
+}
+
 function HelpAgentSetup({
   actor,
   projects,
@@ -331,6 +388,7 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
             </button>
           </div>
           <ActionState action={serverCopy} />
+          <LatestExtension />
           <WatchStep step="install,connect" title="Show install & connect" />
         </li>
         <li id="connect-agent">
@@ -351,16 +409,6 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
           How to capture &amp; send feedback
         </a>
       </p>
-      {location.hash === "#update-extension" && (
-        <details id="update-extension" className="compact-details" open>
-          <summary>Update an unpacked extension</summary>
-          <p>
-            <a href="/downloads/feedbacks-extension.zip">Download the extension</a>,
-            extract it over your existing folder, then Reload it in Chrome’s Extensions
-            page. Finish unsent reviews first.
-          </p>
-        </details>
-      )}
     </article>
   );
 }
