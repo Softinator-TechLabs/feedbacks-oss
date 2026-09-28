@@ -1,6 +1,66 @@
 // Shared, silent walkthroughs. Product frames are captured from a disposable demo.
 (() => {
   const base = new URL(".", document.currentScript.src).href;
+  const players = new Set();
+  const motionControls = new Set();
+  let motionChoice;
+  try {
+    motionChoice = sessionStorage.getItem("feedbacks-motion");
+  } catch {}
+  let allPaused =
+    motionChoice === "paused" ||
+    (!motionChoice && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const updateMotionControls = () => {
+    const paused = players.size
+      ? [...players].every((player) => player.paused)
+      : allPaused;
+    document.documentElement.dataset.feedbacksMotion = paused ? "paused" : "playing";
+    motionControls.forEach((control) => control.render(paused));
+  };
+  matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (event) => {
+    if (!motionChoice) {
+      allPaused = event.matches;
+      players.forEach((player) => player.setPlaybackPaused?.(allPaused));
+      updateMotionControls();
+    }
+  });
+  function setAllPaused(paused) {
+    allPaused = paused;
+    motionChoice = paused ? "paused" : "playing";
+    try {
+      sessionStorage.setItem("feedbacks-motion", motionChoice);
+    } catch {}
+    players.forEach((player) => player.setPlaybackPaused?.(paused));
+    updateMotionControls();
+  }
+  class FeedbacksMotionControl extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+    }
+    connectedCallback() {
+      this.setAttribute("data-control", "");
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260928-4"><button type="button" class="motion-toggle"><svg viewBox="0 0 16 16" aria-hidden="true"><path/></svg><span></span></button>`;
+      this.shadowRoot.querySelector("button").onclick = () => {
+        const playing = [...players].some((player) => !player.paused);
+        setAllPaused(playing || (!players.size && !allPaused));
+      };
+      motionControls.add(this);
+      updateMotionControls();
+    }
+    disconnectedCallback() {
+      motionControls.delete(this);
+    }
+    render(paused) {
+      const button = this.shadowRoot.querySelector("button");
+      button.setAttribute("aria-label", `${paused ? "Play" : "Pause"} all animations`);
+      button.querySelector("span").textContent = paused ? "Play all" : "Pause all";
+      button
+        .querySelector("path")
+        .setAttribute("d", paused ? "M4 2 13 8 4 14Z" : "M5 2V14M11 2V14");
+    }
+  }
+  customElements.define("feedbacks-motion-control", FeedbacksMotionControl);
   const scenes = {
     server: {
       kind: "server",
@@ -505,8 +565,9 @@
       if (!scene) return;
       this.index = 0;
       this.motion = matchMedia("(prefers-reduced-motion: reduce)");
-      this.paused = this.motion.matches;
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260928-3"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      this.paused = allPaused || (this.motion.matches && motionChoice !== "playing");
+      players.add(this);
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260928-4"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         frameBox = q(".frame"),
@@ -527,6 +588,7 @@
         renderControls();
         schedule();
       };
+      this.setPlaybackPaused = setPaused;
       const toggle = () => setPaused(!this.paused);
       const steps = scene.frames.map((frame, index) => {
         const b = document.createElement("button");
@@ -559,6 +621,7 @@
         );
         hit.setAttribute("aria-label", `${action} animation`);
         steps.forEach((b, i) => b.setAttribute("aria-pressed", String(i === this.index)));
+        updateMotionControls();
       };
       const pin =
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 8 0-1 7 4 4H5l4-4-1-7m4 11v7"/></svg>';
@@ -593,7 +656,7 @@
           svgNode(
             "image",
             {
-              href: base + f.image + ".webp?v=20260928-3",
+              href: base + f.image + ".webp?v=20260928-4",
               width: action.size[0],
               height: action.size[1],
             },
@@ -662,7 +725,7 @@
       zoom.onclick = () => {
         setPaused(true);
         const f = scene.frames[this.index];
-        q("dialog img").src = base + f.image + ".webp?v=20260928-3";
+        q("dialog img").src = base + f.image + ".webp?v=20260928-4";
         q("dialog img").alt = f.caption;
         dialog.showModal();
       };
@@ -671,6 +734,9 @@
       caption.textContent = scene.frames[0].caption;
       renderControls();
       this.cleanup = () => {
+        players.delete(this);
+        this.setPlaybackPaused = undefined;
+        updateMotionControls();
         cancelAnimationFrame(raf);
         observer.disconnect();
         resize.disconnect();

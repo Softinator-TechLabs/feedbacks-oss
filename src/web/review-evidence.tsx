@@ -202,10 +202,13 @@ export function ReviewEvidence({
             {numbered.length ? ` · ${numbered.length} screenshots in page order` : ""}
           </p>
         </div>
+      </div>
+      <div className="review-evidence-controls">
         {images.length > 1 && (
           <label>
             Screenshot
             <select
+              aria-label="Screenshot"
               value={selected?.id || ""}
               onChange={(event) => {
                 setSelectedId(event.target.value);
@@ -220,13 +223,6 @@ export function ReviewEvidence({
             </select>
           </label>
         )}
-      </div>
-      <div className="review-point-overview">
-        <p>
-          {counts.open} open · {counts.resolved} resolved
-          {counts.closed ? ` · ${counts.closed} closed` : ""}
-          {counts.removed ? ` · ${counts.removed} removed` : ""}
-        </p>
         <label>
           Points{" "}
           <select
@@ -240,6 +236,13 @@ export function ReviewEvidence({
             <option value="removed">Removed</option>
           </select>
         </label>
+      </div>
+      <div className="review-point-overview">
+        <p>
+          {counts.open} open · {counts.resolved} resolved
+          {counts.closed ? ` · ${counts.closed} closed` : ""}
+          {counts.removed ? ` · ${counts.removed} removed` : ""}
+        </p>
       </div>
       {threadClosed && (
         <p className="muted">

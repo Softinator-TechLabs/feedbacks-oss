@@ -33,3 +33,9 @@
 .vp-doc h2 {
   letter-spacing: -0.025em;
 }
+
+.docs-motion-control {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}

@@ -730,15 +730,16 @@
   margin: 4px 0 0;
   font-size: 0.86rem;
 }
-.review-evidence-heading label {
+.review-evidence-controls label {
   display: grid;
   gap: 4px;
   min-width: min(220px, 100%);
   font-size: 0.82rem;
   font-weight: 600;
 }
-.review-evidence-heading select {
-  max-width: min(280px, 100%);
+.review-evidence-controls select {
+  width: 100%;
+  max-width: 100%;
 }
 .review-evidence-figure {
   margin: 0;
@@ -1016,8 +1017,8 @@
     order: 1;
     margin-block: 10px 14px;
   }
-  .review-evidence-heading label,
-  .review-evidence-heading select {
+  .review-evidence-controls label,
+  .review-evidence-controls select {
     width: 100%;
     max-width: none;
   }
@@ -1329,4 +1330,29 @@
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
+}
+
+.review-evidence-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-block: 16px 12px;
+}
+.review-evidence-controls label {
+  min-width: 0;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.review-evidence-controls select {
+  font-size: 1rem;
+  font-weight: 400;
+}
+.review-point-overview {
+  margin-bottom: 12px;
+}
+@media (max-width: 600px) {
+  .review-evidence-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

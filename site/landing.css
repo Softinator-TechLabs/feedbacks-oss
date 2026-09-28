@@ -952,3 +952,199 @@
   margin: 0;
   width: 100%;
 }
+
+/* One opening composition: explanation beside the complete working example. */
+.landing-page .hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.5fr);
+  align-items: center;
+  gap: 40px;
+  padding-block: 16px 24px;
+  text-align: left;
+}
+.landing-page .hero .intro {
+  display: block;
+  padding: 0;
+}
+.landing-page .hero .intro h1 {
+  font-size: clamp(40px, 4.1vw, 60px);
+}
+.landing-page .hero .intro-aside {
+  margin-top: 32px;
+}
+.landing-page .hero .intro-aside > p:first-child {
+  font-size: 18px;
+}
+.landing-page .hero .story {
+  min-width: 0;
+  padding: 0;
+}
+.landing-page .hero .story-controls {
+  gap: 8px;
+  margin: 0 0 12px;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+}
+.landing-page .hero .story-controls button {
+  font-size: 14px;
+  padding-inline: 2px;
+}
+.landing-page .hero .story-controls button span {
+  margin-right: 4px;
+}
+.landing-page .hero .step-arrow {
+  width: 18px;
+  flex-shrink: 0;
+}
+.landing-page .hero .story-stage {
+  display: block;
+  min-height: 0;
+  padding: 16px;
+}
+.landing-page .hero .screen-stack {
+  transform: none;
+}
+.landing-page .hero feedbacks-demo {
+  --demo-screen-height: clamp(220px, calc(100svh - 430px), 360px);
+}
+.landing-page .hero .story-note {
+  padding: 12px 4px 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 16px;
+  align-items: center;
+}
+.landing-page .hero .pencil-note {
+  font-size: 23px;
+  margin: 0;
+  transform: rotate(-2deg);
+  grid-column: 1 / -1;
+}
+.landing-page .hero .story-note h3 {
+  font-size: 18px;
+  letter-spacing: -0.025em;
+  margin: 0;
+  max-width: none;
+}
+.landing-page .hero .story-note h3 br {
+  display: none;
+}
+.landing-page .hero .story-note > a {
+  font-size: 13px;
+  margin: 0;
+  padding: 8px 0;
+}
+.landing-page .site-header {
+  height: 64px;
+}
+.landing-page .site-header nav {
+  gap: 24px;
+}
+.comparisons {
+  padding-block: 64px;
+}
+.comparison-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.comparison-heading h2 {
+  font-size: clamp(28px, 3.3vw, 44px);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+.comparisons > p {
+  color: var(--secondary);
+  margin-top: 12px;
+}
+.comparison-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 32px;
+  margin-top: 24px;
+  border-block: 1px solid var(--line);
+  padding-block: 16px;
+}
+.comparison-links a {
+  padding-block: 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+html[data-feedbacks-motion="paused"] .scene-enter {
+  animation: none;
+}
+html[data-feedbacks-motion="paused"] .story-stage {
+  transition: none;
+}
+@media (max-width: 1100px) {
+  .landing-page .hero {
+    gap: 24px;
+    grid-template-columns: minmax(270px, 0.85fr) minmax(0, 1.5fr);
+  }
+  .landing-page .hero .story-controls button span {
+    display: none;
+  }
+  .landing-page .hero .story-note {
+    display: block;
+  }
+  .landing-page .hero .story-note h3 {
+    margin-top: 6px;
+  }
+  .landing-page .hero feedbacks-demo {
+    --demo-screen-height: clamp(200px, calc(100svh - 470px), 320px);
+  }
+}
+@media (max-width: 900px) {
+  .landing-page .hero {
+    display: block;
+    padding-top: 16px;
+  }
+  .landing-page .hero .intro h1 {
+    font-size: clamp(36px, 6.2vw, 48px);
+  }
+  .landing-page .hero .intro-aside {
+    margin-top: 20px;
+  }
+  .landing-page .hero .story {
+    margin-top: 28px;
+  }
+  .landing-page .hero feedbacks-demo {
+    --demo-screen-height: clamp(220px, 60vw, 360px);
+  }
+  .landing-page .hero .story-controls button {
+    max-width: none;
+  }
+  .landing-page .hero .story-note {
+    padding-top: 16px;
+  }
+  .landing-page .site-header {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding-block: 12px;
+  }
+  .landing-page .site-header nav {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .landing-page .site-header nav a:first-child {
+    display: inline-block;
+  }
+  .landing-page .site-header nav a[href*="github.com"] {
+    display: none;
+  }
+  .comparisons {
+    padding-block: 40px;
+  }
+}
+
+@media (min-width: 901px) {
+  .landing-page .hero feedbacks-demo {
+    --demo-footer-display: grid;
+    --demo-caption-height: 0;
+    --demo-controls-gap: 0;
+  }
+}

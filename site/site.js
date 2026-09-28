@@ -42,11 +42,8 @@ function show(index) {
   stage.dataset.active = index;
   buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === index)));
   for (const [id, value] of Object.entries({
-    "screen-label": s.label,
     "pencil-note": s.note,
     "scene-title": s.title,
-    "scene-copy": s.copy,
-    "context-slip": s.context,
   })) {
     document.getElementById(id).textContent = value;
   }
