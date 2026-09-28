@@ -631,6 +631,12 @@ aside .hint {
   position: relative;
   flex: none;
 }
+.more-tools {
+  margin-inline: 8px;
+}
+.more-tools summary {
+  padding: 10px 14px;
+}
 .download-menu summary,
 .more-tools summary {
   min-height: 44px;
