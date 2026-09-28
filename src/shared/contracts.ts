@@ -181,6 +181,12 @@ export const contextSchema = z.object({
   requestedSize: z.object({ width: z.number(), height: z.number() }).optional(),
   captureDimensions: z.object({ width: z.number(), height: z.number() }).optional(),
   capturedAt: z.string().datetime().optional(),
+  captureMarker: z
+    .object({
+      style: z.enum(["none", "pin", "arrow", "dot", "ring"]),
+      size: z.enum(["small", "medium", "large"]),
+    })
+    .optional(),
   anchor: anchorSchema.optional(),
   annotations: z
     .array(
@@ -782,6 +788,7 @@ export const inputSchemas = {
       .default("incorporated_in"),
   }),
   "threads.archive": z.object({ ...tm, archived: z.boolean() }),
+  "threads.move": z.object({ ...tm, projectId: id }),
   "threads.delete": z.object({
     projectId: id,
     threads: z
@@ -1590,6 +1597,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "threads.figmaReference": threadOutput,
   "threads.evidence": threadOutput,
   "threads.archive": threadOutput,
+  "threads.move": threadOutput,
   "threads.delete": deletionOutput,
   "threads.deletions": z.object({ items: z.array(deletionOutput) }),
   "threads.retryDeletion": deletionOutput,
@@ -1699,6 +1707,7 @@ export const agentTokenScopes = [
   "threads.plan",
   "threads.organize",
   "threads.priority",
+  "threads.move",
   "reviewViews.list",
   "reviewViews.save",
   "reviewViews.delete",

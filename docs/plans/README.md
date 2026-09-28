@@ -7,10 +7,12 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 ## Plans
 
 - [Session replay and agent debug bundles](session-replay.md)
+- [Detect the active Feedbacks server](extension-server-detection.md)
 
 - [Five-minute sign-in lock by client IP](login-ip-throttle.md)
 - [Human-led work planning and task handoff](human-work-planning.md)
 - [Point planning and progress](../superpowers/plans/2026-09-28-point-planning-progress.md)
+- [Thread pin visibility](../superpowers/plans/2026-09-28-thread-pin-visibility.md)
 - [Project categories and tags](project-taxonomy.md)
 
 - [Delegated assignments and visible triage](assignment-ui.md)
@@ -57,3 +59,5 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 - [Visual capture editing](visual-capture-editing.md)
 
 - [Clear setup and agent-context onboarding](clear-onboarding.md)
+
+- [Move feedback between projects](move-feedback-projects.md) — scoped thread transfer with stable evidence and simple UI.

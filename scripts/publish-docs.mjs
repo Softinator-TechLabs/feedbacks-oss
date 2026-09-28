@@ -11,6 +11,7 @@ const queue = [
   "api",
   "generated/operations",
   "review-workflow",
+  "project-routing",
   "agent-setup",
   "mcp-contract",
   "extension",

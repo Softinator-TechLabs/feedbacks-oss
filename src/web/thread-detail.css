@@ -796,18 +796,112 @@
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-.review-main-capture img {
-  max-height: 520px;
-  object-fit: contain;
-  object-position: left top;
+.review-image-frame {
+  display: block;
+  position: relative;
+  width: 100%;
+  line-height: 0;
+}
+.review-image-pins {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.review-image-pin {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 3px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: rgba(23, 50, 77, 0.78);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.review-image-pin[data-style="ring"],
+.review-image-pin[data-style="dot"] {
+  min-width: 18px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 2px solid #c73732;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.75);
+}
+.review-image-pin[data-style="dot"] {
+  background: rgba(199, 55, 50, 0.72);
+  box-shadow: none;
+}
+.review-image-pin[data-style="arrow"] {
+  min-width: 18px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: translate(-100%, -100%);
+}
+.review-image-pin[data-style="arrow"]::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: 135%;
+  height: 3px;
+  background: #c73732;
+  transform: rotate(45deg);
+  transform-origin: left center;
+}
+.review-image-pin[data-style="arrow"]::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 40%;
+  height: 40%;
+  border-right: 3px solid #c73732;
+  border-bottom: 3px solid #c73732;
+}
+.review-image-pin[data-size="medium"] {
+  width: 26px;
+  height: 26px;
+}
+.review-image-pin[data-size="large"] {
+  width: 34px;
+  height: 34px;
 }
 .review-main-capture figcaption,
 .review-point-figure figcaption,
 .review-extra-captures figcaption {
-  margin: 7px 0 0;
+  margin: 0 0 7px;
   color: var(--muted);
   font-size: 0.82rem;
   overflow-wrap: anywhere;
+}
+.review-image-caption {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.review-image-caption > a {
+  margin-left: auto;
+}
+.review-pin-toggle {
+  min-height: 30px;
+  padding: 3px 9px;
+  font-size: 0.82rem;
+}
+.review-legacy-pins {
+  font-size: 0.78rem;
 }
 .review-extra-captures {
   margin-top: 12px;
@@ -818,11 +912,6 @@
 }
 .review-extra-captures figure {
   margin-top: 12px;
-}
-.review-extra-captures img {
-  max-height: 320px;
-  object-fit: contain;
-  object-position: left top;
 }
 .review-point-figure {
   margin-top: 12px;
@@ -1359,4 +1448,31 @@
     width: 100%;
     min-width: 0;
   }
+}
+
+.thread-move-dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  overflow: auto;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.thread-move-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+.thread-move-dialog h2 {
+  margin-top: 0;
+}
+
+.thread-move-dialog select {
+  width: 100%;
+}
+.thread-move-dialog .actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
 }

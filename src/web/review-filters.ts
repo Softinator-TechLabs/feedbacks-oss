@@ -1,6 +1,7 @@
 import {
   calendarDateSchema,
   categorySchema,
+  reviewFiltersSchema,
   type ReviewFilters,
 } from "../shared/contracts.js";
 export const categories = [
@@ -36,6 +37,8 @@ export function readFilters(query: string): ReviewFilters {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assignedTo)
   )
     filters.assignedTo = assignedTo;
+  const workState = reviewFiltersSchema.shape.workState.safeParse(p.get("workState"));
+  if (workState.success) filters.workState = workState.data;
   const planningDate = calendarDateSchema.safeParse(p.get("planningDate"));
   if (planningDate.success) filters.planningDate = planningDate.data;
   return filters;

@@ -157,6 +157,21 @@ kbd {
   display: grid;
   gap: 4px;
 }
+.capture-marker-defaults {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 10px 0 18px;
+}
+.capture-marker-defaults label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+.capture-marker-defaults select {
+  width: 100%;
+  min-height: 40px;
+}
 .preference-list .check {
   margin: 0;
   padding: 8px 0;

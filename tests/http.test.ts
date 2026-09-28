@@ -37,6 +37,10 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
     server = app.listen(0, "127.0.0.1");
     await new Promise<void>((resolve) => server.once("listening", resolve));
     const base = `http://127.0.0.1:${server.address().port}`;
+    const discovery = await fetch(`${base}/.well-known/feedbacks.json`);
+    assert.equal(discovery.status, 200);
+    assert.deepEqual(await discovery.json(), { product: "feedbacks", setupVersion: 1 });
+    assert.equal(discovery.headers.get("cache-control"), "no-store");
     const post = async (op: string, input: any, headers: any = {}) =>
       fetch(`${base}/api/${op}`, {
         method: "POST",

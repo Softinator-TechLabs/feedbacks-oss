@@ -5,6 +5,7 @@ import {
   commitRecording,
   recordingRead,
 } from "./recordings.js";
+import { moveThread } from "./thread-move.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
 import {
@@ -160,6 +161,7 @@ export class Operations {
           ["threads.delete", "threads.deletions", "threads.retryDeletion"].includes(name)
         )
           return manageThreadDeletion(db, a, name, i);
+        if (name === "threads.move") return moveThread(db, a, i);
         if (name.startsWith("threads.")) return feedback(db, a, name, i, this.config);
         if (name.startsWith("recordings."))
           return recordingRead(db, a, this.store, name, i);

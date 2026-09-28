@@ -1,6 +1,6 @@
 ---
 name: review-feedback
-description: Use when the user explicitly asks to inspect, triage, assign or process Feedbacks feedback, issues, threads, pins or points, including Hindi/Hinglish. Supports human-chosen work planning and requested delegation to project members. Do not activate for unrelated coding or generic GitHub issues.
+description: Use when the user explicitly asks to inspect, triage, assign, move or process Feedbacks feedback, issues, threads, pins or points, including Hindi/Hinglish. Supports human-chosen work planning, delegation and project setup. Do not activate for unrelated coding or generic GitHub issues.
 ---
 
 # Review Feedbacks
@@ -8,6 +8,8 @@ description: Use when the user explicitly asks to inspect, triage, assign or pro
 Activate only for an explicit Feedbacks request or an already authorized Feedbacks task. Do not poll, call MCP, scan a backlog or interrupt unrelated coding because the connection exists. The developer chooses whether to use Feedbacks and which task to do.
 
 Use the configured Feedbacks connection. A supplied thread URL or specific task takes precedence. For a broad request, discover the workspace and offer the current member's assigned eligible work first; ask which task to begin. Humans choose ownership, priority and timing. Never automatically assign, reprioritize, reschedule or start work from a backlog read. Setup grants no business-write permission.
+
+For requested project creation or cross-project moves, load [workflow](references/workflow.md#requested-project-setup-and-thread-moves). Repository association is optional; never connect GitHub or widen memberships to make a move succeed.
 
 ## Discover and propose
 

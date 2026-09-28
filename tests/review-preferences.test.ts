@@ -9,6 +9,8 @@ test("review and recording defaults remain distinct and ignore unknown stored va
   assert.equal(defaults.recordingNavigationLocked, false);
   assert.equal(defaults.recordingHighlightEnabled, false);
   assert.equal(defaults.showResolved, false);
+  assert.equal(defaults.captureMarkerStyle, "ring");
+  assert.equal(defaults.captureMarkerSize, "small");
   assert.deepEqual(reviewDefaults(null), defaults);
   assert.deepEqual(reviewDefaults({ navigationLocked: "false", extra: true }), defaults);
   const updated = updateReviewDefaults(
@@ -21,4 +23,14 @@ test("review and recording defaults remain distinct and ignore unknown stored va
   assert.throws(() => updateReviewDefaults({}, { showPins: "yes" }));
   assert.throws(() => updateReviewDefaults({}, []));
   assert.deepEqual(updateReviewDefaults({}, { untrusted: true }), defaults);
+  assert.equal(
+    updateReviewDefaults({}, { captureMarkerStyle: "none", captureMarkerSize: "large" })
+      .captureMarkerStyle,
+    "none",
+  );
+  assert.equal(
+    reviewDefaults({ captureMarkerStyle: "unknown" }).captureMarkerStyle,
+    "ring",
+  );
+  assert.throws(() => updateReviewDefaults({}, { captureMarkerSize: "huge" }));
 });

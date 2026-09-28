@@ -14,3 +14,11 @@ The extension popup lists only projects returned for the connected account that 
 Only the explicit **Start review** click requests website permission; Chrome may show a one-time permission prompt. Opening the popup or selecting a project does not request website permission, capture a screenshot or upload feedback. If the active website or connected server changes while the popup is open, reopen it before reviewing. The background still rechecks the current origin and project permission during activation.
 
 After starting review, choose an element and use **Capture & annotate**. The captured draft stays bound to that review's project and server. Inspect the image, annotate and write your comment, then explicitly **Send feedback**. Auto-selection is not auto-capture or auto-upload. **Resume pending draft**, pairing and disconnect remain separate controls.
+
+## Separate projects and move existing feedback
+
+Use separate projects when a public website and its dashboard need different context, instructions or access. A repository association is optional; creating a review project does not require connecting GitHub. MCP already exposes `projects.create`, `projects.context.save`, `instructions.publish` and `members.grant` for explicitly requested setup with appropriate permissions. Collaborative context, approved instructions and access grants are separate operations.
+
+An explicitly requested `threads.move` takes the current `threadId`, `revision` and destination `projectId`. The caller needs maintain permission and, for an agent, the operation scope in both projects. The thread keeps its ID, discussion, assets and work plans; custom categories are matched or copied. Destination permissions apply, guest links are revoked and affected export snapshots are invalidated. Unsafe shared documents, active external synchronization and active assignees/workers missing destination access block the move instead of silently changing access or ownership.
+
+Read back the new project and revision after moving. Existing GitHub links remain with automatic status sync paused for reconciliation. A move never connects GitHub, grants membership or starts work. See the [agent move workflow](../plugins/feedbacks/skills/review-feedback/references/workflow.md#requested-project-setup-and-thread-moves) for schema discovery and recovery.

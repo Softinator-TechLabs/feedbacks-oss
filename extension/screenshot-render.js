@@ -40,15 +40,47 @@ export function drawShape(shape, ctx, width) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   if (s.tool === "point" || s.tool === "steps") {
-    const radius = Math.max(12, width / 120);
+    if (s.tool === "point" && s.markerStyle === "none") {
+      ctx.restore();
+      return;
+    }
+    const scale = { small: 1, medium: 1.35, large: 1.8 }[s.markerSize] || 1;
+    const radius =
+      s.tool === "point" ? Math.max(8, width / 190) * scale : Math.max(12, width / 120);
+    if (s.tool === "point" && s.markerStyle === "arrow") {
+      ctx.strokeStyle = "#c73732";
+      ctx.lineWidth = Math.max(2, width / 700) * scale;
+      ctx.beginPath();
+      ctx.moveTo(a.x - radius * 1.4, a.y - radius * 1.4);
+      ctx.lineTo(a.x, a.y);
+      ctx.moveTo(a.x - radius * 0.85, a.y);
+      ctx.lineTo(a.x, a.y);
+      ctx.lineTo(a.x, a.y - radius * 0.85);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
     ctx.beginPath();
     ctx.arc(a.x, a.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = s.tool === "steps" ? "#b92332" : "#17324d";
+    if (s.unlabeled || s.markerStyle === "ring") {
+      ctx.strokeStyle = "#c73732";
+      ctx.lineWidth = Math.max(2, width / 750);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+    if (s.tool === "point" && s.markerStyle === "dot") {
+      ctx.fillStyle = "rgba(199, 55, 50, 0.72)";
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    ctx.fillStyle = s.tool === "steps" ? "#b92332" : "rgba(23, 50, 77, 0.78)";
     ctx.fill();
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
     ctx.fillStyle = "#ffffff";
-    ctx.font = `600 ${radius * 1.35}px system-ui`;
+    ctx.font = `600 ${radius * (s.tool === "point" ? 1.2 : 1.35)}px system-ui`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(String(s.number || 1), a.x, a.y);

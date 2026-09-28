@@ -11,6 +11,7 @@ async function popup({
   allSitesAllowed = false,
   instantReview = false,
   toolbarPopup = false,
+  detectedServer = "",
 } = {}) {
   const html = await readFile(
     new URL("../extension/popup.html", import.meta.url),
@@ -109,6 +110,10 @@ async function popup({
         }),
         sendMessage: async (message: any) => {
           sent.push(JSON.parse(JSON.stringify(message)));
+          if (message.type === "detectServer" && detectedServer && !state.server) {
+            state.server = detectedServer;
+            return { ok: true, data: { status: "set" } };
+          }
           if (message.type === "preparePair" && allowed) {
             state.server = message.server;
             state.pending = true;
@@ -327,4 +332,20 @@ test("only the toolbar popup closes after pointer departure and re-entry cancels
   tab.pointer("pointerleave");
   await new Promise((resolve) => setTimeout(resolve, 250));
   assert.equal(tab.closed(), 0);
+});
+
+test("popup detects the active server once and fills it without pairing or requesting access", async () => {
+  const f = await popup({ server: "", detectedServer: "https://feedback.example.test" });
+  assert.equal(f.nodes.server.value, "https://feedback.example.test");
+  assert.match(f.nodes.message.textContent, /Server detected/);
+  assert.equal(f.requested.length, 0);
+  assert.ok(!f.sent.some((m) => m.type === "preparePair"));
+  await f.tick();
+  assert.equal(f.sent.filter((m) => m.type === "detectServer").length, 1);
+});
+
+test("configured reviews do not probe unrelated websites before starting", async () => {
+  const f = await popup({ connected: true });
+  assert.ok(!f.sent.some((m) => m.type === "detectServer"));
+  assert.ok(f.sent.some((m) => m.type === "activate"));
 });

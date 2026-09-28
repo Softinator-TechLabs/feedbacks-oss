@@ -615,6 +615,52 @@ test(
       } finally {
         releaseWorkerSelect?.();
       }
+      // Concurrent moves consume one thread revision. The loser must not move
+      // dependent ownership or publish a second successful destination event.
+      const moveTargets = await Promise.all([
+        ops.executeOperation(owner, "projects.create", {
+          name: "Move A",
+          origins: ["https://example.test"],
+        }),
+        ops.executeOperation(owner, "projects.create", {
+          name: "Move B",
+          origins: ["https://example.test"],
+        }),
+      ]);
+      const moving = await ops.executeOperation(owner, "threads.create", {
+        ...base,
+        body: "Concurrent project move",
+        idempotencyKey: "concurrent-project-move",
+      });
+      const moves = await Promise.allSettled(
+        moveTargets.map((project) =>
+          ops.executeOperation(owner, "threads.move", {
+            threadId: moving.id,
+            revision: moving.revision,
+            projectId: project.id,
+          }),
+        ),
+      );
+      assert.equal(moves.filter((result) => result.status === "fulfilled").length, 1);
+      const rejectedMove = moves.find((result) => result.status === "rejected");
+      assert.equal(
+        rejectedMove?.status === "rejected" && rejectedMove.reason.code,
+        "CONFLICT",
+      );
+      const successfulMove = moves.find((result) => result.status === "fulfilled");
+      const finalMove = await ops.executeOperation(owner, "threads.get", {
+        threadId: moving.id,
+      });
+      assert.equal(
+        finalMove.projectId,
+        successfulMove?.status === "fulfilled" && successfulMove.value.projectId,
+      );
+      assert.equal(finalMove.revision, moving.revision + 1);
+      const moveEvents = await db.query(
+        "SELECT project_id FROM events WHERE entity_id=$1 AND kind='threads.move'",
+        [moving.id],
+      );
+      assert.deepEqual(moveEvents, [{ project_id: finalMove.projectId }]);
     } finally {
       if (a) {
         await a.query("ROLLBACK").catch(() => {});
