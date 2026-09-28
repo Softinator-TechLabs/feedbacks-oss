@@ -69,7 +69,7 @@ test(
         (await db.query("SELECT version FROM migrations ORDER BY version")).map(
           (r) => r.version,
         ),
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
       );
       const owner = await ops.auth.bootstrap(
         "owner@example.test",
@@ -115,6 +115,62 @@ test(
         assignmentId: activeClaim.value.id,
         revision: activeClaim.value.revision,
         outcome: "paused",
+      });
+      const delegationInput = {
+        threadId: first.id,
+        threadRevision: first.revision,
+        userId: owner.userId,
+        summary: "Concurrent delegation",
+        category: "general",
+        tags: [],
+        githubDecision: "undecided",
+        githubRationale: "Review evidence first",
+      };
+      const delegated = await Promise.allSettled(
+        ["delegate-a", "delegate-b"].map((idempotencyKey) =>
+          ops.executeOperation(owner, "assignments.assign", {
+            ...delegationInput,
+            idempotencyKey,
+          }),
+        ),
+      );
+      assert.equal(delegated.filter((r) => r.status === "fulfilled").length, 1);
+      assert.equal(
+        delegated.filter((r) => r.status === "rejected" && r.reason.code === "CONFLICT")
+          .length,
+        1,
+      );
+      const activeDelegation = delegated.find((r) => r.status === "fulfilled");
+      assert.ok(activeDelegation?.status === "fulfilled");
+      const updates = await Promise.allSettled(
+        ["update-a", "update-b"].map((idempotencyKey) =>
+          ops.executeOperation(owner, "assignments.assign", {
+            ...delegationInput,
+            delegationId: activeDelegation.value.id,
+            revision: 1,
+            idempotencyKey,
+          }),
+        ),
+      );
+      assert.equal(updates.filter((r) => r.status === "fulfilled").length, 1);
+      assert.equal(
+        updates.filter((r) => r.status === "rejected" && r.reason.code === "CONFLICT")
+          .length,
+        1,
+      );
+      assert.equal(
+        (
+          await ops.executeOperation(owner, "assignments.history", {
+            delegationId: activeDelegation.value.id,
+          })
+        ).total,
+        2,
+      );
+      await ops.executeOperation(owner, "assignments.cancel", {
+        delegationId: activeDelegation.value.id,
+        revision: 2,
+        reason: "Concurrency verified",
+        idempotencyKey: "cancel-delegation",
       });
       a = await pool.connect();
       b = await pool.connect();

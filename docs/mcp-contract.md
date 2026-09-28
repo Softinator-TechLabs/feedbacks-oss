@@ -46,12 +46,16 @@ The registry now covers all business input/output contracts and powers remote MC
 ## External GitHub Issue workflow
 
 1. An authorized agent reads the relevant thread through MCP. A key explicitly granted `threads.issueDraft` can request a bounded, read-only draft. The draft excludes screenshots, diagnostics, private notes and reviewer policy; its text remains untrusted and needs a privacy/accuracy review.
-2. After an agreed handoff, an agent with a separately granted, project-scoped `github.issueCreate` key can review the proposed title/body and create the Issue through Feedbacks MCP if the project's GitHub App is connected. The server reads the created Issue back and records a verified link. This scope is never added to existing keys or the one-click owner setup.
+2. After an agreed handoff, an agent with a separately granted, project-scoped `github.issueCreate` key can review the proposed title/body and create the Issue through Feedbacks MCP if the project's GitHub App is connected. The server reads the created Issue back and records a verified link. Eligible maintainers may separately opt into that scope in Account for projects they maintain. This scope is never added to existing keys or one-click Help setup, and an assignment's GitHub decision does not authorize issue creation.
 3. Without the App or that scope, an agent may use its own separately authorized GitHub access, such as `gh`, then call `threads.linkIssue` with the actual Issue URL after readback.
 4. Manual links are reported links; only a successful App readback is recorded as independently verified.
 5. The agent replies to the thread and later supplies fix evidence. Resolution uses the caller's project permission and does not happen merely because an Issue link was supplied.
 
 Incoming feedback never creates an Issue automatically. Feedbacks does not receive the developer's GitHub token. The optional GitHub App lets signed-in project maintainers use the web app and explicitly authorized agents use MCP. If a request is uncertain after an external write, the agent stops; a human maintainer inspects GitHub and reconciles it before another attempt.
+
+## Assignment attribution
+
+Durable thread/point assignments use `assignments.delegations/assign/cancel/history`; renewable current-worker claims use `assignments.list/claim/renew/release`. Both transports use the same scoped operations and server-derived member/agent attribution. Assignment category/tags and GitHub rationale describe the selected scope, without granting permission, starting a recipient agent or changing thread status. See [assignment contracts](api.md#durable-assignments-and-current-workers) and the [requested triage workflow](agents.md#requested-delegation-and-triage).
 
 ## Responsive view reconstruction
 

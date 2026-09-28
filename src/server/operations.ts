@@ -6,6 +6,7 @@ import {
   agentTokenScopes,
   ownerTokenScopes,
   selfAgentTokenScopes,
+  selfAgentOptionalScopes,
   profileOnlyAgentScopes,
   type Actor,
   type OperationName,
@@ -198,7 +199,7 @@ export class Operations {
               ? ownerTokenScopes
               : a.owner
                 ? agentTokenScopes
-                : selfAgentTokenScopes,
+                : [...selfAgentTokenScopes, ...selfAgentOptionalScopes],
           );
           if (i.scopes.some((s: string) => !allowed.has(s)))
             fail("VALIDATION", "Unsupported agent scope");
@@ -212,6 +213,8 @@ export class Operations {
             fail("VALIDATION", "Select a project or only personal profile scopes");
           for (const id of i.projectIds)
             await access(db, a, id, i.canResolve ? "resolve" : "read");
+          if (i.scopes.includes("github.issueCreate"))
+            for (const id of i.projectIds) await access(db, a, id, "maintain");
           const result = await this.auth.issueToken(db, a, i);
           await event(db, a, null, result.id, name, {
             scopes: i.scopes,

@@ -45,7 +45,7 @@ export async function context(db: Database, a: Actor, op: string, i: any) {
   const project = await access(db, a, i.projectId);
   if (op === "context.changes") {
     const items = await db.query(
-      'SELECT cursor::text,entity_id AS "entityId",kind,actor,created_at AS "createdAt" FROM events WHERE project_id=$1 AND cursor>$2::bigint ORDER BY cursor LIMIT $3',
+      'SELECT cursor::text,entity_id AS "entityId",kind,actor,created_at AS "createdAt" FROM events WHERE project_id=$1 AND cursor>$2::bigint ORDER BY events.cursor LIMIT $3',
       [i.projectId, i.cursor, i.limit],
     );
     return {
