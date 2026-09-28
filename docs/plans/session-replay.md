@@ -87,3 +87,9 @@ Independent review identified and drove fixes for credential snapshot masking, r
 - All four extension acceptance scripts passed, covering existing screenshot/video behavior, full-resolution screenshot editing, packaged recording and explicit cross-origin capture. The legacy harness now loads the built extension so generated metadata repair dependencies are exercised. Dependency audit found zero vulnerabilities; the actual materialized evidence bundle passed all 16 file checksums.
 - Native PostgreSQL verification passed 2/2 with zero skips, including concurrent cursor visibility and shared login throttling.
 - These receipts establish local source, packaged browser behavior and isolated API/thread/MCP behavior. Live Feedbacks deployment, Chrome Web Store distribution and exact-revision remote CI have not been performed.
+
+## Recording reliability follow-up
+
+Status: implemented; release verification in progress. Fixed failures at the integration boundaries around the packaged rrweb engine: resource-free CSS reconstruction, hidden control geometry, replay preview sizing, DOM event budgets, and native video control ownership. Keep diagnostics recording after a DOM-only failure, display capture coverage before sending, and preserve native pause/stop controls on the source page. Verify focused Chromium regressions, real-page geometry/capture, the full repository check and release CI before distributing a new extension. Existing local captures must remain intact.
+
+Local verification: `npm run check` passed (274 tests passed; 18 environment-dependent tests skipped). `npm run qa:recording-browser` passed all 16 browser checks and is now part of extension CI. Packaged-extension QA and required CI remain merge gates. A short-trim probe returned an empty export once but passed subsequent isolated and full browser runs; its cause remains unconfirmed and no speculative media fix is included.

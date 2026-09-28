@@ -699,3 +699,47 @@ button:focus-visible {
   color: #fff;
   background: #244963;
 }
+
+/* Native recording stays in the movable dock; page tools remain out of the way. */
+.review-dock[data-recording]:not([data-recording=""]) .finalize-review,
+.review-dock[data-recording]:not([data-recording=""]) .drawer-handle::after {
+  display: none;
+}
+.review-dock > .recording-controls {
+  margin: 0;
+  gap: 6px;
+  min-width: 0;
+}
+.review-dock .recording-status {
+  display: flex;
+  flex-direction: column;
+  min-width: 68px;
+  padding-inline: 4px;
+  color: inherit;
+  font-size: 12px;
+}
+.recording-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.review-dock > .recording-controls button {
+  min-height: 40px;
+  border: 1px solid #bdc5cc;
+}
+.review-dock > .recording-controls .recording-stop {
+  background: #a43e17;
+  border-color: #a43e17;
+  color: #fff;
+}
+.review-dock > .recording-controls .recording-stop:hover {
+  background: #873313;
+}
+.recording-error:empty {
+  display: none;
+}
+.recording-error {
+  flex-basis: 100%;
+  max-width: 240px;
+  overflow-wrap: anywhere;
+  font-weight: 400;
+}

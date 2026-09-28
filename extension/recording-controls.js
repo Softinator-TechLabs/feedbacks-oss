@@ -2,9 +2,25 @@
 // from the corresponding review tab; no page-world message bridge is exposed.
 export function createRecordingControls({ chrome, sessionFor }) {
   const sessions = new Map();
-  const notify = (sourceTabId, state) =>
+  const elapsed = (entry) =>
+    Math.max(
+      0,
+      Math.min(
+        300000,
+        Math.round(
+          entry.elapsedMs +
+            (entry.state === "recording" ? Date.now() - entry.updatedAt : 0),
+        ),
+      ),
+    );
+  const notify = (sourceTabId, state, elapsedMs = 0) =>
     chrome.tabs
-      .sendMessage(sourceTabId, { type: "recordingState", state })
+      .sendMessage(sourceTabId, {
+        type: "recordingState",
+        mode: "video",
+        state,
+        elapsedMs,
+      })
       .catch(() => {});
   chrome.runtime.onConnect.addListener((port) => {
     if (port.name !== "feedbacks-video" || !port.sender?.tab?.id) return;
@@ -25,7 +41,14 @@ export function createRecordingControls({ chrome, sessionFor }) {
     if (!Number.isSafeInteger(sourceTabId) || sourceTabId <= 0) return;
     const reviewId = url.searchParams.get("reviewId");
     if (!reviewId) return;
-    const entry = { port, recorderTabId: port.sender.tab.id, reviewId, state: "idle" };
+    const entry = {
+      port,
+      recorderTabId: port.sender.tab.id,
+      reviewId,
+      state: "idle",
+      elapsedMs: 0,
+      updatedAt: Date.now(),
+    };
     const previous = sessions.get(sourceTabId);
     if (previous) {
       port.disconnect();
@@ -38,10 +61,23 @@ export function createRecordingControls({ chrome, sessionFor }) {
         retire(sourceTabId);
         return;
       }
-      if (!["idle", "recording", "paused", "ready"].includes(message.state)) return;
-      const started = message.state === "recording" && entry.state === "idle";
+      if (
+        !["idle", "starting", "recording", "paused", "stopping", "ready"].includes(
+          message.state,
+        )
+      )
+        return;
+      const started =
+        message.state === "recording" &&
+        ["idle", "starting", "ready"].includes(entry.state);
+      entry.elapsedMs = Number.isFinite(message.elapsedMs)
+        ? Math.max(0, Math.min(300000, Math.round(message.elapsedMs)))
+        : ["idle", "starting"].includes(message.state)
+          ? 0
+          : elapsed(entry);
+      entry.updatedAt = Date.now();
       entry.state = message.state;
-      void notify(sourceTabId, entry.state);
+      void notify(sourceTabId, entry.state, elapsed(entry));
       if (started) void chrome.tabs.update(sourceTabId, { active: true }).catch(() => {});
     });
     port.onDisconnect.addListener(() => {
@@ -112,7 +148,7 @@ export function createRecordingControls({ chrome, sessionFor }) {
     },
     async restore(tabId) {
       const entry = sessions.get(tabId);
-      if (entry) await notify(tabId, entry.state);
+      if (entry) await notify(tabId, entry.state, elapsed(entry));
     },
     state(sourceTabId, reviewId) {
       if (reviewId && sessions.get(sourceTabId)?.reviewId !== reviewId)

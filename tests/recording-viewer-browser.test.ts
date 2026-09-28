@@ -50,7 +50,7 @@ test(
       eventCount: 12,
       privacy: { maskText: false, maskInputs: true, networkBodies: true },
       coverage: [{ channel: "replay", status: "complete" }],
-      environment: { browser: "Synthetic" },
+      environment: { browser: "Synthetic", replayStoppedAtMs: 3500 },
       events: [
         {
           seq: 0,
@@ -248,7 +248,13 @@ test(
         /future error/,
         "the recording clock continues after rrweb's final DOM event",
       );
+      assert.equal(await page.locator(".recording-stage").isVisible(), false);
+      assert.match(
+        await page.locator('[role="status"]').innerText(),
+        /DOM capture ended at 0:03.5/,
+      );
       await page.locator("#thread-recording-timeline").fill("1000");
+      assert.equal(await page.locator(".recording-stage").isVisible(), true);
       await page.getByRole("button", { name: "Network" }).click();
       await page.getByRole("button", { name: "All events" }).click();
       await page.getByRole("button", { name: /POST.*api\/check/ }).click();

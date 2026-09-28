@@ -59,7 +59,10 @@ test("lost create acknowledgement retries the original comment and review target
     },
     clearInterval() {},
     location: { href: "chrome-extension://test/video.html?sourceTabId=10" },
-    document: { getElementById: (id: string) => nodes[id] },
+    document: {
+      body: { classList: { add() {}, remove() {}, toggle() {} } },
+      getElementById: (id: string) => nodes[id],
+    },
     window: { addEventListener() {} },
     chrome: {
       runtime: {
@@ -98,44 +101,23 @@ test("lost create acknowledgement retries the original comment and review target
 });
 
 test("ending review while the native picker is open stops its eventual stream", async () => {
-  const nodes: Record<string, any> = {};
-  for (const id of [
-    "start",
-    "stop",
-    "pause",
-    "preview",
-    "review",
-    "discard",
-    "timer",
-    "status",
-    "target",
-    "send",
-    "tab-audio",
-    "microphone",
-    "editing",
-    "crop-editing",
-    "edit-state",
-    "audio-options",
-    "apply-edit",
-    "cancel-edit",
-    "reset-edit",
-    "crop-preview",
-    "crop-left",
-    "crop-top",
-    "crop-width",
-    "crop-height",
-    "saved-frames",
-    "redirect-origins",
-    "authorize-redirects",
-    "debug-context",
-  ])
-    nodes[id] = {
-      textContent: "",
-      checked: false,
-      disabled: false,
-      removeAttribute() {},
-      replaceChildren() {},
-    };
+  const html = await readFile(
+    new URL("../extension/video.html", import.meta.url),
+    "utf8",
+  );
+  const nodes: Record<string, any> = Object.fromEntries(
+    [...html.matchAll(/id="([^"]+)"/g)].map((match) => [
+      match[1],
+      {
+        value: "",
+        textContent: "",
+        checked: false,
+        disabled: false,
+        removeAttribute() {},
+        replaceChildren() {},
+      },
+    ]),
+  );
   let disconnect!: () => void, resolvePicker!: (stream: any) => void;
   let stopped = 0,
     constructed = 0;
@@ -161,7 +143,10 @@ test("ending review while the native picker is open stops its eventual stream", 
     },
     clearInterval() {},
     location: { href: "chrome-extension://test/video.html?sourceTabId=10" },
-    document: { getElementById: (id: string) => nodes[id] },
+    document: {
+      body: { classList: { add() {}, remove() {}, toggle() {} } },
+      getElementById: (id: string) => nodes[id],
+    },
     window: { addEventListener() {} },
     navigator: {
       mediaDevices: {

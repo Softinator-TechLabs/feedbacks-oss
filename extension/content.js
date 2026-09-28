@@ -50,6 +50,13 @@
     navigationButton,
     recordingControls,
     recordingState = "idle",
+    recordingMode = "video",
+    recordingElapsedMs = 0,
+    recordingUpdatedAt = 0,
+    recordingTimer,
+    recordingClock,
+    recordingError,
+    recordingFocusAction,
     highlightEnabled = true,
     highlightButton,
     clickIndicators = true,
@@ -99,8 +106,14 @@
       updatePinOcclusion();
     });
   }
+  const recordingBusy = (state = recordingState) =>
+    ["starting", "recording", "paused", "stopping"].includes(state);
   function revealDrawer(open = true) {
     if (!bar) return;
+    if (recordingBusy()) {
+      reviewDock.hidden = false;
+      open = false;
+    }
     if (open && bar.classList.contains("hidden")) void updateDiagnostics("status");
     if (open) reviewDock.hidden = false;
     bar.classList.toggle("hidden", !open);
@@ -183,45 +196,138 @@
       diagnosticsButton.disabled = false;
     }
   }
-  function renderRecording(state = recordingState) {
-    const recording = ["recording", "paused"].includes(state);
-    if (recording && !beforeRecording) {
+  function updateRecordingClock() {
+    if (!recordingClock) return;
+    const elapsed =
+      recordingElapsedMs +
+      (recordingState === "recording" ? performance.now() - recordingUpdatedAt : 0);
+    const seconds = Math.max(0, Math.floor(elapsed / 1000));
+    recordingClock.textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  }
+  function renderRecording(
+    state = recordingState,
+    elapsedMs,
+    captureMode = recordingMode,
+  ) {
+    const nextMode = captureMode === "session" ? "session" : "video";
+    const busy = recordingBusy(state);
+    if (busy && !beforeRecording) {
       beforeRecording = { highlightEnabled, navigationLocked, clickIndicators };
       setHighlight(defaults.recordingHighlightEnabled === true);
       setNavigationLock(defaults.recordingNavigationLocked === true);
       setClicks(defaults.recordingClickIndicators !== false);
-    } else if (!recording && beforeRecording) {
+    } else if (!busy && beforeRecording) {
       setHighlight(beforeRecording.highlightEnabled);
       setNavigationLock(beforeRecording.navigationLocked);
       setClicks(beforeRecording.clickIndicators);
       beforeRecording = null;
     }
+    const changed =
+      state !== recordingState ||
+      nextMode !== recordingMode ||
+      !recordingControls?.childElementCount;
+    const now = performance.now();
+    recordingElapsedMs = Number.isFinite(elapsedMs)
+      ? Math.max(0, elapsedMs)
+      : recordingBusy() && busy
+        ? recordingElapsedMs +
+          (recordingState === "recording" ? now - recordingUpdatedAt : 0)
+        : 0;
+    recordingUpdatedAt = now;
     recordingState = state;
+    recordingMode = nextMode;
+    clearInterval(recordingTimer);
+    if (state === "recording" && active)
+      recordingTimer = setInterval(updateRecordingClock, 250);
     if (!recordingControls) return;
+    // Heartbeats update the clock without replacing the focused Pause/Stop button.
+    if (!changed) {
+      updateRecordingClock();
+      return;
+    }
+    const focusedAction =
+      root.activeElement?.dataset.recordingAction || recordingFocusAction;
+    recordingFocusAction = null;
     recordingControls.replaceChildren();
-    const busy = ["recording", "paused"].includes(state);
+    recordingClock = null;
+    recordingError = null;
+    reviewDock.dataset.recording = busy ? state : "";
+    drawerHandle.setAttribute(
+      "aria-label",
+      busy
+        ? `Move ${recordingMode} recording controls`
+        : "Feedbacks review controls — drag to move",
+    );
     if (busy) {
+      reviewDock.append(recordingControls);
+      reviewDock.hidden = false;
+      revealDrawer(false);
+      const status = document.createElement("span");
+      status.className = "recording-status";
+      const label = document.createElement("span");
+      label.setAttribute("role", "status");
+      label.textContent = {
+        starting: `Starting ${recordingMode}`,
+        recording: "Recording",
+        paused: "Paused",
+        stopping: `Saving ${recordingMode}`,
+      }[state];
+      recordingClock = document.createElement("span");
+      recordingClock.className = "recording-clock";
+      recordingClock.setAttribute("aria-label", "Recording duration");
+      status.append(label, recordingClock);
+      recordingControls.append(status);
+      if (["recording", "paused"].includes(state)) {
+        if (recordingMode === "video") {
+          const pause = button(
+            state === "paused" ? "Resume" : "Pause",
+            () =>
+              send({
+                type: "recordingControl",
+                action: state === "paused" ? "resume" : "pause",
+              }),
+            recordingControls,
+          );
+          pause.dataset.recordingAction = "pause";
+          pause.setAttribute(
+            "aria-label",
+            state === "paused" ? "Resume video" : "Pause video",
+          );
+        }
+        const stop = button(
+          "Stop",
+          () => send({ type: "recordingControl", action: "stop" }),
+          recordingControls,
+        );
+        stop.setAttribute("aria-label", `Stop ${recordingMode}`);
+        stop.className = "recording-stop";
+        stop.dataset.recordingAction = "stop";
+      }
+      recordingError = document.createElement("span");
+      recordingError.className = "recording-error";
+      recordingError.setAttribute("role", "alert");
+      recordingControls.append(recordingError);
+    } else {
+      if (navigationButton?.parentElement?.parentElement === bar)
+        bar.insertBefore(recordingControls, navigationButton.parentElement);
       button(
-        state === "paused" ? "Resume video" : "Pause video",
+        state === "ready" ? `Review ${recordingMode}` : "Record video",
         () =>
           send({
-            type: "recordingControl",
-            action: state === "paused" ? "resume" : "pause",
+            type:
+              state === "ready" && recordingMode === "session"
+                ? "openSessionReview"
+                : "openRecorder",
           }),
         recordingControls,
       );
-      button(
-        "Stop video",
-        () => send({ type: "recordingControl", action: "stop" }),
-        recordingControls,
-      );
-    } else
-      button(
-        state === "ready" ? "Review video" : "Record video",
-        () => send({ type: "openRecorder" }),
-        recordingControls,
-      );
-    reviewDock.dataset.recording = busy ? state : "";
+    }
+    updateRecordingClock();
+    positionControls();
+    if (focusedAction)
+      recordingControls
+        .querySelector(`[data-recording-action="${focusedAction}"]`)
+        ?.focus({ preventScroll: true });
   }
   function positionControls() {
     if (!reviewDock || reviewDock.hidden) return;
@@ -512,14 +618,24 @@
     b.textContent = text;
     b.onclick = async () => {
       notice.textContent = "";
+      if (recordingError) recordingError.textContent = "";
+      const restoreRecordingFocus =
+        recordingBusy() && root.activeElement === b && b.dataset.recordingAction;
+      if (restoreRecordingFocus) recordingFocusAction = b.dataset.recordingAction;
       b.disabled = true;
       try {
         await action(b);
       } catch (e) {
-        notice.textContent = e.message;
-        revealDrawer();
+        if (recordingBusy() && recordingControls.contains(b))
+          recordingError.textContent = e.message;
+        else {
+          notice.textContent = e.message;
+          revealDrawer();
+        }
       } finally {
         b.disabled = false;
+        if (restoreRecordingFocus && b.isConnected && !root.activeElement)
+          b.focus({ preventScroll: true });
       }
     };
     parent.append(b);
@@ -1726,7 +1842,7 @@
   F.listen(
     "pointerdown",
     (event) => {
-      if (!active || event.composedPath().includes(host)) return;
+      if (!active || recordingBusy() || event.composedPath().includes(host)) return;
       if (event.button === 2 && !event.shiftKey) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -1738,7 +1854,13 @@
   F.listen(
     "contextmenu",
     (event) => {
-      if (!active || event.shiftKey || event.composedPath().includes(host)) return;
+      if (
+        !active ||
+        recordingBusy() ||
+        event.shiftKey ||
+        event.composedPath().includes(host)
+      )
+        return;
       event.preventDefault();
       event.stopImmediatePropagation();
       // Also supports keyboard context-menu and macOS Control-click.
@@ -1758,7 +1880,7 @@
   F.listen(
     "click",
     (event) => {
-      if (!active || event.composedPath().includes(host)) return;
+      if (!active || recordingBusy() || event.composedPath().includes(host)) return;
       const quick = event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
       if (!choosing && !quick) return;
       event.preventDefault();
@@ -1806,7 +1928,7 @@
   F.listen(
     "keydown",
     (event) => {
-      if (!active) return;
+      if (!active || recordingBusy()) return;
       if (event.key === "Escape") {
         if (event.isComposing || event.repeat) return;
         event.preventDefault();
@@ -1991,7 +2113,7 @@
       return;
     (async () => {
       if (message.type === "recordingState") {
-        renderRecording(message.state);
+        renderRecording(message.state, message.elapsedMs, message.mode || "video");
         return {};
       }
       if (message.type === "draftPrepared") {
@@ -2042,6 +2164,7 @@
           // notification must not restore that review's controls over these defaults.
           beforeRecording = null;
           recordingState = "idle";
+          recordingMode = "video";
           defaults = message.reviewDefaults || {};
           setNavigationLock(defaults.navigationLocked !== false);
           setHighlight(defaults.highlightEnabled !== false);
@@ -2154,6 +2277,8 @@
         active = false;
         globalThis.feedbacksReviewActive = false;
         clearInterval(timer);
+        clearInterval(recordingTimer);
+        recordingClock = null;
         clearTimeout(drawerTimer);
         host?.remove();
         return {};

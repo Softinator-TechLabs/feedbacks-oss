@@ -137,6 +137,21 @@ export function createSessionReview(
       "hint",
     ),
   );
+  if (recording.coverage?.length) {
+    const coverage = make("details", null, "review-coverage");
+    const gaps = recording.coverage.filter((c) => c.status !== "complete");
+    coverage.append(
+      make(
+        "summary",
+        `Capture coverage${gaps.length ? ` · ${gaps.length} limitations` : ""}`,
+      ),
+    );
+    for (const c of recording.coverage)
+      coverage.append(
+        make("p", `${c.channel}: ${c.status}${c.detail ? ` — ${c.detail}` : ""}`, "hint"),
+      );
+    root.append(coverage);
+  }
   let frame;
   const replayStatus = make("p", "", "hint");
   if (!videoElement) {
@@ -223,6 +238,15 @@ export function createSessionReview(
   function render() {
     range.value = String(at);
     clock.textContent = `${reviewTime(at)} / ${reviewTime(recording.durationMs)}`;
+    const cutoff = recording.environment?.replayStoppedAtMs;
+    if (frame) {
+      const unavailable = Number.isFinite(cutoff) && at >= cutoff;
+      frame.hidden = unavailable;
+      if (unavailable)
+        replayStatus.textContent = `DOM replay ended at ${reviewTime(cutoff)}. Activity, console and network remain available on the timeline.`;
+      else if (Number.isFinite(cutoff))
+        replayStatus.textContent = `DOM replay is available before ${reviewTime(cutoff)}. See capture coverage for details.`;
+    }
     const state = reviewState(recording.events, at);
     const rows =
       selected === "activity" || allEvents

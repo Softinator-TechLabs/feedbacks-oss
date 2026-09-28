@@ -62,6 +62,30 @@ test(
     await page.goto(`http://127.0.0.1:${address.port}`);
 
     await t.test(
+      "capture gaps are visible before sending even when channels are empty",
+      async () => {
+        await page.evaluate(() =>
+          (window as any).mount({
+            durationMs: 1000,
+            events: [],
+            coverage: [
+              {
+                channel: "replay",
+                status: "unavailable",
+                detail: "DOM replay limit reached. Diagnostics continue.",
+              },
+              { channel: "capture", status: "partial", detail: "Source tab closed." },
+            ],
+          }),
+        );
+        assert.match(await page.locator("#root").innerText(), /Capture coverage/);
+        await page.getByText("Capture coverage", { exact: false }).click();
+        assert.match(await page.locator("#root").innerText(), /DOM replay limit reached/);
+        assert.match(await page.locator("#root").innerText(), /Source tab closed/);
+      },
+    );
+
+    await t.test(
       "a selected gap cannot save the previous frame or follow stale media updates",
       async () => {
         await page.evaluate(() => {

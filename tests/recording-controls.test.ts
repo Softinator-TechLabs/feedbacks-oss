@@ -124,3 +124,84 @@ test("recording controls stay with their source tab and stop on disconnect", asy
   disconnect();
   assert.equal(controller.state(10), "idle");
 });
+
+test("native video clock survives heartbeat and page restore without counting paused time", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: 1000 });
+  let connect: any, receive: any;
+  const notices: any[] = [],
+    updates: any[] = [];
+  const controller = createRecordingControls({
+    chrome: {
+      runtime: {
+        getURL: (path: string) => `chrome-extension://test/${path}`,
+        onConnect: {
+          addListener: (fn: any) => {
+            connect = fn;
+          },
+        },
+      },
+      tabs: {
+        sendMessage: async (...args: any[]) => {
+          notices.push(args);
+        },
+        update: async (...args: any[]) => {
+          updates.push(args);
+        },
+      },
+    },
+    sessionFor: async () => ({ reviewId: "review-a" }),
+  });
+  connect({
+    name: "feedbacks-video",
+    sender: {
+      tab: { id: 20 },
+      url: "chrome-extension://test/video.html?sourceTabId=10&reviewId=review-a",
+    },
+    onMessage: {
+      addListener: (fn: any) => {
+        receive = fn;
+      },
+    },
+    onDisconnect: { addListener: () => {} },
+    disconnect: () => {},
+    postMessage: () => {},
+  });
+  receive({ state: "starting", elapsedMs: 0 });
+  assert.equal(controller.state(10), "starting");
+  receive({ state: "recording", elapsedMs: 1200 });
+  assert.deepEqual(notices.at(-1), [
+    10,
+    { type: "recordingState", mode: "video", state: "recording", elapsedMs: 1200 },
+  ]);
+  assert.equal(updates.length, 1, "starting returns focus to the source page");
+  t.mock.timers.tick(700);
+  await controller.restore(10);
+  assert.equal(notices.at(-1)[1].elapsedMs, 1900);
+  receive({ state: "recording", elapsedMs: 1950, heartbeat: true });
+  assert.equal(updates.length, 1, "heartbeats never steal focus");
+  receive({ state: "paused", elapsedMs: 2000 });
+  t.mock.timers.tick(9000);
+  await controller.restore(10);
+  assert.deepEqual(notices.at(-1)[1], {
+    type: "recordingState",
+    mode: "video",
+    state: "paused",
+    elapsedMs: 2000,
+  });
+  receive({ state: "recording", elapsedMs: 2000 });
+  assert.equal(updates.length, 1, "resume does not switch tabs");
+  t.mock.timers.tick(500);
+  receive({ state: "stopping", elapsedMs: 2500 });
+  assert.equal(controller.state(10), "stopping");
+  t.mock.timers.tick(4000);
+  await controller.restore(10);
+  assert.equal(notices.at(-1)[1].elapsedMs, 2500, "finalization time is not video time");
+  receive({ state: "ready", elapsedMs: 2500 });
+  await controller.restore(10);
+  assert.deepEqual(notices.at(-1)[1], {
+    type: "recordingState",
+    mode: "video",
+    state: "ready",
+    elapsedMs: 2500,
+  });
+});

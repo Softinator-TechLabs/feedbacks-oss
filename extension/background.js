@@ -1880,6 +1880,24 @@ async function route(message, sender) {
       await chrome.tabs.create({ url: target.url });
       return {};
     }
+    if (message.type === "openSessionReview") {
+      const capture = await sessionCapture.status();
+      if (
+        !capture ||
+        capture.recording.mode !== "session" ||
+        capture.target.sourceTabId !== sender.tab.id ||
+        capture.target.reviewId !== session.reviewId
+      )
+        throw Error("This session recording is no longer available.");
+      const owner = await chrome.tabs.get(capture.target.ownerTabId).catch(() => null);
+      if (owner?.url?.startsWith(chrome.runtime.getURL("session.html")))
+        await chrome.tabs.update(owner.id, { active: true });
+      else
+        await chrome.tabs.create({
+          url: chrome.runtime.getURL(`session.html?sourceTabId=${sender.tab.id}`),
+        });
+      return {};
+    }
     if (message.type === "openRecorder") return recordings.open(sender);
     if (message.type === "recordingControl") {
       const capture = await sessionCapture.status();
@@ -2247,6 +2265,8 @@ async function route(message, sender) {
         message.mode === "video" ? "video" : "session",
         sender.tab?.id,
       );
+    case "sessionHealth":
+      return sessionCapture.health();
     case "sessionStatus":
       return sessionCapture.status();
     case "sessionStop":
@@ -2401,12 +2421,21 @@ async function route(message, sender) {
     case "activate": {
       const result = await review.activate(message.tabId, message.projectId);
       const { sessions = {} } = await chrome.storage.local.get("sessions");
-      await chrome.tabs
-        .sendMessage(message.tabId, {
-          type: "recordingState",
-          state: recordings.state(message.tabId, sessions[message.tabId]?.reviewId),
-        })
-        .catch(() => {});
+      const reviewId = sessions[message.tabId]?.reviewId;
+      if (!(await sessionCapture.restore(message.tabId, reviewId))) {
+        // Validate the bound review before restoring the native recorder clock.
+        const state = recordings.state(message.tabId, reviewId);
+        if (state === "idle")
+          await chrome.tabs
+            .sendMessage(message.tabId, {
+              type: "recordingState",
+              mode: "video",
+              state: "idle",
+              elapsedMs: 0,
+            })
+            .catch(() => {});
+        else await recordings.restore(message.tabId);
+      }
       return result;
     }
     case "enableInstant":
@@ -2575,16 +2604,21 @@ chrome.tabs.onUpdated.addListener((id, change, tab) => {
     clearVideoCreateForTab(chrome.storage.session, id).catch(() => {});
     deleteDraftPages(`point-${id}`).catch(() => {});
   }
-  if (
-    change.status === "complete" &&
-    ["recording", "paused"].includes(recordings.state(id))
-  ) {
+  if (change.status === "complete") {
     void (async () => {
+      const capture = await sessionCapture.status();
+      const activeSession =
+        capture?.active &&
+        capture.target.sourceTabId === id &&
+        capture.recording.mode === "session";
+      if (!activeSession && !["recording", "paused"].includes(recordings.state(id)))
+        return;
       const { sessions = {} } = await get();
       const session = sessions[id];
       if (!session || new URL(tab.url).origin !== session.origin) return;
       await review.activate(id, session.projectId);
-      await recordings.restore(id);
+      if (!(await sessionCapture.restore(id, session.reviewId)))
+        await recordings.restore(id);
     })().catch(() => {});
   }
 });

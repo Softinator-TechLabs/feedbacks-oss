@@ -122,7 +122,7 @@ test("hostile or oversized bridge payload cannot become stored events", async ()
   );
   const saved = await store.read();
   assert.equal(saved.recording.events.length, 0);
-  assert.equal(saved.active, false);
+  assert.equal(saved.active, true);
   assert.match(JSON.stringify(saved.recording.coverage), /snapshot|oversized/i);
 });
 test("video evidence only accepts exact Chrome capture handle", () => {
@@ -379,6 +379,9 @@ test("normal stop drains the final MAIN batch before freezing the durable record
     sessionFor: async () => target,
     authenticated: async () => {},
   });
+  assert.equal(await coordinator.restore(1, target.reviewId), true);
+  assert.equal(await coordinator.restore(2, target.reviewId), false);
+  assert.equal(await coordinator.restore(1, "another-review"), false);
   const stopped = await coordinator.stop();
   assert.equal(stopped.active, false);
   assert.equal(stopped.recording.events.length, 1);
@@ -737,7 +740,137 @@ test("wide DOM snapshots use the server node budget and fail honestly before tru
     target.origin,
   );
   saved = await store.read();
-  assert.equal(saved.active, false);
+  assert.equal(saved.active, true);
   assert.equal(saved.recording.events.length, 1);
   assert.match(JSON.stringify(saved.recording.coverage), /node.*500000/i);
+});
+
+test("large DOM mutations retain diagnostics and replay exhaustion only freezes DOM", async () => {
+  let now = 1000;
+  const store = createCaptureStore({ storage: memory(), now: () => now });
+  await store.start(target, privacy, "video");
+  await store.append(
+    { type: "replay", data: { type: 2, timestamp: now, data: { node: { id: 1 } } } },
+    1,
+    target.origin,
+  );
+  now = 1100;
+  await store.append(
+    {
+      type: "replay",
+      data: { type: 3, timestamp: now, data: { source: 0, text: "x".repeat(1300000) } },
+    },
+    1,
+    target.origin,
+  );
+  let saved = await store.read();
+  assert.equal(saved.active, true, "ordinary large mutation must not stop capture");
+  assert.equal(saved.recording.events.length, 2);
+  now = 1200;
+  await store.append(
+    {
+      type: "replay",
+      data: { type: 3, timestamp: now, data: { text: "x".repeat(7 * 1024 * 1024) } },
+    },
+    1,
+    target.origin,
+  );
+  for (const type of ["activity", "console", "network"])
+    await store.append(
+      { type, data: { action: "after-large-dom", message: "still captured" } },
+      1,
+      target.origin,
+    );
+  saved = await store.read();
+  assert.equal(saved.active, true);
+  assert.equal(saved.recording.environment.replayStoppedAtMs, 200);
+  assert.equal(saved.recording.events.length, 5);
+  assert.match(
+    saved.recording.coverage.find((c: any) => c.channel === "replay").detail,
+    /limit|budget/i,
+  );
+  await store.append(
+    { type: "replay", data: { type: 3, timestamp: now, data: {} } },
+    1,
+    target.origin,
+  );
+  assert.equal(
+    (await store.read()).recording.events.length,
+    5,
+    "later mutations cannot apply to an incomplete DOM",
+  );
+});
+
+test("video diagnostics stop never replaces the native recorder controls with ready", async () => {
+  const { createSessionCoordinator } = await import(
+    "../extension/session-coordinator.js"
+  );
+  const storage = memory();
+  await createCaptureStore({ storage }).start(target, privacy, "video");
+  const event = { addListener() {} };
+  const notices: any[] = [];
+  const chrome = {
+    storage: { local: storage },
+    debugger: { onEvent: event, onDetach: event },
+    alarms: { onAlarm: event, clear: async () => {} },
+    tabs: {
+      onUpdated: event,
+      onRemoved: event,
+      get: async () => ({ id: 1, url: target.origin }),
+      sendMessage: async (_: any, message: any) => {
+        notices.push(message);
+      },
+    },
+    scripting: { executeScript: async () => [{ result: [] }] },
+  };
+  const coordinator = createSessionCoordinator({
+    captureStorage: storage,
+    chrome,
+    ready: Promise.resolve(),
+    sessionFor: async () => target,
+    authenticated: async () => {},
+  });
+  await coordinator.stop();
+  assert.equal(
+    notices.some((m) => m.type === "recordingState"),
+    false,
+  );
+  const health = await coordinator.health();
+  assert.equal(health.active, false);
+  assert.equal(health.counts.activity, 0);
+  assert.equal(
+    health.recording,
+    undefined,
+    "health does not ship multi-megabyte replay data",
+  );
+});
+
+test("DOM replay budget reserves space for later diagnostics", async () => {
+  const store = createCaptureStore({
+    storage: memory(),
+    now: () => 1000,
+    maxBytes: 12000,
+    maxSnapshotBytes: 7000,
+  });
+  await store.start(target, privacy, "video");
+  for (let n = 0; n < 2; n++)
+    await store.append(
+      {
+        type: "replay",
+        data: { type: 2, timestamp: 1000, data: { text: "x".repeat(5500) } },
+      },
+      1,
+      target.origin,
+    );
+  await store.append(
+    { type: "console", data: { args: ["error after replay budget"] } },
+    1,
+    target.origin,
+  );
+  const s = await store.read();
+  assert.equal(s.active, true);
+  assert.equal(s.replayDisabled, true);
+  assert.equal(s.recording.events.length, 2);
+  assert.equal(s.recording.events.at(-1).type, "console");
+  assert.ok(s.bytes < 10000);
 });

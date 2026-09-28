@@ -99,9 +99,15 @@ export function createSessionCoordinator({
       .catch(() => {});
     if (s.debuggerAttached)
       await chrome.debugger.detach({ tabId: s.target.sourceTabId }).catch(() => {});
-    await chrome.tabs
-      .sendMessage(s.target.sourceTabId, { type: "recordingState", state: "ready" })
-      .catch(() => {});
+    if (s.recording.mode !== "video")
+      await chrome.tabs
+        .sendMessage(s.target.sourceTabId, {
+          type: "recordingState",
+          mode: "session",
+          state: "ready",
+          elapsedMs: s.recording.durationMs,
+        })
+        .catch(() => {});
   }
   async function stop(detail) {
     const current = await store.read();
@@ -166,6 +172,7 @@ export function createSessionCoordinator({
       args: [
         {
           token: s.bridgeToken,
+          replayDisabled: !!s.replayDisabled,
           privacy: s.recording.privacy,
           debugger: !!s.debuggerAttached,
           remainingMs: 300000 - (Date.now() - s.started),
@@ -513,6 +520,39 @@ export function createSessionCoordinator({
     }).catch(() => {});
   });
   return {
+    restore: (tabId, reviewId) =>
+      serial(async () => {
+        const s = await store.read();
+        if (
+          !s ||
+          s.recording.mode !== "session" ||
+          s.target.sourceTabId !== tabId ||
+          s.target.reviewId !== reviewId
+        )
+          return false;
+        await assertScope(s);
+        await chrome.tabs.sendMessage(tabId, {
+          type: "recordingState",
+          mode: "session",
+          state: s.active ? "recording" : "ready",
+          elapsedMs: s.active
+            ? Math.min(300000, Date.now() - s.started)
+            : s.recording.durationMs,
+        });
+        return true;
+      }),
+    health: () =>
+      serial(async () => {
+        const s = await store.read();
+        const counts = { activity: 0, console: 0, network: 0, replay: 0 };
+        for (const e of s?.recording.events || []) if (e.type in counts) counts[e.type]++;
+        return {
+          active: !!s?.active,
+          counts,
+          coverage: s?.recording.coverage || [],
+          replayStoppedAtMs: s?.recording.environment.replayStoppedAtMs,
+        };
+      }),
     status: () =>
       serial(async () => {
         let s = await store.read();
@@ -629,9 +669,15 @@ export function createSessionCoordinator({
             "DOM recorder could not be injected. Use the built extension package.",
           );
         }
-        await chrome.tabs
-          .sendMessage(target.sourceTabId, { type: "recordingState", state: "recording" })
-          .catch(() => {});
+        if (mode !== "video")
+          await chrome.tabs
+            .sendMessage(target.sourceTabId, {
+              type: "recordingState",
+              mode: "session",
+              state: "recording",
+              elapsedMs: Date.now() - s.started,
+            })
+            .catch(() => {});
         return store.read();
       }),
     events: (message, sender) =>

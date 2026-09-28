@@ -133,6 +133,7 @@ let stream,
   blob,
   durationMs,
   startedAt,
+  stoppedAt = 0,
   pausedAt = 0,
   pausedMs = 0,
   tooLarge = false,
@@ -145,15 +146,83 @@ let thread,
   createAttempt,
   createKey = crypto.randomUUID();
 const port = chrome.runtime.connect({ name: "feedbacks-video" });
-let connected = true;
-// Keep the MV3 worker's recorder binding alive during recording AND local editing.
-// Opening a port alone does not extend the worker idle timeout.
-const heartbeat = setInterval(() => {
-  if (connected) port.postMessage({ heartbeat: true });
-}, 10000);
-const recordingElapsed = () => (pausedAt || performance.now()) - startedAt - pausedMs;
-function publishState(state) {
-  if (connected) port.postMessage({ state });
+let connected = true,
+  nativeState = "idle",
+  healthTimer,
+  healthGeneration = 0,
+  healthBusy = false;
+const recordingElapsed = () =>
+  Number.isFinite(startedAt)
+    ? Math.max(
+        0,
+        Math.min(
+          maxMs,
+          (stoppedAt || pausedAt || performance.now()) - startedAt - pausedMs,
+        ),
+      )
+    : 0;
+function publishState(state = nativeState, heartbeat = false) {
+  nativeState = state;
+  document.body.classList.toggle(
+    "recording-active",
+    ["starting", "recording", "paused", "stopping"].includes(state),
+  );
+  const elapsedMs = ["idle", "starting"].includes(state)
+    ? 0
+    : Math.round(recordingElapsed());
+  if (connected)
+    port.postMessage({ state, elapsedMs, ...(heartbeat ? { heartbeat: true } : {}) });
+}
+// The elapsed snapshot restores an accurate dock after source-page navigation.
+// Port traffic also keeps the MV3 binding alive while recording and reviewing.
+const heartbeat = setInterval(() => publishState(nativeState, true), 10000);
+function stopHealthUpdates() {
+  clearInterval(healthTimer);
+  healthGeneration++;
+  healthBusy = false;
+}
+async function refreshCaptureHealth() {
+  if (healthBusy || !debugSession || !["recording", "paused"].includes(nativeState))
+    return;
+  const generation = healthGeneration;
+  healthBusy = true;
+  try {
+    const health = await send({ type: "sessionHealth" });
+    if (generation !== healthGeneration) return;
+    const counts = health.counts || {};
+    $("capture-health-counts").textContent =
+      `${counts.activity || 0} actions · ${counts.console || 0} console · ${counts.network || 0} network · ${counts.replay || 0} replay events`;
+    const warnings = (health.coverage || [])
+      .filter((item) =>
+        ["partial", "unavailable", "failed", "error", "stopped"].includes(item.status),
+      )
+      .map((item) => item.detail || `${item.channel}: ${item.status}`);
+    if (Number.isFinite(health.replayStoppedAtMs))
+      warnings.push(
+        `DOM replay ends at ${reviewTime(health.replayStoppedAtMs)}. Video and available diagnostics continue.`,
+      );
+    if (!health.active)
+      warnings.push("Debug capture has stopped. Video is still recording.");
+    $("capture-health-warning").textContent = [...new Set(warnings)].join(" ");
+  } catch (error) {
+    if (generation !== healthGeneration) return;
+    $("capture-health-counts").textContent = "Capture counts unavailable";
+    $("capture-health-warning").textContent =
+      `Debug capture status unavailable: ${error.message} Video is still recording.`;
+  } finally {
+    if (generation === healthGeneration) healthBusy = false;
+  }
+}
+function startHealthUpdates() {
+  stopHealthUpdates();
+  $("capture-health").hidden = false;
+  $("capture-health-counts").textContent = debugSession
+    ? "Checking debug capture…"
+    : "Video only · debug context is off";
+  $("capture-health-warning").textContent = "";
+  if (!debugSession) return;
+  void refreshCaptureHealth();
+  healthTimer = setInterval(() => void refreshCaptureHealth(), 2000);
 }
 function pauseOrResume() {
   if (recorder?.state === "recording") {
@@ -205,6 +274,7 @@ function status(message) {
   $("status").textContent = message;
 }
 function clearPreview() {
+  $("capture-health").hidden = true;
   inspector?.dispose();
   inspector = null;
   savedFrames = [];
@@ -230,6 +300,12 @@ function clearPreview() {
   $("start").textContent = "Start recording";
 }
 function stop() {
+  if (recorder && recorder.state !== "inactive") {
+    stoppedAt ||= pausedAt || performance.now();
+    publishState("stopping");
+  }
+  stopHealthUpdates();
+  $("capture-health").hidden = true;
   closeMediaInterval();
   if (debugSession && !debugStop)
     debugStop = send({ type: "sessionStop" }).catch((error) => {
@@ -254,6 +330,7 @@ function startError(error) {
   stop();
   clearPreview();
   $("start").disabled = !connected;
+  publishState("idle");
   status(error.message);
 }
 
@@ -293,11 +370,12 @@ $("start").onclick = async () => {
       JSON.stringify(approvedRedirectOrigins) !== JSON.stringify(allowedOrigins)
     )
       throw Error("Use Allow redirect sites before starting the recording.");
+    startedAt = undefined;
+    stoppedAt = pausedAt = pausedMs = 0;
+    publishState("starting");
     stream = await navigator.mediaDevices.getDisplayMedia({
       video: {
         displaySurface: "browser",
-        width: { ideal: 1600, max: 1600 },
-        height: { ideal: 900, max: 900 },
         frameRate: { ideal: 24, max: 24 },
       },
       audio: $("tab-audio").checked,
@@ -372,6 +450,9 @@ $("start").onclick = async () => {
       $("debug-status").textContent =
         "Debug session active · 5 minutes / 12 MiB maximum. Credentials are removed; inspect the video for private pixels.";
     }
+    // Keep Chrome's source resolution and favor page text/detail over motion.
+    const videoTrack = stream.getVideoTracks()[0];
+    if ("contentHint" in videoTrack) videoTrack.contentHint = "detail";
     const options = recordingOptions(stream.getAudioTracks().length > 0);
     clearPreview();
     tooLarge = false;
@@ -397,6 +478,9 @@ $("start").onclick = async () => {
     recorder.onstop = async () => {
       if (recorder !== stoppedRecorder) return;
       preparingVideo = true;
+      stoppedAt ||= pausedAt || performance.now();
+      publishState("stopping");
+      stopHealthUpdates();
       durationMs = Math.max(1, Math.min(maxMs, Math.round(recordingElapsed())));
       stream?.getTracks().forEach((track) => track.stop());
       microphone?.getTracks().forEach((track) => track.stop());
@@ -479,6 +563,7 @@ $("start").onclick = async () => {
     $("pause").hidden = false;
     $("pause").textContent = "Pause recording";
     publishState("recording");
+    startHealthUpdates();
     $("audio-options").disabled = true;
     status("Recording. Highlight off · navigation allowed. Stop to review.");
     timer = setInterval(() => {

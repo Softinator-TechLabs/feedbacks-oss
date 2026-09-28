@@ -13,7 +13,8 @@
     <main>
       <h1>
         <span class="before-recording">Record a tab video</span
-        ><span class="after-recording">Review video</span>
+        ><span class="after-recording">Review video</span
+        ><span class="during-recording">Recording tab video</span>
       </h1>
       <p id="target"></p>
       <p class="hint before-recording">
@@ -64,6 +65,10 @@
         <button id="discard" hidden>Discard recording</button>
       </div>
       <p id="timer" role="status"></p>
+      <div id="capture-health" class="hint" hidden>
+        <span id="capture-health-counts"></span>
+        <p id="capture-health-warning" role="status"></p>
+      </div>
       <details class="hint before-recording">
         <summary>Recording &amp; privacy</summary>
         <p>

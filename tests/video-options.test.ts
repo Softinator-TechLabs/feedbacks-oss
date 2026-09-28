@@ -122,7 +122,10 @@ for (const tabAudio of [false, true])
           interval = fn;
         },
         location: { href: "chrome-extension://test/video.html?sourceTabId=10" },
-        document: { getElementById: (id: string) => nodes[id] },
+        document: {
+          body: { classList: { add() {}, remove() {}, toggle() {} } },
+          getElementById: (id: string) => nodes[id],
+        },
         window: { addEventListener() {} },
         AudioContext: class {
           createMediaStreamDestination() {
