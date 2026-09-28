@@ -156,6 +156,50 @@ try {
       document.querySelector("#canvas").width === 433 &&
       !document.querySelector('[data-tool="highlighter"]').disabled,
   );
+  // The wide review workspace has two control rows, and opening menus keeps
+  // the capture anchored at the same position.
+  await page.setViewportSize({ width: 1979, height: 1280 });
+  const controlLayout = () =>
+    page.evaluate(() => {
+      const rect = (selector) => document.querySelector(selector).getBoundingClientRect();
+      const tools = rect("#tools");
+      const actions = rect(".control-row");
+      const capture = rect("#image-review");
+      return {
+        toolsTop: tools.top,
+        toolsBottom: tools.bottom,
+        actionsTop: actions.top,
+        actionsBottom: actions.bottom,
+        captureTop: capture.top,
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    });
+  const compact = await controlLayout();
+  await mkdir(join(root, ".local/screenshot-editor-qa"), { recursive: true });
+  await page.screenshot({
+    path: join(root, ".local/screenshot-editor-qa/compact-header.png"),
+  });
+  assert.ok(
+    compact.toolsBottom <= compact.actionsTop,
+    "annotation and capture actions occupy separate rows",
+  );
+  assert.ok(
+    compact.actionsBottom < compact.captureTop,
+    "capture starts after the second row",
+  );
+  assert.equal(compact.overflow, false, "controls stay within the review workspace");
+  await page.locator(".more-tools summary").click();
+  const open = await controlLayout();
+  await page.screenshot({
+    path: join(root, ".local/screenshot-editor-qa/compact-header-more-tools.png"),
+  });
+  assert.equal(
+    open.captureTop,
+    compact.captureTop,
+    "More tools does not move the capture",
+  );
+  await page.locator(".more-tools summary").click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
   const drag = async (x, y, x2, y2) => {
     const r = await page.locator("#canvas").boundingBox();
     const scale = r.width / 433;
