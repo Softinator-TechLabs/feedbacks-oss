@@ -8,7 +8,14 @@ import { Members, Instructions, Account } from "./settings.js";
 import { Help, Privacy } from "./help.js";
 import { PasswordReplacement } from "./account-admin.js";
 import { OwnerLinkSignIn } from "./owner-links.js";
-import { ActionState, ErrorNotice, Loading, useAction, useLoad } from "./ui.js";
+import {
+  ActionState,
+  ErrorNotice,
+  Loading,
+  ToastHost,
+  useAction,
+  useLoad,
+} from "./ui.js";
 import "./styles.css";
 import "./thread-detail.css";
 import "./theme.css";
@@ -401,5 +408,6 @@ class ErrorBoundary extends React.Component<
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
     <App />
+    <ToastHost />
   </ErrorBoundary>,
 );

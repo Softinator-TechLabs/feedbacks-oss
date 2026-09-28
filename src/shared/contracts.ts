@@ -724,7 +724,7 @@ export const inputSchemas = {
     idempotencyKey: z.string().min(8).max(200),
     confirmation: z.literal("DELETE"),
   }),
-  "threads.deletions": z.object({ projectId: id }),
+  "threads.deletions": z.object({ projectId: id, activeOnly: z.boolean().optional() }),
   "threads.retryDeletion": z.object({ projectId: id, deletionId: id }),
   "views.get": z.object({ projectId: id, context: contextSchema }),
   "views.like": z.object({
