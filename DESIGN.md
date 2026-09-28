@@ -163,7 +163,7 @@ The screenshot button opens a native dialog containing the full unmodified captu
 
 ### Help and extension setup
 
-[Help](src/web/help.tsx) offers guides for clients, reviewers/testers, DevOps and resolving developers. It explains the owner responsibility for projects, context, optional GitHub, members and profiles. **Copy server URL** copies the current installation's origin from a selectable read-only field; clipboard failure keeps manual copying available. Agent setup uses each member's own identity and retains its permission disclosure.
+[Help](src/web/help.tsx) is a short, three-step connection flow for an already-running server: project readiness, extension connection and personal agent setup. It checks the selected project's active teammates and published agent context before showing completion text; missing access/context links to the corresponding project controls. A project picker keeps multiple projects distinct. **Copy server URL** copies the current installation's origin from a selectable read-only field. **Create key & copy prompt** retains the key's permission disclosure, clipboard fallback and Account link for narrower permissions. Full instructions live in the public docs.
 
 The [extension popup](extension/popup.html) states the running-server and account prerequisites before connection. First-use guidance covers installing, pinning, connecting, capturing, reviewing and sending. Connected review controls remain compact and task-focused.
 

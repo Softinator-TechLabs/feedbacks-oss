@@ -13,7 +13,7 @@ Your team needs a running server, a prepared project and your own member account
 ## Create your personal setup prompt
 
 1. Sign in as **yourself** on the team's Feedbacks server. Finish temporary-password replacement if required.
-2. Open **Help → Connect your coding agent**. Choose **Create key and copy setup**, or **Choose projects and permissions** to set narrower access in Account.
+2. Open **Help → Connect your coding agent**. Choose **Create key & copy prompt**, or **Choose projects and permissions** to set narrower access in Account.
 3. Read the permission notice. For a member, Help creates a personal key for current projects and profile, or profile-only access if there are no projects. For an owner, it creates a broad owner-administration key. Use narrower Account permissions for routine project work.
 4. Paste the private setup prompt into your own coding-agent session. It includes the server connection and a secret key; keep it out of Git, screenshots and shared chats.
 5. The agent configures its actual MCP client, installs both reusable skills, verifies discovery and lists accessible projects. For a selected or unambiguously matched project, it shows at most 10 task previews plus separate thread/point summary counts when read scopes allow. Zero accessible projects is valid; it never assigns or changes feedback during setup.
