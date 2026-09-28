@@ -25,8 +25,7 @@
     .attachments img,
     .upload-preview,
     .skip-link,
-    .mention-menu,
-    .reply-options[open] > .field
+    .mention-menu
   ) {
   background: var(--surface);
 }

@@ -1,4 +1,4 @@
-import type { ReviewFilters } from "../shared/contracts.js";
+import { calendarDateSchema, type ReviewFilters } from "../shared/contracts.js";
 export const categories = [
   "general",
   "visualDesign",
@@ -10,8 +10,9 @@ export function readFilters(query: string): ReviewFilters {
   const sort = p.get("sort");
   const filters: ReviewFilters = {
     search: (p.get("search") ?? "").slice(0, 200),
-    sort:
-      sort === "newest" || sort === "likes" || sort === "priority" ? sort : "activity",
+    sort: ["newest", "likes", "priority", "workPlan"].includes(sort ?? "")
+      ? (sort as ReviewFilters["sort"])
+      : "activity",
     showResolved: p.get("showResolved") === "true",
     ...(p.get("archived") === "true" ? { archived: true } : {}),
   };
@@ -24,6 +25,14 @@ export function readFilters(query: string): ReviewFilters {
     filters.deviceClass = p.get("deviceClass") as ReviewFilters["deviceClass"];
   if (categories.includes(p.get("category") as any))
     filters.category = p.get("category") as ReviewFilters["category"];
+  const assignedTo = p.get("assignedTo");
+  if (
+    assignedTo &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assignedTo)
+  )
+    filters.assignedTo = assignedTo;
+  const planningDate = calendarDateSchema.safeParse(p.get("planningDate"));
+  if (planningDate.success) filters.planningDate = planningDate.data;
   return filters;
 }
 export function filterQuery(filters: ReviewFilters, offset = 0) {

@@ -101,6 +101,104 @@ test("queue keeps filters and server order, bounds previews and omits full discu
   assert.ok(JSON.stringify(result).length < 2500);
 });
 
+test("compact queue and overview preserve human priority and persisted planning dates", async () => {
+  const workPlan = {
+    priority: "high",
+    schedule: "tomorrow",
+    scheduledFor: "2026-10-01",
+    timeZone: "Asia/Kolkata",
+  };
+  const planned = { ...thread, workPlan };
+  const later = {
+    ...thread,
+    id: randomUUID(),
+    workPlan: { ...workPlan, priority: "low", schedule: "later", scheduledFor: null },
+  };
+  const queue = await runAgentTool(
+    async () => ({ items: [planned, later, thread], total: 3, nextOffset: null }),
+    "queue",
+    { projectId },
+  );
+  assert.deepEqual(queue.items[0].workPlan, workPlan);
+  assert.deepEqual(queue.items[1].workPlan, later.workPlan);
+  assert.equal(
+    queue.items[1].id,
+    later.id,
+    "compact previews retain server planning order",
+  );
+  assert.equal(
+    queue.items[2].workPlan,
+    undefined,
+    "legacy plans do not invent a timezone",
+  );
+  const overview = await runAgentTool(async () => planned, "thread", { threadId });
+  assert.deepEqual(overview.workPlan, workPlan);
+  assert.equal(overview.revision, planned.revision);
+  assert.ok(!JSON.stringify(overview).includes("Reply 0"));
+});
+
+test("an explicit plan mutation returns its saved date and revision in the compact receipt", async () => {
+  const workPlan = {
+    priority: "normal",
+    schedule: "next_week",
+    scheduledFor: "2026-10-05",
+    timeZone: "America/New_York",
+  };
+  const result = await runAgentTool(
+    async (operation, input: any) => {
+      assert.equal(operation, "threads.plan");
+      assert.equal(input.threadId, threadId);
+      assert.equal(input.revision, thread.revision);
+      assert.deepEqual(input.workPlan, workPlan);
+      return { ...thread, revision: 5, workPlan };
+    },
+    "execute",
+    { operation: "threads.plan", input: { threadId, revision: 4, workPlan } },
+  );
+  assert.equal(result.revision, 5);
+  assert.deepEqual(result.workPlan, workPlan);
+  assert.equal(result.operation, "threads.plan");
+  assert.equal(result.readback, "feedbacks_thread");
+  assert.equal(result.replies, undefined);
+});
+
+test("assigned queue filters and local planning date reach the server on every bounded page", async () => {
+  const userId = randomUUID();
+  const input = {
+    projectId,
+    assignedTo: userId,
+    planningDate: "2026-09-30",
+    sort: "workPlan",
+    workState: "open",
+    includeSummary: true,
+    limit: 10,
+  };
+  let calls = 0;
+  const execute = async (operation: string, filters: any) => {
+    calls++;
+    assert.equal(operation, "threads.list");
+    for (const [key, value] of Object.entries(input)) assert.equal(filters[key], value);
+    assert.equal(filters.offset, calls === 1 ? 0 : 10);
+    return {
+      items: [thread],
+      total: 11,
+      nextOffset: calls === 1 ? 10 : null,
+      summary: { threads: { open: 11 } },
+    };
+  };
+  const first = await runAgentTool(execute, "queue", input);
+  const second = await runAgentTool(execute, "queue", {
+    ...input,
+    offset: first.nextOffset,
+  });
+  assert.equal(calls, 2);
+  assert.equal(first.sort, "workPlan");
+  assert.equal(first.assignedTo, userId);
+  assert.equal(first.planningDate, input.planningDate);
+  assert.equal(second.nextOffset, null);
+  assert.deepEqual(first.summary, { threads: { open: 11 } });
+});
+
 test("thread pages expose current revision, complete continuations and precise point state", async () => {
   const execute = async () => thread;
   const first = await runAgentTool(execute, "thread", {

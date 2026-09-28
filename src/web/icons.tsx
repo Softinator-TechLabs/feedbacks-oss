@@ -1,6 +1,9 @@
 import React from "react";
 
 const paths = {
+  copy: "M9 9h12v12H9zM5 15H3V3h12v2",
+  calendar: "M3 5h18v16H3zM7 3v4M17 3v4M3 11h18",
+  flag: "M5 21V3l7 2 7-2v11l-7 2-7-2",
   attachment:
     "m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l10-10a4 4 0 0 1 5.6 5.6l-10 10a2 2 0 0 1-2.8-2.8l9.2-9.2",
   link: "M10 13a5 5 0 0 0 7 .5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7",

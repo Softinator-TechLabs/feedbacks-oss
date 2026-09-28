@@ -65,11 +65,13 @@ export const operationDescriptions: Record<string, string> = {
   "widget.submit":
     "Public website feedback submission. Requires an approved Origin, page URL matching it, Turnstile verification and remaining link capacity. Accepts optional explicit screenshot data; never reads existing feedback.",
   "threads.list":
-    "List full feedback records with pagination. Prefer feedbacks_queue for bounded summaries. Filter authorId, createdAfter (inclusive), createdBefore (exclusive), activityAfter, workState, topPriority, page URL or search (body/replies/points). Sort priority needs policy access; topPriority sorts explicit flags without policy weights. Today requires timezone-derived midnight bounds; includeSummary counts threads/points independently of pagination.",
+    "List full feedback records with pagination. Prefer feedbacks_queue for bounded summaries. Filter assignedTo for active delegated open work (whole thread or still-open existing selected points), authorId, createdAfter (inclusive), createdBefore (exclusive), activityAfter, workState, topPriority, page URL or search (body/replies/points). Sort workPlan with explicit local planningDate puts due/today/unscheduled first, future next, Later last, then human priority and stable date order (omitted planningDate uses UTC today). Sort priority needs policy access; topPriority sorts explicit flags without policy weights. Today requires timezone-derived midnight bounds; includeSummary counts threads/points independently of pagination.",
   "threads.neighbors":
     "Find previous and next thread in the same filtered and sorted inbox, across pagination. Returns null neighbors if the thread is outside current filters. This is a live view, not an immutable queue.",
   "threads.organize":
     "Replace optional category and tags using the current revision. Read existing tags first to preserve relevant labels. Does not change workflow status.",
+  "threads.plan":
+    "Set human-selected work priority and timing using the current thread revision. Requires project write access and explicit user intent. Persist dated choices as calendar scheduledFor plus originating IANA timeZone; unscheduled/later use null. Does not start work, change ownership/status or schedule automatic execution. Preserve choices unless the user asks to change them.",
   "threads.priority":
     "Mark or unmark one thread as top priority using its current revision. Requires project maintainer access; marked active threads lead the Top priority sort before weighted scores. Does not change work status.",
   "reviewViews.list":

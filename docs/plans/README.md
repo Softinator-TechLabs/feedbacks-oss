@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Human-led work planning and task handoff](human-work-planning.md)
+
 - [Delegated assignments and visible triage](assignment-ui.md)
 
 - [Context-efficient agent workflow](agent-workflow.md)

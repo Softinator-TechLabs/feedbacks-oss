@@ -172,6 +172,61 @@ test(
         reason: "Concurrency verified",
         idempotencyKey: "cancel-delegation",
       });
+      const planningProject = await ops.executeOperation(owner, "projects.create", {
+        name: "Native planning",
+        origins: ["https://planning.example.test"],
+      });
+      const planningThreads = [];
+      for (let n = 0; n < 3; n++)
+        planningThreads.push(
+          await ops.executeOperation(owner, "threads.create", {
+            ...base,
+            projectId: planningProject.id,
+            context: {
+              url: "https://planning.example.test",
+              viewport: { width: 1440, height: 900 },
+            },
+            idempotencyKey: `native-planning-${n}`,
+          }),
+        );
+      for (let n = 0; n < 2; n++) {
+        const planned = await ops.executeOperation(owner, "threads.plan", {
+          threadId: planningThreads[n].id,
+          revision: 1,
+          workPlan: {
+            priority: n === 0 ? "high" : "normal",
+            schedule: n === 0 ? "later" : "today",
+            scheduledFor: n === 0 ? null : "2026-09-30",
+            timeZone: "Asia/Kolkata",
+          },
+        });
+        await ops.executeOperation(owner, "assignments.assign", {
+          ...delegationInput,
+          threadId: planned.id,
+          threadRevision: planned.revision,
+          idempotencyKey: `native-planning-assignment-${n}`,
+        });
+      }
+      const planningFilters = {
+        projectId: planningProject.id,
+        assignedTo: owner.userId,
+        sort: "workPlan",
+        planningDate: "2026-09-30",
+        limit: 1,
+      };
+      const planningFirst = await ops.executeOperation(
+        owner,
+        "threads.list",
+        planningFilters,
+      );
+      assert.equal(planningFirst.total, 2);
+      assert.equal(planningFirst.items[0].id, planningThreads[1].id);
+      const planningNext = await ops.executeOperation(owner, "threads.list", {
+        ...planningFilters,
+        offset: planningFirst.nextOffset,
+      });
+      assert.equal(planningNext.items[0].id, planningThreads[0].id);
+      assert.equal(planningNext.nextOffset, null);
       a = await pool.connect();
       b = await pool.connect();
       await a.query("BEGIN");

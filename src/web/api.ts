@@ -234,6 +234,7 @@ export type Thread = {
     { state: "open" | "resolved" | "removed"; actor: Actor; at: string }
   >;
   projectId: string;
+  workPlan?: import("../shared/contracts.js").WorkPlan;
   priorityScore?: number;
   topPriority: boolean;
   body: string;
