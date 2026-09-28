@@ -295,10 +295,7 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
     <article className="reading help-page help-quickstart">
       <div className="help-simple-heading">
         <h1>Let’s get you connected</h1>
-        <div className="help-heading-actions">
-          {React.createElement("feedbacks-motion-control")}
-          <a href="https://feedbacks.softinator.ai/docs/">Docs</a>
-        </div>
+        <a href="https://feedbacks.softinator.ai/docs/">Docs</a>
       </div>
       <p className="muted">Your team’s server is already set up.</p>
       <ol className="help-steps">
@@ -360,8 +357,20 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
               Install extension <Icon name="external" />
             </a>
           </div>
+          <div className="help-pin">
+            <div>
+              <h3>Pin it. Keep review one click away.</h3>
+              <p>
+                Chrome’s puzzle icon → Feedbacks → <strong>Pin</strong>.
+              </p>
+              <p>
+                Keep the icon in your toolbar so you can start or resume a review anytime.
+              </p>
+            </div>
+            {React.createElement("feedbacks-demo", { step: "pin" })}
+          </div>
           <p>
-            Pin it in Chrome. Paste this URL into the extension, then choose{" "}
+            Paste this URL into the extension, then choose{" "}
             <strong>Connect to server</strong>.
           </p>
           <div className="help-server-copy">
@@ -389,7 +398,12 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
           </div>
           <ActionState action={serverCopy} />
           <LatestExtension />
-          <WatchStep step="install,connect" title="Show install & connect" />
+          <p className="help-review-shortcut">
+            <strong>Default review shortcut:</strong> Mac <kbd>⌘ Shift Y</kbd> · Windows{" "}
+            <kbd>Ctrl Shift Y</kbd>. Change it in extension{" "}
+            <strong>Settings → Keyboard shortcuts</strong>.
+          </p>
+          <WatchStep step="connect" title="Show how to connect" />
         </li>
         <li id="connect-agent">
           <ErrorNotice error={error} />

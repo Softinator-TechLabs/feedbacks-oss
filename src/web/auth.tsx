@@ -82,7 +82,7 @@ export function AuthScreen({
       <p className="muted">Need access or a password reset? Contact your team owner.</p>
       <footer>
         <a href={officialWebsiteUrl}>About Feedbacks</a>
-        <a href="/help">Help & extension</a>
+        <a href="/help">Setup</a>
         <a href="/privacy">Privacy</a>
       </footer>
     </main>

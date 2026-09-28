@@ -285,6 +285,25 @@ try {
   await options.waitForURL(`chrome-extension://${extensionId}/options.html`);
   await options.locator("#connection-status").filter({ hasText: "Connected" }).waitFor();
   assert.equal(await options.locator("#server").inputValue(), access.url);
+  const assignedShortcut = await worker.evaluate(
+    async () =>
+      (await chrome.commands.getAll()).find(
+        (command) => command.name === "_execute_action",
+      )?.shortcut,
+  );
+  await options
+    .locator("#opening-shortcut")
+    .filter({
+      hasText: assignedShortcut
+        ? `Start / resume review: ${assignedShortcut}`
+        : "No shortcut assigned",
+    })
+    .waitFor();
+  assert.equal(
+    await options.locator("#customize-shortcuts").innerText(),
+    "Change shortcut",
+  );
+
   await options.locator("#review-shortcuts").uncheck();
   await options.locator("#message").filter({ hasText: "saved" }).waitFor();
   assert.equal((await send({ type: "settings" })).reviewShortcuts, false);

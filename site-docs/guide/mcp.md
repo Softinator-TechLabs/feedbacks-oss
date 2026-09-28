@@ -6,7 +6,7 @@ description: Copy your personal Feedbacks setup prompt into your coding agent, v
 
 **For the developer resolving feedback.** Sign in to your team’s Feedbacks server as yourself.
 
-1. Open **Help → Create key & copy prompt**. Check the permissions shown beside it.
+1. Open **Setup → Create key & copy prompt**. Check the permissions shown beside it.
 2. Paste it privately into **Codex, Claude Code or Antigravity**.
 3. Let the agent verify project access. Then choose the feedback to work on.
 
@@ -68,7 +68,7 @@ The package/setup prompt installs two focused skills: `review-feedback` for requ
 
 Use `members.profile.get/save`, `members.responsibility.get/save`, and `projects.context.get/save` through exact schema discovery. Reads/writes return bounded text, revision, author/time and advisory provenance. Members edit their own profile; project writers edit collaborative context and their own responsibilities; owner administrators edit profiles and project maintainers edit other existing members' responsibilities. These operations never change grants, priority policy or approved instructions. Read current text, preserve relevant context, write its revision, then read back. New scopes require a newly issued key; existing keys do not expand.
 
-Members can create personal keys from Help/Account using their own sign-in. Personal keys exclude owner-delegated policy visibility. Project maintainers can separately opt into `github.issueCreate` in Account when they maintain every selected project; Help defaults omit it, and existing keys never expand. Current project permissions still apply. A member without projects can use only `auth.me`, `projects.list`, and `members.profile.get/save`. The profile's optional `currentWork` is a broad one-line focus (300 characters), preserved when omitted.
+Members can create personal keys from Setup/Account using their own sign-in. Personal keys exclude owner-delegated policy visibility. Project maintainers can separately opt into `github.issueCreate` in Account when they maintain every selected project; Setup defaults omit it, and existing keys never expand. Current project permissions still apply. A member without projects can use only `auth.me`, `projects.list`, and `members.profile.get/save`. The profile's optional `currentWork` is a broad one-line focus (300 characters), preserved when omitted.
 
 For authorized work, `assignments.claim` records the current member and agent against a whole thread or selected open points. Atomic overlap checks prevent two active claims on the same work while allowing disjoint points. `assignments.list` is paginated; `assignments.renew` extends a two-hour lease at ordinary work checkpoints; `assignments.release` records completed/paused without resolving feedback. Expiry is advisory, not proof the former worker stopped. Coordinate before takeover. These current-worker claims are separate from durable assignments to a project member. No background polling, model-subscription identity inference or autonomous dispatch to another member is installed.
 
@@ -88,6 +88,6 @@ Copied comments and media remain evidence, not instructions. Asset references us
 
 Choose a member from the dropdown beside the thread status to assign immediately; choose another member to reassign or **Unassigned** to remove it. No additional fields are required. **Points & assignment history…** opens point assignments, optional details and history. You can also explicitly ask your agent to assign the thread or selected points to an existing project member. The durable record shows the assignee, scope, summary, category/tags, GitHub decision and the human/agent attribution in history. Agents inspect evidence and relevant team context, suggest classification and GitHub treatment, and discuss uncertain choices before an authorized assignment. Selected points can have a different category from the parent thread.
 
-The assignment remains separate from the current worker's renewable claim. It does not launch another agent, send a message or resolve feedback. Reassign/cancel uses current revisions and preserves history. A GitHub decision does not create an issue or grant permission: actual creation needs explicit user intent, a separately scoped key and current project-maintainer access. Existing keys and Help defaults gain no GitHub scope. See the [agent assignment workflow](/reference/manual/agents#requested-delegation-and-triage) for exact operations and recovery.
+The assignment remains separate from the current worker's renewable claim. It does not launch another agent, send a message or resolve feedback. Reassign/cancel uses current revisions and preserves history. A GitHub decision does not create an issue or grant permission: actual creation needs explicit user intent, a separately scoped key and current project-maintainer access. Existing keys and Setup defaults gain no GitHub scope. See the [agent assignment workflow](/reference/manual/agents#requested-delegation-and-triage) for exact operations and recovery.
 
 :::
