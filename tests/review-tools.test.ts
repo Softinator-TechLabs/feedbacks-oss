@@ -293,6 +293,7 @@ test("URL review state round-trips filters and safely bounds pagination", () => 
     tag: "checkout",
     sort: "likes",
     showResolved: true,
+    workState: "open",
     search: "button & spacing",
     category: "visualDesign",
     hostname: "example.test",
@@ -304,6 +305,7 @@ test("URL review state round-trips filters and safely bounds pagination", () => 
   for (const invalid of ["offset=-1", "offset=Infinity", "offset=100001", "offset=1.5"])
     assert.equal(readOffset(invalid), 0);
   assert.equal(readFilters("sort=unknown&deviceClass=bad&category=bad").sort, "activity");
+  assert.equal(readFilters("workState=not-a-state").workState, undefined);
 });
 
 test("policy-authorized priority order is shared by the inbox and MCP navigation", async () => {
