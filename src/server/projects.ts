@@ -5,6 +5,53 @@ import { access, canReadPolicy, event, ownerOnly } from "./access.js";
 import { hash, secret, revokeCredentials } from "./auth.js";
 import { protectPrimary } from "./accounts.js";
 import { fail } from "./errors.js";
+import {
+  builtInCategories,
+  defaultTagColor,
+  type ProjectCategory,
+  type ProjectTag,
+} from "../shared/taxonomy.js";
+
+export function projectCategories(project: {
+  taxonomy?: { categories?: ProjectCategory[] };
+}): ProjectCategory[] {
+  return [
+    ...builtInCategories.map((category) => ({ ...category })),
+    ...(project.taxonomy?.categories ?? []),
+  ];
+}
+
+export function assertProjectCategory(
+  project: { taxonomy?: { categories?: ProjectCategory[] } },
+  categoryId: string,
+  previousCategoryId?: string,
+) {
+  const category = projectCategories(project).find((item) => item.id === categoryId);
+  if (!category || (category.archived && categoryId !== previousCategoryId))
+    fail("VALIDATION", "Select an active category from this project");
+}
+
+async function projectTaxonomy(db: Database, project: any) {
+  const storedTags: ProjectTag[] = project.taxonomy?.tags ?? [];
+  const used = await db.query(
+    "SELECT DISTINCT tag.value AS name FROM threads, LATERAL jsonb_array_elements_text(COALESCE(threads.data->'tags','[]'::jsonb)) AS tag(value) WHERE threads.project_id=$1 ORDER BY name",
+    [project.id],
+  );
+  const tags = new Map(storedTags.map((tag) => [tag.name, { ...tag, managed: true }]));
+  for (const row of used)
+    if (!tags.has(row.name))
+      tags.set(row.name, {
+        name: row.name,
+        color: defaultTagColor(row.name),
+        managed: false,
+      });
+  return {
+    revision: project.revision,
+    categories: projectCategories(project),
+    tags: [...tags.values()].sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+
 export async function projects(db: Database, a: Actor, op: string, i: any) {
   if (op === "projects.list") {
     const rows = await db.query(
@@ -19,6 +66,55 @@ export async function projects(db: Database, a: Actor, op: string, i: any) {
     };
   }
   if (op === "projects.get") return access(db, a, i.projectId);
+  if (op === "projects.taxonomy.get")
+    return projectTaxonomy(db, await access(db, a, i.projectId));
+  if (op === "projects.taxonomy.update") {
+    const current = await access(db, a, i.projectId, "maintain");
+    if (current.revision !== i.revision)
+      fail("CONFLICT", "Project changed; reload categories and tags before saving", 409);
+    const oldCategories: ProjectCategory[] = current.taxonomy?.categories ?? [];
+    const oldIds = new Set(oldCategories.map((category) => category.id));
+    const categories: ProjectCategory[] = i.categories.map(
+      (category: ProjectCategory) => {
+        if (category.id && !oldIds.has(category.id))
+          fail("VALIDATION", "Category does not belong to this project");
+        return {
+          id: category.id ?? `custom:${randomUUID()}`,
+          name: category.name,
+          archived: category.archived,
+        };
+      },
+    );
+    if (oldIds.size !== categories.filter((category) => oldIds.has(category.id)).length)
+      fail("VALIDATION", "Archive a category instead of removing it");
+    const names = [
+      ...builtInCategories.map((category) => category.name),
+      ...categories.map((category) => category.name.toLowerCase()),
+    ];
+    if (new Set(names.map((name) => name.toLowerCase())).size !== names.length)
+      fail("VALIDATION", "Category names must be unique within the project");
+    const requestedTags: ProjectTag[] = i.tags;
+    if (new Set(requestedTags.map((tag) => tag.name)).size !== requestedTags.length)
+      fail("VALIDATION", "Tag names must be unique within the project");
+    const tags = new Map<string, ProjectTag>(
+      (current.taxonomy?.tags ?? []).map((tag: ProjectTag) => [tag.name, tag]),
+    );
+    for (const tag of requestedTags) tags.set(tag.name, tag);
+    const saved = await db.one(
+      "UPDATE projects SET data=jsonb_set(data,'{taxonomy}',$1::jsonb,true),revision=revision+1 WHERE id=$2 AND revision=$3 RETURNING id",
+      [JSON.stringify({ categories, tags: [...tags.values()] }), i.projectId, i.revision],
+    );
+    if (!saved) fail("CONFLICT", "Project changed; reload categories and tags", 409);
+    await event(db, a, i.projectId, i.projectId, op, {
+      categoryCount: categories.length,
+      tagCount: tags.size,
+    });
+    const updatedProject = await access(db, a, i.projectId);
+    return {
+      ...(await projectTaxonomy(db, updatedProject)),
+      project: updatedProject,
+    };
+  }
   let current: Awaited<ReturnType<typeof access>> | undefined;
   if (op === "projects.create") ownerOnly(a);
   else {
@@ -55,6 +151,7 @@ export async function projects(db: Database, a: Actor, op: string, i: any) {
     reviewEnabled: i.reviewEnabled ?? current?.reviewEnabled ?? false,
     documentsEnabled: i.documentsEnabled ?? current?.documentsEnabled ?? false,
     surveysEnabled: i.surveysEnabled ?? current?.surveysEnabled ?? false,
+    ...(current?.taxonomy ? { taxonomy: current.taxonomy } : {}),
     githubConnected:
       op !== "projects.create" &&
       current?.githubConnected === true &&

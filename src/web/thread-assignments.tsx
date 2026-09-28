@@ -14,7 +14,12 @@ import {
 } from "./ui.js";
 import { HumanTime } from "./human-time.js";
 import { useUnsavedChanges } from "./navigation.js";
-import { categories, splitTags } from "./review-filters.js";
+import { splitTags } from "./review-filters.js";
+import {
+  builtInCategories,
+  categoryName,
+  type ProjectTaxonomy,
+} from "../shared/taxonomy.js";
 import {
   assignmentActor,
   assignmentPoints,
@@ -72,12 +77,14 @@ export function canAssignThread(thread: Thread) {
 export function ThreadAssignments({
   thread,
   project,
+  taxonomy,
   toolbar,
   onRefresh,
   onGithub,
 }: {
   thread: Thread;
   project: Project;
+  taxonomy?: ProjectTaxonomy;
   toolbar: HTMLElement | null;
   onRefresh: () => Promise<Thread>;
   onGithub: () => void;
@@ -179,7 +186,9 @@ export function ThreadAssignments({
           summary: whole?.summary ?? "Work on this thread",
           category:
             whole?.category ??
-            (categories.includes(thread.category as any)
+            ((taxonomy?.categories ?? builtInCategories).some(
+              (item) => item.id === thread.category && !item.archived,
+            )
               ? (thread.category as AssignInput["category"])
               : "general"),
           tags: whole?.tags ?? thread.tags ?? [],
@@ -298,7 +307,12 @@ export function ThreadAssignments({
                 <li key={item.id}>
                   <strong>{item.memberName}</strong>
                   <span>{assignmentScope(item.annotationIds, thread)}</span>
-                  <span>{labels[item.category] ?? item.category}</span>
+                  <span>
+                    {categoryName(
+                      taxonomy?.categories ?? builtInCategories,
+                      item.category,
+                    )}
+                  </span>
                   <span>{decisions[item.githubDecision]}</span>
                   <span className="assignment-attribution">
                     Updated by {assignmentActor(item.updatedBy)} ·{" "}
@@ -361,6 +375,7 @@ export function ThreadAssignments({
             <AssignmentForm
               key={editing === "new" ? "new" : editing.id}
               thread={thread}
+              taxonomy={taxonomy}
               initial={editing === "new" ? undefined : editing}
               canWrite={project.permissions.canWrite}
               onRefresh={onRefresh}
@@ -383,6 +398,7 @@ export function ThreadAssignments({
               key={item.id}
               item={item}
               thread={thread}
+              taxonomy={taxonomy}
               canWrite={project.permissions.canWrite}
               editing={!!editing}
               onEdit={() => setEditing(item)}
@@ -421,6 +437,7 @@ export function ThreadAssignments({
 
 function AssignmentForm({
   thread,
+  taxonomy,
   initial,
   canWrite,
   onRefresh,
@@ -428,6 +445,7 @@ function AssignmentForm({
   onClose,
 }: {
   thread: Thread;
+  taxonomy?: ProjectTaxonomy;
   initial?: Delegation;
   canWrite: boolean;
   onRefresh: () => Promise<Thread>;
@@ -449,7 +467,9 @@ function AssignmentForm({
   const [selected, setSelected] = useState<string[]>(initial?.annotationIds ?? []);
   const [category, setCategory] = useState<AssignInput["category"]>(
     initial?.category ??
-      (categories.includes(thread.category as any)
+      ((taxonomy?.categories ?? builtInCategories).some(
+        (item) => item.id === thread.category && !item.archived,
+      )
         ? (thread.category as AssignInput["category"])
         : "general"),
   );
@@ -562,7 +582,11 @@ function AssignmentForm({
       <fieldset disabled={a.busy} className="assignment-fields">
         {latestAssignment && (
           <div className="assignment-conflict">
-            <AssignmentSnapshot item={latestAssignment} thread={thread} />
+            <AssignmentSnapshot
+              item={latestAssignment}
+              thread={thread}
+              taxonomy={taxonomy}
+            />
             <p>
               Your draft below is unchanged. Saving it will replace the current assignment
               above.
@@ -678,11 +702,14 @@ function AssignmentForm({
                   setCategory(event.target.value as AssignInput["category"])
                 }
               >
-                {categories.map((value) => (
-                  <option key={value} value={value}>
-                    {labels[value]}
-                  </option>
-                ))}
+                {(taxonomy?.categories ?? builtInCategories)
+                  .filter((item) => !item.archived || item.id === category)
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                      {item.archived ? " (archived)" : ""}
+                    </option>
+                  ))}
               </select>
             </Field>
             <Field label="Tags" hint="Separate tags with commas. Up to 12 tags.">
@@ -744,6 +771,7 @@ function AssignmentForm({
 function AssignmentRecord({
   item,
   thread,
+  taxonomy,
   canWrite,
   editing,
   onEdit,
@@ -752,6 +780,7 @@ function AssignmentRecord({
 }: {
   item: Delegation;
   thread: Thread;
+  taxonomy?: ProjectTaxonomy;
   canWrite: boolean;
   editing: boolean;
   onEdit: () => void;
@@ -797,7 +826,7 @@ function AssignmentRecord({
       </div>
       <p className="assignment-description">{item.summary}</p>
       <p>
-        {labels[item.category] ?? item.category}
+        {categoryName(taxonomy?.categories ?? builtInCategories, item.category)}
         {item.tags.length ? ` · ${item.tags.join(", ")}` : ""}
       </p>
       <p>
@@ -874,7 +903,11 @@ function AssignmentRecord({
           <fieldset disabled={a.busy} className="assignment-fields">
             {cancelLatest && (
               <div className="assignment-conflict">
-                <AssignmentSnapshot item={cancelLatest} thread={thread} />
+                <AssignmentSnapshot
+                  item={cancelLatest}
+                  thread={thread}
+                  taxonomy={taxonomy}
+                />
                 <label className="check">
                   <input
                     type="checkbox"
@@ -965,7 +998,10 @@ function AssignmentRecord({
                   {entry.assignment.summary}
                 </p>
                 <p>
-                  {labels[entry.assignment.category] ?? entry.assignment.category}
+                  {categoryName(
+                    taxonomy?.categories ?? builtInCategories,
+                    entry.assignment.category,
+                  )}
                   {entry.assignment.tags.length
                     ? ` · ${entry.assignment.tags.join(", ")}`
                     : ""}{" "}
@@ -1009,6 +1045,13 @@ export function ProjectAssignments({ project }: { project: Project }) {
   const [userId, setUserId] = useState("");
   const [offset, setOffset] = useState(0);
   const [version, setVersion] = useState(0);
+  const { data: taxonomy } = useLoad<ProjectTaxonomy | undefined>(
+    () =>
+      open
+        ? api<ProjectTaxonomy>("projects.taxonomy.get", { projectId: project.id })
+        : Promise.resolve(undefined),
+    [project.id, open, version],
+  );
   const people = useLoad(
     () =>
       open
@@ -1095,7 +1138,8 @@ export function ProjectAssignments({ project }: { project: Project }) {
             </div>
             <a href={`/threads/${item.threadId}#thread-assignments`}>{item.summary}</a>
             <p>
-              {labels[item.category] ?? item.category} · {decisions[item.githubDecision]}
+              {categoryName(taxonomy?.categories ?? builtInCategories, item.category)} ·{" "}
+              {decisions[item.githubDecision]}
             </p>
           </li>
         ))}
@@ -1125,7 +1169,15 @@ export function ProjectAssignments({ project }: { project: Project }) {
   );
 }
 
-function AssignmentSnapshot({ item, thread }: { item: Delegation; thread: Thread }) {
+function AssignmentSnapshot({
+  item,
+  thread,
+  taxonomy,
+}: {
+  item: Delegation;
+  thread: Thread;
+  taxonomy?: ProjectTaxonomy;
+}) {
   return (
     <div>
       <h4>Current assignment · revision {item.revision}</h4>
@@ -1135,7 +1187,7 @@ function AssignmentSnapshot({ item, thread }: { item: Delegation; thread: Thread
       </p>
       <p>{item.summary}</p>
       <p>
-        {labels[item.category] ?? item.category}
+        {categoryName(taxonomy?.categories ?? builtInCategories, item.category)}
         {item.tags.length ? ` · ${item.tags.join(", ")}` : ""}
       </p>
       <p>

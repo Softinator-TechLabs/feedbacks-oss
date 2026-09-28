@@ -1,4 +1,8 @@
-import { calendarDateSchema, type ReviewFilters } from "../shared/contracts.js";
+import {
+  calendarDateSchema,
+  categorySchema,
+  type ReviewFilters,
+} from "../shared/contracts.js";
 export const categories = [
   "general",
   "visualDesign",
@@ -23,8 +27,9 @@ export function readFilters(query: string): ReviewFilters {
   }
   if (["mobile", "tablet", "desktop"].includes(p.get("deviceClass") ?? ""))
     filters.deviceClass = p.get("deviceClass") as ReviewFilters["deviceClass"];
-  if (categories.includes(p.get("category") as any))
-    filters.category = p.get("category") as ReviewFilters["category"];
+  const category = p.get("category");
+  if (categorySchema.safeParse(category).success)
+    filters.category = category as ReviewFilters["category"];
   const assignedTo = p.get("assignedTo");
   if (
     assignedTo &&

@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { ReviewFilters } from "../shared/contracts.js";
-import { api, labels, type Thread } from "./api.js";
-import { navigate, usePageLocation, useUnsavedChanges } from "./navigation.js";
+import { api, type Thread } from "./api.js";
 import {
-  categories,
-  filterQuery,
-  readFilters,
-  readOffset,
-  splitTags,
-} from "./review-filters.js";
+  builtInCategories,
+  categoryName,
+  type ProjectTaxonomy,
+} from "../shared/taxonomy.js";
+import { TagBadge, TagPicker } from "./project-taxonomy.js";
+import { navigate, usePageLocation, useUnsavedChanges } from "./navigation.js";
+import { filterQuery, readFilters, readOffset } from "./review-filters.js";
 import { ActionState, ErrorNotice, Field, useAction, useLoad } from "./ui.js";
 
 type SavedView = { id: string; name: string; revision: number; filters: ReviewFilters };
@@ -240,23 +240,26 @@ export function ThreadNavigation({ threadId }: { threadId: string }) {
 export function ThreadOrganization({
   thread,
   canWrite,
+  taxonomy,
   onSaved,
 }: {
   thread: Thread;
   canWrite: boolean;
+  taxonomy?: ProjectTaxonomy;
   onSaved: (thread: Thread) => void;
 }) {
   const a = useAction();
   const [draft, setDraft] = useState<{
     category: string;
-    tags: string;
+    tags: string[];
     revision: number;
   } | null>(null);
   const value = draft ?? {
     category: thread.category ?? "general",
-    tags: (thread.tags ?? []).join(", "),
+    tags: thread.tags ?? [],
     revision: thread.revision,
   };
+  const availableCategories = taxonomy?.categories ?? builtInCategories;
   useUnsavedChanges(!!draft || a.busy);
   return (
     <details className="section compact-details" id="thread-organize">
@@ -272,7 +275,7 @@ export function ThreadOrganization({
                   threadId: thread.id,
                   revision: pending.revision,
                   category: pending.category as "general",
-                  tags: splitTags(pending.tags),
+                  tags: pending.tags,
                 }),
               );
               setDraft(null);
@@ -286,26 +289,24 @@ export function ThreadOrganization({
               disabled={a.busy}
               onChange={(e) => setDraft({ ...value, category: e.target.value })}
             >
-              {categories.map((v) => (
-                <option value={v} key={v}>
-                  {labels[v]}
-                </option>
-              ))}
+              {availableCategories
+                .filter(
+                  (category) => !category.archived || category.id === value.category,
+                )
+                .map((category) => (
+                  <option value={category.id} key={category.id}>
+                    {category.name}
+                    {category.archived ? " (archived)" : ""}
+                  </option>
+                ))}
             </select>
           </Field>
-          <Field
-            label="Tags (optional)"
-            hint="Comma separated; up to 12 tags, 32 characters each."
-          >
-            <input
-              name="tags"
-              value={value.tags}
-              disabled={a.busy}
-              onChange={(e) => setDraft({ ...value, tags: e.target.value })}
-              maxLength={394}
-              placeholder="checkout, mobile"
-            />
-          </Field>
+          <TagPicker
+            selected={value.tags}
+            available={taxonomy?.tags ?? []}
+            disabled={a.busy}
+            onChange={(tags) => setDraft({ ...value, tags })}
+          />
           <button disabled={a.busy || !draft}>Save category &amp; tags</button>
           {draft && draft.revision !== thread.revision && (
             <p role="status">
@@ -327,7 +328,12 @@ export function ThreadOrganization({
         </form>
       ) : (
         <p>
-          {labels[thread.category] ?? "General"} · {thread.tags?.join(", ") || "No tags"}
+          {categoryName(availableCategories, thread.category)} ·{" "}
+          {thread.tags?.length
+            ? thread.tags.map((tag) => (
+                <TagBadge key={tag} name={tag} tags={taxonomy?.tags ?? []} />
+              ))
+            : "No tags"}
         </p>
       )}
     </details>

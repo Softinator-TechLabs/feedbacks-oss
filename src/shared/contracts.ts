@@ -1,5 +1,6 @@
 import { diagnosticsSchema } from "./diagnostics.js";
 import { z } from "zod";
+import { tagColors } from "./taxonomy.js";
 const id = z.string().uuid(),
   text = z.string().trim().min(1).max(12000),
   name = z.string().trim().min(1).max(120),
@@ -8,11 +9,11 @@ const page = {
   limit: z.number().int().min(1).max(100).default(30),
   offset: z.number().int().min(0).max(100000).default(0),
 };
-export const categorySchema = z.enum([
-  "general",
-  "visualDesign",
-  "productWorkflow",
-  "usabilityAccessibility",
+export const categorySchema = z.union([
+  z.enum(["general", "visualDesign", "productWorkflow", "usabilityAccessibility"]),
+  z
+    .string()
+    .regex(/^custom:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
 ]);
 export const tagSchema = z
   .string()
@@ -25,6 +26,26 @@ export const tagsSchema = z
   .array(tagSchema)
   .max(12)
   .transform((tags) => [...new Set(tags)].sort());
+const projectCategoryInput = z.object({
+  id: categorySchema.optional(),
+  name: z.string().trim().min(1).max(60),
+  archived: z.boolean(),
+});
+const projectTagInput = z.object({
+  name: tagSchema,
+  color: z.enum(tagColors),
+});
+const projectTaxonomyInput = z.object({
+  projectId: id,
+  revision,
+  categories: z.array(projectCategoryInput).max(32),
+  tags: z.array(projectTagInput).max(200),
+});
+const projectTaxonomyOutput = z.object({
+  revision,
+  categories: z.array(projectCategoryInput.extend({ id: categorySchema })),
+  tags: z.array(projectTagInput.extend({ managed: z.boolean() })),
+});
 const surveyQuestionBase = {
   id: z.string().regex(/^[a-z][a-z0-9_-]{0,31}$/),
   prompt: z.string().trim().min(1).max(300),
@@ -452,6 +473,8 @@ export const inputSchemas = {
   "projects.create": projectInput,
   "projects.get": z.object({ projectId: id }),
   "projects.update": projectInput.extend({ projectId: id, revision }),
+  "projects.taxonomy.get": z.object({ projectId: id }),
+  "projects.taxonomy.update": projectTaxonomyInput,
   "documents.upload": z.object({
     projectId: id,
     name: z.string().trim().min(1).max(160),
@@ -980,6 +1003,12 @@ const projectOutput = z.object({
   reviewEnabled: z.boolean().default(false),
   documentsEnabled: z.boolean().default(false),
   surveysEnabled: z.boolean().default(false),
+  taxonomy: z
+    .object({
+      categories: z.array(projectCategoryInput.extend({ id: categorySchema })),
+      tags: z.array(projectTagInput),
+    })
+    .optional(),
   revision,
   permissions: z.object({
     role: z.enum(["maintainer", "reviewer", "viewer"]),
@@ -1142,6 +1171,8 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "projects.get": projectOutput,
   "projects.create": projectOutput,
   "projects.update": projectOutput,
+  "projects.taxonomy.get": projectTaxonomyOutput,
+  "projects.taxonomy.update": projectTaxonomyOutput.extend({ project: projectOutput }),
   "github.connection": z.object({
     configured: z.boolean(),
     connected: z.boolean(),
@@ -1559,6 +1590,7 @@ export const agentTokenScopes = [
   "members.responsibility.save",
   "projects.context.get",
   "projects.context.save",
+  "projects.taxonomy.get",
   ...scopedAgentOperations,
   "threads.annotationStatus",
   "qa.get",
@@ -1636,6 +1668,7 @@ const readOperations = new Set<string>([
   "auth.me",
   "projects.list",
   "projects.get",
+  "projects.taxonomy.get",
   "surveys.list",
   "surveys.results",
   "documents.list",

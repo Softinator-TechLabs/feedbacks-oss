@@ -93,7 +93,14 @@ textarea::placeholder {
   margin-top: 16px;
 }
 .form-end {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
   margin: 4px 0 16px;
+}
+.form-end > :is(p, .section, .notice, .error) {
+  flex-basis: 100%;
 }
 .form-end p {
   max-width: 70ch;

@@ -5,6 +5,7 @@ import { access, event } from "./access.js";
 import { hash } from "./auth.js";
 import { threadRow } from "./feedback.js";
 import { fail } from "./errors.js";
+import { assertProjectCategory } from "./projects.js";
 
 export function scopesOverlap(left: string[], right: string[]) {
   return !left.length || !right.length || left.some((id) => right.includes(id));
@@ -147,6 +148,11 @@ export async function delegations(db: Database, a: Actor, op: string, i: any) {
   const action =
     op === "assignments.cancel" ? "cancelled" : row ? "reassigned" : "assigned";
   if (thread) {
+    assertProjectCategory(
+      await access(db, a, thread.project_id),
+      i.category,
+      row?.category,
+    );
     if (thread.revision !== i.threadRevision)
       fail("CONFLICT", "Thread changed; reload before assigning work", 409);
     if (thread.data.archived || ["resolved", "declined"].includes(thread.data.work.state))

@@ -64,7 +64,9 @@ Widget links use the same expiry, submission limit and revocation controls as gu
 
 ## Optional organization
 
-Category defaults to General. Tags are optional, case-insensitive and shared with the thread. Use up to 12 tags, each 32 characters; letters, numbers, spaces, hyphens, underscores and slashes are accepted. The app and extension both allow tags when creating feedback. Project writers can update them afterward. Changes use the thread revision, so concurrent edits cannot silently overwrite each other.
+Category defaults to General. Project maintainers can add, rename and archive custom categories in **Project settings → Categories & tags**. Renaming keeps the category ID and existing feedback; archiving removes it from new selections while preserving older feedback. Categories and tags appear together in project feedback rows and thread detail.
+
+Tags are optional, case-insensitive and shared with the thread. Use up to 12 tags, each 32 characters; letters, numbers, spaces, hyphens, underscores and slashes are accepted. In the app, choose an existing project tag or create one from feedback; the extension also accepts new tags during capture. Tags first used on a thread join that project's vocabulary with a stable subtle color. Maintainers can add unused tags and change any tag color in project settings. Project writers can update a thread's category and tags afterward. Thread edits use the thread revision, so concurrent edits cannot silently overwrite each other.
 
 Use **Saved views** to apply a named filter. Open **Save or remove a view** for less frequent maintenance. Views belong to you within a project, including for read-only project members. Other members cannot see or alter them. Each person can save up to 30 views per project. To revise a saved view, apply it, change filters, save a replacement and remove the old view.
 

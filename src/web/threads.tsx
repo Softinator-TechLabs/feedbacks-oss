@@ -14,13 +14,7 @@ import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
 import { ReviewEvidence } from "./review-evidence.js";
 import { usePageLocation, navigate, useUnsavedChanges } from "./navigation.js";
-import {
-  readFilters,
-  readOffset,
-  filterQuery,
-  splitTags,
-  categories,
-} from "./review-filters.js";
+import { readFilters, readOffset, filterQuery } from "./review-filters.js";
 import {
   SavedReviewViews,
   ThreadNavigation,
@@ -39,6 +33,12 @@ import { Icon } from "./icons.js";
 import { GuestLinks } from "./guest-review.js";
 import { GithubIssue } from "./github-issue.js";
 import { api, uid, date, labels, type Actor, type Project, type Thread } from "./api.js";
+import {
+  builtInCategories,
+  categoryName,
+  type ProjectTaxonomy,
+} from "../shared/taxonomy.js";
+import { TagBadge, TagPicker } from "./project-taxonomy.js";
 import { HumanTime } from "./human-time.js";
 import {
   ActionState,
@@ -126,6 +126,10 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     [project.id, query, version],
     true,
   );
+  const { data: taxonomy, error: taxonomyError } = useLoad<ProjectTaxonomy>(
+    () => api("projects.taxonomy.get", { projectId: project.id }),
+    [project.id, version],
+  );
   const data =
     loaded?.query === query && loaded.projectId === project.id
       ? loaded.result
@@ -155,6 +159,14 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           )}
         </div>
         <div className="thread-list-quick-actions">
+          {project.permissions.canMaintain && (
+            <a
+              className="button"
+              href={`/projects/${project.id}/settings#project-taxonomy`}
+            >
+              Manage categories &amp; tags
+            </a>
+          )}
           <button
             type="button"
             aria-pressed={filters.assignedTo === actor.userId}
@@ -205,12 +217,14 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
       {creating && (
         <ThreadComposer
           project={project}
+          taxonomy={taxonomy}
           onCreated={(t) => {
             location.href = `/threads/${t.id}`;
           }}
         />
       )}
       <ProjectAssignments key={project.id} project={project} />
+      <ErrorNotice error={taxonomyError} />
       <section
         className={`thread-filter-panel${filtersOpen ? " is-expanded" : ""}`}
         aria-label="Feedback filters and views"
@@ -336,9 +350,9 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
               <Field label="Category">
                 <select name="category" defaultValue={category ?? ""}>
                   <option value="">All categories</option>
-                  {categories.map((v) => (
-                    <option key={v} value={v}>
-                      {labels[v]}
+                  {(taxonomy?.categories ?? builtInCategories).map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>
@@ -479,17 +493,19 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                             t.workPlan.schedule !== "unscheduled") && (
                             <WorkPlanSummary workPlan={t.workPlan} />
                           )}
+                        <div className="thread-taxonomy">
+                          <span className="category-badge">
+                            {categoryName(
+                              taxonomy?.categories ?? builtInCategories,
+                              t.category,
+                            )}
+                          </span>
+                          {(t.tags ?? []).map((tag) => (
+                            <TagBadge name={tag} tags={taxonomy?.tags ?? []} key={tag} />
+                          ))}
+                        </div>
                         {t.topPriority && !project.permissions.canMaintain && (
                           <span className="thread-priority-label">Top priority</span>
-                        )}
-                        {!!t.tags?.length && (
-                          <div className="tag-list">
-                            {t.tags.map((tag) => (
-                              <span className="tag" key={tag}>
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
                         )}
                         <div className="meta">
                           <span>{t.author?.name ?? "Member"}</span>
@@ -702,13 +718,16 @@ function ThreadQuickStatus({
 }
 export function ThreadComposer({
   project,
+  taxonomy,
   onCreated,
 }: {
   project: Project;
+  taxonomy?: ProjectTaxonomy;
   onCreated: (t: Thread) => void;
 }) {
   const a = useAction(),
     retry = useRef<{ signature: string; key: string } | undefined>(undefined);
+  const [tags, setTags] = useState<string[]>([]);
   return (
     <section className="section">
       <h2>New feedback</h2>
@@ -728,7 +747,7 @@ export function ThreadComposer({
                 },
               },
               category: String(f.get("category")) as "general",
-              tags: splitTags(String(f.get("tags") ?? "")),
+              tags,
             };
           const signature = JSON.stringify(input);
           if (retry.current?.signature !== signature)
@@ -757,18 +776,23 @@ export function ThreadComposer({
         </Field>
         <Field label="Category (optional)">
           <select name="category">
-            {["general", "visualDesign", "productWorkflow", "usabilityAccessibility"].map(
-              (c) => (
-                <option key={c} value={c}>
-                  {labels[c]}
+            {(taxonomy?.categories ?? builtInCategories)
+              .filter((category) => !category.archived)
+              .map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
                 </option>
-              ),
-            )}
+              ))}
           </select>
         </Field>
-        <Field label="Tags (optional)" hint="Comma separated, up to 12 tags.">
-          <input name="tags" maxLength={394} placeholder="checkout, mobile" />
-        </Field>
+        <div className="wide">
+          <TagPicker
+            selected={tags}
+            available={taxonomy?.tags ?? []}
+            onChange={setTags}
+            disabled={a.busy}
+          />
+        </div>
         <Field label="Viewport width (CSS px)">
           <input
             name="width"
@@ -832,6 +856,13 @@ export function ThreadDetail({
           : Promise.resolve(undefined),
       [threadId, t?.projectId, projectVersion],
     );
+  const { data: taxonomy, error: taxonomyError } = useLoad<ProjectTaxonomy | undefined>(
+    () =>
+      project
+        ? api<ProjectTaxonomy>("projects.taxonomy.get", { projectId: project.id })
+        : Promise.resolve(undefined),
+    [threadId, project?.id, projectVersion],
+  );
   const assetIds = t?.assets.map((asset) => asset.id).join(",");
   useEffect(() => {
     if (!t || t.context.annotations?.length) return;
@@ -1148,6 +1179,7 @@ export function ThreadDetail({
           </button>
         </section>
       )}
+      <ErrorNotice error={taxonomyError} />
       <ActionState action={a} />
       {a.error.includes("CONFLICT") && (
         <Notice>
@@ -1168,6 +1200,7 @@ export function ThreadDetail({
           key={t.id}
           thread={t}
           project={project}
+          taxonomy={taxonomy}
           toolbar={assignmentToolbar}
           onRefresh={async () => {
             const latest = await api<Thread>("threads.get", { threadId: t.id });
@@ -1187,21 +1220,24 @@ export function ThreadDetail({
         <div className={`detail-grid ${panel === "details" ? "showing-details" : ""}`}>
           <div className="evidence-pane">
             <article className="first-comment">
-              {t.category !== "general" && (
-                <div className="meta">
-                  <span>{labels[t.category] ?? t.category}</span>
-                </div>
-              )}
+              <div className="thread-taxonomy">
+                <span className="category-badge">
+                  {categoryName(taxonomy?.categories ?? builtInCategories, t.category)}
+                </span>
+                {(t.tags ?? []).map((tag) => (
+                  <TagBadge key={tag} name={tag} tags={taxonomy?.tags ?? []} />
+                ))}
+                {project?.permissions.canWrite && (
+                  <button
+                    type="button"
+                    className="thread-taxonomy-edit"
+                    onClick={() => openDetail("thread-organize")}
+                  >
+                    Edit category &amp; tags
+                  </button>
+                )}
+              </div>
               <MarkdownText body={t.body} className="message" />
-              {!!t.tags?.length && (
-                <div className="tag-list">
-                  {t.tags.map((tag) => (
-                    <span className="tag" key={tag}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
             </article>
             {!!t.context.annotations?.length && (
               <ReviewEvidence
@@ -1529,7 +1565,11 @@ export function ThreadDetail({
                 <ThreadOrganization
                   thread={t}
                   canWrite={!!project?.permissions.canWrite}
-                  onSaved={setThread}
+                  taxonomy={taxonomy}
+                  onSaved={(saved) => {
+                    setThread(saved);
+                    setProjectVersion((value) => value + 1);
+                  }}
                 />
                 <ContextPanel context={t.context} />
                 {t.diagnostics && <ThreadDiagnostics diagnostics={t.diagnostics} />}

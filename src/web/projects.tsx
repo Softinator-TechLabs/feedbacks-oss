@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { api, type Project, type Actor } from "./api.js";
 import { HumanTime } from "./human-time.js";
 import { GuestProjectLinks } from "./guest-project-review.js";
+import { ProjectTaxonomySettings } from "./project-taxonomy.js";
 import {
   ActionState,
   ConfirmButton,
@@ -607,15 +608,26 @@ export function ProjectSettings({
   actor: Actor;
   onSaved: (p: Project) => void;
 }) {
+  const [editorVersion, setEditorVersion] = useState(0);
   return (
     <>
       <h1>Project settings</h1>
+      {project.permissions.canMaintain && (
+        <ProjectTaxonomySettings
+          projectId={project.id}
+          projectRevision={project.revision}
+          onProjectSaved={onSaved}
+        />
+      )}
       {project.permissions.canMaintain ? (
         <ProjectEditor
-          key={project.revision}
+          key={editorVersion}
           project={project}
           canSetCaptureMode={actor.owner === true}
-          onSaved={onSaved}
+          onSaved={(saved) => {
+            setEditorVersion((version) => version + 1);
+            onSaved(saved);
+          }}
         />
       ) : (
         <p>You can review this project’s origins. A maintainer can update them.</p>
