@@ -1,6 +1,6 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api, uid, type Thread } from "./api.js";
-import { ActionState, useAction, useLoad, ErrorNotice } from "./ui.js";
+import { ActionState, useAction, useLoad, ErrorNotice, Notice } from "./ui.js";
 
 type Receipt = {
   id: string;
@@ -8,6 +8,32 @@ type Receipt = {
   createdAt: string;
   cleanup: { state: "pending" | "failed" | "complete"; total: number; remaining: number };
 };
+
+function completedReceiptIds(projectId: string): Set<string> {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(`feedbacks-seen-deletion-cleanup:${projectId}`) ?? "[]",
+    );
+    return new Set(
+      Array.isArray(saved) ? saved.filter((id) => typeof id === "string") : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberCompletedReceipts(projectId: string, ids: string[]) {
+  try {
+    const seen = completedReceiptIds(projectId);
+    ids.forEach((id) => seen.add(id));
+    localStorage.setItem(
+      `feedbacks-seen-deletion-cleanup:${projectId}`,
+      JSON.stringify([...seen]),
+    );
+  } catch {
+    // The current page still dismisses the notice when storage is unavailable.
+  }
+}
 export function DeleteThreadsButton({
   projectId,
   threads,
@@ -131,6 +157,7 @@ export function ThreadDeletionCleanup({
   version: number;
 }) {
   const [refresh, setRefresh] = useState(0);
+  const [hidden, setHidden] = useState<Record<string, string[]>>({});
   const action = useAction();
   const { data, error } = useLoad(
     () => api<{ items: Receipt[] }>("threads.deletions", { projectId }),
@@ -138,6 +165,27 @@ export function ThreadDeletionCleanup({
     true,
   );
   const pending = data?.items.filter((item) => item.cleanup.state !== "complete") ?? [];
+  const seen = completedReceiptIds(projectId);
+  const completed =
+    data?.items.filter(
+      (item) =>
+        item.cleanup.state === "complete" &&
+        !seen.has(item.id) &&
+        !hidden[projectId]?.includes(item.id),
+    ) ?? [];
+  const completedIds = completed.map((item) => item.id).join("\0");
+  useEffect(() => {
+    if (!completedIds) return;
+    const ids = completedIds.split("\0");
+    const timer = window.setTimeout(() => {
+      rememberCompletedReceipts(projectId, ids);
+      setHidden((previous) => ({
+        ...previous,
+        [projectId]: [...new Set([...(previous[projectId] ?? []), ...ids])],
+      }));
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [projectId, completedIds]);
   return (
     <>
       <ErrorNotice
@@ -148,13 +196,17 @@ export function ThreadDeletionCleanup({
           Retry cleanup status
         </button>
       )}
-      {!!data?.items.length && (
-        <details className="thread-cleanup" open={pending.length > 0 || undefined}>
+      {completed.length > 0 && (
+        <Notice>
+          Deleted feedback · Current storage objects removed for {completed.length}{" "}
+          cleanup {completed.length === 1 ? "batch" : "batches"}.
+        </Notice>
+      )}
+      {pending.length > 0 && (
+        <details className="thread-cleanup" open>
           <summary>
-            Deleted feedback ·{" "}
-            {pending.length
-              ? `${pending.length} cleanup batches need attention`
-              : "current storage objects removed"}
+            Deleted feedback · {pending.length} cleanup{" "}
+            {pending.length === 1 ? "batch needs" : "batches need"} attention
           </summary>
           <p>
             Thread content is deleted. Each cleanup retry removes up to 12 current storage
@@ -162,33 +214,30 @@ export function ThreadDeletionCleanup({
             this is not proof of physical erasure.
           </p>
           <ActionState action={action} />
-          {data.items.map((item) => (
+          {pending.map((item) => (
             <div className="thread-cleanup-row" key={item.id}>
               <span>
                 {item.deletedCount} {item.deletedCount === 1 ? "thread" : "threads"}{" "}
                 deleted · {new Date(item.createdAt).toLocaleString()} ·{" "}
-                {item.cleanup.state === "complete"
-                  ? "Current objects removed"
-                  : `${item.cleanup.remaining} files ${item.cleanup.state === "failed" ? "failed or pending" : "pending"}`}
+                {item.cleanup.remaining} files{" "}
+                {item.cleanup.state === "failed" ? "failed or pending" : "pending"}
               </span>
-              {item.cleanup.state !== "complete" && (
-                <button
-                  disabled={action.busy}
-                  onClick={() =>
-                    void action.run(async () => {
-                      await api("threads.retryDeletion", {
-                        projectId,
-                        deletionId: item.id,
-                      });
-                      setRefresh((value) => value + 1);
-                    })
-                  }
-                >
-                  {item.cleanup.state === "failed"
-                    ? "Retry file cleanup"
-                    : "Check file cleanup now"}
-                </button>
-              )}
+              <button
+                disabled={action.busy}
+                onClick={() =>
+                  void action.run(async () => {
+                    await api("threads.retryDeletion", {
+                      projectId,
+                      deletionId: item.id,
+                    });
+                    setRefresh((value) => value + 1);
+                  })
+                }
+              >
+                {item.cleanup.state === "failed"
+                  ? "Retry file cleanup"
+                  : "Check file cleanup now"}
+              </button>
             </div>
           ))}
         </details>
