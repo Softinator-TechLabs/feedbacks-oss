@@ -216,7 +216,36 @@ const reviewerContextOutput = z.object({
     }),
   ),
 });
+const contextTextInput = {
+  body: z.string().max(8000),
+  revision: z.number().int().min(0),
+};
+const contextTextOutput = z.object({
+  body: z.string(),
+  revision: z.number(),
+  userId: id.optional(),
+  projectId: id.optional(),
+  updatedBy: id.nullable(),
+  updatedAt: z.string().nullable(),
+  trust: z.enum([
+    "self_authored_advisory",
+    "owner_authored_advisory",
+    "maintainer_authored_advisory",
+    "member_authored_advisory",
+  ]),
+});
 export const inputSchemas = {
+  "members.profile.get": z.object({ userId: id.optional(), projectId: id.optional() }),
+  "members.profile.save": z.object({ userId: id.optional(), ...contextTextInput }),
+  "members.responsibility.get": z.object({ projectId: id, userId: id.optional() }),
+  "members.responsibility.save": z.object({
+    projectId: id,
+    userId: id.optional(),
+    ...contextTextInput,
+  }),
+  "projects.context.get": z.object({ projectId: id }),
+  "projects.context.save": z.object({ projectId: id, ...contextTextInput }),
+
   "auth.login": z.object({
     email: z.string().trim().min(1).max(254),
     password: z.string().max(1024),
@@ -856,6 +885,12 @@ const documentOutput = z.object({
   url: z.string(),
 });
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
+  "members.profile.get": contextTextOutput,
+  "members.profile.save": contextTextOutput,
+  "members.responsibility.get": contextTextOutput,
+  "members.responsibility.save": contextTextOutput,
+  "projects.context.get": contextTextOutput,
+  "projects.context.save": contextTextOutput,
   "auth.resetPassword": z.object({
     changed: z.boolean(),
     signInRequired: z.boolean(),
@@ -1332,6 +1367,14 @@ export const scopedAgentOperations = [
 ] as const;
 
 export const agentTokenScopes = [
+  "auth.me",
+  "members.list",
+  "members.profile.get",
+  "members.profile.save",
+  "members.responsibility.get",
+  "members.responsibility.save",
+  "projects.context.get",
+  "projects.context.save",
   ...scopedAgentOperations,
   "threads.annotationStatus",
   "qa.get",
@@ -1386,6 +1429,9 @@ export const ownerTokenScopes = [
   "context.policy",
 ];
 const readOperations = new Set<string>([
+  "members.profile.get",
+  "members.responsibility.get",
+  "projects.context.get",
   "threads.deletions",
   "auth.me",
   "projects.list",

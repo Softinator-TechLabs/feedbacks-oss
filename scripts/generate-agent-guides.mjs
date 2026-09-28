@@ -7,11 +7,13 @@ const topics = {
   media: "references/media.md",
   workflow: "references/workflow.md",
   install: "references/install.md",
+  "manage-context": "../manage-feedbacks-context/SKILL.md",
 };
 const guides = {};
 for (const [topic, path] of Object.entries(topics))
   guides[topic] = {
-    path,
+    path: topic === "manage-context" ? "SKILL.md" : path,
+    skill: topic === "manage-context" ? "manage-feedbacks-context" : "review-feedback",
     content: await readFile(
       new URL(`plugins/feedbacks/skills/review-feedback/${path}`, root),
       "utf8",

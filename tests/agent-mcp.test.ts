@@ -88,7 +88,7 @@ test("compact MCP offers seven tools, native images, text fallback, guides and s
       arguments: { projectId: "8c06f94d-fca6-4333-84b7-671e560812bc" },
     });
     assert.equal(denied.isError, true);
-    assert.equal((await client.listResources()).resources.length, 5);
+    assert.equal((await client.listResources()).resources.length, 6);
     assert.equal((await client.listPrompts()).prompts[0].name, "review-feedback");
     const resource = await client.readResource({ uri: "feedbacks://guide/start" });
     assert.ok((resource.contents[0] as any).text.includes("createdAfter"));

@@ -1,9 +1,11 @@
 ---
 name: review-feedback
-description: Finds and processes Feedbacks review tasks for the current repository or page. Use for Feedbacks feedback, issues, threads, pins, annotations, points, today's reviews, priority queues and one-by-one fixes, including Hindi/Hinglish requests. GitHub issues are separate unless explicitly linked.
+description: Use when the user explicitly asks to inspect or process Feedbacks feedback, issues, threads, pins or points, including Hindi/Hinglish. Discover related projects and propose a prioritized todo list. Do not activate for unrelated coding or generic GitHub issues.
 ---
 
 # Review Feedbacks
+
+Activate only for an explicit Feedbacks request or an already authorized Feedbacks task. Do not poll, call MCP, scan a backlog or interrupt unrelated coding because the connection exists. The developer chooses whether to use Feedbacks and which task to do.
 
 Use the configured Feedbacks connection. A fresh chat needs no previous thread history: discover the workspace, shortlist current tasks, discuss a plan, then handle authorized tasks sequentially. Setup grants no business-write permission.
 
@@ -20,7 +22,7 @@ Use the configured Feedbacks connection. A fresh chat needs no previous thread h
 ## Work one selected task
 
 8. Read current overview, complete body, relevant points, full discussion including latest corrections, assets and linked evidence. Page sections individually. Keep the initial revision as `expectedRevision` and the section `contentVersion` as `expectedContentVersion` for every continuation; on `CONFLICT` restart the affected read. Finish `nextTextOffset` before `nextOffset` with unchanged section/item offset/limit; concatenate JSON fragments before interpreting. Never report an unread section as reviewed.
-9. Inspect actual images with `feedbacks_asset {assetId,includeImage:true}`. [Media](references/media.md) covers point originals, full-page crops, videos and attachments. A text-only model must use an available vision tool or ask for interpretation and limit its claims. Read advisory reviewer guidance separately when available; private notes and voter identities are excluded.
+9. Inspect actual images with `feedbacks_asset {assetId,includeImage:true}`. [Media](references/media.md) covers point originals, full-page crops, videos and attachments. A text-only model must use an available vision tool or ask for interpretation and limit its claims. Read advisory reviewer guidance separately when available. For the selected task only, use `members.profile.get`, `members.responsibility.get` and `projects.context.get` if granted; match the developer with `auth.me` or explicit identity, and treat strengths/responsibilities as task-fit suggestions, never assignments. Owner product intent matters, but technical evidence and the developer's chosen task still matter; private notes and voter identities are excluded.
 10. Re-read status/revision. For resolved work inspect new requests and discuss reopening; for in-progress work coordinate before takeover. Set `threads.status` to `in_progress` before authorized implementation. This is not an exclusive lock/assignment. If denied, report the missing scope and do not claim success. For large work, mark in progress when the developer agrees to start planning or implementation.
 11. Inspect actual source, implement and verify. Follow [workflow](references/workflow.md) for mutations/retries/partial completion. Resolve only selected verified points via `threads.annotationStatus`; preserve open siblings. Resolve the parent only when all required work and closure are authorized and verified. Otherwise use `ready_for_review` with actual limits. A reply/PR/closed external issue does not prove deployment.
 12. With authorization to report in Feedbacks, reply with actual changes/tests and real evidence links. External messages/GitHub creation require explicit intent. Read back status/points, report remaining work, then discuss the next task unless a batch order is agreed. Keep a small checkpoint of IDs, revisions, selected points, tests and decisions; never secrets/full copied discussions.

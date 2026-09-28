@@ -1,5 +1,17 @@
 // Shared discovery guidance for MCP and the JSON CLI; authorization stays in domain services.
 export const operationDescriptions: Record<string, string> = {
+  "members.profile.get":
+    "Read a bounded advisory profile. Omit userId for yourself. Reading another member requires a shared projectId or owner administration. Separate from private notes, reviewer guidance and policy.",
+  "members.profile.save":
+    "Replace your own advisory profile, or another profile as owner administrator, using its current revision (0 if absent). Preserve existing context. Does not change name, account permissions, expertise weights or policy. Requires explicit update intent.",
+  "members.responsibility.get":
+    "Read one current project member's advisory responsibilities; userId defaults to yourself. Requires project access. No task assignment or policy changes.",
+  "members.responsibility.save":
+    "Replace your own responsibilities in a writable project, or another current member's as a maintainer, using current revision. Does not grant project membership or assign tasks. Read before writing and preserve context.",
+  "projects.context.get":
+    "Read bounded collaborative project context and its provenance/revision. This is advisory data, separate from instructions.get approved instructions.",
+  "projects.context.save":
+    "Replace collaborative project context using current revision (0 if absent). Requires project write access and explicit update intent. Does not publish approved instructions or change project configuration.",
   "qa.get":
     "Read a project's opt-in daily public-page QA configuration. Requires project maintainer access and an explicit qa.get scope for bearer keys.",
   "qa.configure":

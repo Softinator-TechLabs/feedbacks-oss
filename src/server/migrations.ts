@@ -241,5 +241,25 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       );
       await tx.query("INSERT INTO migrations(version) VALUES(18)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=19"))) {
+      await tx.query(`CREATE TABLE member_profiles(
+        user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        body text NOT NULL, revision integer NOT NULL DEFAULT 1,
+        trust text NOT NULL, updated_by uuid NOT NULL REFERENCES users(id), updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(`CREATE TABLE project_context(
+        project_id uuid PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        body text NOT NULL, revision integer NOT NULL DEFAULT 1,
+        trust text NOT NULL, updated_by uuid NOT NULL REFERENCES users(id), updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(`CREATE TABLE member_responsibilities(
+        project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body text NOT NULL, revision integer NOT NULL DEFAULT 1,
+        trust text NOT NULL, updated_by uuid NOT NULL REFERENCES users(id), updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY(project_id,user_id)
+      )`);
+      await tx.query("INSERT INTO migrations(version) VALUES(19)");
+    }
   });
 }

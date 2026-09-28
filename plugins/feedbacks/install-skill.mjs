@@ -29,7 +29,7 @@ try {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log(
-      "Install the secret-free review-feedback skill. --client codex|claude|antigravity|antigravity-cli OR --directory /absolute/skill-directory; --check (read-only); --replace (explicitly replace differing known files). Does not configure MCP, credentials or hooks. Verify the client/version's skill path before installation.",
+      "Install the secret-free Feedbacks skills. --client codex|claude|antigravity|antigravity-cli OR --directory /absolute/review-feedback-directory; also installs sibling manage-feedbacks-context; --check (read-only); --replace (explicitly replace differing known files). Does not configure MCP, credentials or hooks. Verify the client/version's skill path before installation.",
     );
   } else {
     let client,
@@ -50,12 +50,21 @@ try {
       : join(homedir(), locations[client], "review-feedback");
     await rejectSymlinks(target);
     const contents = [];
-    for (const file of files) {
+    const entries = [
+      ...files.map((file) => ({ skill: "review-feedback", file, target })),
+      {
+        skill: "manage-feedbacks-context",
+        file: "SKILL.md",
+        target: join(dirname(target), "manage-feedbacks-context"),
+      },
+    ];
+    for (const entry of entries) {
+      const { skill, file } = entry;
       const content = await readFile(
-        new URL(`skills/review-feedback/${file}`, import.meta.url),
+        new URL(`skills/${skill}/${file}`, import.meta.url),
         "utf8",
       );
-      const destination = join(target, file);
+      const destination = join(entry.target, file);
       await rejectSymlinks(destination);
       let existing;
       try {
@@ -64,7 +73,7 @@ try {
         if (error.code !== "ENOENT") throw error;
       }
       contents.push({
-        file,
+        file: `${skill}/${file}`,
         content,
         destination,
         state:
@@ -94,7 +103,7 @@ try {
           file,
           state: check ? state : "current",
         })),
-        next: "Reload the actual client and verify review-feedback is discovered in a fresh chat; file installation alone does not prove activation.",
+        next: "Reload the actual client and verify review-feedback and manage-feedbacks-context are discovered in a fresh chat; file installation alone does not prove activation.",
       }),
     );
   }

@@ -35,6 +35,10 @@ test("skill installer checks without writing, installs all references, preserves
     assert.equal(run("--check").status, 0);
     await assert.rejects(readFile(join(target, "SKILL.md")), { code: "ENOENT" });
     assert.equal(run().status, 0);
+    assert.match(
+      await readFile(join(root, "manage-feedbacks-context/SKILL.md"), "utf8"),
+      /members.profile/,
+    );
     assert.match(await readFile(join(target, "SKILL.md"), "utf8"), /createdAfter/);
     assert.match(await readFile(join(target, "references/media.md"), "utf8"), /ORIGINAL/);
     await writeFile(join(target, "SKILL.md"), "custom");

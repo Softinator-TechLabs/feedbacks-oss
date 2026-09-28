@@ -58,3 +58,9 @@ Incoming feedback never creates an Issue automatically. Feedbacks does not recei
 `M`, `T`, `D` and `W` act only in active review mode outside text inputs. The extension records both the selected preset and the measured viewport. Shared Feedbacks links restore that context in an authorized review window; the original website URL is preserved without adding internal feedback parameters. A page opened in a narrow desktop Chrome window is labelled a responsive preview, not an emulated mobile browser.
 
 Resolved pins disappear on connected clients but stay discoverable under Show resolved. Reopen restores them. Other-device and unmatched-anchor threads remain accessible without placing misleading pins on the current layout.
+
+## Protocol and client compatibility
+
+Verified 2026-09-28: the stable `@modelcontextprotocol/sdk` package is 1.30.1. This release uses its initialization-based protocol support (2025-11-25 and earlier) with Streamable HTTP and stdio. The current MCP specification is [2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning), which introduces per-request versioning and server/discover. This server does not claim that newer protocol; dual-era clients must use their documented legacy fallback. A modern-only client needs a separately tested SDK/transport migration. Do not advertise a protocol by changing a version string.
+
+The small catalog, bounded reads, shared operation contracts and executable checks apply the progressive-disclosure and environment-validation principles in [OpenAI harness engineering](https://openai.com/index/harness-engineering/). They are not a guarantee that every small model or client succeeds. See the tracked workflow plan for measured fixtures and verification boundaries.

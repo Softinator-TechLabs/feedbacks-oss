@@ -58,18 +58,19 @@ export function mcpServer(
       }),
     );
   }
-  server.registerPrompt(
-    "review-feedback",
-    {
-      description:
-        "Discover the project's Feedbacks queue, discuss priorities, then process authorized tasks sequentially.",
-    },
-    async () => ({
-      messages: [
-        { role: "user", content: { type: "text", text: agentGuides.start.content } },
-      ],
-    }),
-  );
+  for (const [name, topic] of [
+    ["review-feedback", "start"],
+    ["manage-feedbacks-context", "manage-context"],
+  ] as const)
+    server.registerPrompt(
+      name,
+      { description: `Load the ${name} workflow for an explicit Feedbacks request.` },
+      async () => ({
+        messages: [
+          { role: "user", content: { type: "text", text: agentGuides[topic].content } },
+        ],
+      }),
+    );
   if (profile === "compact") {
     for (const tool of Object.keys(agentToolSchemas) as AgentTool[])
       server.registerTool(

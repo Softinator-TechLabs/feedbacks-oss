@@ -23,6 +23,7 @@ import {
   commitAssetUpload,
   type AssetStore,
 } from "./assets.js";
+import { memberContext } from "./member-context.js";
 import { instructions, context } from "./context.js";
 import { reviewViews } from "./review-views.js";
 import { views } from "./views.js";
@@ -125,6 +126,12 @@ export class Operations {
           await event(db, a, null, i.userId ?? result.id ?? a.userId, name, {});
           return result;
         }
+        if (
+          name.startsWith("members.profile.") ||
+          name.startsWith("members.responsibility.") ||
+          name.startsWith("projects.context.")
+        )
+          return memberContext(db, a, name, i);
         if (name === "context.reviewers") return reviewerContext(db, a, i.projectId);
         if (name.startsWith("projects.")) return projects(db, a, name, i);
         if (name.startsWith("webhooks.")) return manageWebhooks(db, a, name, i);

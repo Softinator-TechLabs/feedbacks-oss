@@ -19,3 +19,9 @@ codex plugin add feedbacks@feedbacks-local
 ```
 
 See the [agent setup guide](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md) for credentials, least-privilege scopes, first-use verification and public submission boundaries. Building and validating this package does not install it into an existing Codex client.
+
+### Project and member context on request
+
+The package/setup prompt installs two focused skills: `review-feedback` for requested backlog work and `manage-feedbacks-context` for requested profile, project-background and responsibility edits. Their short descriptions enable natural-language discovery; bodies and references load progressively. No startup hooks or unsolicited polling are installed. Developers retain task choice.
+
+Use `members.profile.get/save`, `members.responsibility.get/save`, and `projects.context.get/save` through exact schema discovery. Reads/writes return bounded text, revision, author/time and advisory provenance. Members edit their own profile; project writers edit collaborative context and their own responsibilities; owner administrators edit profiles and project maintainers edit other existing members' responsibilities. These operations never change grants, priority policy or approved instructions. Read current text, preserve relevant context, write its revision, then read back. New scopes require a newly issued key; existing keys do not expand.
