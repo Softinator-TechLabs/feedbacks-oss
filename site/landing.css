@@ -944,3 +944,11 @@
     font-size: 14px;
   }
 }
+
+.screen-stack > [hidden] {
+  display: none;
+}
+.screen-stack feedbacks-demo {
+  margin: 0;
+  width: 100%;
+}

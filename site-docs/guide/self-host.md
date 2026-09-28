@@ -1,4 +1,6 @@
-# DevOps guide: install the team server
+# DevOps: one server for the team
+
+<Demo step="server" />
 
 One Feedbacks installation serves one organization. The application needs PostgreSQL and private S3-compatible storage in production. The public docs website is a separate static build and needs no database or storage credentials.
 

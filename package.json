@@ -19,9 +19,9 @@
     "bootstrap": "node --env-file=.env --import tsx src/cli/bootstrap.ts",
     "mcp": "tsx src/cli/mcp.ts",
     "cli": "tsx src/cli/feedbacks.ts",
-    "dev:site": "vite --config vite.site.config.ts",
-    "build:site": "npm run site:comparisons:check && vite build --config vite.site.config.ts && node scripts/publish-docs.mjs && vitepress build site-docs && node scripts/export-docs.mjs",
-    "dev:docs": "node scripts/publish-docs.mjs && vitepress dev site-docs",
+    "dev:site": "node scripts/prepare-walkthroughs.mjs && vite --config vite.site.config.ts",
+    "build:site": "node scripts/prepare-walkthroughs.mjs && npm run site:comparisons:check && vite build --config vite.site.config.ts && node scripts/publish-docs.mjs && vitepress build site-docs && node scripts/export-docs.mjs",
+    "dev:docs": "node scripts/prepare-walkthroughs.mjs && node scripts/publish-docs.mjs && vitepress dev site-docs",
     "site:comparisons": "node scripts/generate-comparisons.mjs",
     "site:comparisons:check": "node scripts/generate-comparisons.mjs --check",
     "format": "prettier --write .",
@@ -39,7 +39,8 @@
     "harness:smoke": "node scripts/dev-sandbox.mjs --smoke",
     "check:harness": "node scripts/check-harness.mjs && npm run docs:check",
     "docs:generate": "node --import tsx scripts/generate-operation-docs.ts && node scripts/generate-agent-guides.mjs",
-    "docs:check": "node --import tsx scripts/generate-operation-docs.ts --check && node scripts/generate-agent-guides.mjs --check"
+    "docs:check": "node --import tsx scripts/generate-operation-docs.ts --check && node scripts/generate-agent-guides.mjs --check",
+    "qa:walkthrough-browser": "node scripts/walkthrough-browser-qa.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",

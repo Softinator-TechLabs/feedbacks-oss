@@ -37,19 +37,20 @@ const buttons = [...document.querySelectorAll("[data-scene]")];
 const img = document.querySelector("#story-image");
 const stage = document.querySelector(".story-stage");
 const play = document.querySelector(".play-story");
-const reduce = matchMedia("(prefers-reduced-motion: reduce)");
-let current = 0,
-  timer;
-function stop() {
-  clearInterval(timer);
-  timer = undefined;
-  play.querySelector(".play-label").textContent = "Play";
-  play.querySelector(".play-icon path").setAttribute("d", "m8 5 11 7-11 7Z");
-  play.setAttribute("aria-label", "Play the three-step walkthrough");
-  play.setAttribute("aria-pressed", "false");
+const demo = document.querySelector("#story-demo");
+const still = document.querySelector(".screen-zoom");
+function toggleDemo() {
+  const watching = demo.hidden;
+  demo.hidden = !watching;
+  still.hidden = watching;
+  play.querySelector(".play-label").textContent = watching
+    ? "Still image"
+    : "Watch steps";
+  play.setAttribute("aria-label", watching ? "Show still image" : "Watch the steps");
+  play.setAttribute("aria-pressed", String(watching));
 }
 function show(index) {
-  current = index;
+  demo.setAttribute("step", ["capture", "send", "agent"][index]);
   const s = scenes[index];
   img.src = `/media/workflow/${s.image}`;
   img.alt = s.alt;
@@ -91,35 +92,12 @@ function show(index) {
 }
 buttons.forEach((b, i) =>
   b.addEventListener("click", () => {
-    stop();
     show(i);
   }),
 );
-play.addEventListener("click", () => {
-  if (timer) {
-    stop();
-    return;
-  }
-  if (current === 2) show(0);
-  play.querySelector(".play-label").textContent = "Pause";
-  play.querySelector(".play-icon path").setAttribute("d", "M7 5h3v14H7zM14 5h3v14h-3z");
-  play.setAttribute("aria-label", "Pause walkthrough");
-  play.setAttribute("aria-pressed", "true");
-  timer = setInterval(() => {
-    if (current === 2) {
-      stop();
-      return;
-    }
-    show(current + 1);
-  }, 6500);
-});
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) stop();
-});
-reduce.addEventListener("change", stop);
+play.addEventListener("click", toggleDemo);
 const dialog = document.querySelector("#screen-dialog");
 document.querySelector(".screen-zoom").addEventListener("click", () => {
-  stop();
   const enlarged = dialog.querySelector("img");
   enlarged.src = img.src;
   enlarged.alt = img.alt;

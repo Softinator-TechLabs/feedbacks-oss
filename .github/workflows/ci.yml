@@ -86,6 +86,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run qa:extension-browser
+      - run: npm run qa:walkthrough-browser
 
   android-host:
     runs-on: ubuntu-24.04

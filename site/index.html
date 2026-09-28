@@ -43,6 +43,7 @@
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
     </script>
+    <script defer src="/learn/demo.js"></script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -101,18 +102,15 @@
           <button data-scene="2" aria-pressed="false">
             <span>03</span> Fix with your agent
           </button>
-          <button
-            class="play-story"
-            aria-label="Play the three-step walkthrough"
-            aria-pressed="false"
-          >
+          <button class="play-story" aria-label="Watch the steps" aria-pressed="false">
             <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="m8 5 11 7-11 7Z" /></svg
-            ><span class="play-label">Play</span>
+            ><span class="play-label">Watch steps</span>
           </button>
         </div>
         <div class="story-stage" data-active="0">
           <div class="screen-stack">
+            <feedbacks-demo id="story-demo" step="capture" hidden></feedbacks-demo>
             <button class="screen-zoom" aria-label="Enlarge actual extension screenshot">
               <picture
                 ><source

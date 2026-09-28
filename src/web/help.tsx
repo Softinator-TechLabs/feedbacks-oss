@@ -9,6 +9,17 @@ import { api, type Actor, type Project } from "./api.js";
 import { ActionState, useAction, useLoad, Loading, ErrorNotice } from "./ui.js";
 import { chromeWebStoreUrl } from "../shared/product-links.js";
 
+function WatchStep({ step, title }: { step: string; title: string }) {
+  return (
+    <details className="help-watch">
+      <summary>{title}</summary>
+      {step
+        .split(",")
+        .map((part) => React.createElement("feedbacks-demo", { step: part, key: part }))}
+    </details>
+  );
+}
+
 function HelpAgentSetup({
   actor,
   projects,
@@ -119,6 +130,7 @@ function HelpAgentSetup({
           </p>
         )}
       </div>
+      <WatchStep step="agent" title="Show me where to paste" />
       {prompt && (
         <details
           className="help-prompt"
@@ -238,6 +250,7 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
                 </label>
               )}
               <ProjectReadiness key={project.id} actor={actor} project={project} />
+              {actor.owner && <WatchStep step="project" title="Show project setup" />}
               {projects.length === 1 && (
                 <a href={`/projects/${project.id}`}>{project.name}</a>
               )}
@@ -290,6 +303,7 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
             </button>
           </div>
           <ActionState action={serverCopy} />
+          <WatchStep step="install,connect" title="Show install & connect" />
         </li>
         <li id="connect-agent">
           <ErrorNotice error={error} />

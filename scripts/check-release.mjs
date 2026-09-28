@@ -7,7 +7,7 @@ const root = resolve(import.meta.dirname, "..");
 const files = await sourceFiles(root);
 const errors = [];
 for (const file of files) {
-  if (/\.(png|ttf|woff2?)$/.test(file)) continue;
+  if (/\.(png|webp|ico|ttf|woff2?)$/.test(file)) continue;
   const text = await readFile(join(root, file), "utf8");
   if (
     file !== "scripts/check-release.mjs" &&

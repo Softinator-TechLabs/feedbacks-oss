@@ -7,6 +7,7 @@ export const sourceDirectories = [
   "src",
   "extension",
   "site",
+  "public",
   "site-docs",
   "scripts",
   "tests",
@@ -64,6 +65,7 @@ export async function sourceFiles(root) {
         // Finder creates this ignored metadata file when a directory is browsed.
         // It is never part of a source export.
         if (entry === ".DS_Store") continue;
+        if (relative === "site/public" && entry === "learn") continue;
         // Native build caches are local artifacts, not source files.
         if (
           (relative === "sdk/ios" && [".build", ".swiftpm"].includes(entry)) ||

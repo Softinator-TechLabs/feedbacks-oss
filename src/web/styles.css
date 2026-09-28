@@ -1860,6 +1860,26 @@ legend {
   }
 }
 
+@media (max-width: 560px) {
+  .thread-row-main.has-thumbnail {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .thread-row-main.has-thumbnail .thread-summary {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .thread-row-main.has-thumbnail .thread-row-thumbnail {
+    grid-column: 1;
+    grid-row: 2;
+    width: 72px;
+    height: 48px;
+  }
+  .thread-row-main.has-thumbnail .thread-stats {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
 .help-simple {
   max-width: 980px;
 }
@@ -2074,4 +2094,19 @@ legend {
 }
 .help-footer {
   margin: 28px 0 0 38px;
+}
+
+.help-watch {
+  margin-top: 12px;
+}
+.help-watch > summary {
+  cursor: pointer;
+  color: var(--accent);
+  width: fit-content;
+  min-height: 44px;
+  padding-block: 10px;
+  font-size: 0.9rem;
+}
+.help-watch feedbacks-demo {
+  max-width: 560px;
 }

@@ -1,0 +1,265 @@
+// Shared, silent walkthroughs. Product frames are captured from a disposable demo.
+(() => {
+  const base = new URL(".", document.currentScript.src).href;
+  const scenes = {
+    server: {
+      label: "Team setup illustration · DevOps first",
+      kind: "server",
+      frames: [
+        { caption: "DevOps installs one shared server.", active: 0 },
+        { caption: "The owner creates projects and adds people.", active: 1 },
+        { caption: "Everyone connects to the same server URL.", active: 2 },
+      ],
+    },
+    install: {
+      label: "Chrome toolbar illustration",
+      kind: "chrome",
+      frames: [
+        { caption: "Chrome Web Store → Add to Chrome.", active: 0 },
+        { caption: "Open Chrome’s Extensions menu.", active: 1 },
+        { caption: "Pin Feedbacks. Click its icon to start review.", active: 2 },
+      ],
+    },
+    connect: {
+      label: "Actual extension · example server",
+      frames: [
+        { image: "connect-1", caption: "In your team’s Help page, copy the server URL." },
+        {
+          image: "connect-2",
+          caption: "Paste it here. Choose Connect to server, then sign in and approve.",
+        },
+      ],
+    },
+    project: {
+      label: "Actual app · demo project",
+      frames: [
+        { image: "project-1", caption: "Owner: create a project for the website." },
+        { image: "project-2", caption: "Publish the context your coding agent needs." },
+        { image: "project-3", caption: "Add teammates and give them project access." },
+      ],
+    },
+    capture: {
+      label: "Actual extension · demo website",
+      frames: [
+        {
+          image: "capture-1",
+          caption: "Click the pinned extension. Point at what needs changing.",
+        },
+        { image: "capture-2", caption: "Right-click. Write the change. Save point." },
+        {
+          image: "capture-3",
+          caption: "Your point is a draft. Choose Review & send when ready.",
+        },
+      ],
+    },
+    send: {
+      label: "Actual extension + app · demo feedback",
+      frames: [
+        {
+          image: "send-1",
+          caption: "Review the screenshots and notes. Choose Send feedback.",
+        },
+        { image: "send-2", caption: "Wait for the upload to finish." },
+        { image: "send-3", caption: "The feedback is now on your team’s server." },
+      ],
+    },
+    agent: {
+      label: "Actual Help page · demo account",
+      frames: [
+        {
+          image: "agent-1",
+          caption: "Developer: create your personal key and copy the prompt.",
+        },
+        {
+          image: "agent-2",
+          caption: "Paste privately into Codex, Claude Code or Antigravity.",
+        },
+        {
+          kind: "handoff",
+          caption:
+            "Ask your agent to read the feedback, agree the change, then fix and verify.",
+        },
+      ],
+    },
+  };
+  class FeedbacksDemo extends HTMLElement {
+    static observedAttributes = ["step"];
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this.index = 0;
+      this.paused = false;
+    }
+    connectedCallback() {
+      this.mount();
+    }
+    attributeChangedCallback() {
+      if (this.isConnected) this.mount();
+    }
+    disconnectedCallback() {
+      this.cleanup?.();
+    }
+    mount() {
+      this.cleanup?.();
+      const scene = scenes[this.getAttribute("step")];
+      if (!scene) return;
+      this.index = 0;
+      this.motion = matchMedia("(prefers-reduced-motion: reduce)");
+      this.paused = this.motion.matches;
+      this.shadowRoot.innerHTML = `<style>
+        :host{display:block;max-width:100%;margin:16px 0;font:inherit;color:inherit}
+        *{box-sizing:border-box}figure{margin:0;border:1px solid var(--border,#dfe3da);border-radius:8px;overflow:hidden;background:var(--surface,#fff)}
+        .screen{position:relative;display:grid;place-items:center;min-width:0;background:#f4f5f1;aspect-ratio:4/3;overflow:hidden}
+        :host([step=agent]) .screen{aspect-ratio:2/1}
+        :host([step=connect]) .screen{aspect-ratio:4/3}
+        .screen:has(.diagram){aspect-ratio:auto;min-height:300px}
+        :host([step=agent]) .screen:has(.diagram){aspect-ratio:auto;min-height:200px}
+        .image{position:absolute;inset:0;width:100%;height:100%;min-height:0;object-fit:contain;display:block;border:0;padding:0;background:transparent;cursor:zoom-in}
+        .image img{display:block;width:100%;height:100%;object-fit:contain}
+        .enter{animation:enter .25s ease-out} @keyframes enter{from{opacity:.45}to{opacity:1}}
+        .foot{padding:12px 16px}.caption{margin:0;font-size:15px;line-height:1.5;min-height:3em}
+        .controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:8px}
+        button{font:inherit;color:inherit;cursor:pointer;min-height:44px;border:1px solid transparent;border-radius:5px;background:transparent;padding:8px 12px}
+        button:hover{background:var(--soft-surface,#edf0e9)}button:focus-visible{outline:2px solid var(--focus,#2159b1);outline-offset:-3px}
+        .step{min-width:44px;padding:8px}.step[aria-pressed=true]{border-color:currentColor;font-weight:700}.play{margin-left:auto;text-decoration:underline;text-underline-offset:3px}
+        .label{font-size:12px;line-height:1.4;color:var(--muted,#596054);margin:8px 0 0}
+        .diagram{width:100%;padding:24px;color:#20241e;font-family:Arial,sans-serif}.diagram strong{font-size:clamp(17px,3vw,23px)}
+        .browser-bar{display:flex;align-items:center;gap:10px;border-bottom:1px solid #c6cbbb;padding-bottom:16px;font-size:13px}.address{flex:1;background:#fff;border-radius:5px;padding:10px;overflow:hidden;white-space:nowrap}.icon{width:32px;height:32px;display:grid;place-items:center}
+        svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+        .chrome-card{margin:24px auto 0;background:white;border:1px solid #c6cbbb;border-radius:8px;padding:20px;max-width:340px}.store-action{display:block;width:fit-content;background:#17324d;color:white;padding:10px 14px;border-radius:5px;margin-top:16px;font-size:14px}.extension-row{display:flex;align-items:center;justify-content:space-between;margin-top:20px;padding:12px 0}.selected{color:#17324d;outline:2px solid #17324d;outline-offset:4px;border-radius:3px}
+        .sequence{display:grid;gap:12px}.sequence div{padding:16px;background:#fff;border:1px solid #d0d5c8;border-radius:6px;font-size:15px;opacity:.6}.sequence div.active{opacity:1;border-color:#17324d}.sequence small{display:block;margin-top:6px;color:#596054}.agent-note{background:white;padding:24px;border:1px solid #c6cbbb;border-radius:8px}.agent-note p{line-height:1.6;font-size:15px;margin-bottom:0}
+        dialog{border:1px solid #c6cbbb;padding:12px;max-width:95vw;max-height:95dvh;background:#fff;color:#20241e;border-radius:8px}dialog::backdrop{background:#0009}dialog img{display:block;max-width:100%;height:auto}dialog button{display:block;margin-left:auto}
+        @media(prefers-reduced-motion:reduce){.enter{animation:none}}
+      </style><figure><div class="screen"></div><div class="foot"><p class="caption"></p><div class="controls"></div><p class="label"></p></div></figure><dialog aria-label="Full-size demo screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      const q = (s) => this.shadowRoot.querySelector(s),
+        screen = q(".screen"),
+        caption = q(".caption"),
+        controls = q(".controls"),
+        dialog = q("dialog");
+      q(".label").textContent = scene.label + " · silent walkthrough";
+      const steps = scene.frames.map((frame, index) => {
+        const b = document.createElement("button");
+        b.className = "step";
+        b.type = "button";
+        b.textContent = String(index + 1);
+        b.setAttribute("aria-label", frame.caption);
+        b.onclick = () => {
+          this.paused = true;
+          this.index = index;
+          render();
+          schedule();
+        };
+        controls.append(b);
+        return b;
+      });
+      const play = document.createElement("button");
+      play.type = "button";
+      play.className = "play";
+      play.onclick = () => {
+        this.paused = !this.paused;
+        renderControls();
+        schedule();
+      };
+      controls.append(play);
+      const pin =
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 8 0-1 7 4 4H5l4-4-1-7m4 11v7"/></svg>';
+      const puzzle =
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h3a3 3 0 1 1 6 0h3v6a3 3 0 1 0 0 6v4h-6a3 3 0 1 0-6 0H4v-7a3 3 0 1 0 0-6V4h4"/></svg>';
+      const renderControls = () => {
+        play.textContent = this.paused ? "Play" : "Pause";
+        play.setAttribute(
+          "aria-label",
+          `${this.paused ? "Play" : "Pause"} ${this.getAttribute("step")} walkthrough`,
+        );
+        steps.forEach((b, i) => b.setAttribute("aria-pressed", String(i === this.index)));
+      };
+      const render = () => {
+        const f = scene.frames[this.index];
+        q(".label").textContent =
+          (f.kind === "handoff" ? "Agent handoff illustration" : scene.label) +
+          " · silent walkthrough";
+        caption.textContent = f.caption;
+        screen.replaceChildren();
+        if (f.image) {
+          const button = document.createElement("button");
+          button.className = "image enter";
+          button.type = "button";
+          button.setAttribute("aria-label", "Enlarge: " + f.caption);
+          const img = document.createElement("img");
+          img.src = base + f.image + ".webp";
+          img.alt = f.caption;
+          img.decoding = "async";
+          button.append(img);
+          screen.append(button);
+          button.onclick = () => {
+            this.paused = true;
+            renderControls();
+            schedule();
+            q("dialog img").src = img.src;
+            q("dialog img").alt = img.alt;
+            dialog.showModal();
+          };
+        } else {
+          const box = document.createElement("div");
+          box.className = "diagram enter";
+          if (scene.kind === "chrome")
+            box.innerHTML = `<div class="browser-bar"><span class="address">Your website</span><span class="icon ${f.active === 1 ? "selected" : ""}">${puzzle}</span>${f.active === 2 ? '<span class="icon selected"><strong>F.</strong></span>' : ""}</div><div class="chrome-card">${f.active === 0 ? '<strong>Feedbacks</strong><p>Chrome Web Store</p><span class="store-action">Add to Chrome</span>' : `<strong>Extensions</strong><div class="extension-row"><span>Feedbacks</span><span class="icon ${f.active === 2 ? "selected" : ""}">${pin}</span></div>`}</div>`;
+          else if (scene.kind === "server")
+            box.innerHTML = `<div class="sequence">${["DevOps · team server", "Owner · projects & people", "Reviewers + developers · connect"].map((t, i) => `<div class="${i === f.active ? "active" : ""}">${t}<small>${["HTTPS + database + private images", "Project context + member access", "One team URL. Your own account."][i]}</small></div>`).join("")}</div>`;
+          else
+            box.innerHTML =
+              '<div class="agent-note"><strong>In your coding agent</strong><p>Paste your private setup prompt.<br>Verify access, then choose the feedback to fix.</p></div>';
+          screen.append(box);
+        }
+        renderControls();
+      };
+      let timer,
+        visible = false;
+      const schedule = () => {
+        clearInterval(timer);
+        if (visible && !this.paused && !document.hidden)
+          timer = setInterval(() => {
+            this.index = (this.index + 1) % scene.frames.length;
+            render();
+          }, 2800);
+      };
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          visible = entry.isIntersecting;
+          if (visible && !screen.childElementCount) render();
+          schedule();
+        },
+        { threshold: 0.25 },
+      );
+      observer.observe(this);
+      const visibility = () => schedule();
+      document.addEventListener("visibilitychange", visibility);
+      const reduce = () => {
+        if (this.motion.matches) {
+          this.paused = true;
+          renderControls();
+          schedule();
+        }
+      };
+      this.motion.addEventListener("change", reduce);
+      screen.addEventListener("focusin", () => {
+        this.paused = true;
+        renderControls();
+        schedule();
+      });
+      q("dialog button").onclick = () => dialog.close();
+      dialog.addEventListener("close", () => q(".image")?.focus());
+      // Start with a readable caption; images load only when the walkthrough is visible.
+      caption.textContent = scene.frames[0].caption;
+      renderControls();
+      this.cleanup = () => {
+        clearInterval(timer);
+        observer.disconnect();
+        document.removeEventListener("visibilitychange", visibility);
+        this.motion.removeEventListener("change", reduce);
+      };
+    }
+  }
+  if (!customElements.get("feedbacks-demo"))
+    customElements.define("feedbacks-demo", FeedbacksDemo);
+})();
