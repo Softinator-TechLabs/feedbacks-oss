@@ -1,5 +1,5 @@
 import React, { useEffect, useState, type ReactNode } from "react";
-import { errorText } from "./api.js";
+import { ApiError, errorText } from "./api.js";
 export function Field({
   label,
   children,
@@ -89,7 +89,8 @@ export function ActionState({ action }: { action: ReturnType<typeof useAction> }
 }
 export function useLoad<T>(load: () => Promise<T>, deps: unknown[], poll = false) {
   const [data, setData] = useState<T>(),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [errorCode, setErrorCode] = useState("");
   useEffect(() => {
     let alive = true,
       pending = false;
@@ -101,9 +102,13 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[], poll = false
         if (alive) {
           setData(next);
           setError("");
+          setErrorCode("");
         }
       } catch (e) {
-        if (alive) setError(errorText(e));
+        if (alive) {
+          setError(errorText(e));
+          setErrorCode(e instanceof ApiError ? e.code : "");
+        }
       } finally {
         pending = false;
       }
@@ -121,7 +126,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[], poll = false
       document.removeEventListener("visibilitychange", visible);
     };
   }, deps);
-  return { data, setData, error };
+  return { data, setData, error, errorCode };
 }
 export function Loading() {
   return (

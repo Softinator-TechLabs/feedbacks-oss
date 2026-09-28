@@ -336,7 +336,10 @@ export async function compareQaImages(
     )
       fail("VALIDATION", "Images must have matching dimensions");
     if (before.data.width * before.data.height > 4_000_000)
-      fail("VALIDATION", "Images exceed comparison pixel limit");
+      fail(
+        "VALIDATION",
+        "These images are too large for pixel comparison. Review them side by side or in the overlay, or upload images up to 4 million pixels.",
+      );
     return { before, after };
   });
   const [a, b] = await Promise.all([
