@@ -2258,10 +2258,10 @@ try {
   await crossSite.getByRole("link", { name: "Open feedback image" }).click();
   const linkedPage = await linkedPagePromise;
   await linkedPage
-    .locator(`.review-evidence-figure[id="asset-${linkedOriginal.id}"]`)
+    .locator(`.review-point-figure[id="asset-${linkedOriginal.id}"]`)
     .waitFor();
   await linkedPage.waitForFunction(() => {
-    const img = document.querySelector(".review-evidence-figure img");
+    const img = document.querySelector(".review-point-figure img");
     return img?.complete && img.naturalWidth > 0;
   });
   assert.equal(
@@ -2278,21 +2278,33 @@ try {
   const inlineThreadPage = await context.newPage();
   await inlineThreadPage.goto(`${access.url}/threads/${inlineThreadId}`);
   await inlineThreadPage.getByRole("heading", { name: "Review on the page" }).waitFor();
-  assert.equal(await inlineThreadPage.locator(".review-evidence-pin").count(), 2);
-  await inlineThreadPage.locator(".review-evidence-pin").first().hover();
-  await inlineThreadPage
-    .locator(".review-evidence-popover")
-    .getByText("Make this heading clearer")
-    .waitFor();
+  assert.equal(await inlineThreadPage.locator(".review-main-capture").count(), 1);
+  assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
+  assert.equal(
+    await inlineThreadPage.getByRole("button", { name: "Show original view" }).count(),
+    0,
+  );
+  await inlineThreadPage.waitForFunction(() =>
+    [
+      ...document.querySelectorAll(".review-main-capture img, .review-point-figure img"),
+    ].every((image) => image.complete && image.naturalWidth > 0),
+  );
   await inlineThreadPage.screenshot({
     path: join(root, ".local/remaining-todos-qa/thread-inline-desktop.png"),
+    fullPage: true,
+  });
+  await inlineThreadPage.getByRole("button", { name: "Switch to dark mode" }).click();
+  await inlineThreadPage.screenshot({
+    path: join(root, ".local/remaining-todos-qa/thread-inline-dark-desktop.png"),
+    fullPage: true,
   });
   await inlineThreadPage.setViewportSize({ width: 390, height: 844 });
-  await inlineThreadPage
-    .getByRole("button", { name: "Show original view" })
-    .last()
-    .click();
-  assert.equal(await inlineThreadPage.locator(".review-evidence-pin").count(), 1);
+  assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
+  await inlineThreadPage.screenshot({
+    path: join(root, ".local/remaining-todos-qa/thread-inline-dark-mobile.png"),
+    fullPage: true,
+  });
+  await inlineThreadPage.getByRole("button", { name: "Switch to light mode" }).click();
   await inlineThreadPage
     .getByRole("button", { name: "Resolve point", exact: true })
     .click();
@@ -2332,7 +2344,7 @@ try {
   await inlineThreadPage.screenshot({
     path: join(root, ".local/remaining-todos-qa/thread-inline-mobile.png"),
   });
-  results.inlineReview.webPins = 2;
+  results.inlineReview.inlinePointImages = 2;
   results.inlineReview.mobilePointSelection = true;
   const threadPage = await context.newPage();
   await threadPage.goto(
