@@ -184,9 +184,12 @@ textarea::placeholder {
   min-width: 200px;
 }
 .thread-filters > .field:nth-child(4) {
-  flex: 0 1 145px;
+  flex: 0 1 175px;
 }
 .thread-filters > .field:nth-child(5) {
+  flex: 0 1 145px;
+}
+.thread-filters > .field:nth-child(6) {
   flex: 0 1 175px;
 }
 .thread-filter-clear {
@@ -228,7 +231,8 @@ textarea::placeholder {
     min-width: 0;
   }
   .thread-filters > .field:nth-child(4),
-  .thread-filters > .field:nth-child(5) {
+  .thread-filters > .field:nth-child(5),
+  .thread-filters > .field:nth-child(6) {
     flex: 1 1 calc(50% - 12px);
   }
   .thread-filters > .thread-filter-clear {

@@ -10,6 +10,7 @@ import { ThreadWorkPlan, WorkPlanSummary } from "./thread-work-plan.js";
 import { calendarDate, localTimeZone } from "./work-plan-model.js";
 import { ThreadStatus } from "./thread-status.js";
 import { ThreadAssignments, ProjectAssignments } from "./thread-assignments.js";
+import type { Assignee } from "./assignment-model.js";
 import { ThreadReview } from "./thread-review.js";
 import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
@@ -107,6 +108,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     tag,
     sort !== "activity",
     filters.assignedTo,
+    filters.workState,
     showResolved,
   ].filter(Boolean).length;
   const {
@@ -139,6 +141,10 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
   const { data: taxonomy, error: taxonomyError } = useLoad<ProjectTaxonomy>(
     () => api("projects.taxonomy.get", { projectId: project.id }),
     [project.id, version],
+  );
+  const { data: members, error: membersError } = useLoad<{ items: Assignee[] }>(
+    () => api("members.list", { projectId: project.id }),
+    [project.id],
   );
   const data =
     loaded?.query === query && loaded.projectId === project.id
@@ -186,11 +192,14 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           </p>
           {data?.summary && (
             <p className="muted">
-              {data.summary.points.open} open · {data.summary.points.resolved} resolved
-              {data.summary.points.closed
-                ? ` · ${data.summary.points.closed} closed`
-                : ""}{" "}
-              points · {data.summary.threads.closed} closed threads in this selection
+              {[
+                `${data.summary.points.open} open points`,
+                `${data.summary.points.resolved} resolved points`,
+                ...(data.summary.points.closed
+                  ? [`${data.summary.points.closed} closed points`]
+                  : []),
+                `${data.summary.threads.closed} closed threads in this selection`,
+              ].join(" · ")}
             </p>
           )}
         </div>
@@ -211,10 +220,6 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                 ...filters,
                 assignedTo:
                   filters.assignedTo === actor.userId ? undefined : actor.userId,
-                sort: "workPlan",
-                planningDate: calendarDate(new Date(), localTimeZone()),
-                showResolved: false,
-                archived: false,
               })
             }
           >
@@ -261,6 +266,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
       )}
       <ProjectAssignments key={project.id} project={project} />
       <ErrorNotice error={taxonomyError} />
+      <ErrorNotice error={membersError} />
       <section
         className={`thread-filter-panel${filtersOpen ? " is-expanded" : ""}`}
         aria-label="Feedback filters and views"
@@ -338,19 +344,57 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
               ))}
             </select>
           </Field>
-          <Field label="Status">
+          <Field label="Assigned to">
             <select
-              name="showResolved"
-              value={String(draft.showResolved)}
+              name="assignedTo"
+              value={draft.assignedTo ?? ""}
               onChange={(event) =>
                 updateFilter({
                   ...draft,
-                  showResolved: event.currentTarget.value === "true",
+                  assignedTo: event.currentTarget.value || undefined,
                 })
               }
             >
-              <option value="false">Active</option>
-              <option value="true">All statuses</option>
+              <option value="">Anyone</option>
+              <option value={actor.userId}>Me</option>
+              {(members?.items ?? [])
+                .filter((member) => member.id !== actor.userId)
+                .map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}
+                    {member.active ? "" : " (inactive)"}
+                  </option>
+                ))}
+              {draft.assignedTo &&
+                draft.assignedTo !== actor.userId &&
+                !members?.items.some((member) => member.id === draft.assignedTo) && (
+                  <option value={draft.assignedTo}>Unavailable member</option>
+                )}
+            </select>
+          </Field>
+          <Field label="Work status">
+            <select
+              name="workState"
+              value={draft.workState ?? (draft.showResolved ? "all" : "active")}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                updateFilter({
+                  ...draft,
+                  workState:
+                    value === "active" || value === "all"
+                      ? undefined
+                      : (value as ReviewFilters["workState"]),
+                  showResolved: value === "all",
+                });
+              }}
+            >
+              <option value="active">Active</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In progress</option>
+              <option value="ready_for_review">Ready for review</option>
+              <option value="resolved">Resolved</option>
+              <option value="declined">Declined</option>
+              <option value="all">All statuses</option>
             </select>
           </Field>
           <Field label="Sort">

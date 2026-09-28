@@ -30,7 +30,8 @@ try {
     body: JSON.stringify({ email: access.email, password: access.password }),
   });
   assert.equal(login.ok, true);
-  const csrf = (await login.json()).data.csrf;
+  const loginData = (await login.json()).data;
+  const csrf = loginData.csrf;
   const cookie = login.headers.get("set-cookie").split(";")[0];
   const equals = cookie.indexOf("=");
   const post = async (operation, input) => {
@@ -53,6 +54,36 @@ try {
     revision: first.revision,
     tags: ["mobile"],
   });
+  const makeAssigned = async (body, state) => {
+    const thread = await post("threads.create", {
+      projectId: access.projectId,
+      body,
+      context: { url: "https://example.com/", viewport: { width: 1440, height: 900 } },
+      idempotencyKey: `filter-qa-${state}`,
+    });
+    const current =
+      state === "open"
+        ? thread
+        : await post("threads.status", {
+            threadId: thread.id,
+            revision: thread.revision,
+            state,
+          });
+    await post("assignments.assign", {
+      threadId: current.id,
+      threadRevision: current.revision,
+      annotationIds: [],
+      userId: loginData.actor.userId,
+      summary: body,
+      category: "general",
+      tags: [],
+      githubDecision: "undecided",
+      githubRationale: "Filter QA fixture",
+      idempotencyKey: `filter-qa-assign-${state}`,
+    });
+  };
+  await makeAssigned("Open assigned sample", "open");
+  await makeAssigned("Review assigned sample", "ready_for_review");
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   await context.addCookies([
@@ -75,10 +106,64 @@ try {
       .evaluate((input) => input.getBoundingClientRect().width <= 360),
     true,
   );
-  await filters.getByRole("combobox", { name: "Status" }).selectOption("true");
+  await filters.getByRole("combobox", { name: "Work status" }).selectOption("all");
   await page.waitForURL(/showResolved=true/);
-  await filters.getByRole("combobox", { name: "Status" }).selectOption("false");
+  await filters.getByRole("combobox", { name: "Work status" }).selectOption("active");
   await page.waitForURL((url) => !url.searchParams.has("showResolved"));
+  await filters.getByRole("combobox", { name: "Work status" }).selectOption("open");
+  await page.waitForURL(/workState=open/);
+  await filters
+    .getByRole("combobox", { name: "Assigned to" })
+    .selectOption(loginData.actor.userId);
+  await page.waitForURL(/assignedTo=/);
+  await page.getByRole("heading", { name: "Open assigned sample" }).waitFor();
+  assert.equal(await page.locator(".thread-row").count(), 1);
+  assert.equal(
+    await page.getByRole("heading", { name: "Review assigned sample" }).count(),
+    0,
+  );
+  await filters
+    .getByRole("combobox", { name: "Work status" })
+    .selectOption("ready_for_review");
+  await page.waitForURL(/workState=ready_for_review/);
+  await page.getByRole("heading", { name: "Review assigned sample" }).waitFor();
+  assert.equal(
+    await page.getByRole("heading", { name: "Open assigned sample" }).count(),
+    0,
+  );
+  await filters.getByRole("combobox", { name: "Work status" }).selectOption("open");
+  await page.waitForURL(/workState=open/);
+  await page.getByRole("heading", { name: "Open assigned sample" }).waitFor();
+  await page.screenshot({ path: "output/playwright/assigned-open-desktop.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: /Search & filters/ }).click();
+  assert.equal(
+    await filters.getByRole("combobox", { name: "Assigned to" }).inputValue(),
+    loginData.actor.userId,
+  );
+  assert.equal(
+    await filters.getByRole("combobox", { name: "Work status" }).inputValue(),
+    "open",
+  );
+  await page.screenshot({
+    path: "output/playwright/assigned-open-mobile.png",
+    fullPage: true,
+  });
+  assert.equal(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+  );
+  await page.getByRole("button", { name: /Search & filters/ }).click();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await filters.getByRole("combobox", { name: "Sort" }).selectOption("newest");
+  await page.getByRole("button", { name: "Assigned to me" }).click();
+  await page.waitForURL((url) => !url.searchParams.has("assignedTo"));
+  await page.getByRole("button", { name: "Assigned to me" }).click();
+  await page.waitForURL(/assignedTo=/);
+  assert.equal(new URL(page.url()).searchParams.get("workState"), "open");
+  assert.equal(new URL(page.url()).searchParams.get("sort"), "newest");
+  await filters.getByRole("button", { name: "Clear" }).click();
+  await page.waitForURL((url) => !url.searchParams.has("assignedTo"));
   await filters.getByRole("combobox", { name: "Sort" }).selectOption("newest");
   await page.waitForURL(/sort=newest/);
   await filters.getByRole("combobox", { name: "Sort" }).selectOption("activity");
@@ -98,11 +183,7 @@ try {
   await page.waitForURL(/tag=mobile/);
   await filters.getByRole("combobox", { name: "Tag" }).selectOption("");
   await page.waitForURL((url) => !url.searchParams.has("tag"));
-  await page
-    .locator(".thread-row")
-    .first()
-    .getByRole("button", { name: "Filter by mobile tag" })
-    .click();
+  await page.getByRole("button", { name: "Filter by mobile tag" }).first().click();
   await page.waitForURL(/tag=mobile/);
   await page.locator(".thread-row").first().waitFor();
   await page.screenshot({ path: "output/playwright/live-filters-desktop.png" });
@@ -137,10 +218,7 @@ try {
     (url) => !url.searchParams.has("search") && !url.searchParams.has("tag"),
   );
   assert.equal(await filters.getByRole("combobox", { name: "Tag" }).inputValue(), "");
-  const tagButton = page
-    .locator(".thread-row")
-    .first()
-    .getByRole("button", { name: "Filter by mobile tag" });
+  const tagButton = page.getByRole("button", { name: "Filter by mobile tag" }).first();
   await tagButton.focus();
   await page.keyboard.press("Enter");
   await page.waitForURL(/tag=mobile/);
