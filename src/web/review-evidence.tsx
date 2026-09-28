@@ -130,30 +130,37 @@ export function ReviewEvidence({
     /^full-page-\d+-of-\d+\.webp$/.test(asset.filename || ""),
   );
   const combined = images.find((asset) => asset.filename === "full-page-combined.webp");
-  const first = combined || numbered[0] || images[0];
-  const [selectedId, setSelectedId] = useState(first?.id);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const stage = useRef<HTMLElement>(null);
+  const pageVisible = images.find((asset) => asset.filename === "page-visible.webp");
+  const mainCaptures = combined
+    ? [combined]
+    : numbered.length
+      ? numbered
+      : pageVisible
+        ? [pageVisible]
+        : images.filter(
+            (asset) => !/^point-\d+-original\.webp$/.test(asset.filename || ""),
+          );
+  const extraCaptures = images.filter(
+    (asset) =>
+      !mainCaptures.includes(asset) &&
+      !/^point-\d+-original\.webp$/.test(asset.filename || ""),
+  );
   const assetIds = thread.assets.map((asset) => asset.id).join(",");
   useEffect(() => {
     const openLinkedAsset = () => {
       const linked = thread.assets.find(
         (asset) => location.hash === `#asset-${asset.id}`,
       );
-      setSelectedId(linked?.contentType === "image/webp" ? linked.id : first?.id);
-      setActiveId(null);
-      if (linked)
-        requestAnimationFrame(() =>
-          document
-            .getElementById(`asset-${linked.id}`)
-            ?.scrollIntoView({ block: "start" }),
-        );
+      if (!linked) return;
+      const element = document.getElementById(`asset-${linked.id}`);
+      const group = element?.closest("details");
+      if (group) group.open = true;
+      requestAnimationFrame(() => element?.scrollIntoView({ block: "start" }));
     };
     openLinkedAsset();
     addEventListener("hashchange", openLinkedAsset);
     return () => removeEventListener("hashchange", openLinkedAsset);
-  }, [thread.id, first?.id, assetIds]);
-  const selected = images.find((asset) => asset.id === selectedId) || first;
+  }, [thread.id, assetIds]);
   const locationFor = (item: Annotation) =>
     images.find(
       (asset) =>
@@ -165,32 +172,6 @@ export function ReviewEvidence({
     numbered.find((asset) => position(asset, item, thread.context)) ||
     (combined && position(combined, item, thread.context) ? combined : undefined) ||
     images.find((asset) => position(asset, item, thread.context));
-  const active = annotations.find(
-    (item) => item.id === activeId && stateOf(item) !== "removed",
-  );
-  const activePosition = active && selected && position(selected, active, thread.context);
-  const activeBounds =
-    active &&
-    selected?.markings?.find(
-      (mark) => mark.origin === "element" && mark.annotationId === active.id,
-    )?.bounds;
-  const marks = selected?.markings?.filter((mark) => mark.tool !== "point") || [];
-  const markKinds = marks.map((mark) =>
-    mark.origin === "element" ? "selected element box" : mark.tool,
-  );
-  const markSummary = [...new Set(markKinds)]
-    .map((kind) => `${markKinds.filter((value) => value === kind).length} ${kind}`)
-    .join(" · ");
-
-  function show(item: Annotation) {
-    const asset = locationFor(item);
-    if (asset) setSelectedId(asset.id);
-    setActiveId(item.id);
-    requestAnimationFrame(() =>
-      stage.current?.scrollIntoView({ block: "center", behavior: "smooth" }),
-    );
-  }
-
   return (
     <section className="review-evidence" aria-label="Annotated page review">
       <div className="review-evidence-heading">
@@ -202,24 +183,6 @@ export function ReviewEvidence({
             {numbered.length ? ` · ${numbered.length} screenshots in page order` : ""}
           </p>
         </div>
-        {images.length > 1 && (
-          <label>
-            Screenshot
-            <select
-              value={selected?.id || ""}
-              onChange={(event) => {
-                setSelectedId(event.target.value);
-                setActiveId(null);
-              }}
-            >
-              {images.map((asset) => (
-                <option value={asset.id} key={asset.id}>
-                  {imageLabel(asset)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
       </div>
       <div className="review-point-overview">
         <p>
@@ -262,83 +225,48 @@ export function ReviewEvidence({
           Load latest point status
         </button>
       )}
-      {selected && (
-        <figure
-          id={`asset-${selected.id}`}
-          className="review-evidence-figure"
-          ref={stage}
-        >
-          <div className="review-evidence-image">
+      {mainCaptures.map((asset) => (
+        <figure id={`asset-${asset.id}`} className="review-main-capture" key={asset.id}>
+          <a href={asset.url} target="_blank" rel="noopener noreferrer">
             <img
-              src={selected.url}
-              alt={selected.filename || "Annotated feedback screenshot"}
-              width={selected.width}
-              height={selected.height}
+              src={asset.url}
+              alt={asset.filename || "Page capture"}
+              width={asset.width}
+              height={asset.height}
+              loading="eager"
             />
-            {activeBounds && (
-              <span
-                className="review-evidence-target"
-                aria-hidden="true"
-                style={{
-                  left: `${activeBounds.x * 100}%`,
-                  top: `${activeBounds.y * 100}%`,
-                  width: `${activeBounds.width * 100}%`,
-                  height: `${activeBounds.height * 100}%`,
-                }}
-              />
-            )}
-            {annotations.flatMap((item, index) => {
-              if (stateOf(item) === "removed") return [];
-              const point = position(selected, item, thread.context);
-              return point
-                ? [
-                    <button
-                      type="button"
-                      key={item.id}
-                      className={`review-evidence-pin${point.baked ? " baked" : ""}${stateOf(item) !== "open" ? " resolved" : ""}${activeId === item.id ? " active" : ""}`}
-                      style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
-                      aria-label={`Point ${index + 1} · ${stateOf(item)}: ${item.body}`}
-                      onMouseEnter={() => setActiveId(item.id)}
-                      onFocus={() => setActiveId(item.id)}
-                      onClick={() => setActiveId(item.id)}
-                    >
-                      {point.baked ? (
-                        <span className="sr-only">{index + 1}</span>
-                      ) : (
-                        index + 1
-                      )}
-                    </button>,
-                  ]
-                : [];
-            })}
-            {active && activePosition && (
-              <div
-                className={`review-evidence-popover${activePosition.y > 0.65 ? " above" : ""}`}
-                style={{
-                  left: `clamp(8px, calc(${activePosition.x * 100}% - 115px), calc(100% - 238px))`,
-                  top: `${activePosition.y * 100}%`,
-                }}
-              >
-                <strong>
-                  Point {annotations.indexOf(active) + 1} · {stateOf(active)}
-                </strong>
-                <MarkdownText body={active.body} />
-              </div>
-            )}
-          </div>
+          </a>
           <figcaption>
-            {imageLabel(selected)}
-            {selected.captureRegion &&
-              ` · ${Math.round(selected.captureRegion.startY)}–${Math.round(selected.captureRegion.endY)}px down the page`}
-            {" · "}
-            <a href={selected.url} target="_blank" rel="noopener noreferrer">
+            {imageLabel(asset)} ·{" "}
+            <a href={asset.url} target="_blank" rel="noopener noreferrer">
               Open full image
             </a>
           </figcaption>
         </figure>
-      )}
-      {markSummary && (
-        <p className="review-mark-summary">Image markings: {markSummary}</p>
+      ))}
+      {extraCaptures.length > 0 && (
+        <details className="review-extra-captures">
+          <summary>More page captures ({extraCaptures.length})</summary>
+          {extraCaptures.map((asset) => (
+            <figure id={`asset-${asset.id}`} key={asset.id}>
+              <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={asset.url}
+                  alt={asset.filename || "Page capture"}
+                  width={asset.width}
+                  height={asset.height}
+                  loading="lazy"
+                />
+              </a>
+              <figcaption>
+                {imageLabel(asset)} ·{" "}
+                <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                  Open full image
+                </a>
+              </figcaption>
+            </figure>
+          ))}
+        </details>
       )}
       <ol className="review-point-list">
         {annotations.map((item, index) => {
@@ -354,10 +282,7 @@ export function ReviewEvidence({
             return null;
           const decision = thread.annotationStates?.[item.id];
           return (
-            <li
-              key={item.id}
-              className={`${state} ${activeId === item.id ? "active" : ""}`}
-            >
+            <li id={`point-${item.id}`} key={item.id} className={state}>
               <span className="review-point-number">{index + 1}</span>
               <div>
                 <div className="review-point-status">
@@ -449,11 +374,30 @@ export function ReviewEvidence({
                   </details>
                 )}
                 {asset ? (
-                  <button type="button" onClick={() => show(item)}>
-                    {/^point-\d+-original\.webp$/.test(asset.filename || "")
-                      ? "Show original view"
-                      : `Show on ${imageLabel(asset)}`}
-                  </button>
+                  <figure
+                    id={
+                      /^point-\d+-original\.webp$/.test(asset.filename || "")
+                        ? `asset-${asset.id}`
+                        : undefined
+                    }
+                    className="review-point-figure"
+                  >
+                    <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={asset.url}
+                        alt={`Point ${index + 1}: ${imageLabel(asset)}`}
+                        width={asset.width}
+                        height={asset.height}
+                        loading="lazy"
+                      />
+                    </a>
+                    <figcaption>
+                      {imageLabel(asset)} ·{" "}
+                      <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                        Open full image
+                      </a>
+                    </figcaption>
+                  </figure>
                 ) : (
                   <small className="muted">Saved page position</small>
                 )}

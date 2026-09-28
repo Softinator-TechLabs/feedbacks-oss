@@ -24,6 +24,8 @@ The saved status remains visible while a request is pending or fails. Failed upd
 
 ## Resolve or remove individual points
 
+The thread shows its page capture first when one was saved, then lists the numbered points in order. Each point's original screenshot sits with its note and element details, with a link to open the full image. A point without a saved original can use a relevant page capture; when no image covers it, the note remains visible. Additional page captures are available below the main capture.
+
 Each published point has its own decision. Members with resolution permission can **Resolve point** or **Reopen point** without closing its thread. Maintainers can **Remove point** and **Restore point**. Removal excludes it from active pins/counts but preserves its original note, element metadata, screenshot and audit history. Marks baked into a historical image remain visible. Removed points stay available under the thread’s Removed filter.
 
 Resolving or declining a thread closes all its visible points without overwriting their individual decisions. Reopening restores the earlier decisions. Individual resolution does not automatically close a thread. Stale revisions require reloading, and every point decision records its author and time.
