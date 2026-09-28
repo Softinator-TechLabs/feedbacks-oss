@@ -256,12 +256,8 @@ small {
 .thread-list-quick-actions button {
   white-space: nowrap;
 }
-.thread-priority-button {
-  border-color: transparent;
-  background: transparent;
-}
 .thread-priority-button[aria-pressed="true"] {
-  border-color: transparent;
+  border-color: var(--control-border);
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 .thread-filter-panel {
@@ -1504,7 +1500,7 @@ legend {
     gap: 12px;
   }
   .thread-row {
-    grid-template-columns: minmax(0, 1fr) 145px;
+    grid-template-columns: 36px minmax(0, 1fr) 145px;
   }
   .thread-stats {
     grid-column: 1/-1;
@@ -1732,7 +1728,6 @@ legend {
     flex-basis: 100%;
   }
   .thread-row {
-    grid-template-columns: minmax(0, 1fr) 150px;
     padding: 12px;
     gap: 8px;
   }
@@ -1865,6 +1860,26 @@ legend {
   }
 }
 
+@media (max-width: 560px) {
+  .thread-row-main.has-thumbnail {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .thread-row-main.has-thumbnail .thread-summary {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .thread-row-main.has-thumbnail .thread-row-thumbnail {
+    grid-column: 1;
+    grid-row: 2;
+    width: 72px;
+    height: 48px;
+  }
+  .thread-row-main.has-thumbnail .thread-stats {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
 .help-simple {
   max-width: 980px;
 }
@@ -1982,23 +1997,6 @@ legend {
   margin-top: 12px;
 }
 
-.help-paths {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 24px;
-  padding-block: 18px;
-  border-bottom: 1px solid var(--border);
-}
-.help-onboarding-section {
-  padding-block: 24px;
-  border-bottom: 1px solid var(--border);
-}
-.help-onboarding-section h2 {
-  margin: 0 0 16px;
-}
-.help-onboarding-section li {
-  margin-block: 12px;
-}
 .help-server-copy {
   display: flex;
   align-items: stretch;
@@ -2026,4 +2024,89 @@ legend {
   .help-server-copy {
     flex-direction: column;
   }
+}
+
+.help-quickstart {
+  max-width: 760px;
+}
+.help-quickstart .help-simple-heading {
+  margin-bottom: 8px;
+}
+.help-steps {
+  margin: 28px 0 0;
+  padding-left: 26px;
+}
+.help-steps > li {
+  padding: 0 0 24px 12px;
+  margin: 0 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+.help-steps > li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+.help-steps > li::marker {
+  font-weight: 650;
+  color: var(--muted);
+}
+.help-steps h2 {
+  font-size: 1.2rem;
+  margin: 0 0 8px;
+}
+.help-steps p {
+  margin: 0 0 12px;
+}
+.help-project-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.help-project-picker select {
+  max-width: 100%;
+  min-width: 0;
+}
+.help-project-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+.help-quickstart .help-agent {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.help-quickstart .help-key-warning {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.help-quickstart .help-agent-actions {
+  gap: 8px;
+}
+.help-quickstart .help-prompt {
+  margin-top: 12px;
+}
+.help-footer {
+  margin: 28px 0 0 38px;
+}
+
+.help-watch {
+  margin-top: 12px;
+}
+.help-watch > summary {
+  cursor: pointer;
+  color: var(--accent);
+  width: fit-content;
+  min-height: 44px;
+  padding-block: 10px;
+  font-size: 0.9rem;
+}
+.help-watch feedbacks-demo {
+  max-width: 560px;
 }

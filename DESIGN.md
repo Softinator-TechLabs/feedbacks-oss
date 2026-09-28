@@ -96,7 +96,7 @@ The application and extension keep their focused system-font interface, Oxford a
 
 **Key Characteristics:**
 
-- Actual product pixels with clearly labeled fictional demo content.
+- Actual product pixels; capture provenance belongs in the asset documentation.
 - Brief handwritten notes and target-pointing pencil marks.
 - Flat scene surfaces with a small tilt on desktop screenshots.
 - Direct setup guidance and deliberate, user-started motion.
@@ -155,21 +155,21 @@ The primary landing action is **Set up Feedbacks**, linking to the website's own
 
 The walkthrough follows **Point it out**, **Check & send** and **Fix with your agent** through actual extension and app captures of the fictional Good Form project. Save point is a local draft; Review & send opens the evidence review; Send feedback shares checked notes and screenshots. The server thread shows the submitted request, not proof that an agent fixed it. [Asset provenance](docs/website-assets.md) records the screenshot source and font licenses.
 
-Native step buttons expose `aria-pressed`; selection updates the screenshot, pencil target, short note and guide link together, with prose in a polite live region. Play starts only on request, advances every 6.5 seconds and stops after the last scene. Pause, manual selection, opening the screenshot and hiding the tab stop playback. Scene entrance uses a 350ms fade/8px rise and the background changes over 400ms; reduced motion disables those transitions and the entrance animation. A preference change stops playback. The first scene and its content exist in the initial HTML.
+Native landing step buttons expose `aria-pressed`; selection updates the shared player, short note and guide link together. The selected sequence plays automatically, with **Pause** / **Play** controls and numbered frame selection. Playback pauses offscreen/in hidden tabs and starts paused for reduced motion. Screenshot enlargement opens a native dialog. Keep the interface focused on the task: no display-mode switch, demo-account label or media-production notes.
 
-The screenshot button opens a native dialog containing the full unmodified capture. Close and Escape dismiss it, and the image can scroll on narrow screens. Responsive cropping improves the inline first-scene detail without changing the original shown in zoom. [site/index.html](site/index.html), [landing.css](site/landing.css) and [site/site.js](site/site.js) are the source for these states.
+The first scene and its copy exist in the initial HTML. The [shared player](public/learn/demo.js) is reused in docs and optional Help disclosures; source and capture provenance are in [website assets](docs/website-assets.md).
 
-**The Evidence Rule.** Annotate actual product captures separately, label fictional demo content and keep the full original available for inspection.
+**The Evidence Rule.** Annotate actual product captures separately, document fictional content in asset provenance and keep the full original available for inspection.
 
 ### Help and extension setup
 
-[Help](src/web/help.tsx) offers guides for clients, reviewers/testers, DevOps and resolving developers. It explains the owner responsibility for projects, context, optional GitHub, members and profiles. **Copy server URL** copies the current installation's origin from a selectable read-only field; clipboard failure keeps manual copying available. Agent setup uses each member's own identity and retains its permission disclosure.
+[Help](src/web/help.tsx) is a short, three-step connection flow for an already-running server: project readiness, extension connection and personal agent setup. It checks the selected project's active teammates and published agent context before showing completion text; missing access/context links to the corresponding project controls. A project picker keeps multiple projects distinct. **Copy server URL** copies the current installation's origin from a selectable read-only field. **Create key & copy prompt** retains the key's permission disclosure, clipboard fallback and Account link for narrower permissions. Full instructions live in the public docs.
 
 The [extension popup](extension/popup.html) states the running-server and account prerequisites before connection. First-use guidance covers installing, pinning, connecting, capturing, reviewing and sending. Connected review controls remain compact and task-focused.
 
 ### Navigation and review controls
 
-Navigation preserves applied filters and protects unsaved drafts. Optional organization, personal views and diagnostics use disclosure sections. Screenshot comparison preserves proportions and provides a labeled native range control. Arrow-key navigation must not intercept typing, selectors, sliders or dialogs. Keep response obligation, work status and delivery evidence distinct.
+Navigation preserves applied filters and protects unsaved drafts. Thread rows keep a narrow selection column at every breakpoint, with actions below the content on mobile. The Saved views icon stays in the filter panel’s top-right corner without reserving a separate column. Top priority uses the same outlined control treatment as Archive. Optional organization, personal views and diagnostics use disclosure sections. Screenshot comparison preserves proportions and provides a labeled native range control. Arrow-key navigation must not intercept typing, selectors, sliders or dialogs. Keep response obligation, work status and delivery evidence distinct.
 
 ## Do's and Don'ts
 
@@ -177,7 +177,7 @@ Navigation preserves applied filters and protects unsaved drafts. Optional organ
 
 - Do preserve each surface's existing typography, palette and theme behavior.
 - Do use exact action labels and distinguish local drafts from sent feedback.
-- Do preserve original screenshot proportions in zoom and label fictional demo evidence.
+- Do preserve original screenshot proportions in zoom and document fictional demo evidence in asset provenance.
 - Do keep drafts safe during navigation and failed requests.
 - Do keep landing explanations brief, use pencil marks to point at evidence, and link setup guidance to the website docs.
 

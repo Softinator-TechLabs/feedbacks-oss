@@ -9,6 +9,17 @@ import { api, type Actor, type Project } from "./api.js";
 import { ActionState, useAction, useLoad, Loading, ErrorNotice } from "./ui.js";
 import { chromeWebStoreUrl } from "../shared/product-links.js";
 
+function WatchStep({ step, title }: { step: string; title: string }) {
+  return (
+    <details className="help-watch">
+      <summary>{title}</summary>
+      {step
+        .split(",")
+        .map((part) => React.createElement("feedbacks-demo", { step: part, key: part }))}
+    </details>
+  );
+}
+
 function HelpAgentSetup({
   actor,
   projects,
@@ -80,28 +91,13 @@ function HelpAgentSetup({
     <section className="help-agent">
       <div>
         <h2>Connect your coding agent</h2>
-        <p>
-          Copy the setup prompt, then paste it into Codex, Claude or your coding agent. It
-          contains the connection details and a private API key.
-        </p>
+        <p>Paste the prompt into Codex, Claude Code or Antigravity.</p>
         <p className="help-key-warning">
-          {actor.owner ? (
-            <>
-              This creates a 90-day key with full owner administration across current and
-              future projects.
-              {actor.primaryOwner
-                ? " It can access your private member notes."
-                : " Primary-owner private notes stay restricted."}
-            </>
-          ) : (
-            <>
-              This creates a 90-day personal key for your{" "}
-              {projects.length ? "current projects and profile" : "profile only"}. It acts
-              as you and keeps your existing project permissions.
-            </>
-          )}{" "}
-          Share it only with your own agent. Even with a shared Codex subscription, each
-          member needs their own Feedbacks key.
+          Private 90-day key.{" "}
+          {actor.owner
+            ? `Full owner access to current and future projects${actor.primaryOwner ? ", including private member notes" : ""}.`
+            : `Your existing access to ${projects.length ? "current projects and profile" : "your profile only"}.`}{" "}
+          Only share with your own agent.
         </p>
       </div>
       <div className="help-agent-actions">
@@ -122,8 +118,8 @@ function HelpAgentSetup({
               ? "Copying…"
               : "Creating key…"
             : issued
-              ? "Copy setup again"
-              : "Create key and copy setup"}
+              ? "Copy prompt again"
+              : "Create key & copy prompt"}
         </button>
         <a href="/account#agent-setup">Choose projects and permissions</a>
         <ActionState action={action} />
@@ -134,6 +130,7 @@ function HelpAgentSetup({
           </p>
         )}
       </div>
+      <WatchStep step="agent" title="Show me where to paste" />
       {prompt && (
         <details
           className="help-prompt"
@@ -153,13 +150,69 @@ function HelpAgentSetup({
   );
 }
 
+function ProjectReadiness({ actor, project }: { actor: Actor; project: Project }) {
+  const { data, error } = useLoad(async () => {
+    const [members, context] = await Promise.all([
+      api<{ items: { id: string; active: boolean; removedAt?: string | null }[] }>(
+        "members.list",
+        { projectId: project.id },
+      ),
+      api<{ items: { body: string }[] }>("instructions.get", { projectId: project.id }),
+    ]);
+    return {
+      colleagues: members.items.some(
+        (member) => member.id !== actor.userId && member.active && !member.removedAt,
+      ),
+      context: !!context.items[0]?.body.trim(),
+    };
+  }, [project.id, actor.userId]);
+  return (
+    <>
+      <h2>Great, your project is created!</h2>
+      {!data && !error && (
+        <p className="muted">Checking teammates and project context…</p>
+      )}
+      {error && (
+        <p className="muted">
+          Couldn’t check setup. <a href={`/projects/${project.id}`}>Open project</a> to
+          check.
+        </p>
+      )}
+      {data && (
+        <div className="help-project-status">
+          <span>
+            {data.colleagues ? (
+              "Teammates already have access."
+            ) : actor.owner ? (
+              <a href={`/projects/${project.id}/members`}>Add teammates</a>
+            ) : (
+              "Ask your owner to add teammates."
+            )}
+          </span>
+          <span>
+            {data.context ? (
+              "Project context is set."
+            ) : project.permissions.canMaintain ? (
+              <a href={`/projects/${project.id}/instructions`}>Add project context</a>
+            ) : (
+              "Ask a maintainer to add project context."
+            )}
+          </span>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }) {
+  const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
+  const project = projects.find((item) => item.id === projectId) ?? projects[0];
   const { data, error } = useLoad(async () => {
     const response = await fetch("/api/help", {
       credentials: "same-origin",
       cache: "no-store",
     });
-    if (!response.ok) throw new Error("Sign in to read help.");
+    if (!response.ok) throw new Error("Sign in to connect your coding agent.");
     const document = new DOMParser().parseFromString(await response.text(), "text/html");
     return {
       instructions:
@@ -170,182 +223,116 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
   }, []);
   const serverCopy = useAction();
   return (
-    <article className="reading help-page help-simple">
+    <article className="reading help-page help-quickstart">
       <div className="help-simple-heading">
-        <h1>Help &amp; setup</h1>
-        <a href="https://feedbacks.softinator.ai/docs/" target="_blank" rel="noreferrer">
-          All guides
-        </a>
+        <h1>Let’s get you connected</h1>
+        <a href="https://feedbacks.softinator.ai/docs/">Docs</a>
       </div>
-      <p>
-        Feedbacks turns client requests and UI test findings into context your developer
-        and AI coding agent can use: screenshots, the exact page, selected elements and
-        project guidance.
-      </p>
-      <nav className="help-paths" aria-label="Choose a setup guide">
-        <a href="https://feedbacks.softinator.ai/docs/guide/clients">Clients</a>
-        <a href="#review-with-extension">Reviewers &amp; testers</a>
-        <a href="https://feedbacks.softinator.ai/docs/guide/self-host">
-          DevOps installation
-        </a>
-        <a href="#connect-agent">Developers using MCP</a>
-      </nav>
-      <section className="help-onboarding-section">
-        <h2>Set up in this order</h2>
-        <ol>
-          <li>
-            <strong>DevOps installs the team server.</strong> One installation on company
-            infrastructure. This Help page belongs to your current server.
-          </li>
-          <li>
-            <strong>Install, pin and connect the extension.</strong> Copy the server URL
-            below. Project capture is available once the owner grants access.
-          </li>
-          <li>
-            <strong>The owner prepares projects and people.</strong> Add website origins,
-            publish project context, optionally connect the GitHub App, add members and
-            set their profiles and responsibilities.{" "}
-            <a href="https://feedbacks.softinator.ai/docs/guide/team-setup">
-              Owner setup guide
-            </a>
-            .
-          </li>
-          <li>
-            <strong>Each developer connects their own agent.</strong> Use a personal setup
-            prompt for Codex, Claude Code or Antigravity. Reviewers do not need MCP to
-            send feedback.
-          </li>
-        </ol>
-      </section>
-      <section id="review-with-extension" className="help-onboarding-section">
-        <h2>Install and connect the Chrome extension</h2>
-        <ol>
-          <li>
+      <p className="muted">Your team’s server is already set up.</p>
+      <ol className="help-steps">
+        <li>
+          {project && actor ? (
+            <>
+              {projects.length > 1 && (
+                <label className="help-project-picker">
+                  Project
+                  <select
+                    aria-label="Project"
+                    value={project.id}
+                    onChange={(event) => setProjectId(event.target.value)}
+                  >
+                    {projects.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <ProjectReadiness key={project.id} actor={actor} project={project} />
+              {actor.owner && <WatchStep step="project" title="Show project setup" />}
+              {projects.length === 1 && (
+                <a href={`/projects/${project.id}`}>{project.name}</a>
+              )}
+            </>
+          ) : (
+            <>
+              <h2>{actor?.owner ? "Create your first project" : "Get project access"}</h2>
+              <p>
+                {actor?.owner ? (
+                  <a href="/">Create a project</a>
+                ) : actor ? (
+                  "Ask your owner to add you to a project."
+                ) : (
+                  <a href="/sign-in?returnTo=/help">Sign in to your team’s server</a>
+                )}
+              </p>
+            </>
+          )}
+        </li>
+        <li id="review-with-extension">
+          <h2>Connect the extension</h2>
+          <p>
             <a href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer">
-              Open Feedbacks in the Chrome Web Store
+              Install Feedbacks
             </a>
-            . Choose <strong>Add to Chrome</strong>, then <strong>Add extension</strong>.
-          </li>
-          <li>
-            Open Chrome’s <strong>Extensions</strong> menu (the puzzle-piece button), find
-            Feedbacks and click its <strong>pin</strong>.
-          </li>
-          <li>
-            Copy this server URL, click the pinned Feedbacks icon and paste it into{" "}
-            <strong>Your Feedbacks server</strong>.
-          </li>
-          <li>
-            Choose <strong>Connect to server</strong>, allow Chrome’s server access, sign
-            in and approve the connection.
-          </li>
-        </ol>
-        <label htmlFor="help-server-url">Your team’s Feedbacks server URL</label>
-        <div className="help-server-copy">
-          <input
-            id="help-server-url"
-            type="text"
-            value={location.origin}
-            readOnly
-            onFocus={(event) => event.currentTarget.select()}
-          />
-          <button
-            disabled={serverCopy.busy}
-            onClick={() =>
-              void serverCopy.run(async () => {
-                try {
-                  await navigator.clipboard.writeText(location.origin);
-                } catch {
-                  throw new Error(
-                    "Clipboard access was denied. Select the server URL above and copy it manually.",
-                  );
-                }
-              }, "Server URL copied. Paste it into Your Feedbacks server in the extension.")
-            }
-          >
-            {serverCopy.busy ? "Copying…" : "Copy server URL"}
-          </button>
-        </div>
-        <ActionState action={serverCopy} />
-        <p className="muted">
-          Use this address, not the website you want to review or the public docs address.
-          No project appears? Ask the owner to grant access and add the website’s origin.
-        </p>
-      </section>
-      <section className="help-onboarding-section">
-        <h2>Send your first feedback</h2>
-        <ol>
-          <li>
-            Open the website and <strong>click the pinned Feedbacks icon</strong> to start
-            review. Choose a project if prompted.
-          </li>
-          <li>
-            Hover the element, <strong>right-click</strong>, write what should change and
-            choose <strong>Save point</strong>. Add more points as needed.
-          </li>
-          <li>
-            Choose <strong>Review &amp; send</strong> to finalize your points. Check the
-            saved screenshots and notes; redact private details.
-          </li>
-          <li>
-            Choose <strong>Send feedback</strong>. Wait for completion, then open the
-            resulting thread on this server.
-          </li>
-        </ol>
-        <p>
-          <strong>Save point is a local draft.</strong> It is not shared until Send
-          feedback. If an upload stops, use <strong>Retry Send</strong> in the same draft.
-        </p>
-        <p>
-          <a href="https://feedbacks.softinator.ai/docs/guide/chrome-extension">
-            Full extension guide: install, pin, capture and send
-          </a>
-        </p>
-      </section>
-      <section id="connect-agent" className="help-onboarding-section">
-        <h2>Resolve feedback with your own coding agent</h2>
-        <p>
-          After the owner sets up your project and member access, sign in as yourself and
-          create your setup prompt below. Paste it into Codex, Claude Code or Antigravity.
-          Ask the agent to verify project access, read the feedback and approved context,
-          then work on the agreed changes. Record checks and fix evidence before
-          resolving.
-        </p>
-        <p>
-          <a href="https://feedbacks.softinator.ai/docs/guide/mcp">
-            MCP setup and first-fix guide
-          </a>
-        </p>
-      </section>
-      <ErrorNotice error={error} />
-      {data ? (
-        <HelpAgentSetup
-          actor={actor}
-          projects={projects}
-          instructions={data.instructions}
-        />
-      ) : (
-        !error && <Loading />
-      )}
-      <details
-        id="update-extension"
-        className="compact-details"
-        open={location.hash === "#update-extension"}
-      >
-        <summary>Update an unpacked extension</summary>
-        <p>
-          <a href="/downloads/feedbacks-extension.zip">Download the current extension</a>,
-          extract it over your existing extension folder, then click Reload on its card in
-          Chrome’s Extensions page. Finish any unsent review first and refresh the website
-          afterwards. Keep the same folder to retain your connection.
-        </p>
-      </details>
-      <p className="muted">
-        Installation, permissions, MCP and GitHub setup are in the{" "}
-        <a href="https://feedbacks.softinator.ai/docs/" target="_blank" rel="noreferrer">
-          Feedbacks docs
+            , pin it in Chrome, then paste this URL into the extension and choose{" "}
+            <strong>Connect to server</strong>.
+          </p>
+          <div className="help-server-copy">
+            <input
+              id="help-server-url"
+              aria-label="Your Feedbacks server URL"
+              value={location.origin}
+              readOnly
+              onFocus={(event) => event.currentTarget.select()}
+            />
+            <button
+              disabled={serverCopy.busy}
+              onClick={() =>
+                void serverCopy.run(async () => {
+                  try {
+                    await navigator.clipboard.writeText(location.origin);
+                  } catch {
+                    throw new Error("Select the server URL and copy it manually.");
+                  }
+                }, "Copied. Paste it into the extension.")
+              }
+            >
+              {serverCopy.busy ? "Copying…" : "Copy server URL"}
+            </button>
+          </div>
+          <ActionState action={serverCopy} />
+          <WatchStep step="install,connect" title="Show install & connect" />
+        </li>
+        <li id="connect-agent">
+          <ErrorNotice error={error} />
+          {data ? (
+            <HelpAgentSetup
+              actor={actor}
+              projects={projects}
+              instructions={data.instructions}
+            />
+          ) : (
+            !error && <Loading />
+          )}
+        </li>
+      </ol>
+      <p className="muted help-footer">
+        <a href="https://feedbacks.softinator.ai/docs/guide/chrome-extension">
+          How to capture &amp; send feedback
         </a>
-        .
       </p>
+      {location.hash === "#update-extension" && (
+        <details id="update-extension" className="compact-details" open>
+          <summary>Update an unpacked extension</summary>
+          <p>
+            <a href="/downloads/feedbacks-extension.zip">Download the extension</a>,
+            extract it over your existing folder, then Reload it in Chrome’s Extensions
+            page. Finish unsent reviews first.
+          </p>
+        </details>
+      )}
     </article>
   );
 }

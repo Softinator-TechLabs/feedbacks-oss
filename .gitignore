@@ -43,3 +43,5 @@ CLAUDE.local.md
 
 # Canonical manuals are published into the docs site at build time.
 /site-docs/reference/manual/
+
+/site/public/learn/

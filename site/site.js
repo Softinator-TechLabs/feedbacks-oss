@@ -34,41 +34,11 @@ const scenes = [
   },
 ];
 const buttons = [...document.querySelectorAll("[data-scene]")];
-const img = document.querySelector("#story-image");
 const stage = document.querySelector(".story-stage");
-const play = document.querySelector(".play-story");
-const reduce = matchMedia("(prefers-reduced-motion: reduce)");
-let current = 0,
-  timer;
-function stop() {
-  clearInterval(timer);
-  timer = undefined;
-  play.querySelector(".play-label").textContent = "Play";
-  play.querySelector(".play-icon path").setAttribute("d", "m8 5 11 7-11 7Z");
-  play.setAttribute("aria-label", "Play the three-step walkthrough");
-  play.setAttribute("aria-pressed", "false");
-}
+const demo = document.querySelector("#story-demo");
 function show(index) {
-  current = index;
+  demo.setAttribute("step", ["capture", "send", "agent"][index]);
   const s = scenes[index];
-  img.src = `/media/workflow/${s.image}`;
-  img.alt = s.alt;
-  const detail = document.querySelector("#story-detail");
-  detail.srcset = `/media/workflow/${index === 0 ? "point-detail.png" : s.image}`;
-  img.width = index === 0 ? 900 : 1100;
-  img.height = index === 0 ? 740 : 760;
-  const mark = document.querySelector(".capture-mark");
-  mark.setAttribute("viewBox", index === 0 ? "0 0 900 740" : "0 0 1100 760");
-  mark
-    .querySelector("path")
-    .setAttribute(
-      "d",
-      [
-        "M830 290C780 310 670 340 550 422m8-20-8 20 22-4",
-        "M890 110Q935 120 995 55m-20 6 20-6-5 20",
-        "M980 570C940 680 750 695 390 625m12 18-12-18 22-2",
-      ][index],
-    );
   stage.dataset.active = index;
   buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === index)));
   for (const [id, value] of Object.entries({
@@ -83,49 +53,11 @@ function show(index) {
   const guide = document.querySelector("#scene-guide");
   guide.firstChild.textContent = s.guide + " ";
   guide.href = s.href;
-  document
-    .querySelector(".screen-zoom")
-    .setAttribute("aria-label", `Enlarge screenshot: ${s.label}`);
   stage.classList.remove("scene-enter");
   requestAnimationFrame(() => stage.classList.add("scene-enter"));
 }
 buttons.forEach((b, i) =>
   b.addEventListener("click", () => {
-    stop();
     show(i);
   }),
 );
-play.addEventListener("click", () => {
-  if (timer) {
-    stop();
-    return;
-  }
-  if (current === 2) show(0);
-  play.querySelector(".play-label").textContent = "Pause";
-  play.querySelector(".play-icon path").setAttribute("d", "M7 5h3v14H7zM14 5h3v14h-3z");
-  play.setAttribute("aria-label", "Pause walkthrough");
-  play.setAttribute("aria-pressed", "true");
-  timer = setInterval(() => {
-    if (current === 2) {
-      stop();
-      return;
-    }
-    show(current + 1);
-  }, 6500);
-});
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) stop();
-});
-reduce.addEventListener("change", stop);
-const dialog = document.querySelector("#screen-dialog");
-document.querySelector(".screen-zoom").addEventListener("click", () => {
-  stop();
-  const enlarged = dialog.querySelector("img");
-  enlarged.src = img.src;
-  enlarged.alt = img.alt;
-  dialog.showModal();
-});
-dialog.querySelector(".close-screen").addEventListener("click", () => dialog.close());
-dialog.addEventListener("click", (e) => {
-  if (e.target === dialog) dialog.close();
-});

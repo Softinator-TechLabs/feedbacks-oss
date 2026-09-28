@@ -750,6 +750,12 @@ try {
     });
   }, id);
   await waitReview((state) => state.points === 1);
+  // Escape exits review without discarding saved points; opening again restores them.
+  await page.keyboard.press("Escape");
+  await page.locator("#feedbacks-review-root").waitFor({ state: "detached" });
+  await send({ type: "activate", tabId: id });
+  await waitReview((state) => state.points === 1);
+  results.escapePreservesDraft = true;
   // The menu closed: its pin must not float over unrelated page content.
   await page.waitForTimeout(200);
   const hiddenDraft = await worker.evaluate(async (tabId) => {
@@ -1586,6 +1592,11 @@ try {
     path: join(root, ".local/remaining-todos-qa/inline-comment-mobile.png"),
   });
   await page.keyboard.press("Escape");
+  assert.equal((await inspectReview()).ready, false);
+  assert.equal(await page.locator("#feedbacks-review-root").count(), 1);
+  await page.keyboard.press("Escape");
+  await page.locator("#feedbacks-review-root").waitFor({ state: "detached" });
+  results.escapeClosesEditorBeforeExit = true;
   await page.setViewportSize({ width: 900, height: 650 });
 
   for (const scope of ["short", "long", "tall", "tooLong", "clipped"]) {

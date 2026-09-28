@@ -1,25 +1,22 @@
 ---
-description: Connect your personal Feedbacks key to Codex, Claude Code or Antigravity through MCP, read visual feedback and verify your first UI fix.
+description: Copy your personal Feedbacks setup prompt into your coding agent, verify access and choose the feedback to fix.
 ---
 
-# Developer guide: connect your agent and resolve feedback
+# Connect your agent. Pick a fix.
 
-Feedbacks gives your coding agent the context behind a UI request: the comment, original screenshots, page URL, selected element details and approved project guidance. MCP (Model Context Protocol) is the connection that lets your agent read this context and use permitted Feedbacks tools.
+**For the developer resolving feedback.** Sign in to your team’s Feedbacks server as yourself.
 
-## Before connecting
+1. Open **Help → Create key & copy prompt**. Check the permissions shown beside it.
+2. Paste it privately into **Codex, Claude Code or Antigravity**.
+3. Let the agent verify project access. Then choose the feedback to work on.
 
-Your team needs a running server, a prepared project and your own member account with access. Ask the owner to finish [project and member setup](/guide/team-setup). Chrome pairing and the agent key are separate connections. Clients and reviewers do not need MCP to submit feedback.
+<Demo step="agent" />
 
-## Create your personal setup prompt
+Each person needs their own key. An owner’s default key has full administration access; use **Choose projects and permissions** for narrower access.
 
-1. Sign in as **yourself** on the team's Feedbacks server. Finish temporary-password replacement if required.
-2. Open **Help → Connect your coding agent**. Choose **Create key and copy setup**, or **Choose projects and permissions** to set narrower access in Account.
-3. Read the permission notice. For a member, Help creates a personal key for current projects and profile, or profile-only access if there are no projects. For an owner, it creates a broad owner-administration key. Use narrower Account permissions for routine project work.
-4. Paste the private setup prompt into your own coding-agent session. It includes the server connection and a secret key; keep it out of Git, screenshots and shared chats.
-5. The agent configures its actual MCP client, installs both reusable skills, verifies discovery and lists accessible projects. For a selected or unambiguously matched project, it shows at most 10 task previews plus separate thread/point summary counts when read scopes allow. Zero accessible projects is valid; it never assigns or changes feedback during setup.
-6. If new tools or skills are missing in the running Codex or Antigravity session, the agent names the exact app or connection you need to restart/reload/reconnect and gives a secret-free handoff for verification in a fresh chat. It does not quit apps automatically or claim ready merely because files were saved. Connection discovery, skill discovery and the first preview (or pending scope/project choice) are reported separately.
+Try: “Read this feedback and its screenshots. Explain the change, then help me fix and verify it.”
 
-Each member needs their own Feedbacks key, even if the team shares a coding-tool subscription. Adding project access or new scopes may require a new key.
+::: details Client setup, scopes and advanced workflows
 
 ## Choose your coding tool
 
@@ -77,4 +74,6 @@ For authorized work, `assignments.claim` records the current member and agent ag
 
 Choose a member from the dropdown beside the thread status to assign immediately; choose another member to reassign or **Unassigned** to remove it. No additional fields are required. **Points & assignment history…** opens point assignments, optional details and history. You can also explicitly ask your agent to assign the thread or selected points to an existing project member. The durable record shows the assignee, scope, summary, category/tags, GitHub decision and the human/agent attribution in history. Agents inspect evidence and relevant team context, suggest classification and GitHub treatment, and discuss uncertain choices before an authorized assignment. Selected points can have a different category from the parent thread.
 
-The assignment remains separate from the current worker's renewable claim. It does not launch another agent, send a message or resolve feedback. Reassign/cancel uses current revisions and preserves history. A GitHub decision does not create an issue or grant permission: actual creation needs explicit user intent, a separately scoped key and current project-maintainer access. Existing keys and Help defaults gain no GitHub scope. See the [agent assignment workflow](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/agents.md#requested-delegation-and-triage) for exact operations and recovery.
+The assignment remains separate from the current worker's renewable claim. It does not launch another agent, send a message or resolve feedback. Reassign/cancel uses current revisions and preserves history. A GitHub decision does not create an issue or grant permission: actual creation needs explicit user intent, a separately scoped key and current project-maintainer access. Existing keys and Help defaults gain no GitHub scope. See the [agent assignment workflow](/reference/manual/agents#requested-delegation-and-triage) for exact operations and recovery.
+
+:::

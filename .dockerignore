@@ -35,3 +35,7 @@
 !Dockerfile.site
 !ops
 !ops/site.nginx.conf
+
+!public/learn
+!public/learn/**
+!scripts/prepare-walkthroughs.mjs
