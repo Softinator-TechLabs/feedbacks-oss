@@ -13,12 +13,15 @@
 }
 figure {
   margin: 0;
-  border: 1px solid var(--border, #dfe3da);
+  border: 1px solid var(--border, var(--vp-c-divider, #dfe3da));
   border-radius: 8px;
   overflow: hidden;
-  background: var(--surface, #fff);
+  background: var(--surface, var(--vp-c-bg-soft, #fff));
+  color: var(--vp-c-text-1, inherit);
 }
 .screen {
+  width: 100%;
+  max-width: 100%;
   position: relative;
   display: grid;
   place-items: center;
@@ -29,17 +32,70 @@ figure {
 }
 :host([step="agent"]) .screen {
   aspect-ratio: 2/1;
-}
-:host([step="connect"]) .screen {
-  aspect-ratio: 4/3;
-}
-.screen:has(.diagram) {
-  aspect-ratio: auto;
   min-height: 300px;
 }
-:host([step="agent"]) .screen:has(.diagram) {
-  aspect-ratio: auto;
-  min-height: 200px;
+:host([step="install"]) .screen,
+:host([step="server"]) .screen {
+  min-height: 340px;
+}
+.frame {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.screen-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+.screen-hit:hover {
+  background: transparent;
+}
+.zoom {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  background: #fff;
+  color: #17324d;
+  border: 1px solid #c6cbbb;
+}
+.zoom[hidden] {
+  display: none;
+}
+svg.motion-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  fill: none;
+  stroke: none;
+}
+.pencil-stroke {
+  fill: none;
+  stroke: #e54d34;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.click-ring {
+  fill: #e54d3420;
+  stroke: #e54d34;
+}
+.typed-text {
+  stroke: none;
 }
 .image {
   position: absolute;
@@ -52,24 +108,12 @@ figure {
   border: 0;
   padding: 0;
   background: transparent;
-  cursor: zoom-in;
 }
-.image img {
+.image svg.capture-image {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
-}
-.enter {
-  animation: enter 0.25s ease-out;
-}
-@keyframes enter {
-  from {
-    opacity: 0.45;
-  }
-  to {
-    opacity: 1;
-  }
 }
 .foot {
   padding: 12px 16px;
@@ -98,7 +142,7 @@ button {
   padding: 8px 12px;
 }
 button:hover {
-  background: var(--soft-surface, #edf0e9);
+  background: var(--soft-surface, var(--vp-c-bg-alt, #edf0e9));
 }
 button:focus-visible {
   outline: 2px solid var(--focus, #2159b1);
@@ -118,6 +162,7 @@ button:focus-visible {
   text-underline-offset: 3px;
 }
 .diagram {
+  min-width: 0;
   width: 100%;
   padding: 24px;
   color: #20241e;
@@ -135,6 +180,7 @@ button:focus-visible {
   font-size: 13px;
 }
 .address {
+  min-width: 0;
   flex: 1;
   background: #fff;
   border-radius: 5px;
@@ -182,12 +228,6 @@ svg {
   margin-top: 20px;
   padding: 12px 0;
 }
-.selected {
-  color: #17324d;
-  outline: 2px solid #17324d;
-  outline-offset: 4px;
-  border-radius: 3px;
-}
 .sequence {
   display: grid;
   gap: 12px;
@@ -215,6 +255,21 @@ svg {
   border: 1px solid #c6cbbb;
   border-radius: 8px;
 }
+.prompt-input {
+  min-height: 76px;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid #8c9785;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1.5;
+  background: #f8faf5;
+}
+.agent-note small {
+  display: block;
+  color: #596054;
+  line-height: 1.5;
+}
 .agent-note p {
   line-height: 1.6;
   font-size: 15px;
@@ -240,9 +295,4 @@ dialog img {
 dialog button {
   display: block;
   margin-left: auto;
-}
-@media (prefers-reduced-motion: reduce) {
-  .enter {
-    animation: none;
-  }
 }
