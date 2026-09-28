@@ -3,7 +3,6 @@
   const base = new URL(".", document.currentScript.src).href;
   const scenes = {
     server: {
-      label: "Team setup illustration · DevOps first",
       kind: "server",
       frames: [
         { caption: "DevOps installs one shared server.", active: 0 },
@@ -12,7 +11,6 @@
       ],
     },
     install: {
-      label: "Chrome toolbar illustration",
       kind: "chrome",
       frames: [
         { caption: "Chrome Web Store → Add to Chrome.", active: 0 },
@@ -21,7 +19,6 @@
       ],
     },
     connect: {
-      label: "Actual extension · example server",
       frames: [
         { image: "connect-1", caption: "In your team’s Help page, copy the server URL." },
         {
@@ -31,7 +28,6 @@
       ],
     },
     project: {
-      label: "Actual app · demo project",
       frames: [
         { image: "project-1", caption: "Owner: create a project for the website." },
         { image: "project-2", caption: "Publish the context your coding agent needs." },
@@ -39,7 +35,6 @@
       ],
     },
     capture: {
-      label: "Actual extension · demo website",
       frames: [
         {
           image: "capture-1",
@@ -53,7 +48,6 @@
       ],
     },
     send: {
-      label: "Actual extension + app · demo feedback",
       frames: [
         {
           image: "send-1",
@@ -64,7 +58,6 @@
       ],
     },
     agent: {
-      label: "Actual Help page · demo account",
       frames: [
         {
           image: "agent-1",
@@ -122,7 +115,6 @@
         button{font:inherit;color:inherit;cursor:pointer;min-height:44px;border:1px solid transparent;border-radius:5px;background:transparent;padding:8px 12px}
         button:hover{background:var(--soft-surface,#edf0e9)}button:focus-visible{outline:2px solid var(--focus,#2159b1);outline-offset:-3px}
         .step{min-width:44px;padding:8px}.step[aria-pressed=true]{border-color:currentColor;font-weight:700}.play{margin-left:auto;text-decoration:underline;text-underline-offset:3px}
-        .label{font-size:12px;line-height:1.4;color:var(--muted,#596054);margin:8px 0 0}
         .diagram{width:100%;padding:24px;color:#20241e;font-family:Arial,sans-serif}.diagram strong{font-size:clamp(17px,3vw,23px)}
         .browser-bar{display:flex;align-items:center;gap:10px;border-bottom:1px solid #c6cbbb;padding-bottom:16px;font-size:13px}.address{flex:1;background:#fff;border-radius:5px;padding:10px;overflow:hidden;white-space:nowrap}.icon{width:32px;height:32px;display:grid;place-items:center}
         svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -130,13 +122,12 @@
         .sequence{display:grid;gap:12px}.sequence div{padding:16px;background:#fff;border:1px solid #d0d5c8;border-radius:6px;font-size:15px;opacity:.6}.sequence div.active{opacity:1;border-color:#17324d}.sequence small{display:block;margin-top:6px;color:#596054}.agent-note{background:white;padding:24px;border:1px solid #c6cbbb;border-radius:8px}.agent-note p{line-height:1.6;font-size:15px;margin-bottom:0}
         dialog{border:1px solid #c6cbbb;padding:12px;max-width:95vw;max-height:95dvh;background:#fff;color:#20241e;border-radius:8px}dialog::backdrop{background:#0009}dialog img{display:block;max-width:100%;height:auto}dialog button{display:block;margin-left:auto}
         @media(prefers-reduced-motion:reduce){.enter{animation:none}}
-      </style><figure><div class="screen"></div><div class="foot"><p class="caption"></p><div class="controls"></div><p class="label"></p></div></figure><dialog aria-label="Full-size demo screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      </style><figure><div class="screen"></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         caption = q(".caption"),
         controls = q(".controls"),
         dialog = q("dialog");
-      q(".label").textContent = scene.label + " · silent walkthrough";
       const steps = scene.frames.map((frame, index) => {
         const b = document.createElement("button");
         b.className = "step";
@@ -175,9 +166,6 @@
       };
       const render = () => {
         const f = scene.frames[this.index];
-        q(".label").textContent =
-          (f.kind === "handoff" ? "Agent handoff illustration" : scene.label) +
-          " · silent walkthrough";
         caption.textContent = f.caption;
         screen.replaceChildren();
         if (f.image) {

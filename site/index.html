@@ -102,34 +102,10 @@
           <button data-scene="2" aria-pressed="false">
             <span>03</span> Fix with your agent
           </button>
-          <button class="play-story" aria-label="Watch walkthrough" aria-pressed="false">
-            <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m8 5 11 7-11 7Z" /></svg
-            ><span class="play-label">Watch walkthrough</span>
-          </button>
         </div>
         <div class="story-stage" data-active="0">
           <div class="screen-stack">
-            <feedbacks-demo id="story-demo" step="capture" hidden></feedbacks-demo>
-            <button class="screen-zoom" aria-label="Enlarge actual extension screenshot">
-              <picture
-                ><source
-                  id="story-detail"
-                  media="(max-width: 900px)"
-                  srcset="/media/workflow/point-detail.png" />
-                <img
-                  id="story-image"
-                  src="/media/workflow/point.png"
-                  width="900"
-                  height="740"
-                  alt="Actual Feedbacks extension: right-click Add to bag on a demo furniture website and write a comment."
-                  fetchpriority="high" /></picture
-              ><svg class="capture-mark" viewBox="0 0 900 740" aria-hidden="true">
-                <path d="M830 290C780 310 670 340 550 422m8-20-8 20 22-4" /></svg
-              ><svg class="detail-mark" viewBox="0 0 405 340" aria-hidden="true">
-                <path d="M310 18C230 2 90 2 38 36m9-17-9 17 20-3" />
-              </svg>
-            </button>
+            <feedbacks-demo id="story-demo" step="capture"></feedbacks-demo>
             <span class="screen-label" id="screen-label"
               >Chrome extension · on your website</span
             >
@@ -150,16 +126,6 @@
                 <path d="M5 19 19 5M6 5h13v13" /></svg
             ></a>
           </div>
-        </div>
-        <div class="story-bottom">
-          <p>Real extension &amp; app screens. Fictional demo project.</p>
-          <p>
-            Click a screenshot to look closer
-            <span aria-hidden="true"
-              ><svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 19 19 5M6 5h13v13" /></svg
-            ></span>
-          </p>
         </div>
       </section>
       <section class="handoff wrap" aria-labelledby="handoff-title">
@@ -255,13 +221,6 @@
         </div>
       </section>
     </main>
-    <dialog id="screen-dialog" aria-label="Full size product screenshot">
-      <button class="close-screen" autofocus>Close ×</button>
-      <div class="zoom-scroll">
-        <img src="/media/workflow/point.png" alt="" width="900" height="650" />
-      </div>
-      <p>Actual product screen · demo content. Scroll to inspect the full image.</p>
-    </dialog>
     <footer class="site-footer wrap landing-footer">
       <div>
         <a class="wordmark" href="/">feedbacks.</a>

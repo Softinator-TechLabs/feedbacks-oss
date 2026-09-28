@@ -96,7 +96,7 @@ The application and extension keep their focused system-font interface, Oxford a
 
 **Key Characteristics:**
 
-- Actual product pixels with clearly labeled fictional demo content.
+- Actual product pixels; capture provenance belongs in the asset documentation.
 - Brief handwritten notes and target-pointing pencil marks.
 - Flat scene surfaces with a small tilt on desktop screenshots.
 - Direct setup guidance and deliberate, user-started motion.
@@ -155,11 +155,11 @@ The primary landing action is **Set up Feedbacks**, linking to the website's own
 
 The walkthrough follows **Point it out**, **Check & send** and **Fix with your agent** through actual extension and app captures of the fictional Good Form project. Save point is a local draft; Review & send opens the evidence review; Send feedback shares checked notes and screenshots. The server thread shows the submitted request, not proof that an agent fixed it. [Asset provenance](docs/website-assets.md) records the screenshot source and font licenses.
 
-Native landing step buttons expose `aria-pressed`; selection updates the screenshot, pencil target, short note and guide link together. **Watch walkthrough** switches to the shared silent walkthrough for the selected task; **View screenshot** restores the original screenshot. The shared player uses real product frames at 2.8 seconds per frame, supports pause and frame selection, pauses offscreen/in hidden tabs and starts paused for reduced motion. Screenshot enlargement opens a native dialog. The install/pin and server diagrams are explicitly labelled illustrations.
+Native landing step buttons expose `aria-pressed`; selection updates the shared player, short note and guide link together. The selected sequence plays automatically, with **Pause** / **Play** controls and numbered frame selection. Playback pauses offscreen/in hidden tabs and starts paused for reduced motion. Screenshot enlargement opens a native dialog. Keep the interface focused on the task: no display-mode switch, demo-account label or media-production notes.
 
-The first scene and its copy exist in the initial HTML. Responsive cropping improves the inline first-scene detail without changing the full screenshot. The [shared player](public/learn/demo.js) is reused in docs and optional Help disclosures; source and capture provenance are in [website assets](docs/website-assets.md).
+The first scene and its copy exist in the initial HTML. The [shared player](public/learn/demo.js) is reused in docs and optional Help disclosures; source and capture provenance are in [website assets](docs/website-assets.md).
 
-**The Evidence Rule.** Annotate actual product captures separately, label fictional demo content and keep the full original available for inspection.
+**The Evidence Rule.** Annotate actual product captures separately, document fictional content in asset provenance and keep the full original available for inspection.
 
 ### Help and extension setup
 
@@ -177,7 +177,7 @@ Navigation preserves applied filters and protects unsaved drafts. Thread rows ke
 
 - Do preserve each surface's existing typography, palette and theme behavior.
 - Do use exact action labels and distinguish local drafts from sent feedback.
-- Do preserve original screenshot proportions in zoom and label fictional demo evidence.
+- Do preserve original screenshot proportions in zoom and document fictional demo evidence in asset provenance.
 - Do keep drafts safe during navigation and failed requests.
 - Do keep landing explanations brief, use pencil marks to point at evidence, and link setup guidance to the website docs.
 
