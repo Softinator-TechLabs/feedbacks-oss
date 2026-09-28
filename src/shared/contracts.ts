@@ -235,7 +235,8 @@ export const screenshotMarkSchema = z.object({
 export const recordingFrameSchema = z.object({
   recordingId: id,
   atMs: z.number().finite().min(0).max(300000),
-  videoTimeMs: z.number().finite().min(0).max(300000),
+  videoTimeMs: z.number().finite().min(0).max(300000).optional(),
+  annotationId: id.optional(),
 });
 export const captureRegionSchema = z.object({
   startY: z.number().finite().min(0),

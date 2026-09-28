@@ -44,7 +44,7 @@ export async function exportVideo({ url, start, end, crop, signal, onProgress })
   const video = document.createElement("video");
   video.playsInline = true;
   video.src = url;
-  let stream, audio, recorder, tick;
+  let stream, audio, recorder, tick, playbackStartedAt;
   const stop = () => {
     clearInterval(tick);
     video.pause();
@@ -82,6 +82,12 @@ export async function exportVideo({ url, start, end, crop, signal, onProgress })
         video.onerror = () => reject(Error("Could not seek this recording."));
         video.currentTime = start;
       });
+    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA)
+      await new Promise((resolve, reject) => {
+        video.onloadeddata = resolve;
+        video.onerror = () => reject(Error("Could not decode the selected video frame."));
+      });
+    if (signal.aborted) throw Error("Export cancelled.");
     draw();
     stream = canvas.captureStream(24);
     // Route original audio to the exported clip, never the speakers.
@@ -94,7 +100,8 @@ export async function exportVideo({ url, start, end, crop, signal, onProgress })
     const result = new Promise((resolve, reject) => {
       const chunks = [];
       let bytes = 0,
-        error;
+        error,
+        sourceEnded = false;
       const finish = () => {
         if (recorder.state !== "inactive") recorder.stop();
       };
@@ -119,17 +126,39 @@ export async function exportVideo({ url, start, end, crop, signal, onProgress })
         if (error || !chunks.length) reject(error || Error("No video was exported."));
         else resolve(new Blob(chunks, { type: "video/webm" }));
       };
-      video.onended = finish;
+      video.onended = () => {
+        // A static MediaRecorder clip can contain only one encoded frame, while
+        // its finalized metadata still describes the full recording duration.
+        // Once that decoded frame reaches EOF, retain it for the requested tail.
+        // Unknown or out-of-range durations do not authorize extending a clip.
+        if (Number.isFinite(video.duration) && end <= video.duration) sourceEnded = true;
+        else finish();
+      };
       recorder.start(1000);
+      // The initial draw may have been consumed before MediaRecorder existed.
+      // Publish it again after starting, including for a completely static clip.
+      draw();
+      stream.getVideoTracks()[0]?.requestFrame?.();
       tick = setInterval(() => {
         draw();
+        stream.getVideoTracks()[0]?.requestFrame?.();
+        const elapsed = performance.now() - playbackStartedAt;
         onProgress(
-          Math.min(100, Math.round(((video.currentTime - start) / (end - start)) * 100)),
+          Math.min(
+            100,
+            Math.round(
+              (sourceEnded
+                ? elapsed / ((end - start) * 1000)
+                : (video.currentTime - start) / (end - start)) * 100,
+            ),
+          ),
         );
-        if (video.currentTime >= end) finish();
+        if (sourceEnded ? elapsed >= (end - start) * 1000 : video.currentTime >= end)
+          finish();
       }, 1000 / 24);
       if (signal.aborted) abort();
     });
+    playbackStartedAt = performance.now();
     await video.play();
     return await result;
   } finally {

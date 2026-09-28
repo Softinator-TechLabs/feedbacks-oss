@@ -7,6 +7,7 @@ import {
   captureByteLength,
   CAPTURE_MAX_BYTES,
   CAPTURE_SNAPSHOT_BYTES,
+  captureElapsed,
   captureOrigins,
   originAllowed,
 } from "./session-capture.js";
@@ -58,8 +59,10 @@ export function createSessionCoordinator({
   authenticated,
   ready,
   captureStorage = createSessionStorage(),
+  annotationImage,
 }) {
   const store = createCaptureStore({ storage: captureStorage });
+  let pendingNavigation = null;
   let queue = Promise.resolve();
   const serial = (fn) => {
     const result = queue.then(async () => {
@@ -78,6 +81,7 @@ export function createSessionCoordinator({
   const command = (tabId, method, params = {}) =>
     chrome.debugger.sendCommand({ tabId }, method, params);
   async function cleanup(s) {
+    pendingNavigation = null;
     if (!s) return;
     await chrome.alarms.clear("feedbacks-session-limit");
     await chrome.scripting
@@ -111,7 +115,7 @@ export function createSessionCoordinator({
   }
   async function stop(detail) {
     const current = await store.read();
-    if (current?.active && !detail) {
+    if (current?.active && !current.annotationPause && !detail) {
       try {
         await assertScope(current);
         const result = await chrome.scripting.executeScript({
@@ -155,6 +159,7 @@ export function createSessionCoordinator({
     }
   }
   async function inject(s) {
+    if (s.annotationPause) return;
     await chrome.scripting.executeScript({
       target: { tabId: s.target.sourceTabId },
       func: installSessionBridge,
@@ -175,7 +180,7 @@ export function createSessionCoordinator({
           replayDisabled: !!s.replayDisabled,
           privacy: s.recording.privacy,
           debugger: !!s.debuggerAttached,
-          remainingMs: 300000 - (Date.now() - s.started),
+          remainingMs: 300000 - captureElapsed(s),
           startedAt: s.started,
         },
       ],
@@ -195,7 +200,14 @@ export function createSessionCoordinator({
   async function assertScope(s) {
     const tab = await chrome.tabs.get(s.target.sourceTabId);
     if (!originAllowed(s.target, tab.url))
-      throw Error("The page is outside the explicitly allowed recording origins.");
+      throw Object.assign(
+        Error("The page is outside the explicitly allowed recording origins."),
+        { code: "recording_origin_outside" },
+      );
+    await assertAccount(s);
+    return tab;
+  }
+  async function assertAccount(s) {
     const account = await chrome.storage.local.get(["server", "accounts"]);
     if (
       s.accountFingerprint &&
@@ -205,240 +217,389 @@ export function createSessionCoordinator({
           s.accountFingerprint)
     )
       throw Error("Recording server or account changed.");
-    return tab;
+  }
+  async function suspendNavigation() {
+    await store.update((s) => {
+      s.scopeActive = false;
+      s.documentId = null;
+      s.requests = {};
+    });
+    await store.coverage(
+      "navigation",
+      "partial",
+      "Left the approved recording origins; collection is suspended until return.",
+    );
+  }
+  function deferNavigationEvent(method, params, ingressAt) {
+    if (!pendingNavigation || pendingNavigation.events.length >= 4) return;
+    const clean = sanitizeCapture(params, 0, 16384);
+    // The approved request is useful evidence; its outside-page initiator is not.
+    delete clean.initiator;
+    delete clean.redirectResponse;
+    if (clean.request) {
+      delete clean.request.postData;
+      delete clean.request.postDataEntries;
+      for (const key of Object.keys(clean.request.headers || {}))
+        if (/^referer$|^referrer$/i.test(key)) delete clean.request.headers[key];
+    }
+    const event = { method, params: clean, ingressAt };
+    const bytes = captureByteLength(JSON.stringify(event));
+    if (pendingNavigation.bytes + bytes > 128 * 1024) return;
+    pendingNavigation.events.push(event);
+    pendingNavigation.bytes += bytes;
+  }
+  async function drainNavigation(s) {
+    if (!pendingNavigation) return false;
+    if (!s?.active || s.annotationPause) {
+      pendingNavigation = null;
+      return false;
+    }
+    try {
+      await assertAccount(s);
+      const tab = await assertScope(s);
+      if (new URL(tab.url).origin !== pendingNavigation.origin) {
+        pendingNavigation = null;
+        return false;
+      }
+    } catch (error) {
+      if (error.code === "recording_origin_outside") return false;
+      pendingNavigation = null;
+      await stop("Recording server or account changed; capture stopped.");
+      return false;
+    }
+    const pending = pendingNavigation;
+    pendingNavigation = null;
+    for (const event of pending.events)
+      await collectDebuggerEvent(
+        { tabId: s.target.sourceTabId },
+        event.method,
+        event.params,
+        event.ingressAt,
+        true,
+      );
+    return true;
+  }
+  async function collectDebuggerEvent(
+    source,
+    method,
+    params,
+    ingressAt,
+    deferred = false,
+  ) {
+    let s = await store.read();
+    if (!s?.active || s.annotationPause) pendingNavigation = null;
+    if (
+      !s?.active ||
+      s.annotationPause ||
+      source.tabId !== s.target.sourceTabId ||
+      source.sessionId
+    )
+      return;
+    if (!deferred && pendingNavigation) {
+      await drainNavigation(s);
+      s = await store.read();
+      if (!s?.active) return;
+      if (
+        pendingNavigation &&
+        params.requestId === pendingNavigation.requestId &&
+        [
+          "Network.responseReceived",
+          "Network.loadingFinished",
+          "Network.loadingFailed",
+        ].includes(method)
+      ) {
+        if (!params.response || originAllowed(s.target, params.response.url))
+          deferNavigationEvent(method, params, ingressAt);
+        return;
+      }
+    }
+    let returningDocument = false;
+    // Stop collecting before an out-of-origin document starts receiving data.
+    if (
+      method === "Network.requestWillBeSent" &&
+      isTopDocumentRequest(params, s.mainFrameId)
+    ) {
+      let inScope = false;
+      try {
+        inScope = originAllowed(s.target, params.request.url);
+      } catch {}
+      if (!inScope) {
+        pendingNavigation = null;
+        return suspendNavigation();
+      }
+      returningDocument = !s.scopeActive;
+    }
+    if (!s.scopeActive && !returningDocument) return;
+    try {
+      const tab = await assertScope(s);
+      if (returningDocument) {
+        // Resume the incoming approved document before load completes, but
+        // only once Chrome's live tab URL and the original account agree.
+        s.scopeActive = true;
+        s.currentOrigin = new URL(tab.url).origin;
+        await store.update((v) => {
+          v.scopeActive = true;
+          v.currentOrigin = s.currentOrigin;
+          v.documentId = null;
+        });
+      }
+    } catch (error) {
+      // A queued event can observe the new tab URL before the navigation
+      // notification suspends collection. Leaving scope is not revocation.
+      if (error.code === "recording_origin_outside") {
+        if (returningDocument && !deferred) {
+          try {
+            await assertAccount(s);
+          } catch {
+            pendingNavigation = null;
+            return stop("Recording server or account changed; capture stopped.");
+          }
+          pendingNavigation = {
+            origin: new URL(params.request.url).origin,
+            requestId: params.requestId,
+            events: [],
+            bytes: 0,
+          };
+          deferNavigationEvent(method, params, ingressAt);
+        }
+        return suspendNavigation();
+      }
+      await stop("Selected project or review changed; capture stopped.");
+      return;
+    }
+    if (
+      method === "Network.requestWillBeSent" &&
+      Number.isFinite(params.wallTime) &&
+      Number.isFinite(params.timestamp)
+    ) {
+      s.networkClockOffset = params.wallTime * 1000 - params.timestamp * 1000;
+      await store.update((v) => {
+        v.networkClockOffset = s.networkClockOffset;
+      });
+    }
+    // Enabling lifecycle notifications can replay the existing document's old
+    // milestones. Without a calibrated monotonic clock they are not new activity.
+    if (
+      method === "Page.lifecycleEvent" &&
+      (!Number.isFinite(s.networkClockOffset) || !Number.isFinite(params.timestamp))
+    )
+      return;
+    const protocolAt =
+      (method.startsWith("Network.") || method === "Page.lifecycleEvent") &&
+      Number.isFinite(s.networkClockOffset) &&
+      Number.isFinite(params.timestamp)
+        ? s.networkClockOffset + params.timestamp * 1000
+        : method.startsWith("Runtime.") && Number.isFinite(params.timestamp)
+          ? params.timestamp
+          : method === "Log.entryAdded" && Number.isFinite(params.entry?.timestamp)
+            ? params.entry.timestamp
+            : ingressAt;
+    if (method === "Page.lifecycleEvent" && protocolAt < s.started) return;
+    const at = Math.min(ingressAt, protocolAt);
+    s.eventCapturedAt = at;
+    if (
+      method === "Page.lifecycleEvent" ||
+      method === "Page.frameStartedLoading" ||
+      method === "Page.frameStoppedLoading"
+    ) {
+      if (params.frameId !== s.mainFrameId) return;
+      await append(
+        {
+          type: "activity",
+          data: {
+            action: "loading",
+            phase:
+              params.name || (method.endsWith("StartedLoading") ? "started" : "finished"),
+            url: (await chrome.tabs.get(source.tabId)).url,
+          },
+        },
+        s,
+      );
+    } else if (method === "Runtime.consoleAPICalled") {
+      if (params.timestamp < s.started) return;
+      const args = (params.args || []).slice(0, 20).map(consoleArgument);
+      if (args.some((arg) => arg?.propertiesUnavailable))
+        await store.coverage(
+          "console",
+          "partial",
+          "Console messages captured. Some object properties were unavailable in Chrome passive previews; getters are never evaluated.",
+        );
+      await append(
+        {
+          type: "console",
+          data: {
+            level: params.type,
+            args,
+            stackTrace: params.stackTrace,
+            source: "debugger",
+          },
+        },
+        s,
+      );
+    } else if (method === "Runtime.exceptionThrown") {
+      await append(
+        {
+          type: "console",
+          data: {
+            level: "error",
+            args: [
+              params.exceptionDetails?.text,
+              params.exceptionDetails?.exception?.description,
+            ],
+            stackTrace: params.exceptionDetails?.stackTrace,
+            source: "exception",
+          },
+        },
+        s,
+      );
+    } else if (method === "Log.entryAdded") {
+      const e = params.entry || {};
+      if (e.timestamp < s.started) return;
+      await append(
+        {
+          type: "console",
+          data: {
+            level: e.level,
+            args: [e.text],
+            url: e.url,
+            lineNumber: e.lineNumber,
+            stackTrace: e.stackTrace,
+            source: e.source,
+          },
+        },
+        s,
+      );
+    } else if (method === "Network.requestWillBeSent") {
+      if (params.wallTime && params.wallTime * 1000 < s.started) return;
+      const r = params.request;
+      if (!/^https?:/.test(r.url)) return;
+      await store.update((v) => {
+        v.requests ||= {};
+        if (Object.keys(v.requests).length >= 500) {
+          v.requestDrops = (v.requestDrops || 0) + 1;
+          return;
+        }
+        v.requests[params.requestId] = { url: captureUrl(r.url), start: at };
+      });
+      await append(
+        {
+          type: "network",
+          data: {
+            phase: "request",
+            requestId: params.requestId,
+            url: r.url,
+            method: r.method,
+            requestHeaders: r.headers,
+            requestBody:
+              s.recording.privacy.networkBodies &&
+              /^(?:application\/(?:[\w.-]+\+)?json|text\/plain|application\/x-www-form-urlencoded)(?:;|$)/i.test(
+                Object.entries(r.headers || {}).find(
+                  ([key]) => key.toLowerCase() === "content-type",
+                )?.[1] || "",
+              )
+                ? r.postData?.slice(0, 16384)
+                : undefined,
+            initiator: params.initiator,
+            resourceType: params.type,
+            redirectResponse: params.redirectResponse
+              ? {
+                  status: params.redirectResponse.status,
+                  url: params.redirectResponse.url,
+                }
+              : undefined,
+          },
+        },
+        s,
+      );
+    } else if (method === "Network.responseReceived") {
+      // Responses omitted during suspension stay omitted even if their
+      // callbacks arrive after an approved page has returned.
+      if (!s.requests?.[params.requestId]) return;
+      const r = params.response;
+      await store.update((v) => {
+        if (v.requests?.[params.requestId])
+          Object.assign(v.requests[params.requestId], {
+            mimeType: r.mimeType,
+            status: r.status,
+          });
+      });
+      await append(
+        {
+          type: "network",
+          data: {
+            phase: "response",
+            requestId: params.requestId,
+            url: r.url,
+            status: r.status,
+            statusText: r.statusText,
+            responseHeaders: r.headers,
+            mimeType: r.mimeType,
+            protocol: r.protocol,
+            fromDiskCache: r.fromDiskCache,
+            timing: r.timing,
+          },
+        },
+        s,
+      );
+    } else if (
+      method === "Network.loadingFinished" ||
+      method === "Network.loadingFailed"
+    ) {
+      const request = s.requests?.[params.requestId];
+      if (!request) return;
+      let responseBody, bodyOmitted;
+      if (s.recording.privacy.networkBodies && method === "Network.loadingFinished") {
+        if (
+          params.encodedDataLength <= 32768 &&
+          /^(?:application\/(?:[\w.-]+\+)?json|text\/plain|application\/x-www-form-urlencoded)(?:;|$)/i.test(
+            request.mimeType || "",
+          )
+        ) {
+          try {
+            const body = await command(source.tabId, "Network.getResponseBody", {
+              requestId: params.requestId,
+            });
+            if (!body.base64Encoded && body.body.length <= 16384)
+              responseBody = body.body;
+            else bodyOmitted = "Binary or over 16 KiB decoded body";
+          } catch {
+            bodyOmitted = "Body unavailable from Chrome";
+          }
+        } else
+          bodyOmitted =
+            "Only JSON, plain text or form bodies below 32 KiB are captured; HTML, scripts, XML and binary bodies are omitted";
+      }
+      await append(
+        {
+          type: "network",
+          data: {
+            phase: method === "Network.loadingFailed" ? "failed" : "finished",
+            requestId: params.requestId,
+            url: request.url,
+            status: request.status,
+            durationMs: at - request.start,
+            encodedDataLength: params.encodedDataLength,
+            error: params.errorText,
+            responseBody,
+            bodyOmitted,
+          },
+        },
+        s,
+      );
+      await store.update((v) => {
+        delete v.requests?.[params.requestId];
+      });
+    }
   }
   chrome.debugger.onEvent.addListener((source, method, params) => {
     const ingressAt = Date.now();
-    void serial(async () => {
-      let s = await store.read();
-      if (!s?.active || source.tabId !== s.target.sourceTabId || source.sessionId) return;
-      // Stop collecting before an out-of-origin document starts receiving data.
-      if (
-        method === "Network.requestWillBeSent" &&
-        isTopDocumentRequest(params, s.mainFrameId)
-      ) {
-        let inScope = false;
-        try {
-          inScope = originAllowed(s.target, params.request.url);
-        } catch {}
-        if (!inScope) {
-          await store.update((v) => {
-            v.scopeActive = false;
-          });
-          await store.coverage(
-            "navigation",
-            "partial",
-            "Left the approved recording origins; collection is suspended until return.",
-          );
-          return;
-        }
-      }
-      if (!s.scopeActive) return;
-      try {
-        await assertScope(s);
-      } catch {
-        await stop("Selected project or review changed; capture stopped.");
-        return;
-      }
-      if (
-        method === "Network.requestWillBeSent" &&
-        Number.isFinite(params.wallTime) &&
-        Number.isFinite(params.timestamp)
-      ) {
-        s.networkClockOffset = params.wallTime * 1000 - params.timestamp * 1000;
-        await store.update((v) => {
-          v.networkClockOffset = s.networkClockOffset;
-        });
-      }
-      const protocolAt =
-        method.startsWith("Network.") &&
-        Number.isFinite(s.networkClockOffset) &&
-        Number.isFinite(params.timestamp)
-          ? s.networkClockOffset + params.timestamp * 1000
-          : method.startsWith("Runtime.") && Number.isFinite(params.timestamp)
-            ? params.timestamp
-            : method === "Log.entryAdded" && Number.isFinite(params.entry?.timestamp)
-              ? params.entry.timestamp
-              : ingressAt;
-      const at = Math.min(ingressAt, protocolAt);
-      s.eventCapturedAt = at;
-      if (method === "Runtime.consoleAPICalled") {
-        if (params.timestamp < s.started) return;
-        const args = (params.args || []).slice(0, 20).map(consoleArgument);
-        if (args.some((arg) => arg?.propertiesUnavailable))
-          await store.coverage(
-            "console",
-            "partial",
-            "Console messages captured. Some object properties were unavailable in Chrome passive previews; getters are never evaluated.",
-          );
-        await append(
-          {
-            type: "console",
-            data: {
-              level: params.type,
-              args,
-              stackTrace: params.stackTrace,
-              source: "debugger",
-            },
-          },
-          s,
-        );
-      } else if (method === "Runtime.exceptionThrown") {
-        await append(
-          {
-            type: "console",
-            data: {
-              level: "error",
-              args: [
-                params.exceptionDetails?.text,
-                params.exceptionDetails?.exception?.description,
-              ],
-              stackTrace: params.exceptionDetails?.stackTrace,
-              source: "exception",
-            },
-          },
-          s,
-        );
-      } else if (method === "Log.entryAdded") {
-        const e = params.entry || {};
-        if (e.timestamp < s.started) return;
-        await append(
-          {
-            type: "console",
-            data: {
-              level: e.level,
-              args: [e.text],
-              url: e.url,
-              lineNumber: e.lineNumber,
-              stackTrace: e.stackTrace,
-              source: e.source,
-            },
-          },
-          s,
-        );
-      } else if (method === "Network.requestWillBeSent") {
-        if (params.wallTime && params.wallTime * 1000 < s.started) return;
-        const r = params.request;
-        if (!/^https?:/.test(r.url)) return;
-        await store.update((v) => {
-          v.requests ||= {};
-          if (Object.keys(v.requests).length >= 500) {
-            v.requestDrops = (v.requestDrops || 0) + 1;
-            return;
-          }
-          v.requests[params.requestId] = { url: captureUrl(r.url), start: at };
-        });
-        await append(
-          {
-            type: "network",
-            data: {
-              phase: "request",
-              requestId: params.requestId,
-              url: r.url,
-              method: r.method,
-              requestHeaders: r.headers,
-              requestBody:
-                s.recording.privacy.networkBodies &&
-                /^(?:application\/(?:[\w.-]+\+)?json|text\/plain|application\/x-www-form-urlencoded)(?:;|$)/i.test(
-                  Object.entries(r.headers || {}).find(
-                    ([key]) => key.toLowerCase() === "content-type",
-                  )?.[1] || "",
-                )
-                  ? r.postData?.slice(0, 16384)
-                  : undefined,
-              initiator: params.initiator,
-              resourceType: params.type,
-              redirectResponse: params.redirectResponse
-                ? {
-                    status: params.redirectResponse.status,
-                    url: params.redirectResponse.url,
-                  }
-                : undefined,
-            },
-          },
-          s,
-        );
-      } else if (method === "Network.responseReceived") {
-        const r = params.response;
-        await store.update((v) => {
-          if (v.requests?.[params.requestId])
-            Object.assign(v.requests[params.requestId], {
-              mimeType: r.mimeType,
-              status: r.status,
-            });
-        });
-        await append(
-          {
-            type: "network",
-            data: {
-              phase: "response",
-              requestId: params.requestId,
-              url: r.url,
-              status: r.status,
-              statusText: r.statusText,
-              responseHeaders: r.headers,
-              mimeType: r.mimeType,
-              protocol: r.protocol,
-              fromDiskCache: r.fromDiskCache,
-              timing: r.timing,
-            },
-          },
-          s,
-        );
-      } else if (
-        method === "Network.loadingFinished" ||
-        method === "Network.loadingFailed"
-      ) {
-        const request = s.requests?.[params.requestId];
-        if (!request) return;
-        let responseBody, bodyOmitted;
-        if (s.recording.privacy.networkBodies && method === "Network.loadingFinished") {
-          if (
-            params.encodedDataLength <= 32768 &&
-            /^(?:application\/(?:[\w.-]+\+)?json|text\/plain|application\/x-www-form-urlencoded)(?:;|$)/i.test(
-              request.mimeType || "",
-            )
-          ) {
-            try {
-              const body = await command(source.tabId, "Network.getResponseBody", {
-                requestId: params.requestId,
-              });
-              if (!body.base64Encoded && body.body.length <= 16384)
-                responseBody = body.body;
-              else bodyOmitted = "Binary or over 16 KiB decoded body";
-            } catch {
-              bodyOmitted = "Body unavailable from Chrome";
-            }
-          } else
-            bodyOmitted =
-              "Only JSON, plain text or form bodies below 32 KiB are captured; HTML, scripts, XML and binary bodies are omitted";
-        }
-        await append(
-          {
-            type: "network",
-            data: {
-              phase: method === "Network.loadingFailed" ? "failed" : "finished",
-              requestId: params.requestId,
-              url: request.url,
-              status: request.status,
-              durationMs: at - request.start,
-              encodedDataLength: params.encodedDataLength,
-              error: params.errorText,
-              responseBody,
-              bodyOmitted,
-            },
-          },
-          s,
-        );
-        await store.update((v) => {
-          delete v.requests?.[params.requestId];
-        });
-      }
-    }).catch(async () => {
-      await store
-        .coverage("debugger", "partial", "A debugger event could not be collected.")
-        .catch(() => {});
-    });
+    void serial(() => collectDebuggerEvent(source, method, params, ingressAt)).catch(
+      async () => {
+        await store
+          .coverage("debugger", "partial", "A debugger event could not be collected.")
+          .catch(() => {});
+      },
+    );
   });
   chrome.debugger.onDetach.addListener((source) => {
     void serial(async () => {
@@ -460,31 +621,37 @@ export function createSessionCoordinator({
       }
     }).catch(() => {});
   });
+  async function scheduleLimit(s) {
+    if (!s.active || (s.recording.mode === "session" && s.annotationPause))
+      return chrome.alarms.clear("feedbacks-session-limit");
+    await chrome.alarms.create("feedbacks-session-limit", {
+      when: Date.now() + Math.max(0, 300000 - captureElapsed(s)),
+    });
+  }
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === "feedbacks-session-limit")
-      void serial(() => stop("5 minute duration limit reached.")).catch(() => {});
+      void serial(async () => {
+        const s = await store.read();
+        if (!s?.active) return;
+        if (captureElapsed(s) >= 300000) await stop("5 minute duration limit reached.");
+        else await scheduleLimit(s);
+      }).catch(() => {});
   });
   chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
     if (!change.url && change.status !== "complete") return;
     void serial(async () => {
-      const s = await store.read();
+      let s = await store.read();
       if (!s?.active || s.target.sourceTabId !== tabId) return;
       let inScope = false;
       try {
         inScope = originAllowed(s.target, tab.url);
       } catch {}
       if (!inScope) {
-        await store.update((v) => {
-          v.scopeActive = false;
-          v.documentId = null;
-        });
-        await store.coverage(
-          "navigation",
-          "partial",
-          "Left the approved recording origins; no evidence collected there.",
-        );
-        return;
+        return suspendNavigation();
       }
+      await drainNavigation(s);
+      s = await store.read();
+      if (!s?.active) return;
       if (change.status === "complete") {
         try {
           await assertScope(s);
@@ -504,7 +671,8 @@ export function createSessionCoordinator({
             s,
           );
           await inject(s);
-        } catch {
+        } catch (error) {
+          if (error.code === "recording_origin_outside") return suspendNavigation();
           await stop(
             "Source review changed or page reinjection failed after navigation.",
           );
@@ -520,6 +688,242 @@ export function createSessionCoordinator({
     }).catch(() => {});
   });
   return {
+    beginAnnotation: (details) =>
+      serial(async () => {
+        pendingNavigation = null;
+        let s = await store.read();
+        if (!s?.active)
+          throw Error("Start a recording with debug context before adding a point.");
+        await assertScope(s);
+        if (s.annotationPause) {
+          if (s.annotationPause.key === details.key) return s.annotationPause;
+          throw Error("Save or cancel the current point first.");
+        }
+        if ((s.annotations || []).length >= 20)
+          throw Error("This recording already has 20 screenshot points.");
+        try {
+          const tail = await chrome.scripting.executeScript({
+            target: { tabId: s.target.sourceTabId },
+            world: "MAIN",
+            func: () => {
+              const events = globalThis.__feedbacksSessionPageTake?.() || [];
+              globalThis.__feedbacksSessionPageStop?.();
+              return events;
+            },
+          });
+          const events = tail[0]?.result || [];
+          if (
+            !Array.isArray(events) ||
+            captureByteLength(JSON.stringify(events)) > 16 * 1024 * 1024
+          )
+            throw Error("Could not pause the page capture safely.");
+          for (const event of events) await append(event, s);
+          s = await store.read();
+          if (!s.active) throw Error("Capture ended before the point could be added.");
+        } catch (error) {
+          const latest = await store.read();
+          if (latest?.active) {
+            await store.update((v) => {
+              v.bridgeToken = crypto.randomUUID();
+              v.lastPageSeq = 0;
+              v.documentId = null;
+            });
+            await store.coverage(
+              "annotations",
+              "partial",
+              "The point could not be paused safely; page capture was restarted from a fresh baseline.",
+            );
+            try {
+              await assertScope(latest);
+              await inject(await store.read());
+            } catch {
+              await store.coverage(
+                "replay",
+                "partial",
+                "Page capture could not restart after an interrupted screenshot comment. Earlier evidence is preserved.",
+              );
+            }
+          }
+          throw error;
+        }
+        const startedAt = Date.now();
+        const point = {
+          annotationId: crypto.randomUUID(),
+          key: details.key,
+          startedAt,
+          atMs: Number.isFinite(details.atMs)
+            ? Math.max(0, Math.round(details.atMs))
+            : captureElapsed(s, startedAt),
+          ...(Number.isFinite(details.videoTimeMs)
+            ? { videoTimeMs: details.videoTimeMs }
+            : {}),
+          resumeAfter: details.resumeAfter !== false,
+        };
+        await store.update((v) => {
+          v.annotationPause = point;
+        });
+        if (s.recording.mode === "session") {
+          await chrome.alarms.clear("feedbacks-session-limit");
+          await chrome.tabs
+            .sendMessage(s.target.sourceTabId, {
+              type: "recordingState",
+              mode: "session",
+              state: "paused",
+              elapsedMs: point.atMs,
+            })
+            .catch(() => {});
+        }
+        return point;
+      }),
+    saveAnnotation: (input) =>
+      serial(async () => {
+        const s = await store.read();
+        await assertScope(s);
+        const point = s.annotationPause;
+        if (
+          !point ||
+          point.annotationId !== input.annotationId ||
+          point.key !== input.key
+        )
+          throw Error("This point is no longer being edited.");
+        const body = String(input.body || "").trim();
+        if (!body || body.length > 10000)
+          throw Error("Write a comment of up to 10,000 characters.");
+        if (!input.anchor || captureByteLength(JSON.stringify(input.anchor)) > 32768)
+          throw Error("Invalid screenshot point.");
+        const annotation = sanitizeCapture({
+          id: point.annotationId,
+          body,
+          anchor: input.anchor,
+          atMs: s.active ? point.atMs : Math.min(point.atMs, s.recording.durationMs),
+          ...(Number.isFinite(point.videoTimeMs)
+            ? { videoTimeMs: point.videoTimeMs }
+            : {}),
+        });
+        await store.update((v) => {
+          v.annotations ||= [];
+          if (!v.annotations.some((a) => a.id === annotation.id)) {
+            const data = {
+              action: "annotation",
+              annotationId: annotation.id,
+              body: annotation.body,
+              anchor: annotation.anchor,
+            };
+            const bytes = captureByteLength(JSON.stringify(data));
+            if (v.bytes + bytes > CAPTURE_MAX_BYTES || v.recording.events.length >= 45000)
+              throw Error("Capture is full. Stop and send it before adding points.");
+            v.annotations.push(annotation);
+            v.recording.events.push({
+              seq: v.recording.events.length,
+              type: "activity",
+              atMs: annotation.atMs,
+              data,
+            });
+            v.bytes += bytes;
+            if (!v.active) {
+              v.recording.events.sort((a, b) => a.atMs - b.atMs || a.seq - b.seq);
+              v.recording.events.forEach((event, seq) => {
+                event.seq = seq;
+              });
+            }
+          }
+        });
+        return annotation;
+      }),
+    endAnnotation: (annotationId) =>
+      serial(async () => {
+        const s = await store.read();
+        const point =
+          s?.annotationPause ||
+          (s?.lastAnnotation?.annotationId === annotationId ? s.lastAnnotation : null);
+        if (!point || point.annotationId !== annotationId)
+          throw Error("This point is no longer being edited.");
+        await assertScope(s);
+        let resumed = s;
+        if (s.annotationPause) {
+          const resumedAt = Date.now();
+          const candidate = {
+            ...s,
+            annotationPause: null,
+            pausedMs:
+              (s.pausedMs || 0) +
+              (s.recording.mode === "session" ? resumedAt - point.startedAt : 0),
+            requests: {},
+            bridgeToken: crypto.randomUUID(),
+            lastPageSeq: 0,
+            documentId: null,
+          };
+          try {
+            if (candidate.active) await inject(candidate);
+          } catch (error) {
+            // Injection can partially install a collector. Stop it while retaining
+            // the pending pause so retry excludes the whole editing interval.
+            await chrome.scripting
+              .executeScript({
+                target: { tabId: s.target.sourceTabId },
+                world: "MAIN",
+                func: () => globalThis.__feedbacksSessionPageStop?.(),
+              })
+              .catch(() => {});
+            await chrome.scripting
+              .executeScript({
+                target: { tabId: s.target.sourceTabId },
+                func: () => globalThis.__feedbacksSessionBridgeStop?.(),
+              })
+              .catch(() => {});
+            throw error;
+          }
+          await store.update((v) => {
+            v.annotationIntervals ||= [];
+            v.annotationIntervals.push({ start: point.startedAt, end: resumedAt });
+            v.pausedMs = candidate.pausedMs;
+            v.lastAnnotation = point;
+            v.annotationPause = null;
+            v.requests = candidate.requests;
+            v.bridgeToken = candidate.bridgeToken;
+            v.lastPageSeq = 0;
+            v.documentId = null;
+          });
+          resumed = await store.read();
+        }
+        await scheduleLimit(resumed);
+        if (resumed.recording.mode === "session")
+          await chrome.tabs
+            .sendMessage(resumed.target.sourceTabId, {
+              type: "recordingState",
+              mode: "session",
+              state: resumed.active ? "recording" : "ready",
+              elapsedMs: captureElapsed(resumed),
+            })
+            .catch(() => {});
+        return point;
+      }),
+    contextForControls: (sender) =>
+      serial(async () => {
+        const s = await store.read();
+        if (
+          !s ||
+          sender.frameId !== 0 ||
+          sender.tab?.id !== s.target.sourceTabId ||
+          !originAllowed(s.target, sender.url)
+        )
+          return null;
+        const tab = await assertScope(s);
+        if (new URL(tab.url).origin !== new URL(sender.url).origin) return null;
+        const { sessions = {} } = await chrome.storage.local.get("sessions");
+        const review = sessions[s.target.sourceTabId];
+        if (
+          !review ||
+          ["server", "reviewId", "projectId"].some((key) => review[key] !== s.target[key])
+        )
+          return null;
+        return {
+          target: structuredClone(s.target),
+          mode: s.recording.mode,
+          active: s.active,
+          elapsedMs: s.active ? captureElapsed(s) : s.recording.durationMs,
+        };
+      }),
     restore: (tabId, reviewId) =>
       serial(async () => {
         const s = await store.read();
@@ -534,10 +938,8 @@ export function createSessionCoordinator({
         await chrome.tabs.sendMessage(tabId, {
           type: "recordingState",
           mode: "session",
-          state: s.active ? "recording" : "ready",
-          elapsedMs: s.active
-            ? Math.min(300000, Date.now() - s.started)
-            : s.recording.durationMs,
+          state: s.active ? (s.annotationPause ? "paused" : "recording") : "ready",
+          elapsedMs: s.active ? captureElapsed(s) : s.recording.durationMs,
         });
         return true;
       }),
@@ -556,7 +958,7 @@ export function createSessionCoordinator({
     status: () =>
       serial(async () => {
         let s = await store.read();
-        if (s?.active && Date.now() - s.started >= 300000)
+        if (s?.active && captureElapsed(s) >= 300000)
           s = await stop("5 minute duration limit reached.");
         return s;
       }),
@@ -624,6 +1026,10 @@ export function createSessionCoordinator({
           const frameTree = await command(target.sourceTabId, "Page.getFrameTree");
           await store.update((v) => {
             v.mainFrameId = frameTree.frameTree?.frame?.id || null;
+          });
+          await command(target.sourceTabId, "Page.enable");
+          await command(target.sourceTabId, "Page.setLifecycleEventsEnabled", {
+            enabled: true,
           });
           await command(target.sourceTabId, "Network.enable", {
             maxTotalBufferSize: 1024 * 1024,
@@ -694,7 +1100,8 @@ export function createSessionCoordinator({
           return {};
         try {
           await assertScope(s);
-        } catch {
+        } catch (error) {
+          if (error.code === "recording_origin_outside") return suspendNavigation();
           return stop("Selected project or review changed; capture stopped.");
         }
         if (s.documentId && sender.documentId !== s.documentId) return {};
@@ -763,6 +1170,10 @@ export function createSessionCoordinator({
       serial(async () => {
         let s = await store.read();
         if (!s || s.active) throw Error("Stop the recording before sending.");
+        if (s.annotationPause)
+          throw Error(
+            "Save or cancel the pending screenshot comment on the website before sending.",
+          );
         if (message.video && s.target.ownerTabId !== ownerTabId && !s.submission)
           throw Error("This video evidence belongs to another recorder.");
         const state = await chrome.storage.local.get(["server", "accounts"]);
@@ -828,8 +1239,78 @@ export function createSessionCoordinator({
           { ...s.submission.input, recording: s.recording },
           s.target.server,
         );
+        let thread = s.submission.frameThread || result.thread;
+        if (s.recording.mode === "session") {
+          for (const annotation of s.annotations || []) {
+            s = await store.read();
+            let attempt = s.submission.annotationUploads?.[annotation.id];
+            if (!attempt) {
+              attempt = {
+                input: {
+                  threadId: thread.id,
+                  revision: thread.revision,
+                  idempotencyKey: crypto.randomUUID(),
+                  rendition: "screenshot",
+                  filename: `point-${annotation.atMs}.webp`,
+                  recordingFrame: {
+                    recordingId: s.recording.id,
+                    atMs: annotation.atMs,
+                    annotationId: annotation.id,
+                  },
+                },
+              };
+              await store.update((v) => {
+                v.submission.annotationUploads ||= {};
+                v.submission.annotationUploads[annotation.id] = attempt;
+              });
+            }
+            if (!attempt.result) {
+              if (!annotationImage)
+                throw Error("Screenshot storage is unavailable. Retry this recording.");
+              const imageBase64 = await annotationImage(s.recording.id, annotation.id);
+              let uploaded;
+              try {
+                uploaded = await authenticated(
+                  "assets.upload",
+                  { ...attempt.input, imageBase64 },
+                  s.target.server,
+                );
+              } catch (error) {
+                if (error.code !== "CONFLICT") throw error;
+                const fresh = await authenticated(
+                  "threads.get",
+                  { threadId: thread.id },
+                  s.target.server,
+                );
+                attempt.input = {
+                  ...attempt.input,
+                  revision: (fresh.thread || fresh).revision,
+                  idempotencyKey: crypto.randomUUID(),
+                };
+                await store.update((v) => {
+                  v.submission.annotationUploads[annotation.id] = attempt;
+                });
+                uploaded = await authenticated(
+                  "assets.upload",
+                  { ...attempt.input, imageBase64 },
+                  s.target.server,
+                );
+              }
+              attempt.result = uploaded;
+              await store.update((v) => {
+                v.submission.annotationUploads[annotation.id] = attempt;
+                v.submission.frameThread = uploaded.thread;
+              });
+            }
+            thread = attempt.result.thread;
+          }
+        }
         await store.discard();
-        return { ...result, url: `${s.target.server}/threads/${result.thread.id}` };
+        return {
+          ...result,
+          thread,
+          url: `${s.target.server}/threads/${result.thread.id}`,
+        };
       }),
   };
 }

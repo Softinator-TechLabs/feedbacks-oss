@@ -19,6 +19,7 @@ import { formatPageQa } from "./page-qa.js";
 import { pageOverviewTarget } from "./page-overview.js";
 import { capturedVideoTarget } from "./session-capture.js";
 import { createSessionCoordinator } from "./session-coordinator.js";
+import { createRecordingAnnotations } from "./recording-annotations.js";
 import { createRecordingControls } from "./recording-controls.js";
 import {
   videoTarget,
@@ -46,12 +47,73 @@ const serverSetup = createServerSetup({
   normalize: U.server,
   probe: (tabId) => probeFeedbacksServer(chrome, tabId),
 });
-const recordings = createRecordingControls({ chrome, sessionFor });
+const recordings = createRecordingControls({ chrome, sessionFor: recordingSessionFor });
 const sessionCapture = createSessionCoordinator({
   chrome,
   sessionFor,
   authenticated,
   ready,
+  annotationImage: getRecordingPointImage,
+});
+async function getRecordingPointImage(recordingId, annotationId) {
+  return pageDataUrl(await getPage(`recording-${recordingId}`, annotationId));
+}
+const recordingAnnotations = createRecordingAnnotations({
+  chrome,
+  capture: sessionCapture,
+  recordings,
+  readImage: getRecordingPointImage,
+  async saveImage(recordingId, point, anchor, tabId) {
+    if (await getPage(`recording-${recordingId}`, point.annotationId)) return;
+    const source = await getPage(`point-${tabId}`, point.key);
+    if (!source) throw Error("The screenshot is missing. Capture the point again.");
+    if (!anchor?.viewport || !anchor?.rect || !anchor?.point)
+      throw Error("The screenshot point is missing.");
+    const bitmap = await createImageBitmap(source);
+    try {
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0);
+      const x =
+        ((anchor.rect.x + anchor.rect.width * anchor.point.x) * bitmap.width) /
+        anchor.viewport.width;
+      const y =
+        ((anchor.rect.y + anchor.rect.height * anchor.point.y) * bitmap.height) /
+        anchor.viewport.height;
+      if (
+        !Number.isFinite(x) ||
+        !Number.isFinite(y) ||
+        x < 0 ||
+        y < 0 ||
+        x > bitmap.width ||
+        y > bitmap.height
+      )
+        throw Error("The screenshot point is outside the captured view.");
+      const radius = (10 * bitmap.width) / anchor.viewport.width;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 6;
+      ctx.stroke();
+      ctx.strokeStyle = "#d72d49";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      const image = await canvas.convertToBlob({ type: "image/webp", quality: 0.92 });
+      if (image.size > 8 * 1024 * 1024)
+        throw Error("This point screenshot is too large.");
+      const capture = await sessionCapture.status();
+      let totalBytes = image.size;
+      for (const item of capture?.annotations || [])
+        totalBytes += (await getPage(`recording-${recordingId}`, item.id))?.size || 0;
+      if (totalBytes > 24 * 1024 * 1024)
+        throw Error(
+          "This recording has reached its 24 MiB screenshot limit. Cancel this point and send the recording.",
+        );
+      await putPage(`recording-${recordingId}`, point.annotationId, "source", image);
+    } finally {
+      bitmap.close();
+    }
+  },
 });
 let polling = false,
   capturing = false,
@@ -454,6 +516,17 @@ async function sessionFor(sender) {
   )
     throw Error("Open Feedbacks to reconnect this page.");
   return session;
+}
+// Only recorder controls may follow explicitly approved redirect origins. Ordinary
+// review actions still use sessionFor and their original per-origin authorization.
+async function recordingSessionFor(sender) {
+  try {
+    return await sessionFor(sender);
+  } catch (error) {
+    const context = await sessionCapture.contextForControls(sender);
+    if (!context) throw error;
+    return context.target;
+  }
 }
 async function openDraft() {
   const { draft } = await get();
@@ -1866,7 +1939,23 @@ async function route(message, sender) {
       throw Error("Open Feedbacks to start reviewing this page.");
     if (sender.tab && sender.frameId === 0 && message.type === "freezeInstantView")
       throw Error("Open Feedbacks to start reviewing this page.");
-    const session = await sessionFor(sender);
+    const session = await ([
+      "recordingControl",
+      "openRecorder",
+      "openSessionReview",
+      "recordingAnnotationBegin",
+      "recordingAnnotationSave",
+      "recordingAnnotationCancel",
+      "recordingFreezeView",
+    ].includes(message.type)
+      ? recordingSessionFor(sender)
+      : sessionFor(sender));
+    if (message.type === "recordingAnnotationBegin")
+      return recordingAnnotations.begin(sender, message);
+    if (message.type === "recordingAnnotationSave")
+      return recordingAnnotations.save(sender, message);
+    if (message.type === "recordingAnnotationCancel")
+      return recordingAnnotations.cancel(sender, message);
     if (message.type === "diagnostics") return runDiagnostics(sender, message.action);
     if (message.type === "openPageThreads") {
       const current = await chrome.tabs.get(sender.tab.id);
@@ -1916,7 +2005,16 @@ async function route(message, sender) {
       }
       return recordings.control(sender, message.action);
     }
-    if (message.type === "freezeView") {
+    if (message.type === "freezeView" || message.type === "recordingFreezeView") {
+      if (message.type === "recordingFreezeView") {
+        const capture = await sessionCapture.status();
+        if (
+          !capture?.active ||
+          capture.target.sourceTabId !== sender.tab.id ||
+          capture.annotationPause?.key !== message.key
+        )
+          throw Error("Pause recording and select a point first.");
+      }
       const tab = await chrome.tabs.get(sender.tab.id);
       if (!tab.active || tab.windowId !== sender.tab.windowId)
         throw Error("Keep the review tab active while commenting.");
@@ -2267,14 +2365,30 @@ async function route(message, sender) {
       );
     case "sessionHealth":
       return sessionCapture.health();
+    case "recordingAnnotations":
+      return recordingAnnotations.list();
+    case "recordingAnnotationsClear":
+      if (!/^[0-9a-f-]{36}$/.test(message.recordingId || ""))
+        throw Error("Invalid recording.");
+      await deleteDraftPages(`recording-${message.recordingId}`);
+      return {};
     case "sessionStatus":
       return sessionCapture.status();
     case "sessionStop":
       return sessionCapture.stop();
-    case "sessionDiscard":
-      return sessionCapture.discard();
-    case "sessionSubmit":
-      return sessionCapture.submit(message, sender.tab?.id);
+    case "sessionDiscard": {
+      const capture = await sessionCapture.status();
+      await sessionCapture.discard();
+      if (capture) await deleteDraftPages(`recording-${capture.recording.id}`);
+      return {};
+    }
+    case "sessionSubmit": {
+      const capture = await sessionCapture.status();
+      const result = await sessionCapture.submit(message, sender.tab?.id);
+      if (capture?.recording.mode === "session")
+        await deleteDraftPages(`recording-${capture.recording.id}`).catch(() => {});
+      return result;
+    }
     case "sessionCoverage":
       return sessionCapture.annotate(message.channel, message.detail);
     case "videoCaptureHandle": {
@@ -2600,26 +2714,44 @@ chrome.tabs.onUpdated.addListener((id, change, tab) => {
     (change.url && !change.url.startsWith(chrome.runtime.getURL("video.html")))
   ) {
     // The native tab stream continues across navigation. Page controls can be
-    // restored on the original origin; never activate review on another origin.
+    // restored for the original project on explicitly approved recording origins.
     clearVideoCreateForTab(chrome.storage.session, id).catch(() => {});
     deleteDraftPages(`point-${id}`).catch(() => {});
   }
   if (change.status === "complete") {
     void (async () => {
-      const capture = await sessionCapture.status();
-      const activeSession =
-        capture?.active &&
-        capture.target.sourceTabId === id &&
-        capture.recording.mode === "session";
-      if (!activeSession && !["recording", "paused"].includes(recordings.state(id)))
+      await recordingAnnotations.recoverNavigation({
+        tab: { id },
+        frameId: 0,
+        url: tab.url,
+      });
+      const nativeActive = ["starting", "recording", "paused", "stopping"].includes(
+        recordings.state(id),
+      );
+      const context = await sessionCapture
+        .contextForControls({ tab: { id }, frameId: 0, url: tab.url })
+        .catch(() => null);
+      if (context && (context.active || nativeActive)) {
+        await review.restoreRecording(id, context.target);
+        if (context.mode === "session")
+          await sessionCapture.restore(id, context.target.reviewId);
+        else await recordings.restore(id);
         return;
+      }
+      if (!nativeActive) return;
       const { sessions = {} } = await get();
       const session = sessions[id];
       if (!session || new URL(tab.url).origin !== session.origin) return;
       await review.activate(id, session.projectId);
-      if (!(await sessionCapture.restore(id, session.reviewId)))
-        await recordings.restore(id);
-    })().catch(() => {});
+      await recordings.restore(id);
+    })().catch((error) => {
+      void sessionCapture
+        .annotate(
+          "controls",
+          `Recording controls could not be restored on this page: ${error.message}`,
+        )
+        .catch(() => {});
+    });
   }
 });
 

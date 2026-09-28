@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { mkdir } from "node:fs/promises";
 import { build } from "esbuild";
 import { chromium } from "playwright";
 
@@ -24,12 +25,12 @@ test(
             async play() { this.paused = false; this.dispatchEvent(new Event("play")); },
           });
           window.media = media;
-          window.mount = (recording, video) => {
+          window.mount = (recording, video, annotations = []) => {
             window.inspector?.dispose();
             window.savedFrames = [];
             media.currentTime = 0.3;
             window.inspector = createSessionReview(document.getElementById("root"), {
-              recording, video, videoElement: media,
+              recording, video, annotations, videoElement: media,
               onFrame: (atMs, videoTimeMs) => window.savedFrames.push({ atMs, videoTimeMs }),
             });
           };
@@ -60,6 +61,70 @@ test(
     t.after(() => browser.close());
     const page = await browser.newPage();
     await page.goto(`http://127.0.0.1:${address.port}`);
+    for (const name of ["appearance.css", "video.css", "session-review.css"])
+      await page.addStyleTag({ path: `extension/${name}` });
+
+    await t.test(
+      "screenshot comments show literal authored text and seek their source moment",
+      async () => {
+        await page.evaluate(() =>
+          (window as any).mount({ durationMs: 3000, events: [] }, { offsetMs: -500 }, [
+            {
+              id: "comment",
+              atMs: 1500,
+              body: "<b>Align this heading</b>",
+              imageBase64:
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lZsAAAAASUVORK5CYII=",
+            },
+          ]),
+        );
+        const notes = page.getByRole("region", { name: "Screenshot comments" });
+        assert.equal(await notes.locator("p").innerText(), "<b>Align this heading</b>");
+        assert.equal(await notes.locator("b").count(), 0);
+        assert.equal(await notes.getByRole("img").count(), 1);
+        await notes.getByRole("button", { name: "View comment at 0:01.5" }).click();
+        const dialog = page.getByRole("dialog", { name: "Screenshot comment at 0:01.5" });
+        assert.equal(await dialog.isVisible(), true);
+        assert.equal(await dialog.getByRole("img").count(), 1);
+        assert.equal(await dialog.locator("p").innerText(), "<b>Align this heading</b>");
+        await dialog.getByRole("button", { name: "Close screenshot" }).click();
+        await page.waitForFunction(() => !document.querySelector("dialog"));
+        assert.equal(await page.locator("dialog").count(), 0);
+        await notes.getByRole("button", { name: "View comment at 0:01.5" }).click();
+        await page.keyboard.press("Escape");
+        await page.waitForFunction(() => !document.querySelector("dialog"));
+        await notes.getByRole("button", { name: "Jump to 0:01.5" }).click();
+        assert.equal(await page.getByRole("slider").inputValue(), "1500");
+        assert.equal(await page.evaluate(() => (window as any).media.currentTime), 1);
+        await mkdir("output/playwright/recording-comments", { recursive: true });
+        for (const [name, width, height] of [
+          ["desktop", 1280, 900],
+          ["mobile", 390, 844],
+        ] as const) {
+          await page.setViewportSize({ width, height });
+          assert.equal(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+            true,
+          );
+          await page.screenshot({
+            path: `output/playwright/recording-comments/${name}.png`,
+            fullPage: true,
+          });
+          await notes.getByRole("button", { name: "View comment at 0:01.5" }).click();
+          assert.equal(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+            true,
+          );
+          await page.screenshot({
+            path: `output/playwright/recording-comments/${name}-dialog.png`,
+            fullPage: true,
+          });
+          await page.keyboard.press("Escape");
+          await page.waitForFunction(() => !document.querySelector("dialog"));
+        }
+        await page.setViewportSize({ width: 1280, height: 900 });
+      },
+    );
 
     await t.test(
       "capture gaps are visible before sending even when channels are empty",

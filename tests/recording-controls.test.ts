@@ -96,9 +96,22 @@ test("recording controls stay with their source tab and stop on disconnect", asy
     controller.control({ tab: { id: 11 } }, "pause"),
     /Open the recorder/,
   );
-  await controller.control({ tab: { id: 10 } }, "pause");
+  let pauseSettled = false;
+  const pause = controller.control({ tab: { id: 10 } }, "pause").then((result) => {
+    pauseSettled = true;
+    return result;
+  });
+  await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(commands.at(-1), { action: "pause" });
-  state({ state: "paused" });
+  assert.equal(pauseSettled, false, "pause must wait for MediaRecorder acknowledgment");
+  state({ state: "paused", elapsedMs: 1450, sourceAtMs: 2600 });
+  assert.deepEqual(await pause, { state: "paused", elapsedMs: 1450, sourceAtMs: 2600 });
+  assert.deepEqual(controller.info(10), {
+    state: "paused",
+    elapsedMs: 1450,
+    sourceAtMs: 2600,
+    reviewId: "review-a",
+  });
   assert.equal(controller.state(10), "paused");
   await controller.control({ tab: { id: 10 } }, "stop");
   assert.deepEqual(updates.at(-1), [20, { active: true }]);
@@ -204,4 +217,64 @@ test("native video clock survives heartbeat and page restore without counting pa
     state: "ready",
     elapsedMs: 2500,
   });
+});
+
+test("unacknowledged recording controls time out and disconnect rejects an in-flight resume", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let connect: any, receive: any, disconnect: any;
+  const commands: any[] = [];
+  const controller = createRecordingControls({
+    chrome: {
+      runtime: {
+        getURL: (path: string) => `chrome-extension://test/${path}`,
+        onConnect: {
+          addListener: (fn: any) => {
+            connect = fn;
+          },
+        },
+      },
+      tabs: { sendMessage: async () => {}, update: async () => {} },
+    },
+    sessionFor: async () => ({ reviewId: "review" }),
+  });
+  connect({
+    name: "feedbacks-video",
+    sender: {
+      tab: { id: 20 },
+      url: "chrome-extension://test/video.html?sourceTabId=10&reviewId=review",
+    },
+    onMessage: {
+      addListener: (fn: any) => {
+        receive = fn;
+      },
+    },
+    onDisconnect: {
+      addListener: (fn: any) => {
+        disconnect = fn;
+      },
+    },
+    postMessage: (message: any) => {
+      commands.push(message);
+    },
+    disconnect: () => {},
+  });
+  receive({ state: "recording", elapsedMs: 100 });
+  const pause = controller.control({ tab: { id: 10 } }, "pause");
+  const timedOut = assert.rejects(pause, /did not confirm/);
+  await Promise.resolve();
+  await assert.rejects(controller.control({ tab: { id: 10 } }, "stop"), /Wait for/);
+  t.mock.timers.tick(5000);
+  await timedOut;
+  assert.deepEqual(
+    commands,
+    [{ action: "pause" }, { action: "resume" }],
+    "timed-out pause must enqueue a compensating resume even before late pause acknowledgment",
+  );
+  receive({ state: "paused", elapsedMs: 150 });
+  const resume = controller.control({ tab: { id: 10 } }, "resume");
+  const lost = assert.rejects(resume, /disconnected/);
+  await Promise.resolve();
+  disconnect();
+  await lost;
+  assert.equal(controller.info(10), null);
 });

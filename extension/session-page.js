@@ -224,7 +224,25 @@ export function installSessionRecorder(record, config) {
         );
       }
     });
-    observer.observe({ entryTypes: ["resource", "longtask", "navigation"] });
+    observer.observe({ entryTypes: ["resource", "longtask", "navigation", "paint"] });
+    for (const entry of performance.getEntriesByType("navigation")) {
+      if (performance.timeOrigin + entry.startTime < config.startedAt) continue;
+      emit(
+        "performance",
+        {
+          entryType: "navigation",
+          name: entry.name,
+          durationMs: entry.duration,
+          domContentLoadedMs: entry.domContentLoadedEventEnd,
+          loadEventMs: entry.loadEventEnd,
+          responseStartMs: entry.responseStart,
+          responseEndMs: entry.responseEnd,
+          transferSize: entry.transferSize,
+          phase: "timing",
+        },
+        performance.timeOrigin + entry.startTime,
+      );
+    }
   } catch {}
   const timer = setInterval(flush, 100);
   const limitTimer = setTimeout(
@@ -269,7 +287,7 @@ export function installSessionRecorder(record, config) {
             ? '[contenteditable],[role="textbox"]'
             : undefined,
         blockSelector:
-          'script,iframe,input[type="password"],input[type="hidden"],[autocomplete="current-password"],[autocomplete="new-password"],[name*="token" i],[name*="secret" i],[name*="password" i],[name*="api_key" i],[name*="otp" i],[id*="password" i],[id*="secret" i],[id*="token" i],[autocomplete="one-time-code"],[autocomplete="cc-number"],[autocomplete="cc-csc"],[aria-label*="password" i],#feedbacks-root,[data-feedbacks]',
+          'script,iframe,input[type="password"],input[type="hidden"],[autocomplete="current-password"],[autocomplete="new-password"],[name*="token" i],[name*="secret" i],[name*="password" i],[name*="api_key" i],[name*="otp" i],[id*="password" i],[id*="secret" i],[id*="token" i],[autocomplete="one-time-code"],[autocomplete="cc-number"],[autocomplete="cc-csc"],[aria-label*="password" i],#feedbacks-root,#feedbacks-review-root,[data-feedbacks]',
         inlineStylesheet: true,
         collectFonts: false,
         recordCanvas: false,

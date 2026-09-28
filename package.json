@@ -35,7 +35,7 @@
     "qa:app-visual": "node --import tsx scripts/visual-app-qa.mjs",
     "qa:app-filters": "node scripts/filter-app-qa.mjs",
     "qa:recording-browser": "FEEDBACKS_RECORDING_BROWSER_SMOKE=1 node --import tsx --test --test-concurrency=1 tests/recording-page-controls-browser.test.ts tests/recording-video-state-browser.test.ts tests/replay-fidelity-browser.test.ts tests/recording-replay-browser.test.ts tests/recording-storage-browser.test.ts tests/recording-viewer-browser.test.ts tests/session-replay-extension-browser.test.ts tests/session-review-browser.test.ts tests/session-tail-browser.test.ts tests/video-metadata-browser.test.ts",
-    "qa:extension-browser": "node scripts/extension-browser-qa.mjs && node scripts/screenshot-editor-qa.mjs && node scripts/session-replay-browser-qa.mjs && node scripts/session-origins-browser-qa.mjs",
+    "qa:extension-browser": "node scripts/extension-browser-qa.mjs && node scripts/screenshot-editor-qa.mjs && node scripts/session-replay-browser-qa.mjs && node scripts/session-origins-browser-qa.mjs && node scripts/recording-navigation-browser-qa.mjs",
     "build:plugin": "node scripts/package-plugin.mjs",
     "harness:dev": "npm run build && node scripts/dev-sandbox.mjs",
     "harness:smoke": "node scripts/dev-sandbox.mjs --smoke",

@@ -172,3 +172,76 @@ test("network exchange identity keeps request-less resource phases separate", as
     networkKey({ seq: 2, data: { requestId: "a" } }),
   );
 });
+
+test("annotation frames keep exact identity while trim mapping omits removed moments", async () => {
+  const { mapAnnotationFrames } = await import("../extension/session-review.js");
+  const items = [
+    { id: "one", atMs: 1000, body: "First comment", imageBase64: "image" },
+    { id: "two", atMs: 1000, body: "Second comment", imageBase64: "image" },
+    { id: "removed", atMs: 2000, body: "Removed", imageBase64: "image" },
+  ];
+  const mapped = mapAnnotationFrames(
+    items,
+    { segments: [{ sourceStartMs: 500, sourceEndMs: 1500, outputStartMs: 0 }] },
+    1000,
+  );
+  assert.deepEqual(
+    mapped.map((frame: any) => [
+      frame.annotationId,
+      frame.atMs,
+      frame.videoTimeMs,
+      frame.key,
+    ]),
+    [
+      ["one", 1000, 500, "annotation-one"],
+      ["two", 1000, 500, "annotation-two"],
+    ],
+  );
+  assert.equal(mapAnnotationFrames(items)[0].videoTimeMs, undefined);
+  assert.match(
+    eventLabel({
+      type: "activity",
+      data: { action: "annotation", body: "Change this heading" },
+    }),
+    /Change this heading/,
+  );
+});
+
+test("loading activity names its phase and destination", () => {
+  assert.equal(
+    eventLabel({
+      type: "activity",
+      data: {
+        action: "loading",
+        phase: "DOMContentLoaded",
+        url: "https://example.test/next",
+      },
+    }),
+    "Loading: DOMContentLoaded · https://example.test/next",
+  );
+});
+
+test("annotation upload retains association and exact input after an ambiguous failure", async () => {
+  const { mapAnnotationFrames, uploadReviewFrames } = await import(
+    "../extension/session-review.js"
+  );
+  const frames = mapAnnotationFrames([
+    { id: "annotation", atMs: 100, body: "Comment", imageBase64: "image" },
+  ]);
+  const inputs: any[] = [];
+  const upload = async (input: any) => {
+    inputs.push(structuredClone(input));
+    if (inputs.length === 1) throw Error("Response lost");
+    return { thread: { id: "thread", revision: 2 } };
+  };
+  await assert.rejects(
+    uploadReviewFrames(frames, { id: "thread", revision: 1 }, "recording", upload),
+  );
+  await uploadReviewFrames(frames, { id: "thread", revision: 1 }, "recording", upload);
+  assert.deepEqual(inputs[0], inputs[1]);
+  assert.deepEqual(inputs[1].recordingFrame, {
+    recordingId: "recording",
+    atMs: 100,
+    annotationId: "annotation",
+  });
+});

@@ -20,6 +20,12 @@ export function captureNodeCount(value, limit) {
   return nodes;
 }
 
+// Session clocks omit annotation editing; video keeps its native source clock.
+export function captureElapsed(s, now = Date.now()) {
+  const session = s.recording?.mode === "session";
+  const end = session ? (s.annotationPause?.startedAt ?? now) : now;
+  return Math.max(0, Math.min(300000, end - s.started - (session ? s.pausedMs || 0 : 0)));
+}
 const KEY = "feedbacksSessionCaptureV1";
 const SECRET =
   /password|passwd|secret|token|authorization|cookie|api[-_]?key|credential|session[-_]?id/i;
@@ -205,7 +211,12 @@ export function createCaptureStore({
     s.recording.events.forEach((event, seq) => {
       event.seq = seq;
     });
-    s.recording.durationMs = Math.max(1, Math.min(maxMs, now() - s.started));
+    s.recording.durationMs = Math.max(
+      1,
+      s.recording.mode === "session"
+        ? captureElapsed(s, now())
+        : Math.min(maxMs, now() - s.started),
+    );
     if (detail) coverage(s, "capture", "partial", detail);
     if (
       !s.recording.events.some(
@@ -278,7 +289,13 @@ export function createCaptureStore({
     append: (event, tabId, url) =>
       serial(async () => {
         const s = await read();
-        if (!s?.active || !s.scopeActive || s.target.sourceTabId !== tabId) return s;
+        if (
+          !s?.active ||
+          s.annotationPause ||
+          !s.scopeActive ||
+          s.target.sourceTabId !== tabId
+        )
+          return s;
         try {
           if (!originAllowed(s.target, url)) return s;
         } catch {
@@ -304,7 +321,18 @@ export function createCaptureStore({
           : event.type === "replay" && Number.isFinite(event.data.timestamp)
             ? event.data.timestamp
             : now();
-        if (occurredAt - s.started >= maxMs)
+        if (
+          (s.annotationIntervals || []).some(
+            (p) => occurredAt >= p.start && occurredAt <= p.end,
+          )
+        )
+          return s;
+        if (
+          occurredAt -
+            s.started -
+            (s.recording.mode === "session" ? s.pausedMs || 0 : 0) >=
+          maxMs
+        )
           return save(stop(s, "5 minute duration limit reached."));
         if (event.data.action === "replay-unavailable" && event.type === "activity") {
           if (event.pageSeq !== undefined) s.lastPageSeq = event.pageSeq;
@@ -392,8 +420,9 @@ export function createCaptureStore({
         }
         const atMs = Math.min(
           maxMs,
-          Math.max(0, Math.min(now(), occurredAt) - s.started),
+          Math.max(0, Math.min(now(), occurredAt) - s.started - (s.pausedMs || 0)),
         );
+        if (event.type === "replay" && s.pausedMs) data.timestamp -= s.pausedMs;
         s.recording.events.push({
           seq: s.recording.events.length,
           atMs,

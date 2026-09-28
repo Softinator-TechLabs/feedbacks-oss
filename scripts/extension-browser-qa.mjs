@@ -539,7 +539,11 @@ try {
   for (const state of ["recording", "paused"]) {
     const controls = await recordingPreferenceState(state);
     assert.equal(controls.navigationLocked, true);
-    assert.equal(controls.highlightEnabled, true);
+    assert.equal(
+      controls.highlightEnabled,
+      false,
+      "recording suppresses element hover highlights",
+    );
     assert.equal(controls.clickIndicators, true);
   }
   const restoredPreferences = await recordingPreferenceState("idle");

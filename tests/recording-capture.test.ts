@@ -9,7 +9,10 @@ import {
 function memory() {
   let data: any = {};
   return {
-    get: async (key: string) => structuredClone({ [key]: data[key] }),
+    get: async (key: string | string[]) =>
+      structuredClone(
+        Object.fromEntries((Array.isArray(key) ? key : [key]).map((k) => [k, data[k]])),
+      ),
     set: async (input: any) => {
       await new Promise((r) => setTimeout(r, 1));
       data = { ...data, ...structuredClone(input) };
@@ -873,4 +876,60 @@ test("DOM replay budget reserves space for later diagnostics", async () => {
   assert.equal(s.recording.events.length, 2);
   assert.equal(s.recording.events.at(-1).type, "console");
   assert.ok(s.bytes < 10000);
+});
+
+test("recording controls authorize approved redirects without granting another tab or review", async () => {
+  const { createSessionCoordinator } = await import(
+    "../extension/session-coordinator.js"
+  );
+  const { videoFingerprint } = await import("../extension/video-target.js");
+  const storage = memory(),
+    store = createCaptureStore({ storage });
+  const scoped = { ...target, allowedOrigins: [target.origin, "https://redirect.test"] };
+  await storage.set({
+    server: target.server,
+    accounts: { [target.server]: { token: "test-account" } },
+    sessions: { 1: target },
+  });
+  await store.start(scoped, privacy, "video");
+  await store.update(async (s: any) => {
+    s.accountFingerprint = await videoFingerprint("test-account");
+  });
+  const event = { addListener() {} };
+  const chrome = {
+    storage: { local: storage },
+    debugger: { onEvent: event, onDetach: event },
+    alarms: { onAlarm: event },
+    tabs: {
+      onUpdated: event,
+      onRemoved: event,
+      get: async () => ({ id: 1, url: "https://redirect.test/next" }),
+    },
+  };
+  const coordinator = createSessionCoordinator({
+    captureStorage: storage,
+    chrome,
+    ready: Promise.resolve(),
+    sessionFor: async () => target,
+    authenticated: async () => {},
+  });
+  const sender = { tab: { id: 1 }, frameId: 0, url: "https://redirect.test/next" };
+  const ctx = await coordinator.contextForControls(sender);
+  assert.equal(ctx.target.projectId, target.projectId);
+  assert.equal(ctx.target.reviewId, target.reviewId);
+  assert.equal(ctx.mode, "video");
+  assert.equal(ctx.recording, undefined);
+  assert.equal(await coordinator.contextForControls({ ...sender, tab: { id: 2 } }), null);
+  assert.equal(await coordinator.contextForControls({ ...sender, frameId: 1 }), null);
+  assert.equal(
+    await coordinator.contextForControls({ ...sender, url: "https://unknown.test" }),
+    null,
+  );
+  await storage.set({ sessions: { 1: { ...target, reviewId: "changed" } } });
+  assert.equal(await coordinator.contextForControls(sender), null);
+  await storage.set({
+    sessions: { 1: target },
+    accounts: { [target.server]: { token: "changed-account" } },
+  });
+  await assert.rejects(coordinator.contextForControls(sender), /account changed/);
 });

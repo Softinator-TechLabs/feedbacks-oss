@@ -4,6 +4,7 @@ import {
   reviewTime,
   uploadReviewFrames,
   videoTrimState,
+  mapAnnotationFrames,
 } from "./session-review.js";
 import {
   captureHandleMatches,
@@ -26,6 +27,36 @@ const maxMs = VIDEO_MAX_MS;
 let tabAudioTracks = [];
 let inspector, debugStopped, submittedCapture;
 let savedFrames = [];
+let annotationItems = [],
+  annotationFrames = [],
+  annotationsRecordingId,
+  reviewGeneration = 0;
+function reviewVideoMapping() {
+  return {
+    offsetMs: debugSession.started - videoStartWall,
+    ...(!debugAligned
+      ? {
+          segments: videoSegments(
+            mediaIntervals,
+            appliedTrim?.start || 0,
+            appliedTrim?.end || originalDuration,
+          ),
+        }
+      : {}),
+  };
+}
+async function loadRecordingAnnotations() {
+  if (!debugSession || annotationsRecordingId === debugStopped?.recording.id) return;
+  const recordingId = debugStopped?.recording.id;
+  const generation = reviewGeneration;
+  const result = await send({ type: "recordingAnnotations" });
+  if (generation !== reviewGeneration)
+    throw Error("The recording changed. Review it before sending.");
+  if (!recordingId || result.recordingId !== recordingId)
+    throw Error("Screenshot comments belong to another recording. Reload this review.");
+  annotationItems = result.items;
+  annotationsRecordingId = recordingId;
+}
 function renderSavedFrames() {
   const root = $("saved-frames");
   root.replaceChildren();
@@ -81,16 +112,19 @@ function saveReviewFrame(atMs, videoTimeMs) {
 }
 async function refreshDebugReview() {
   if (!debugSession || !debugStop) return;
+  const generation = reviewGeneration;
   debugStopped = await debugStop;
+  if (generation !== reviewGeneration) return;
+  await loadRecordingAnnotations();
+  if (generation !== reviewGeneration) return;
   const segments = videoSegments(
     mediaIntervals,
     appliedTrim?.start || 0,
     appliedTrim?.end || originalDuration,
   );
-  const video = {
-    offsetMs: debugSession.started - videoStartWall,
-    ...(!debugAligned ? { segments } : {}),
-  };
+  const video = reviewVideoMapping();
+  if (!createAttempt)
+    annotationFrames = mapAnnotationFrames(annotationItems, video, durationMs);
   const recording = !debugAligned
     ? clipRecording(debugStopped.recording, segments)
     : debugStopped.recording;
@@ -100,6 +134,7 @@ async function refreshDebugReview() {
     videoElement: $("preview"),
     video,
     onFrame: saveReviewFrame,
+    annotations: annotationFrames,
   });
 }
 
@@ -171,7 +206,14 @@ function publishState(state = nativeState, heartbeat = false) {
     ? 0
     : Math.round(recordingElapsed());
   if (connected)
-    port.postMessage({ state, elapsedMs, ...(heartbeat ? { heartbeat: true } : {}) });
+    port.postMessage({
+      state,
+      elapsedMs,
+      ...(state === "paused" && mediaIntervals.length
+        ? { sourceAtMs: mediaIntervals[mediaIntervals.length - 1].sourceEndMs }
+        : {}),
+      ...(heartbeat ? { heartbeat: true } : {}),
+    });
 }
 // The elapsed snapshot restores an accurate dock after source-page navigation.
 // Port traffic also keeps the MV3 binding alive while recording and reviewing.
@@ -236,7 +278,6 @@ function pauseOrResume() {
     }
     $("pause").textContent = "Resume recording";
     status("Paused. Resume or stop to review.");
-    publishState("paused");
   } else if (recorder?.state === "paused") {
     pausedMs += performance.now() - pausedAt;
     pausedAt = 0;
@@ -248,7 +289,6 @@ function pauseOrResume() {
     recorder.resume();
     $("pause").textContent = "Pause recording";
     status("Recording this tab.");
-    publishState("recording");
   }
 }
 port.onMessage.addListener(({ action }) => {
@@ -274,10 +314,14 @@ function status(message) {
   $("status").textContent = message;
 }
 function clearPreview() {
+  reviewGeneration++;
   $("capture-health").hidden = true;
   inspector?.dispose();
   inspector = null;
   savedFrames = [];
+  annotationItems = [];
+  annotationFrames = [];
+  annotationsRecordingId = undefined;
   renderSavedFrames();
   blob = null;
   editsPending = false;
@@ -475,6 +519,14 @@ $("start").onclick = async () => {
       chunks.push(event.data);
     };
     const stoppedRecorder = recorder;
+    recorder.onpause = () => {
+      if (recorder === stoppedRecorder && recorder.state === "paused")
+        publishState("paused");
+    };
+    recorder.onresume = () => {
+      if (recorder === stoppedRecorder && recorder.state === "recording")
+        publishState("recording");
+    };
     recorder.onstop = async () => {
       if (recorder !== stoppedRecorder) return;
       preparingVideo = true;
@@ -599,6 +651,17 @@ $("send").onclick = async () => {
   }
   $("send").disabled = true;
   try {
+    // Snapshot the local comments before sessionSubmit consumes the worker capture.
+    if (debugSession && !submittedCapture) {
+      debugStopped = await debugStop;
+      await loadRecordingAnnotations();
+      if (!createAttempt)
+        annotationFrames = mapAnnotationFrames(
+          annotationItems,
+          reviewVideoMapping(),
+          durationMs,
+        );
+    }
     $("editing").hidden = true;
     $("start").hidden = true;
     $("discard").hidden = true;
@@ -679,12 +742,16 @@ $("send").onclick = async () => {
       submittedCapture = capture;
       thread = capture.thread;
       thread = await uploadReviewFrames(
-        savedFrames,
+        [...annotationFrames, ...savedFrames],
         thread,
         capture.recording.id,
         (input) => send({ type: "sessionFrameUpload", server: serverOrigin, input }),
         (threadId) => send({ type: "videoThread", server: serverOrigin, threadId }),
       );
+      await send({
+        type: "recordingAnnotationsClear",
+        recordingId: capture.recording.id,
+      }).catch(() => {});
       debugSession = null;
       $("debug-status").textContent = "Debug context shared with this thread.";
     }

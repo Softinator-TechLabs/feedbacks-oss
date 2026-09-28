@@ -55,6 +55,10 @@ export function eventLabel(e) {
     target.tag ||
     "page";
   if (e.type === "activity") {
+    if (d.action === "loading")
+      return `Loading: ${text(d.phase || "page")} · ${text(d.url || "")}`;
+    if (d.action === "annotation")
+      return `Comment: ${text(d.body || "Screenshot comment")}`;
     if (d.action === "click")
       return `Click ${name} at (${d.x ?? "?"}, ${d.y ?? "?"}) · button ${d.button ?? 0}`;
     if (d.action === "input")
@@ -97,7 +101,7 @@ export function reviewTime(ms) {
 }
 export function createSessionReview(
   root,
-  { recording, videoElement, video, onFrame } = {},
+  { recording, videoElement, video, onFrame, annotations = [] } = {},
 ) {
   let at = 0,
     playing = false,
@@ -109,7 +113,8 @@ export function createSessionReview(
     detailEvent,
     pendingSeek = null,
     selectedGap = false,
-    eventPage = 0;
+    eventPage = 0,
+    annotationDialog;
   const token = crypto.randomUUID();
   const make = (tag, label, cls) => {
     const n = document.createElement(tag);
@@ -117,6 +122,35 @@ export function createSessionReview(
     if (cls) n.className = cls;
     return n;
   };
+  function openAnnotation(annotation) {
+    if (disposed) return;
+    pause();
+    annotationDialog?.close();
+    annotationDialog?.remove();
+    const dialog = make("dialog", null, "review-annotation-dialog"),
+      title = make("h3", `Screenshot comment at ${reviewTime(annotation.atMs)}`),
+      close = make("button", "Close screenshot"),
+      img = make("img"),
+      body = make("p", annotation.body);
+    dialog.setAttribute("aria-label", title.textContent);
+    close.type = "button";
+    close.autofocus = true;
+    close.onclick = () => dialog.close();
+    img.src = annotation.imageBase64;
+    img.alt = `Captured screenshot at ${reviewTime(annotation.atMs)}`;
+    dialog.append(title, close, img, body);
+    dialog.addEventListener(
+      "close",
+      () => {
+        dialog.remove();
+        if (annotationDialog === dialog) annotationDialog = null;
+      },
+      { once: true },
+    );
+    document.body.append(dialog);
+    annotationDialog = dialog;
+    dialog.showModal();
+  }
   root.hidden = false;
   root.replaceChildren();
   root.classList.add("session-review");
@@ -177,6 +211,33 @@ export function createSessionReview(
   root.append(toolbar);
   const gap = make("p", "", "hint");
   root.append(gap);
+  if (annotations.length) {
+    const notes = make("section", null, "review-annotations");
+    notes.setAttribute("aria-label", "Screenshot comments");
+    notes.append(make("h3", `Screenshot comments (${annotations.length})`));
+    for (const annotation of annotations) {
+      const card = make("article", null, "review-annotation"),
+        jump = make("button"),
+        img = make("img"),
+        content = make("div"),
+        moment = make("button", `Jump to ${reviewTime(annotation.atMs)}`);
+      jump.type = moment.type = "button";
+      jump.setAttribute("aria-label", `View comment at ${reviewTime(annotation.atMs)}`);
+      img.src = annotation.imageBase64;
+      img.alt = `Screenshot for comment at ${reviewTime(annotation.atMs)}`;
+      img.loading = "lazy";
+      jump.append(img);
+      content.append(make("p", annotation.body), moment);
+      jump.onclick = () => openAnnotation(annotation);
+      moment.onclick = () => {
+        pause();
+        seek(annotation.atMs);
+      };
+      card.append(jump, content);
+      notes.append(card);
+    }
+    root.append(notes);
+  }
   let saveFrameButton;
   if (videoElement && onFrame) {
     const save = make("button", "Save this frame");
@@ -427,6 +488,9 @@ export function createSessionReview(
     seek,
     dispose() {
       disposed = true;
+      annotationDialog?.close();
+      annotationDialog?.remove();
+      annotationDialog = null;
       pause();
       window.removeEventListener("message", receive);
       videoElement?.removeEventListener("play", onPlay);
@@ -453,8 +517,13 @@ export async function uploadReviewFrames(
       revision: thread.revision,
       imageBase64: frame.imageBase64,
       rendition: "screenshot",
-      filename: `frame-${frame.atMs}.png`,
-      recordingFrame: { recordingId, atMs: frame.atMs, videoTimeMs: frame.videoTimeMs },
+      filename: `${frame.annotationId ? "comment" : "frame"}-${frame.atMs}.png`,
+      recordingFrame: {
+        recordingId,
+        atMs: frame.atMs,
+        ...(frame.videoTimeMs !== undefined ? { videoTimeMs: frame.videoTimeMs } : {}),
+        ...(frame.annotationId ? { annotationId: frame.annotationId } : {}),
+      },
       idempotencyKey: frame.key,
     });
     frame.input ||= inputForThread();
@@ -474,6 +543,24 @@ export async function uploadReviewFrames(
     thread = frame.result.thread;
   }
   return thread;
+}
+
+// Annotation source times stay immutable. Recompute only the output video time
+// after an edit, and omit comments whose source moment was removed from the clip.
+export function mapAnnotationFrames(items, video, durationMs = Infinity) {
+  return items.flatMap((item) => {
+    const videoTimeMs = video ? sourceToVideo(item.atMs, video) : undefined;
+    if (video && (videoTimeMs === null || videoTimeMs < 0 || videoTimeMs > durationMs))
+      return [];
+    return [
+      {
+        ...item,
+        annotationId: item.id,
+        key: `annotation-${item.id}`,
+        ...(video ? { videoTimeMs } : { videoTimeMs: undefined }),
+      },
+    ];
+  });
 }
 
 export function videoTrimState(

@@ -10,6 +10,91 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 test(
+  "ordinary screenshot thread without recordings stays rendered in Chromium",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const result = await build({
+      stdin: {
+        contents: `
+          import React from "react";
+          import { createRoot } from "react-dom/client";
+          import { ThreadRecordings } from "./src/web/thread-recordings.tsx";
+          const screenshot = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1cAAAAASUVORK5CYII=";
+          createRoot(document.getElementById("root")).render(
+            <main>
+              <h1>Ordinary screenshot feedback</h1>
+              <img src={screenshot} alt="Original feedback screenshot" />
+              <ThreadRecordings thread={{id:"ordinary-thread",assets:[{
+                id:"ordinary-screenshot",contentType:"image/png",url:screenshot
+              }]}} />
+            </main>
+          );`,
+        loader: "tsx",
+        resolveDir: process.cwd(),
+      },
+      bundle: true,
+      format: "iife",
+      platform: "browser",
+      write: false,
+      outdir: "out",
+    });
+    const script = result.outputFiles.find((file) => file.path.endsWith(".js"))!.text;
+    const server = createServer((req, res) => {
+      if (req.url === "/api/recordings.list") {
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ ok: true, data: { items: [] } }));
+      } else if (req.url === "/bundle.js") {
+        res.setHeader("Content-Type", "text/javascript");
+        res.end(script);
+      } else {
+        res.setHeader("Content-Type", "text/html");
+        res.end('<!doctype html><div id="root"></div><script src="/bundle.js"></script>');
+      }
+    });
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.goto(`http://127.0.0.1:${address.port}`, { waitUntil: "networkidle" });
+      assert.deepEqual(
+        errors,
+        [],
+        "an unlinked image must not enter annotation rendering",
+      );
+      assert.equal(
+        await page
+          .getByRole("heading", { name: "Ordinary screenshot feedback" })
+          .isVisible(),
+        true,
+      );
+      assert.equal(
+        await page
+          .getByText("No session recording was shared with this thread.")
+          .isVisible(),
+        true,
+      );
+      assert.equal(
+        await page
+          .getByAltText("Original feedback screenshot")
+          .evaluate(
+            (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
+          ),
+        true,
+      );
+    } finally {
+      await browser.close();
+      server.close();
+      await once(server, "close");
+    }
+  },
+);
+
+test(
   "replay keeps running beside time-filtered diagnostics in Chromium",
   {
     skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1",

@@ -28,6 +28,7 @@ function fixture({
   const sent: unknown[] = [];
   const state: any = {
     active,
+    recordingOnly: false,
     recordingState,
     choosing: false,
     chosen: null,

@@ -26,6 +26,14 @@ test(
         const w = window as any;
         w.published = [];
         w.requests = [];
+        w.recording = {
+          id: "11111111-1111-4111-8111-111111111111",
+          startedAt: new Date().toISOString(),
+          durationMs: 5000,
+          privacy: { maskInputs: true },
+          coverage: [],
+          events: [],
+        };
         w.health = {
           active: true,
           counts: { activity: 7, console: 2, network: 3, replay: 11 },
@@ -61,7 +69,11 @@ test(
                       ? { started: Date.now() }
                       : message.type === "sessionHealth"
                         ? w.health
-                        : {};
+                        : message.type === "sessionStop"
+                          ? { recording: w.recording }
+                          : message.type === "recordingAnnotations"
+                            ? { recordingId: w.recording.id, items: [] }
+                            : {};
               return { ok: true, data };
             },
           },
@@ -141,11 +153,17 @@ test(
       );
       await page.waitForTimeout(400);
       await page.locator("#pause").click();
+      await page.waitForFunction(
+        () => (window as any).published.at(-1)?.state === "paused",
+      );
       const paused = await page.evaluate(() => (window as any).published.at(-1));
       assert.equal(paused.state, "paused");
       assert.ok(paused.elapsedMs >= 300);
       await page.waitForTimeout(500);
       await page.locator("#pause").click();
+      await page.waitForFunction(
+        () => (window as any).published.at(-1)?.state === "recording",
+      );
       const resumed = await page.evaluate(() => (window as any).published.at(-1));
       assert.ok(resumed.elapsedMs - paused.elapsedMs < 100, "paused time is excluded");
       await page.evaluate(() => {
