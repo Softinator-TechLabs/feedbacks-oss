@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { api, uid, type Thread } from "./api.js";
 import { ActionState, useAction, useLoad, ErrorNotice, showToast } from "./ui.js";
+import { Icon } from "./icons.js";
 
 type Receipt = {
   id: string;
@@ -13,21 +14,26 @@ export function DeleteThreadsButton({
   projectId,
   threads,
   onDeleted,
+  headerAction = false,
 }: {
   projectId: string;
   threads: Thread[];
   onDeleted: () => void;
+  headerAction?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [selection, setSelection] = useState<Thread[]>([]);
   const request = useRef("");
   const action = useAction();
   const titleId = React.useId();
+  const label =
+    threads.length === 1 ? "Delete thread" : `Delete selected (${threads.length})`;
   return (
     <>
       <button
         type="button"
-        className="danger"
+        className={headerAction ? "danger thread-management-button" : "danger"}
+        data-tooltip={headerAction ? label : undefined}
         disabled={!threads.length || action.busy}
         onClick={() => {
           setSelection(threads);
@@ -38,7 +44,8 @@ export function DeleteThreadsButton({
             ?.focus();
         }}
       >
-        {threads.length === 1 ? "Delete thread" : `Delete selected (${threads.length})`}
+        {headerAction && <Icon name="trash" />}
+        <span className="thread-management-label">{label}</span>
       </button>
       <dialog
         ref={dialog}
@@ -201,17 +208,22 @@ export function ThreadDeletionCleanup({
 export function ArchiveThreadButton({
   thread,
   onSaved,
+  headerAction = false,
 }: {
   thread: Thread;
   onSaved: (thread: Thread) => void;
+  headerAction?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const action = useAction();
   const titleId = React.useId();
+  const label = thread.archived ? "Unarchive thread" : "Archive thread";
   return (
     <>
       <button
         type="button"
+        className={headerAction ? "thread-management-button" : undefined}
+        data-tooltip={headerAction ? label : undefined}
         onClick={() => {
           dialog.current?.showModal();
           dialog.current
@@ -219,7 +231,8 @@ export function ArchiveThreadButton({
             ?.focus();
         }}
       >
-        {thread.archived ? "Unarchive thread" : "Archive thread"}
+        {headerAction && <Icon name="archive" />}
+        <span className="thread-management-label">{label}</span>
       </button>
       <dialog
         ref={dialog}

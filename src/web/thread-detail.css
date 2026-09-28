@@ -328,7 +328,7 @@
 .thread-header-actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 6px;
   min-width: 0;
@@ -439,7 +439,8 @@
   font-size: 0.85rem;
 }
 .thread-header-actions .status-controls select {
-  max-width: 155px;
+  width: clamp(110px, 11vw, 135px);
+  max-width: 135px;
   border-color: var(--control-border);
   font-weight: 600;
 }
@@ -565,6 +566,50 @@
 }
 .thread-tools a:hover .icon-action {
   background: var(--soft-surface);
+}
+@media (max-width: 1350px) {
+  .thread-header-actions {
+    gap: 4px;
+  }
+  .thread-management-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+  .thread-management-button .thread-management-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@media (min-width: 1351px) {
+  .thread-management-button svg {
+    display: none;
+  }
+  .thread-management-button[data-tooltip]:is(:hover, :focus-visible)::after {
+    display: none;
+  }
+}
+@media (max-width: 1050px) {
+  .thread-page-heading > div:first-child,
+  .thread-header-actions {
+    flex: 1 1 100%;
+  }
+  .thread-header-actions {
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 880px) {
+  .thread-header-actions {
+    flex-wrap: wrap;
+  }
 }
 @media (max-width: 500px) {
   .thread-header-actions {
@@ -1196,7 +1241,7 @@
   margin: 0;
 }
 .thread-assignee > select {
-  width: 180px;
+  width: clamp(120px, 12vw, 145px);
   max-width: 100%;
   min-height: 44px;
   margin: 0;

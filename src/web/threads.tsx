@@ -1017,11 +1017,12 @@ export function ThreadDetail({
         >
           {project?.permissions.canMaintain && (
             <>
-              <ArchiveThreadButton thread={t} onSaved={setThread} />
+              <ArchiveThreadButton thread={t} onSaved={setThread} headerAction />
               <DeleteThreadsButton
                 projectId={t.projectId}
                 threads={[t]}
                 onDeleted={() => navigate(`/projects/${t.projectId}`)}
+                headerAction
               />
             </>
           )}
