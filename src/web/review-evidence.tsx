@@ -3,6 +3,7 @@ import { api, type Thread } from "./api.js";
 import { MarkdownText } from "./markdown-text.js";
 import { ErrorNotice, Notice, useAction } from "./ui.js";
 import { HumanTime } from "./human-time.js";
+import { Icon } from "./icons.js";
 
 type Asset = Thread["assets"][number];
 type Annotation = NonNullable<Thread["context"]["annotations"]>[number];
@@ -410,6 +411,7 @@ export function ReviewEvidence({
                         void changePoint(item, state === "resolved" ? "open" : "resolved")
                       }
                     >
+                      <Icon name={state === "resolved" ? "history" : "check"} />
                       {state === "resolved" ? "Reopen point" : "Resolve point"}
                     </button>
                   )}
@@ -421,6 +423,7 @@ export function ReviewEvidence({
                         void changePoint(item, state === "removed" ? "open" : "removed")
                       }
                     >
+                      <Icon name={state === "removed" ? "history" : "trash"} />
                       {state === "removed" ? "Restore point" : "Remove point"}
                     </button>
                   )}
