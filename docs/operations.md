@@ -14,7 +14,7 @@ Build success, a healthy container and a working domain are separate checks. Obj
 
 ## Monitoring
 
-Monitor HTTP error rate, latency, memory, CPU, PostgreSQL connections/locks, disk headroom and object-store errors. Verify your proxy reports the correct client IP before relying on rate limits. Send logs to protected storage with bounded retention. Do not log authorization headers, cookies, passwords, request bodies, private feedback or credential-bearing URLs.
+Monitor HTTP error rate, latency, memory, CPU, PostgreSQL connections/locks, disk headroom and object-store errors. Verify your proxy reports the correct client IP before relying on rate limits; an incorrect proxy hop count can make a five-minute password-login lock affect unrelated people or be bypassed. Monitor login `429` responses without logging passwords, request bodies or raw client IPs. Send logs to protected storage with bounded retention. Do not log authorization headers, cookies, private feedback or credential-bearing URLs.
 
 The service drains HTTP connections and closes the pool on SIGTERM/SIGINT with a bounded timeout. Give the process at least 15 seconds before forced termination. Maintain a rollback candidate compatible with the current schema.
 
