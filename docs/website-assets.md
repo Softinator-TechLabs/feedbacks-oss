@@ -1,6 +1,6 @@
 # Website asset provenance
 
-The public landing uses fictional review examples. Names, pages, conversations and prices are illustrative, not customer evidence. Behance's home page and Penecho were visual references for scale, composition and concise storytelling; no assets or site code were copied from either.
+The public landing uses actual extension and app screenshots with fictional review content. Names, pages, conversations and prices are illustrative, not customer evidence. Behance's home page and Penecho were visual references for scale, composition and concise storytelling; no assets or site code were copied from either.
 
 ## Manrope
 
@@ -15,3 +15,13 @@ Sources: [Manrope at Google Fonts](https://fonts.google.com/specimen/Manrope), [
 > Create an original premium editorial product photograph for a fictional design-studio website mockup. Landscape 3:2 aspect ratio. A sculptural burnt-orange tubular lounge chair with soft cream upholstery, one folded cobalt-blue fabric draped over its arm, on a pale warm concrete floor against a very light cool-blue seamless wall. Direct afternoon sunlight enters from the upper left and casts one long crisp architectural shadow. The chair sits toward the right half; the left half has generous calm negative space. Sophisticated art direction, tactile materials, restrained but vivid color, realistic medium-format photography, high-end furniture campaign. No text, no typography, no logos, no people, no UI, no watermark. This will be used inside a clearly labeled illustrative webpage screenshot on the Feedbacks open-source landing page.
 
 Pencil marks, layout shapes, webpage compositions and discussion cards are implemented in the repository's HTML/CSS/SVG. The generation record establishes provenance, not a guarantee of exclusive rights to the image.
+
+## Product workflow screenshots
+
+`site/public/media/workflow/point.png`, `point-detail.png`, `review.png` and `thread.png` were captured on 28 September 2026 from the running Feedbacks extension and an isolated local Feedbacks server. The demo furniture website and feedback are synthetic; no customer records or credentials appear. The chair photograph uses the existing generated asset described above. The screenshots are not AI-generated UI.
+
+Run `node scripts/capture-website-workflow.mjs` after building the app to reproduce capture → Save point → Review & send → Send feedback → server thread. The script uses a temporary extension copy with pre-granted host access for headless capture; it does not change the shipped extension manifest or prove native Chrome permission/install prompts. The isolated database, browser profile and local server are cleaned up afterward. The mobile detail is a direct browser screenshot clip of the same selected button and comment; the full original remains available through zoom. The shipped screenshots preserve the captured product pixels; the landing page adds its annotations separately.
+
+## Caveat annotations
+
+The self-hosted `site/public/fonts/caveat-600.ttf` was obtained from [Google Fonts](https://fonts.google.com/specimen/Caveat) on 28 September 2026. It is used only for brief pencil-style annotations; Manrope remains the reading and control face. The SIL Open Font License is in `site/public/fonts/OFL-Caveat.txt`.

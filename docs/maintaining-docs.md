@@ -13,3 +13,5 @@ Start from [the documentation index](index.md). Keep existing canonical guides r
 - Use ordinary Markdown links so GitHub and all supported coding agents can navigate the same documents.
 - Keep client adapters thin. Follow [knowledge maintenance](knowledge.md) and the [verification matrix](verification.md).
 - Run `npm run check:harness` after edits and `npm run check:release` after a build to validate exported links.
+
+Public setup guides live in `site-docs/guide/`. Link technical details to `/reference/manual/...` inside that site, rather than sending readers to GitHub Markdown. `scripts/publish-docs.mjs` publishes the canonical manuals and their linked references from `docs/` and `plugins/` before the VitePress build; its output under `site-docs/reference/manual/` is ignored. Edit the canonical source, then run `npm run build:site` to regenerate and validate links. Repository and contribution links can still point to GitHub.

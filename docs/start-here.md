@@ -1,5 +1,9 @@
 # Start here
 
+Feedbacks prepares visual website feedback for AI-assisted UI changes and bug fixes. Follow the [complete setup flow](../site-docs/guide/getting-started.md): team server → extension → projects and people → personal MCP connection.
+
+Choose the [client guide](../site-docs/guide/clients.md), [extension installation and capture guide](../site-docs/guide/chrome-extension.md), [owner setup](../site-docs/guide/team-setup.md), [DevOps installation](../site-docs/guide/self-host.md) or [resolving developer guide](../site-docs/guide/mcp.md).
+
 For a new installation, follow [self-hosting](self-hosting.md). For an existing team workspace, ask its owner for the server address and an invitation. Feedbacks does not have public self-service registration.
 
 Sign in, open a project and review its feedback. Owners manage members and allowed website origins. Install the [browser extension](extension.md) to capture pages and submit comments. Use [agent setup](agent-setup.md) for MCP access with a scoped credential.

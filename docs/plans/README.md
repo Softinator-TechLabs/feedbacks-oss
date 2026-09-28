@@ -48,3 +48,5 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 - [Thread archive and permanent deletion](thread-deletion.md)
 
 - [Visual capture editing](visual-capture-editing.md)
+
+- [Clear setup and agent-context onboarding](clear-onboarding.md)

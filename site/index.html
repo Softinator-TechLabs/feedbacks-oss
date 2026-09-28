@@ -3,18 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Feedbacks — Website feedback for AI coding agents</title>
     <meta
       name="description"
-      content="Your team's slate for the web. Annotated screenshots, short videos and element context for small teams and client reviews. Discuss the details, then give your coding agent the context to fix them. Open source and self-hosted."
+      content="Turn client feedback and UI bug reports into screenshots, page details and project context for AI coding agents. Open source. Self-host on your team's server."
     />
     <meta name="theme-color" content="#fffdfa" />
-    <meta property="og:title" content="Feedbacks — your team's slate for the web" />
+    <meta
+      property="og:title"
+      content="Feedbacks — Website feedback for AI coding agents"
+    />
     <meta
       property="og:description"
-      content="See it. Mark it. Work it out together. Your team and your coding assistant, on the same page."
+      content="Point at a UI problem. Send the screenshot and context. Let your developer work through the fix with their AI agent. Start with your team's own server."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://feedbacks.softinator.ai/" />
+    <meta name="twitter:card" content="summary" />
     <link rel="canonical" href="https://feedbacks.softinator.ai/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
@@ -26,7 +31,18 @@
       type="font/ttf"
       crossorigin
     />
-    <title>Feedbacks — your team's slate for the web</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Feedbacks",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web, Chrome",
+        "url": "https://feedbacks.softinator.ai/",
+        "description": "Self-hosted website feedback and visual context for AI coding agents, client reviews and UI testing.",
+        "license": "https://www.apache.org/licenses/LICENSE-2.0"
+      }
+    </script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -38,457 +54,249 @@
         ></a
       >
       <nav aria-label="Main navigation">
-        <a href="#workflow">Take a look</a><a href="#agents">For your AI</a
-        ><a href="/docs/">Docs</a
-        ><a class="nav-github" href="https://github.com/Softinator-TechLabs/feedbacks-oss"
-          >GitHub <span aria-hidden="true">↗</span></a
-        >
+        <a href="#workflow">See it work</a><a href="/docs/">Docs</a
+        ><a href="https://github.com/Softinator-TechLabs/feedbacks-oss"
+          >GitHub
+          <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 19 19 5M6 5h13v13" /></svg
+        ></a>
       </nav>
-      <a
-        class="button header-cta"
-        href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
-        >Get it for Chrome <span aria-hidden="true">↗</span></a
-      >
     </header>
     <main id="main">
-      <section class="hero wrap" aria-labelledby="hero-title">
+      <section class="intro wrap" aria-labelledby="hero-title">
         <h1 id="hero-title">
-          Your team’s
-          <span class="marked-word"
-            >slate<svg viewBox="0 0 320 30" aria-hidden="true">
-              <path d="M7 21C87 1 199 6 310 14M45 26C135 16 242 15 295 21" /></svg></span
-          >.<br />Right on the web.
+          Less “which button?”<br />More
+          <span class="marked"
+            >fixing.<svg viewBox="0 0 300 24" aria-hidden="true">
+              <path d="M4 15Q98 2 290 9M16 23Q161 10 283 17" /></svg
+          ></span>
         </h1>
-        <p>
-          Website feedback for small teams and client reviews.<br />Mark a screenshot.
-          Record a flow. Discuss the details.<br />Give your coding agent the context to
-          make the fix.
-        </p>
-        <div class="actions">
-          <a
-            class="button primary"
-            href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
-            >Download from Chrome Web Store</a
-          ><a class="source-link" href="#self-host">Self-host Feedbacks</a
-          ><a
-            class="source-link"
-            href="https://github.com/Softinator-TechLabs/feedbacks-oss"
-            >Explore the source</a
-          >
+        <div class="intro-aside">
+          <p>Point out a UI change. <br />Give your AI agent the full picture.</p>
+          <a class="start-button" href="/docs/guide/getting-started"
+            >Set up Feedbacks
+            <span aria-hidden="true"
+              ><svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></span
+          ></a>
+          <p class="setup-note">Open source. Your team’s server first.</p>
         </div>
       </section>
-      <section class="showcase" id="workflow" aria-label="An illustrated website review">
-        <div class="showcase-top wrap">
-          <p>A few marks. A lot less explaining.</p>
-          <span>Fictional pages &amp; conversations</span>
-        </div>
-        <div class="slate-gallery">
-          <article class="scrap poster-scrap">
-            <div class="scrap-caption">
-              <span>Campaign page</span><span>Client review</span>
-            </div>
-            <div class="poster-page">
-              <div class="poster-brand">OFFBEAT® <span>LIVE / 26</span></div>
-              <p>MAKE<br />SOME<br /><em>NOISE.</em></p>
-              <div class="waveform" aria-hidden="true">
-                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
-                ><i></i><i></i><i></i><i></i><i></i><i></i>
-              </div>
-              <span class="poster-date">FRIDAY · 8 PM · STUDIO 04</span>
-            </div>
-            <div class="scrap-note">
-              <span class="avatar lilac">S</span>
-              <p><strong>Sam</strong>Can the date be easier to spot?</p>
-            </div>
-          </article>
-          <article class="scrap main-scrap" data-stage="mark">
-            <div class="page-chrome">
-              <span class="chrome-dots" aria-hidden="true">● ● ●</span
-              ><span>form.example / collection</span><span>1440 × 900</span>
-            </div>
-            <div class="furniture-page">
-              <img
-                src="/media/studio-chair.png"
-                width="1536"
-                height="1024"
-                alt="Illustrative furniture website featuring an orange lounge chair"
-                fetchpriority="high"
-              />
-              <div class="furniture-nav">
-                <strong>form.</strong><span>Collection &nbsp; About &nbsp; Bag (0)</span>
-              </div>
-              <div class="furniture-copy">
-                <p>Everyday.<br />Extraordinary.</p>
-                <span class="sample-button"
-                  >Find your favourite <span aria-hidden="true">↗</span></span
-                >
-              </div>
-              <svg class="pencil-mark" viewBox="0 0 660 440" aria-hidden="true">
-                <path
-                  pathLength="1"
-                  d="M54 297C22 279 34 247 83 242C117 235 217 233 237 261C271 295 208 316 129 313C64 312 36 298 40 272M236 251C279 210 309 211 353 220M345 208L357 223L338 229"
-                />
-              </svg>
-              <span class="annotation-pin">1</span>
-            </div>
-            <div class="conversation-strip">
-              <span class="avatar coral" id="example-avatar">M</span>
-              <div>
-                <p class="comment-author" id="example-author">
-                  Maya <span>Design reviewer</span>
-                </p>
-                <p id="example-comment">
-                  “Give this button a little more breathing room.”
-                </p>
-              </div>
-              <span class="comment-status" id="example-status">Open</span>
-            </div>
-            <div class="demo-controls" role="group" aria-label="Try the review workflow">
-              <button data-step="mark" aria-pressed="true">Mark it</button
-              ><button data-step="discuss" aria-pressed="false">Discuss it</button
-              ><button data-step="agent" aria-pressed="false">Let your AI read it</button>
-            </div>
-          </article>
-          <article class="scrap checkout-scrap">
-            <div class="scrap-caption">
-              <span>Product flow</span><span>Team review</span>
-            </div>
-            <div class="checkout-page">
-              <strong>FIELDNOTES</strong>
-              <p>Good things,<br />on their way.</p>
-              <div class="checkout-order">
-                <span class="book-shape" aria-hidden="true">ideas<br />&amp; things.</span
-                ><span>Pocket notebook<br /><small>Moss / set of 3</small></span>
-              </div>
-              <div class="checkout-line"><span>Subtotal</span><span>$24.00</span></div>
-              <div class="checkout-line marked-total">
-                <span>Shipping</span><span>$12.00</span>
-              </div>
-              <span class="checkout-button">Continue to payment</span>
-            </div>
-            <div class="scrap-note">
-              <span class="avatar green">A</span>
-              <p><strong>Arjun</strong>Show shipping before this step.</p>
-            </div>
-          </article>
-        </div>
-        <div class="showcase-bottom wrap">
-          <p id="demo-explanation" aria-live="polite">
-            A screenshot and a pencil mark keep the exact point in view.
-          </p>
-          <a
-            href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
-            >Get it from the Chrome Web Store <span aria-hidden="true">↗</span></a
-          >
-        </div>
-      </section>
-      <section class="review-path wrap" aria-label="From review to a fix">
-        <p>From “right here”<br /><strong>to ready to fix.</strong></p>
-        <ol>
-          <li><span>Capture</span><small>The page and the point</small></li>
-          <li><span>Discuss</span><small>Your team’s decisions</small></li>
-          <li><span>Give context</span><small>Your developer or agent</small></li>
-          <li><span>Follow through</span><small>Replies and work status</small></li>
-        </ol>
-      </section>
-      <section class="capture-section wrap" id="capture" aria-labelledby="capture-title">
-        <div class="capture-copy">
-          <h2 id="capture-title">
-            Less describing.<br />More <span class="coral-text">pointing.</span>
-          </h2>
-          <p>
-            Capture the visible page or the whole scroll. Circle the awkward spacing,
-            highlight the copy, and number the steps. The screenshot, your comment and
-            selected element context stay together.
-          </p>
-          <ul class="feature-lines">
-            <li>
-              <strong>Make the point visible.</strong> Pencil, arrows, shapes, text,
-              highlighter and numbered steps. Add a sticker or your own image.
-            </li>
-            <li>
-              <strong>Keep long pages readable.</strong> Review full-page captures as
-              individual sections or one continuous preview.
-            </li>
-            <li>
-              <strong>Take your marks with you.</strong> Copy an image or export PNG,
-              JPEG, WebP or PDF. Crop local exports to the detail you need.
-            </li>
-          </ul>
-          <p class="detail-note">
-            Redact private pixels before sharing. Blur is visual softening, not secure
-            redaction.
-          </p>
-          <a class="source-link" href="/docs/guide/chrome-extension"
-            >Explore screenshot tools <span aria-hidden="true">↗</span></a
-          >
-        </div>
-        <figure class="capture-example">
-          <div class="capture-sheet">
-            <div class="capture-sheet-header">
-              <strong>FIELDNOTES</strong><span>A small detail. A better checkout.</span>
-            </div>
-            <div class="capture-sheet-body">
-              <div class="capture-product">
-                <span class="large-book">ideas<br />&amp; things.</span
-                ><span>Pocket notebook<br /><small>Moss / set of 3</small></span>
-              </div>
-              <div class="capture-order">
-                <span>Subtotal</span><strong>$24.00</strong>
-              </div>
-              <div class="capture-order highlight-line">
-                <span>Shipping</span><strong>$12.00</strong
-                ><span class="step-dot">1</span>
-              </div>
-              <p class="capture-annotation">Show this earlier in the flow.</p>
-              <div class="capture-order"><span>Total</span><strong>$36.00</strong></div>
-              <div class="capture-checkout">Continue to payment</div>
-            </div>
-          </div>
-          <div class="capture-context">
-            <span>Attached to the point</span><code>form.example / checkout</code>
-            <p>Shipping row · selected element<br />Screenshot + reviewer’s comment</p>
-          </div>
-          <figcaption>
-            Illustrative capture and context, not a product screenshot.
-          </figcaption>
-        </figure>
-      </section>
-      <section class="video-section" aria-labelledby="video-title">
-        <div class="video-inner wrap">
-          <div
-            class="video-story"
-            role="img"
-            aria-label="Illustrative review sequence: collection, bag, checkout. A note asks to show shipping before checkout."
-          >
-            <div class="video-frames">
-              <div class="video-frame">
-                <span>Collection</span
-                ><img
-                  src="/media/studio-chair.png"
-                  alt=""
-                  width="1536"
-                  height="1024"
-                  loading="lazy"
-                /><strong>Find your favourite.</strong>
-              </div>
-              <div class="video-frame">
-                <span>Your bag</span>
-                <div class="film-order">
-                  <span class="mini-chair" aria-hidden="true"></span>
-                  <p>Lounge chair<br /><small>Terracotta / cream</small></p>
-                </div>
-                <div class="film-rule"></div>
-                <div class="film-rule short"></div>
-                <strong>One more step.</strong>
-              </div>
-              <div class="video-frame">
-                <span>Checkout</span>
-                <div class="film-price"><span>Shipping</span><strong>$12.00</strong></div>
-                <p class="film-comment">“Could we see this<br />before checkout?”</p>
-              </div>
-            </div>
-            <div class="video-sequence">
-              <span>See the flow</span>
-              <div></div>
-              <span>Explain the moment</span>
-            </div>
-            <p class="video-caption">
-              Illustrative storyboard · not a recording or product interface
-            </p>
-          </div>
-          <div class="video-copy">
-            <h2 id="video-title">Some feedback<br />needs <span>motion.</span></h2>
-            <p>
-              Walk through the confusing checkout or show a layout shift as it happens.
-              Record up to five minutes of a website tab, with optional tab audio and
-              microphone.
-            </p>
-            <p>
-              Pause and resume. Preview the clip, trim the timeline or crop the frame,
-              then send it with your comment.
-            </p>
-            <a class="source-link" href="/docs/guide/chrome-extension#video-and-updates"
-              >See how video review works <span aria-hidden="true">↗</span></a
-            >
-          </div>
-        </div>
-      </section>
-      <section class="team-section wrap" id="team" aria-labelledby="team-title">
-        <div class="team-copy">
-          <h2 id="team-title">A shared place<br />to work it out.</h2>
-          <p>
-            Client requests, design details and the questions in between. Keep the
-            conversation beside the evidence, so the next person can pick up the thread.
-          </p>
-          <p>
-            See teammates’ pins on the page. Keep unsent drafts distinct, show resolved
-            feedback when you need it, and follow replies and work status in the
-            workspace.
-          </p>
-          <a class="source-link" href="/docs/guide/review-feedback"
-            >Tour the review workflow <span aria-hidden="true">↗</span></a
-          >
-        </div>
-        <figure class="team-conversation">
-          <div class="discussion-title">
-            <strong>Make shipping clear earlier</strong
-            ><span>Illustrative discussion</span>
-          </div>
-          <div class="discussion-message">
-            <span class="avatar coral">M</span>
-            <div>
-              <strong>Maya <small>Client</small></strong>
-              <p>
-                Can we show delivery costs in the bag? It feels late to introduce them
-                here.
-              </p>
-            </div>
-          </div>
-          <div class="discussion-message">
-            <span class="avatar green">A</span>
-            <div>
-              <strong>Arjun <small>Developer</small></strong>
-              <p>
-                Yes. Let’s add an estimate before checkout and keep the final total here.
-              </p>
-            </div>
-          </div>
-          <div class="discussion-message">
-            <span class="avatar lilac">S</span>
-            <div>
-              <strong>Sam <small>Designer</small></strong>
-              <p>Agreed. The same wording should work on mobile.</p>
-            </div>
-          </div>
-          <figcaption>
-            The screenshot explains where. The discussion explains why.
-          </figcaption>
-        </figure>
-      </section>
-      <section class="agent-section wrap" id="agents" aria-labelledby="agent-title">
-        <div class="agent-copy">
-          <h2 id="agent-title">Your AI gets<br />the <span>whole story.</span></h2>
-          <p>
-            The screenshot, selected element context and the discussion. Connect your
-            coding agent through MCP so it can read the review, reply in the thread and
-            report its work with the original request in view.
-          </p>
-          <div class="client-names" aria-label="Coding assistants using MCP">
-            <span>Codex</span><span>Claude Code</span><span>Antigravity</span>
-          </div>
-          <a class="source-link" href="/docs/guide/mcp"
-            >Connect through MCP <span aria-hidden="true">↗</span></a
-          >
-        </div>
+      <section class="story wrap" id="workflow" aria-labelledby="workflow-title">
+        <h2 class="sr-only" id="workflow-title">From a click to context</h2>
         <div
-          class="context-composition"
-          aria-label="Illustrative context passed to a coding assistant"
+          class="story-controls"
+          role="group"
+          aria-label="Follow the feedback workflow"
         >
-          <div class="context-paper">
-            <div class="context-heading">
-              <span class="context-dot"></span
-              ><strong>One thread. All the context.</strong><span>MCP</span>
-            </div>
-            <div class="context-line">
-              <span class="context-key">The mark</span>
-              <p>Button spacing · annotated screenshot</p>
-            </div>
-            <div class="context-line">
-              <span class="context-key">The element</span>
-              <p>Collection page · selected button</p>
-            </div>
-            <div class="context-line">
-              <span class="context-key">The discussion</span>
-              <p>“Keep the mobile layout in mind, too.”</p>
-            </div>
-            <div class="context-line">
-              <span class="context-key">The reply</span>
-              <p>“I’ll check both sizes and post the result.”</p>
-            </div>
-            <small>Reviewer guidance is advisory. Project permissions still apply.</small>
-          </div>
-          <div class="handoff-note">
-            <p>Keep the request.<br />Bring back the result.</p>
-            <span>Human or coding agent, in the same thread.</span>
-            <small>Illustrative context. Agent access is explicitly granted.</small>
-          </div>
-        </div>
-      </section>
-      <section class="issue-section wrap" aria-labelledby="issue-title">
-        <div>
-          <h2 id="issue-title">Ready for an Issue?<br />You choose when.</h2>
-          <p>
-            Connect a project to GitHub, then let an authorized maintainer or a separately
-            scoped agent create and link an Issue from the agreed feedback. Optional
-            status sync keeps linked work in view.
-          </p>
-          <a class="source-link" href="/docs/guide/github"
-            >Set up GitHub Issues <span aria-hidden="true">↗</span></a
+          <button data-scene="0" aria-pressed="true"><span>01</span> Point it out</button
+          ><svg class="step-arrow" viewBox="0 0 32 24" aria-hidden="true">
+            <path d="M3 12h24m-6-6 6 6-6 6" />
+          </svg>
+          <button data-scene="1" aria-pressed="false">
+            <span>02</span> Check &amp; send</button
+          ><svg class="step-arrow" viewBox="0 0 32 24" aria-hidden="true">
+            <path d="M3 12h24m-6-6 6 6-6 6" />
+          </svg>
+          <button data-scene="2" aria-pressed="false">
+            <span>03</span> Fix with your agent
+          </button>
+          <button
+            class="play-story"
+            aria-label="Play the three-step walkthrough"
+            aria-pressed="false"
           >
+            <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 5 11 7-11 7Z" /></svg
+            ><span class="play-label">Play</span>
+          </button>
         </div>
-        <div class="issue-path" aria-label="Optional GitHub workflow">
-          <span>Feedback &amp; discussion</span
-          ><svg viewBox="0 0 200 35" aria-hidden="true">
-            <path d="M4 17H190m-12-10 13 10-13 10" /></svg
-          ><strong>Agreed work → GitHub Issue</strong>
-          <p>
-            Ask your coding agent for a quick fix directly from a Feedbacks thread—no
-            Issue required. Create an Issue when you want to track the work in GitHub.
-          </p>
-        </div>
-      </section>
-      <section class="self-host wrap" id="self-host" aria-labelledby="host-title">
-        <div>
-          <h2 id="host-title">Your server.<br />Your slate.</h2>
-          <p>
-            App, extension and MCP. Apache-2.0.<br />Your PostgreSQL. Your S3 storage,
-            including Wasabi.
-          </p>
-          <div class="actions">
-            <a
-              class="button primary"
-              href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md"
-              >Start self-hosting <span aria-hidden="true">↗</span></a
-            ><a href="https://github.com/Softinator-TechLabs/feedbacks-oss"
-              >View GitHub</a
+        <div class="story-stage" data-active="0">
+          <div class="screen-stack">
+            <button class="screen-zoom" aria-label="Enlarge actual extension screenshot">
+              <picture
+                ><source
+                  id="story-detail"
+                  media="(max-width: 900px)"
+                  srcset="/media/workflow/point-detail.png" />
+                <img
+                  id="story-image"
+                  src="/media/workflow/point.png"
+                  width="900"
+                  height="740"
+                  alt="Actual Feedbacks extension: right-click Add to bag on a demo furniture website and write a comment."
+                  fetchpriority="high" /></picture
+              ><svg class="capture-mark" viewBox="0 0 900 740" aria-hidden="true">
+                <path d="M830 290C780 310 670 340 550 422m8-20-8 20 22-4" /></svg
+              ><svg class="detail-mark" viewBox="0 0 405 340" aria-hidden="true">
+                <path d="M310 18C230 2 90 2 38 36m9-17-9 17 20-3" />
+              </svg>
+            </button>
+            <span class="screen-label" id="screen-label"
+              >Chrome extension · on your website</span
             >
           </div>
+          <div class="story-note" aria-live="polite">
+            <div class="pencil-note" id="pencil-note">this button, right here.</div>
+            <h3 id="scene-title">Right-click. <br />Say what needs changing.</h3>
+            <p id="scene-copy">
+              Click the pinned extension. Right-click an element, write your note, then
+              Save point.
+            </p>
+            <p class="context-slip" id="context-slip">
+              The screenshot + exact element come along.
+            </p>
+            <a id="scene-guide" href="/docs/guide/chrome-extension"
+              >Install &amp; pin the extension
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg
+            ></a>
+          </div>
         </div>
-        <div class="start-note">
-          <strong>Bring the whole team.</strong>
-          <p>Keep quick requests here.<br />Keep your backlog for agreed work.</p>
-          <a href="mailto:business@softinator.ai?subject=Feedbacks%20hosting"
-            >Prefer hosting? Talk to us <span aria-hidden="true">↗</span></a
-          ><small>Hosted access by arrangement.</small>
+        <div class="story-bottom">
+          <p>Real extension &amp; app screens. Fictional demo project.</p>
+          <p>
+            Click a screenshot to look closer
+            <span aria-hidden="true"
+              ><svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg
+            ></span>
+          </p>
+        </div>
+      </section>
+      <section class="handoff wrap" aria-labelledby="handoff-title">
+        <div class="handoff-heading">
+          <h2 id="handoff-title">“Make <span class="circled">this</span> darker.”</h2>
+          <p>Now “this” comes with context.</p>
+        </div>
+        <div class="context-trail" aria-label="Context delivered to your agent">
+          <span>Screenshot</span><span>Page + element</span><span>Your notes</span
+          ><span>Project guidance</span
+          ><span class="agent-end"
+            >Your AI agent
+            <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 19 19 5M6 5h13v13" /></svg
+          ></span>
+        </div>
+        <p class="agent-instruction">
+          Connect Codex, Claude Code or Antigravity through MCP. Ask it to read the
+          feedback, make the change and verify it.
+        </p>
+      </section>
+      <section class="setup-section" id="setup" aria-labelledby="setup-title">
+        <div class="wrap">
+          <div class="setup-heading">
+            <h2 id="setup-title">One team server.<br />Everyone on the same page.</h2>
+            <p>
+              DevOps installs it once on company infrastructure. <br />Reviewers just
+              connect to it.
+            </p>
+          </div>
+          <ol class="setup-path">
+            <li>
+              <a href="/docs/guide/self-host"
+                ><span class="setup-number">1</span><strong>Start the server</strong
+                ><span
+                  >DevOps · installation guide
+                  <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 19 19 5M6 5h13v13" /></svg></span
+              ></a>
+            </li>
+            <li>
+              <a href="/docs/guide/chrome-extension"
+                ><span class="setup-number">2</span><strong>Connect Chrome</strong
+                ><span
+                  >Install → pin → paste server URL
+                  <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 19 19 5M6 5h13v13" /></svg></span
+              ></a>
+            </li>
+            <li>
+              <a href="/docs/guide/team-setup"
+                ><span class="setup-number">3</span><strong>Bring your team</strong
+                ><span
+                  >Projects, context &amp; members
+                  <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 19 19 5M6 5h13v13" /></svg></span
+              ></a>
+            </li>
+            <li>
+              <a href="/docs/guide/mcp"
+                ><span class="setup-number">4</span><strong>Connect your agent</strong
+                ><span
+                  >Developer · personal MCP setup
+                  <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 19 19 5M6 5h13v13" /></svg></span
+              ></a>
+            </li>
+          </ol>
+          <p class="server-tip">
+            Already have a server? <strong>Help → Copy server URL.</strong> Paste it into
+            the extension.
+          </p>
+          <div class="role-links">
+            <span>Pick your guide:</span
+            ><a href="/docs/guide/clients"
+              >I’m a client
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></a
+            ><a href="/docs/guide/chrome-extension"
+              >I’m reviewing or testing
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></a
+            ><a href="/docs/guide/self-host"
+              >I’m setting up the server
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></a
+            ><a href="/docs/guide/mcp"
+              >I’m fixing the code
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg
+            ></a>
+          </div>
         </div>
       </section>
     </main>
+    <dialog id="screen-dialog" aria-label="Full size product screenshot">
+      <button class="close-screen" autofocus>Close ×</button>
+      <div class="zoom-scroll">
+        <img src="/media/workflow/point.png" alt="" width="900" height="650" />
+      </div>
+      <p>Actual product screen · demo content. Scroll to inspect the full image.</p>
+    </dialog>
     <footer class="site-footer wrap landing-footer">
       <div>
         <a class="wordmark" href="/">feedbacks.</a>
         <p>By <a href="https://softinator.ai">Softinator</a>. Built in the open.</p>
       </div>
-      <nav class="footer-comparisons" aria-label="Compare Feedbacks with other tools">
-        <strong><a href="/compare/">Compare Feedbacks with ↗</a></strong>
-        <div>
-          <a href="/compare/bugherd.html">BugHerd</a>
-          <a href="/compare/marker-io.html">Marker.io</a>
-          <a href="/compare/markup-io.html">MarkUp.io</a>
-          <a href="/compare/markup-hero.html">Markup Hero</a>
-          <a href="/compare/redpen-ai.html">Redpen.ai</a>
-          <a href="/compare/pastel.html">Pastel</a>
-          <a href="/compare/ruttl.html">Ruttl</a>
-          <a href="/compare/superflow.html">Superflow</a>
-          <a href="/compare/usersnap.html">Usersnap</a>
-          <a href="/compare/userback.html">Userback</a>
-          <a href="/compare/atarim.html">Atarim</a>
-          <a href="/compare/bugpin.html">BugPin</a>
-          <a href="/compare/fasterfixes.html">FasterFixes</a>
-          <a href="/compare/siteping.html">SitePing</a>
-          <a href="/compare/openreplay.html">OpenReplay + Spot</a>
-        </div>
-      </nav>
+      <details class="compare-disclosure">
+        <summary>Compare tools</summary>
+        <nav class="footer-comparisons" aria-label="Compare Feedbacks with other tools">
+          <strong
+            ><a href="/compare/"
+              >Compare Feedbacks with
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></a
+          ></strong>
+          <div>
+            <a href="/compare/bugherd.html">BugHerd</a>
+            <a href="/compare/marker-io.html">Marker.io</a>
+            <a href="/compare/markup-io.html">MarkUp.io</a>
+            <a href="/compare/markup-hero.html">Markup Hero</a>
+            <a href="/compare/redpen-ai.html">Redpen.ai</a>
+            <a href="/compare/pastel.html">Pastel</a>
+            <a href="/compare/ruttl.html">Ruttl</a>
+            <a href="/compare/superflow.html">Superflow</a>
+            <a href="/compare/usersnap.html">Usersnap</a>
+            <a href="/compare/userback.html">Userback</a>
+            <a href="/compare/atarim.html">Atarim</a>
+            <a href="/compare/bugpin.html">BugPin</a>
+            <a href="/compare/fasterfixes.html">FasterFixes</a>
+            <a href="/compare/siteping.html">SitePing</a>
+            <a href="/compare/openreplay.html">OpenReplay + Spot</a>
+          </div>
+        </nav>
+      </details>
       <nav aria-label="Footer navigation">
         <a
           href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/CONTRIBUTING.md"

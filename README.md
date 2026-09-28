@@ -1,8 +1,10 @@
 # Feedbacks
 
-**Your team's slate for the web.**
+**Website feedback for AI coding agents.**
 
-Take a screenshot of a web page, draw what you mean with a pencil, and discuss it with your team or coding agent. Keep the original context together before deciding what belongs in Figma, GitHub Issues or Projects. Feedbacks includes the web application, Chrome extension, HTTP API, MCP server and JSON CLI.
+Clients, colleagues and testers point out UI changes and bugs. Feedbacks keeps the comment, original screenshot, exact page, selected element and approved project guidance together, so developers can give their coding agents useful context, make the agreed fix and record verification.
+
+**Set up a team server first.** The order is: server → install and connect the Chrome extension → project context, optional GitHub App and members → each developer's personal MCP setup. One installation serves your team; the extension does not host a server. Follow the [complete setup flow](site-docs/guide/getting-started.md), or the separate [DevOps installation guide](site-docs/guide/self-host.md).
 
 [Website](https://feedbacks.softinator.ai) · [Why Feedbacks](docs/why-feedbacks.md) · [Self-hosting](docs/self-hosting.md) · [Extension](docs/extension.md) · [Coding assistants & Codex plugin](docs/agents.md) · [API & MCP](docs/api.md) · [Roadmap](https://github.com/orgs/Softinator-TechLabs/projects/4) · [Contributing](CONTRIBUTING.md)
 

@@ -40,3 +40,6 @@ CLAUDE.local.md
 
 # Regenerated inside each source-release archive, never a live checkout snapshot.
 /SOURCE-MANIFEST.sha256
+
+# Canonical manuals are published into the docs site at build time.
+/site-docs/reference/manual/

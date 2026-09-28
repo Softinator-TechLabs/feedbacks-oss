@@ -1,5 +1,7 @@
 # Self-hosting
 
+This is the server operator reference. Install one Feedbacks server for your company before connecting extensions or agents. The [DevOps walkthrough](../site-docs/guide/self-host.md) separates deployment from [owner project/member setup](../site-docs/guide/team-setup.md), [reviewer installation](../site-docs/guide/chrome-extension.md) and [developer MCP setup](../site-docs/guide/mcp.md).
+
 Use your own domain, PostgreSQL database and S3-compatible object storage. Wasabi, AWS S3 and other compatible providers can be configured through the same environment variables. Compatibility depends on support for authenticated `PutObject` and `GetObject` requests with path-style addressing; verify upload and authorized readback with your chosen provider. No Softinator storage account is required.
 
 ## Local development

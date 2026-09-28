@@ -6,6 +6,9 @@ COPY vite.site.config.ts ./
 COPY .prettierrc.json ./
 COPY scripts/generate-comparisons.mjs ./scripts/
 COPY scripts/export-docs.mjs ./scripts/
+COPY scripts/publish-docs.mjs ./scripts/
+COPY docs ./docs
+COPY plugins ./plugins
 COPY site ./site
 COPY site-docs ./site-docs
 RUN npm run build:site

@@ -12,11 +12,22 @@ React and Vite client, TypeScript service, PostgreSQL, private image storage.
 
 ## Users
 
-Product teams review public sites, authenticated dashboards and local prototypes. Developers and explicitly authorized agents respond to the same feedback. Owners manage project access.
+Four roles share the feedback flow across public sites, authenticated dashboards and local prototypes:
+
+- Clients describe the change they want through the review access their team provides.
+- Reviewers and testers capture problems, explain expected behavior and check the result.
+- DevOps installs and operates the team's server, then hands its address and owner access to the person organizing projects.
+- Resolving developers connect their own coding agents, read the evidence, make agreed changes and verify the result.
+
+The owner prepares projects and people: website origins, published project context and approved instructions, optional GitHub App integration, members, project grants, profiles and responsibilities. Ownership is an administration responsibility that may overlap these roles.
 
 ## Product Purpose
 
-Be the team's shared slate for the web: capture a screenshot, draw on it with a pencil, and discuss the point with people and authorized agents. Give quick client requirements and visual reviews a place to become clear before the team takes agreed design work to Figma or engineering work to GitHub Issues and Projects. Keep element-specific screenshots, discussion, response obligations and delivery evidence together without requiring either tool. A connected project may separately opt into verified GitHub Issue status sync.
+Turn website feedback into context your AI agent can use. Keep the client's request or tester's bug report together with the original screenshot, exact page, viewport, selected element details when available and authorized project guidance. Developers use that evidence with their own coding agents through MCP, agree the work, verify the change and record the outcome.
+
+Start with the team's Feedbacks server. DevOps installs one organization per installation; the extension connects to that installation and does not host it. A reviewer installs and pins the extension, copies the server URL from Help, connects with their own account and receives project access from the owner. Capture follows explicit stages: Save point creates a local draft; Review & send opens the evidence review; Send feedback shares the checked notes and screenshots. Clients and reviewers do not need to configure MCP. Each resolving developer connects their own agent with their own Feedbacks key.
+
+Capture and MCP do not require GitHub. A connected project can optionally create linked Issues through an authorized maintainer or separately scoped agent, and separately opt into verified Issue status sync. Figma and GitHub Projects remain manual follow-ups. Connecting MCP alone does not start fixes.
 
 Developers and authorized coding agents share that context. Owners can describe reviewer expertise in approved guidance and assign subject-specific importance weights, with project overrides. Agents receive this advisory context separately from untrusted discussion and approved project instructions. Weights support interpretation; they do not guarantee a model's decisions or grant permission to act.
 
@@ -28,7 +39,7 @@ The architecture is documented in docs/architecture.md. Exact project origins, p
 
 ## Brand Commitments
 
-Feedbacks. A creative, visual-first public website: bold type, warm paper, pencil marks and short discussion scraps. The application and extension keep their focused system-font interface and Oxford actions. Each surface has its own scale. See DESIGN.md.
+Feedbacks. A visual-first public presence with a concise, human voice and actual product evidence. The landing pairs bold Manrope with brief handwritten Caveat notes and red pencil marks; fictional demo content is clearly labeled. Setup guidance lives on the public website. The application and extension keep their focused system-font interface and Oxford actions. Each surface has its own scale. See DESIGN.md.
 
 ## Product Principles
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Feedbacks: Website Review",
-  "version": "0.1.30",
-  "description": "Capture, annotate and discuss website feedback with your team on your chosen Feedbacks server.",
+  "name": "Feedbacks: UI Context for AI Agents",
+  "version": "0.1.31",
+  "description": "Capture UI feedback and screenshots for AI coding agents. Connect to your team\u2019s self-hosted Feedbacks server first.",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus", "alarms"],
   "optional_host_permissions": ["https://*/*", "http://*/*", "<all_urls>"],
   "background": {
@@ -17,7 +17,10 @@
       "32": "icons/32.png"
     }
   },
-  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "commands": {
     "_execute_action": {
       "suggested_key": {

@@ -1,14 +1,51 @@
-# Chrome extension
+---
+description: Install and pin the Feedbacks Chrome extension, connect your team server, right-click a website element, finalize the draft and send feedback.
+---
 
-## Install and pair
+# Install the extension and send your first feedback
 
-1. [Install Feedbacks from the Chrome Web Store](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo), then pin it in Chrome.
-2. Open the extension and enter your team's Feedbacks server address, for example `https://feedback.example.com`.
-3. Choose **Connect to server**. Chrome asks for access to that specific server; allow it.
-4. Sign in to the server and approve the pending pairing request.
-5. Open an approved website and capture a page or point. Review the image and comment before **Send**.
+For clients, colleagues and testers. Feedbacks captures the evidence your developer and AI coding agent need to understand a UI change or bug.
 
-The public Store extension starts without a preset server. An unpacked developer build is separate and must be updated manually. For source installation, run `npm ci` and `npm run build:extension`, then select the repository's `extension/` folder in `chrome://extensions` → **Developer mode** → **Load unpacked**.
+## Before you install
+
+**Your team must have a running Feedbacks server first.** DevOps installs it once on your company's infrastructure using the [server installation guide](/guide/self-host). You need its URL, a sign-in account and access to a project. If your team already has a server, ask the owner for access; you do not install another one.
+
+The server URL is your team's Feedbacks address, such as `https://feedback.example.com`. It is **not** the website you are reviewing, the public documentation site or the `/mcp` endpoint.
+
+## Install, pin and connect
+
+1. [Open Feedbacks in the Chrome Web Store](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo). Choose **Add to Chrome**, then confirm **Add extension**.
+2. In Chrome's toolbar, open **Extensions** (the puzzle-piece button). Find **Feedbacks** and click its **pin**. The Feedbacks icon now stays in your toolbar. Chrome controls pinning; the extension cannot pin itself.
+3. Sign in to your team's Feedbacks web app. Open **Help** and choose **Copy server URL**.
+4. Click the pinned Feedbacks icon. Paste the URL into **Your Feedbacks server** and choose **Connect to server**. You can also use **Settings → Server & account**.
+5. Allow Chrome to connect to that server. Sign in on the page that opens and approve the pending extension connection.
+6. Return to the website you want to review. If no project matches, ask the owner to add its website origin and grant your account access. See [project setup](/guide/team-setup).
+
+## Your first point: click, right-click, save
+
+1. **Open the website**, then **left-click the pinned Feedbacks icon**. On an allowed page, opening the connected extension starts review and displays the page controls. Choose the project if more than one is available.
+2. **Move your pointer onto the element** you want changed. With highlighting enabled, its outline shows the target.
+3. **Right-click the element** to open the Feedbacks note editor. On a trackpad, use your system's secondary click; macOS Control-click is also supported.
+4. **Write the problem and the expected result.** For example: “On mobile, add more space above this payment button.” Choose **Save point**.
+5. Add more points the same way. The **unsent** count means these notes are still drafts on this browser.
+
+While review is active, a normal left-click is not the add-comment action. Right-click adds the note; **Shift + right-click** keeps the browser's usual context menu. You can also begin from Chrome's **Add feedback on this page** context-menu entry.
+
+## Finalize and send to Feedbacks
+
+1. On the page, choose **Review & send** beside the Feedbacks controls. This is the finalization step: it opens your saved points and their original screenshots for review.
+2. Check the notes and images. Use **View original image** to inspect a point. Annotate or redact private information before sharing.
+3. Choose **Send feedback** in the editor. Wait for upload completion, then open the thread on your team's Feedbacks server.
+
+**Save point → Review & send → Send feedback**
+
+Saving a point or opening the editor does not send feedback. If sending stops after the thread was created, use **Retry Send** in the same draft to finish the remaining uploads without creating another thread.
+
+The developer can now [read the feedback through MCP](/guide/mcp), fix the agreed work and record verification. Clients and testers do not need to configure MCP themselves.
+
+## Developer-only: load an unpacked build
+
+The Store extension starts without a preset server and updates through Chrome. To test from source, run `npm ci` and `npm run build:extension`, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the repository's `extension/` folder. Unpacked builds require manual updates.
 
 ## What Chrome asks for
 
@@ -23,7 +60,7 @@ The public Store extension starts without a preset server. An unpacked developer
 
 Browser-protected pages cannot be captured. Some inaccessible frames permit coordinate-only evidence rather than a precise element. For local HTTP development, open the extension's **Advanced** section and enable the separate local-server allowance; use HTTPS for team servers.
 
-The popup keeps **Turn off review**, capture actions, viewport sizes and shortcuts together near the top. Expand **Chrome access** to inspect permissions and **More review tools** for QA and pin controls. A connected server appears as a short row; expand it to change the address. The address field suggests up to five recently connected servers from Chrome sync when available. A new unpacked extension with a different Chrome extension ID has separate storage, so its server address and authorization may need to be entered again. Chrome controls toolbar pinning: open its Extensions menu and pin Feedbacks there.
+The popup keeps **Exit review**, capture actions, viewport sizes and shortcuts together near the top. Expand **Chrome access** to inspect permissions and **More review tools** for QA and pin controls. A connected server appears as a short row; expand it to change the address. The address field suggests up to five recently connected servers from Chrome sync when available. A new unpacked extension with a different Chrome extension ID has separate storage, so its server address and authorization may need to be entered again. Chrome controls toolbar pinning: open its Extensions menu and pin Feedbacks there.
 
 Hover an element to see its outline, then right-click it, write its note, and choose **Save point**. The orange dashed point and **not sent** count mean it is only on this browser. Hover or focus the point to see its note, unsent status and **Edit point** action. Click it to edit before capture. Add more points, choose **Review & send** beside the movable controls icon, inspect the saved images, then **Send feedback**. The shared thread is created before its screenshots finish uploading. If an upload stops, the editor identifies the already published thread and **Retry Send** finishes the remaining images without creating another thread. Team members with access to the same Feedbacks project see published points when reviewing that page. Hover or focus a point for its author, time, note and thread link. A member allowed to resolve feedback can use **Resolve**; older connections open the thread for resolution until they pair again with an updated server. Pins on underlying content disappear while a website menu covers that content.
 
@@ -57,7 +94,7 @@ Use highlighter, numbered steps, text, blur, simple stamps or an inserted local 
 
 **Record a short tab video** opens Chrome's tab picker. Stop after at most five minutes, preview the clip, add a comment and send it. The clip is stored privately with the thread. Tab audio and microphone are separate options, off by default. Recordings above 40 MiB are discarded. Drag either timeline handle to trim, scrub to inspect a frame and choose Play selection to preview the range. Crop frame is available below. Apply edits before sending; Restore original undoes edits. Navigation continues recording in the selected tab. Chrome Web Store installs update through Chrome; after an update, refresh pages you are reviewing. An unpacked build requires **Reload** in `chrome://extensions`.
 
-Read [access and privacy](/guide/access-privacy) before capturing sensitive pages. For complete extension behavior, see the [source guide](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/extension.md).
+Read [access and privacy](/guide/access-privacy) before capturing sensitive pages. For complete extension behavior, see the [complete extension guide](/reference/manual/extension).
 
 ## Settings and unobtrusive page controls
 

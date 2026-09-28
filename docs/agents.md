@@ -2,6 +2,10 @@
 
 MCP gives an authorized assistant the same thread your team sees: screenshot, page context, named messages, revisions and current permissions. Approved project instructions and owner-approved reviewer guidance travel separately from untrusted discussion. Subject weights are advice about expertise, not votes or permission to ignore evidence.
 
+## Start with your personal connection
+
+Your team needs a server and a prepared project first. Sign in as yourself, open **Help → Connect your coding agent** and create your setup prompt, or choose narrower projects and permissions in Account. Paste the private prompt into your own coding tool and verify accessible projects before changing feedback. Reviewers do not need MCP to submit captures. Follow the [step-by-step developer guide](../site-docs/guide/mcp.md) for Codex, Claude Code or Antigravity.
+
 ## Codex plugin
 
 From the repository root, with Node.js 22.12+ or 24:
