@@ -38,7 +38,7 @@ try {
       name: args[1],
       description: operationDescriptions[args[1]] ?? `Feedbacks ${args[1]}`,
       readOnly: entry.readOnly,
-      inputSchema: z.toJSONSchema(entry.input),
+      inputSchema: z.toJSONSchema(entry.input, { io: "input" }),
       outputSchema: z.toJSONSchema(entry.output),
     };
   } else {

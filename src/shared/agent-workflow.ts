@@ -182,7 +182,7 @@ export async function runAgentTool(
         operation: i.operation,
         description: operationDescriptions[i.operation] ?? i.operation,
         readOnly: entry.readOnly,
-        inputSchema: z.toJSONSchema(entry.input),
+        inputSchema: z.toJSONSchema(entry.input, { io: "input" }),
         outputSchema: z.toJSONSchema(entry.output),
       };
     }
