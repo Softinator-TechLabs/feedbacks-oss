@@ -4,11 +4,6 @@ import "./custom.css";
 
 export default {
   extends: DefaultTheme,
-  Layout: () =>
-    h(DefaultTheme.Layout, null, {
-      "doc-top": () =>
-        h("div", { class: "docs-motion-control" }, [h("feedbacks-motion-control")]),
-    }),
   enhanceApp({ app }) {
     app.component("Demo", {
       props: ["step"],

@@ -8,13 +8,15 @@ description: Four visual steps to install Feedbacks, connect your team server, c
 
 ## 1. Install and pin
 
-[Add Feedbacks to Chrome](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo), then pin it from Chrome’s **Extensions** menu.
+[Add Feedbacks to Chrome](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo).
 
-<Demo step="install" />
+**Pin it. Keep review one click away.** Open Chrome’s puzzle icon → Feedbacks → **Pin**. Keep its icon in your toolbar so you can start or resume a review anytime.
+
+<Demo step="pin" />
 
 ## 2. Connect your team’s server {#install-pin-and-connect}
 
-In the team app: **Help → Copy server URL**. Paste it into the extension, choose **Connect to server**, sign in and approve.
+In the team app: **Setup → Copy server URL**. Paste it into the extension, choose **Connect to server**, sign in and approve.
 
 <Demo step="connect" />
 
@@ -23,6 +25,8 @@ In the team app: **Help → Copy server URL**. Paste it into the extension, choo
 Open your website and click the pinned extension. **Right-click** the element, write the change, then **Save point**.
 
 <Demo step="capture" />
+
+**Default shortcut:** Mac **⌘ Shift Y** · Windows **Ctrl Shift Y** starts or resumes review. Change it in extension **Settings → Keyboard shortcuts**. If another extension uses that combination, choose a different one there.
 
 ## 4. Check and send {#finalize-and-send-to-feedbacks}
 

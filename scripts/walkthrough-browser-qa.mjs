@@ -14,7 +14,7 @@ const server = createServer(async (request, response) => {
     if (path === "/") {
       response.setHeader("Content-Type", "text/html; charset=utf-8");
       response.end(
-        '<!doctype html><meta name="viewport" content="width=device-width"><feedbacks-motion-control></feedbacks-motion-control><main><feedbacks-demo step="install"></feedbacks-demo></main><script defer src="/learn/demo.js"></script>',
+        '<!doctype html><meta name="viewport" content="width=device-width"><main><feedbacks-demo step="install"></feedbacks-demo></main><script defer src="/learn/demo.js"></script>',
       );
     } else if (/^\/learn\/[a-z0-9-]+\.(js|css|webp)$/.test(path)) {
       response.setHeader(
@@ -63,6 +63,7 @@ try {
   for (const step of [
     "server",
     "install",
+    "pin",
     "connect",
     "project",
     "capture",
@@ -127,6 +128,34 @@ try {
       false,
     );
   }
+  await demo.evaluate((element) => element.setAttribute("step", "pin"));
+  await demo.locator(".pin-browser").waitFor({ timeout: 2000 });
+  // Reduced motion and manually selected frames must show each action's outcome.
+  await demo.locator(".step").nth(1).click();
+  assert(await demo.locator(".pinned-icon").isVisible());
+  assert.equal(await demo.locator(".pin").getAttribute("data-pinned"), "true");
+  await demo.locator(".step").nth(2).click();
+  assert(await demo.locator(".review-started").isVisible());
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await demo.locator(".step").nth(1).click();
+  await demo.locator(".play").click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector("feedbacks-demo").shadowRoot.querySelector(".pin")?.dataset
+        .pinned === "false",
+  );
+  assert.equal(await demo.locator(".pinned-icon").isVisible(), false);
+  await page.waitForFunction(
+    () =>
+      document.querySelector("feedbacks-demo").shadowRoot.querySelector(".pin")?.dataset
+        .pinned === "true",
+  );
+  assert(await demo.locator(".pinned-icon").isVisible());
+  await demo.locator(".play").click();
+  const pinCursor = await demo.locator(".action-cursor").getAttribute("transform");
+  await page.waitForTimeout(250);
+  assert.equal(await demo.locator(".action-cursor").getAttribute("transform"), pinCursor);
+  await demo.locator(".play").click();
   await demo.evaluate((element) => element.setAttribute("step", "capture"));
   await demo.locator(".zoom").click();
   assert(await demo.locator("dialog").evaluate((element) => element.open));
@@ -200,15 +229,23 @@ try {
     document.querySelector("main").append(second);
   });
   const allDemos = page.locator("feedbacks-demo");
-  const master = page.locator("feedbacks-motion-control");
-  await master.getByRole("button", { name: "Pause all animations" }).click();
+  assert.equal(await page.locator("feedbacks-motion-control").count(), 0);
+  await allDemos.first().locator(".play").click();
   assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Play", "Play"]);
-  // A newly selected scene, new player and page navigation retain the pause choice.
+  // Playing either player resumes only that one; pausing either stops everyone.
+  await allDemos.nth(1).locator(".play").click();
+  assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Play", "Pause"]);
+  await allDemos.nth(1).evaluate((element) => element.setAttribute("step", "connect"));
+  assert.equal(await allDemos.nth(1).locator(".play").innerText(), "Pause");
+  await allDemos.first().locator(".play").click();
+  assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Pause", "Play"]);
+  await allDemos.first().locator(".screen-hit").click();
+  assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Play", "Play"]);
   await allDemos.nth(1).evaluate((element) => element.setAttribute("step", "connect"));
   assert.equal(await allDemos.nth(1).locator(".play").innerText(), "Play");
   await page.reload();
   assert.equal(await page.locator("feedbacks-demo .play").innerText(), "Play");
-  await master.getByRole("button", { name: "Play all animations" }).click();
+  await page.locator("feedbacks-demo .play").click();
   assert.equal(await page.locator("feedbacks-demo .play").innerText(), "Pause");
   for (const [width, height] of [
     [1280, 640],
@@ -244,7 +281,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    "Walkthroughs passed: seven scenes, cursor/click/typing cues, exact pause/resume, global playback and navigation persistence, reduced motion, keyboard focus, mobile bounds and complete laptop hero.",
+    "Walkthroughs passed: eight scenes including pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds and complete laptop hero.",
   );
 } finally {
   await browser.close();

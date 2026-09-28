@@ -308,23 +308,52 @@ dialog button {
 :host([step="agent"]) .screen {
   min-height: min(300px, var(--demo-screen-height, 300px));
 }
-:host([data-control]) {
-  display: inline-flex;
-  margin: 0;
-  vertical-align: middle;
+/* Chrome pinning: show the menu, pin and toolbar result at the click moment. */
+:host([step="pin"]) .screen {
+  aspect-ratio: auto;
+  height: 240px;
 }
-.motion-toggle {
-  display: inline-flex;
+.pin-browser {
+  align-self: start;
+  padding: 16px;
+}
+.pin-browser .chrome-card {
+  margin: 12px 0 0 auto;
+  max-width: 280px;
+  padding: 16px;
+}
+.pin-browser .extension-row {
+  margin-top: 8px;
+  padding: 8px 0 0;
+}
+.extension-name {
+  display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--border, var(--vp-c-divider, #b4bcae));
-  font-size: 14px;
-  line-height: 1.3;
-  white-space: nowrap;
+  font-weight: 600;
 }
-.motion-toggle svg {
-  width: 14px;
-  height: 14px;
+.pin-browser .pinned-icon,
+.extension-name .icon {
+  color: #fff;
+  background: #17324d;
+  border-radius: 6px;
+}
+.pin[data-pinned="true"] {
+  color: #17324d;
+  background: #dce8f2;
+  border-radius: 6px;
+}
+.pin[data-pinned="true"] svg {
+  fill: currentColor;
+}
+.review-started {
+  margin-top: 24px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #c6cbbb;
+}
+.review-started p {
+  margin: 8px 0 0;
+  font-size: 15px;
 }

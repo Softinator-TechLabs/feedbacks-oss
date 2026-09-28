@@ -20,7 +20,7 @@ The complete [self-hosting](/reference/manual/self-hosting), [operations](/refer
 
 ## Hand off a working installation
 
-Give the owner the exact HTTPS server URL and initial sign-in details privately. The owner then follows [project and member setup](/guide/team-setup). Everyone installs the same Chrome extension and connects to this URL; **Help → Copy server URL** provides the address to paste.
+Give the owner the exact HTTPS server URL and initial sign-in details privately. The owner then follows [project and member setup](/guide/team-setup). Everyone installs the same Chrome extension and connects to this URL; **Setup → Copy server URL** provides the address to paste.
 
 Verify readiness, synthetic screenshot upload and authorized readback before handing it over. If clients access an internal server, they need an approved network route to it. A developer's `localhost` URL is not a shared address for other machines.
 

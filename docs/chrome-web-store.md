@@ -27,7 +27,7 @@ INSTALL, PIN AND CONNECT
 
 1. Add the extension to Chrome.
 2. Open Chrome’s Extensions menu (the puzzle-piece button), find Feedbacks and click the pin.
-3. Sign in to your team’s Feedbacks web app. Open Help and choose Copy server URL.
+3. Sign in to your team’s Feedbacks web app. Open Setup and choose Copy server URL.
 4. Click the pinned Feedbacks icon and paste the URL into Your Feedbacks server.
 5. Choose Connect to server, allow access to that server, then sign in and approve the connection.
 
@@ -75,6 +75,6 @@ Use current product captures with synthetic data. Show these in order: server pr
 
 Confirm the packaged manifest title and summary, blank default server, version, permissions and bundled code. Keep the privacy questionnaire consistent with actual collection of submitted screenshots, comments and page context. Follow the Store dashboard's current field limits and review requirements at submission time. This document does not claim a Store submission or approval.
 
-## Help download fallback
+## Setup download fallback
 
-Help reads the server's packaged extension release metadata and offers that exact version for manual installation. The Store link remains available. The notice says the Store may lag while an update is under review; it does not claim a live Store review status that the app cannot verify. The manual steps are ZIP extraction, Chrome's Developer mode, and Load unpacked. Existing unpacked installations use Reload after replacing their files.
+Setup reads the server's packaged extension release metadata and offers that exact version for manual installation. The Store link remains available. The notice says the Store may lag while an update is under review; it does not claim a live Store review status that the app cannot verify. The manual steps are ZIP extraction, Chrome's Developer mode, and Load unpacked. Existing unpacked installations use Reload after replacing their files.

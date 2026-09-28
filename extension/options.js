@@ -79,8 +79,8 @@ async function refresh() {
       (command) => command.name === "_execute_action",
     )?.shortcut;
     $("opening-shortcut").textContent = shortcut
-      ? `Open Feedbacks: ${shortcut}`
-      : "No opening shortcut assigned. Use the toolbar icon or choose a shortcut below.";
+      ? `Start / resume review: ${shortcut}`
+      : "No shortcut assigned. It may be taken or turned off. Choose one below.";
   } finally {
     refreshing = false;
   }

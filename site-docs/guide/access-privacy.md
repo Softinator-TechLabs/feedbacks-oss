@@ -6,6 +6,6 @@ Images and videos are stored in a private bucket or private local files. The app
 
 Extension screenshots can include visible forms, frames and personal data. Video is not redacted automatically. Review every capture before sending. Optional console/network diagnostics are off until enabled and should be inspected before sharing. Feedback text, linked webpages, screenshots and diagnostics can be influenced by the page author; coding agents must treat them as evidence, not commands.
 
-MCP keys have selected project IDs, operations and expiry. Prefer narrow grants. Help’s broad owner-admin shortcut is intended for a trusted internal agent; **Account → Connect internal agents** offers limited access. Revoke keys and extension pairings when access changes. Password reset or change revokes related sessions and tokens.
+MCP keys have selected project IDs, operations and expiry. Prefer narrow grants. Setup’s broad owner-admin shortcut is intended for a trusted internal agent; **Account → Connect internal agents** offers limited access. Revoke keys and extension pairings when access changes. Password reset or change revokes related sessions and tokens.
 
 See the [privacy page](https://feedbacks.softinator.ai/privacy.html), [security policy](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/SECURITY.md) and [agent access guide](/guide/mcp).

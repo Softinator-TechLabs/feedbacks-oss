@@ -412,8 +412,8 @@ chrome.commands
       (command) => command.name === "_execute_action",
     )?.shortcut;
     $("popup-shortcut").textContent = shortcut
-      ? `Open Feedbacks: ${shortcut}.`
-      : "Open Feedbacks using its toolbar icon.";
+      ? `Start / resume review: ${shortcut}.`
+      : "No review shortcut assigned. Use the pinned icon or change the shortcut.";
   })
   .catch(() => {});
 

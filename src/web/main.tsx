@@ -192,7 +192,7 @@ function App() {
             </a>
           )}
           <a href="/help" aria-current={path === "/help" ? "page" : undefined}>
-            Help
+            Setup
           </a>
         </nav>
         <div className="account-nav">
@@ -222,7 +222,7 @@ function App() {
           <nav aria-label="Mobile navigation">
             <a href="/">Projects</a>
             {actor?.owner && <a href="/people">People</a>}
-            <a href="/help">Help</a>
+            <a href="/help">Setup</a>
             {actor ? (
               <>
                 <a href="/account">Account</a>
@@ -388,7 +388,7 @@ function App() {
         <footer className="site-footer">
           <a href={officialWebsiteUrl}>Official website</a>
           <a href="/privacy">Privacy</a>
-          <a href="/help">Help</a>
+          <a href="/help">Setup</a>
         </footer>
       </div>
     </>

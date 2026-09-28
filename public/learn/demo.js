@@ -2,7 +2,7 @@
 (() => {
   const base = new URL(".", document.currentScript.src).href;
   const players = new Set();
-  const motionControls = new Set();
+  let soloPlayer;
   let motionChoice;
   try {
     motionChoice = sessionStorage.getItem("feedbacks-motion");
@@ -10,57 +10,29 @@
   let allPaused =
     motionChoice === "paused" ||
     (!motionChoice && matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const updateMotionControls = () => {
+  const updateMotionState = () => {
     const paused = players.size
       ? [...players].every((player) => player.paused)
       : allPaused;
     document.documentElement.dataset.feedbacksMotion = paused ? "paused" : "playing";
-    motionControls.forEach((control) => control.render(paused));
   };
   matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (event) => {
     if (!motionChoice) {
       allPaused = event.matches;
       players.forEach((player) => player.setPlaybackPaused?.(allPaused));
-      updateMotionControls();
+      updateMotionState();
     }
   });
   function setAllPaused(paused) {
+    soloPlayer = undefined;
     allPaused = paused;
     motionChoice = paused ? "paused" : "playing";
     try {
       sessionStorage.setItem("feedbacks-motion", motionChoice);
     } catch {}
     players.forEach((player) => player.setPlaybackPaused?.(paused));
-    updateMotionControls();
+    updateMotionState();
   }
-  class FeedbacksMotionControl extends HTMLElement {
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-    }
-    connectedCallback() {
-      this.setAttribute("data-control", "");
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260928-4"><button type="button" class="motion-toggle"><svg viewBox="0 0 16 16" aria-hidden="true"><path/></svg><span></span></button>`;
-      this.shadowRoot.querySelector("button").onclick = () => {
-        const playing = [...players].some((player) => !player.paused);
-        setAllPaused(playing || (!players.size && !allPaused));
-      };
-      motionControls.add(this);
-      updateMotionControls();
-    }
-    disconnectedCallback() {
-      motionControls.delete(this);
-    }
-    render(paused) {
-      const button = this.shadowRoot.querySelector("button");
-      button.setAttribute("aria-label", `${paused ? "Play" : "Pause"} all animations`);
-      button.querySelector("span").textContent = paused ? "Play all" : "Pause all";
-      button
-        .querySelector("path")
-        .setAttribute("d", paused ? "M4 2 13 8 4 14Z" : "M5 2V14M11 2V14");
-    }
-  }
-  customElements.define("feedbacks-motion-control", FeedbacksMotionControl);
   const scenes = {
     server: {
       kind: "server",
@@ -78,9 +50,23 @@
         { caption: "Pin Feedbacks. Click its icon to start review.", active: 2 },
       ],
     },
+    pin: {
+      kind: "pin",
+      frames: [
+        { caption: "Open Chrome’s Extensions menu (the puzzle icon).", active: 1 },
+        {
+          caption: "Click the pin beside Feedbacks. Its icon stays in the toolbar.",
+          active: 2,
+        },
+        { caption: "Click Feedbacks to start or resume review.", active: 3 },
+      ],
+    },
     connect: {
       frames: [
-        { image: "connect-1", caption: "In your team’s Help page, copy the server URL." },
+        {
+          image: "connect-1",
+          caption: "In your team’s Setup page, copy the server URL.",
+        },
         {
           image: "connect-2",
           caption: "Paste it here. Choose Connect to server, then sign in and approve.",
@@ -346,12 +332,14 @@
       const target = screen.querySelector(
         scene.kind === "server"
           ? ".sequence .active"
-          : scene.kind === "chrome"
+          : ["chrome", "pin"].includes(scene.kind)
             ? frame.active === 0
               ? ".store-action"
               : frame.active === 1
                 ? ".puzzle"
-                : ".pin"
+                : frame.active === 2
+                  ? ".pin"
+                  : ".pinned-icon"
             : ".prompt-input",
       );
       if (!target || !width) return () => {};
@@ -477,6 +465,19 @@
     let previousCount = -1;
     return (progress) => {
       const p = clamp(progress);
+      if (scene.kind === "pin") {
+        const clicked = p >= 0.47;
+        const menu = screen.querySelector(".chrome-card");
+        if (menu)
+          menu.style.visibility = frame.active === 1 && !clicked ? "hidden" : "visible";
+        const pinned = frame.active === 3 || (frame.active === 2 && clicked);
+        screen.querySelector(".pinned-icon").style.visibility = pinned
+          ? "visible"
+          : "hidden";
+        screen.querySelector(".pin")?.setAttribute("data-pinned", String(pinned));
+        const started = screen.querySelector(".review-started");
+        if (started) started.style.visibility = clicked ? "visible" : "hidden";
+      }
       if (points.length) {
         let start = points[0],
           end = start;
@@ -565,9 +566,10 @@
       if (!scene) return;
       this.index = 0;
       this.motion = matchMedia("(prefers-reduced-motion: reduce)");
-      this.paused = allPaused || (this.motion.matches && motionChoice !== "playing");
+      this.paused =
+        (allPaused && soloPlayer !== this) || (this.motion.matches && !motionChoice);
       players.add(this);
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260928-4"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260928-5"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         frameBox = q(".frame"),
@@ -589,7 +591,14 @@
         schedule();
       };
       this.setPlaybackPaused = setPaused;
-      const toggle = () => setPaused(!this.paused);
+      const toggle = () => {
+        const shouldPlay = this.paused;
+        setAllPaused(true);
+        if (shouldPlay) {
+          soloPlayer = this;
+          setPaused(false);
+        }
+      };
       const steps = scene.frames.map((frame, index) => {
         const b = document.createElement("button");
         b.className = "step";
@@ -617,11 +626,16 @@
         play.textContent = action;
         play.setAttribute(
           "aria-label",
-          `${action} ${this.getAttribute("step")} walkthrough`,
+          this.paused
+            ? `Play ${this.getAttribute("step")} walkthrough`
+            : "Pause all animations",
         );
-        hit.setAttribute("aria-label", `${action} animation`);
+        hit.setAttribute(
+          "aria-label",
+          this.paused ? "Play animation" : "Pause all animations",
+        );
         steps.forEach((b, i) => b.setAttribute("aria-pressed", String(i === this.index)));
-        updateMotionControls();
+        updateMotionState();
       };
       const pin =
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 8 0-1 7 4 4H5l4-4-1-7m4 11v7"/></svg>';
@@ -656,7 +670,7 @@
           svgNode(
             "image",
             {
-              href: base + f.image + ".webp?v=20260928-4",
+              href: base + f.image + ".webp?v=20260928-5",
               width: action.size[0],
               height: action.size[1],
             },
@@ -666,7 +680,12 @@
         } else {
           const box = document.createElement("div");
           box.className = "diagram";
-          if (scene.kind === "chrome")
+          if (scene.kind === "pin") {
+            box.classList.add("pin-browser");
+            const logo =
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H10l-6 4V4Z"/><path d="M8 8h8M8 12h5"/></svg>';
+            box.innerHTML = `<div class="browser-bar"><span class="address">Your website</span><span class="icon pinned-icon">${logo}</span><span class="icon puzzle">${puzzle}</span></div>${f.active < 3 ? `<div class="chrome-card"><strong>Extensions</strong><div class="extension-row"><span class="extension-name"><span class="icon">${logo}</span>Feedbacks</span><span class="icon pin">${pin}</span></div></div>` : '<div class="review-started"><strong>Review is on</strong><p>Right-click an element to add feedback.</p></div>'}`;
+          } else if (scene.kind === "chrome")
             box.innerHTML = `<div class="browser-bar"><span class="address">Your website</span><span class="icon puzzle">${puzzle}</span>${f.active === 2 ? '<span class="icon pinned-icon"><strong>F.</strong></span>' : ""}</div><div class="chrome-card">${f.active === 0 ? '<strong>Feedbacks</strong><p>Chrome Web Store</p><span class="store-action">Add to Chrome</span>' : `<strong>Extensions</strong><div class="extension-row"><span>Feedbacks</span><span class="icon pin">${pin}</span></div>`}</div>`;
           else if (scene.kind === "server")
             box.innerHTML = `<div class="sequence">${["DevOps · team server", "Owner · projects & people", "Reviewers + developers · connect"].map((t, i) => `<div class="${i === f.active ? "active" : ""}">${t}<small>${["HTTPS + database + private images", "Project context + member access", "One team URL. Your own account."][i]}</small></div>`).join("")}</div>`;
@@ -725,7 +744,7 @@
       zoom.onclick = () => {
         setPaused(true);
         const f = scene.frames[this.index];
-        q("dialog img").src = base + f.image + ".webp?v=20260928-4";
+        q("dialog img").src = base + f.image + ".webp?v=20260928-5";
         q("dialog img").alt = f.caption;
         dialog.showModal();
       };
@@ -736,7 +755,7 @@
       this.cleanup = () => {
         players.delete(this);
         this.setPlaybackPaused = undefined;
-        updateMotionControls();
+        updateMotionState();
         cancelAnimationFrame(raf);
         observer.disconnect();
         resize.disconnect();

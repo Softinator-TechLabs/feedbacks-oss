@@ -59,7 +59,7 @@
           />
           <datalist id="recent-servers"></datalist>
           <p class="hint">
-            In your team’s web app, open Help → Copy server URL, then paste it here. Use
+            In your team’s web app, open Setup → Copy server URL, then paste it here. Use
             the Feedbacks server address, not the website you are reviewing. Changing
             servers requires approval on that server.
           </p>
@@ -158,6 +158,14 @@
         </section>
         <section id="shortcuts" aria-labelledby="shortcuts-title">
           <h2 id="shortcuts-title">Review &amp; shortcuts</h2>
+          <h3>Start / resume review</h3>
+          <p id="opening-shortcut" role="status"></p>
+          <button id="customize-shortcuts">Change shortcut</button>
+          <p class="hint">
+            Opens Feedbacks and turns review on for the current website after you connect.
+            Chrome manages this shortcut. If it is already taken, choose another
+            combination.
+          </p>
           <label class="check"
             ><input id="review-shortcuts" type="checkbox" />Use single-key shortcuts
             during review</label
@@ -184,12 +192,6 @@
               <dd>Exit review (Esc closes an open point first)</dd>
             </div>
           </dl>
-          <p id="opening-shortcut"></p>
-          <button id="customize-shortcuts">Customize opening shortcut in Chrome</button>
-          <p class="hint">
-            Chrome controls the shortcut that opens the extension. In-review keys are
-            listed above.
-          </p>
           <details>
             <summary>Full-page capture (optional)</summary>
             <p>

@@ -2169,13 +2169,6 @@ legend {
   max-width: 560px;
 }
 
-.help-heading-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
 .help-latest-extension {
   margin-top: 16px;
   padding-top: 16px;
@@ -2195,4 +2188,34 @@ legend {
 }
 .help-latest-extension li + li {
   margin-top: 6px;
+}
+
+.help-pin {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 24px;
+  align-items: center;
+  margin: 16px 0 24px;
+}
+.help-pin h3 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+.help-pin p {
+  margin: 8px 0;
+  font-size: 0.9rem;
+}
+.help-pin feedbacks-demo {
+  min-width: 0;
+  margin: 0;
+}
+.help-review-shortcut {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 600px) {
+  .help-pin {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
 }
