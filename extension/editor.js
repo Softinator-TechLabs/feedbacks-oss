@@ -63,6 +63,8 @@ function hideFullPagePreview() {
 function setSendState(disabled, label) {
   for (const id of ["send", "send-header"]) {
     $(id).disabled = disabled;
+    $(id).setAttribute("aria-busy", String(sendingApproval));
+    if (!sendingApproval) $(id).style.removeProperty("--send-progress");
     if (label) $(id).querySelector("span").textContent = label;
   }
 }
@@ -73,7 +75,11 @@ function uploadProgress(completed, total) {
   $("upload-progress").hidden = false;
   $("upload-meter").value = percent;
   $("upload-label").textContent = `${count} of ${total} images uploaded · ${percent}%`;
-  if (sendingApproval) setSendState(true, `Sending ${percent}%`);
+  if (sendingApproval) {
+    setSendState(true, `Sending ${percent}%`);
+    for (const id of ["send", "send-header"])
+      $(id).style.setProperty("--send-progress", `${percent}%`);
+  }
 }
 function completed(url) {
   hideFullPagePreview();
@@ -665,6 +671,10 @@ async function loadBase(fresh) {
   $("series-guide").hidden = pages.length < 2;
   renderThumbnails(fresh);
   const continuousPages = pages.filter((page) => !page.annotationId);
+  $("series-guide").textContent =
+    continuousPages.length > 1
+      ? "Choose a section to annotate. Marks also appear in the combined full-page image."
+      : "Choose a point’s original image to review, annotate or redact it.";
   $("combine-option").hidden = continuousPages.length < 2;
   $("full-page-toggle").hidden = continuousPages.length < 2;
   $("include-combined").checked = !!fresh?.includeCombined && continuousPages.length > 1;
@@ -1100,6 +1110,8 @@ $("send").onclick = $("send-header").onclick = async () => {
     return;
   sendingApproval = true;
   setSendState(true, "Sending…");
+  for (const id of ["send", "send-header"])
+    $(id).style.setProperty("--send-progress", "0%");
   $("discard").disabled = true;
   if (draft.capturePages?.length && !$("no-image").checked) {
     $("upload-progress").hidden = false;

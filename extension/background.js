@@ -212,7 +212,7 @@ async function attachPointEvidence(draft, retainedPointStates = new Map()) {
   draft.missingPointImages = missing;
   if (evidence.length) {
     const count = draft.capturePages.filter((page) => page.annotationId).length;
-    draft.captureNotice = `${count} original point views saved alongside the page capture.${missing.length ? ` Points ${missing.join(", ")} have no original image.` : ""} Review every image before sending.`;
+    draft.captureNotice = `${count} original point views saved${draft.captureScope === "points" ? ". No extra screenshot taken." : " alongside the page capture."}${missing.length ? ` Points ${missing.join(", ")} have no original image.` : ""} Review every image before sending.`;
   }
   if (draft.capturePages.length) draft.noImage = false;
   return draft;
@@ -461,8 +461,19 @@ async function sessionFor(sender) {
   return session;
 }
 async function openDraft() {
-  const url = chrome.runtime.getURL("editor.html");
-  const tabs = await chrome.tabs.query({ url });
+  const { draft } = await get();
+  const url =
+    chrome.runtime.getURL("editor.html") +
+    (draft?.captureScope === "points" ? `?draft=${draft.id}` : "");
+  // Extension contexts expose our own editor tabs without a broad tabs permission.
+  const tabs = chrome.runtime.getContexts
+    ? (
+        await chrome.runtime.getContexts({
+          contextTypes: ["TAB"],
+          documentUrls: [url],
+        })
+      ).map((context) => ({ id: context.tabId, windowId: context.windowId }))
+    : await chrome.tabs.query({ url });
   if (tabs.length) {
     await chrome.windows.update(tabs[0].windowId, { focused: true });
     await chrome.tabs.update(tabs[0].id, { active: true });
@@ -632,6 +643,8 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       pointToken,
     });
     if (context.error) throw Error(context.error);
+    if (scope === "points" && !context.annotations?.length)
+      throw Error("Add a point before reviewing feedback.");
     if (
       retryId &&
       (!state.draft ||
@@ -697,6 +710,18 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
       pointToken,
       captureScope: scope,
     };
+    if (scope === "points") {
+      // Finalizing consumes the originals captured with each point. It must never
+      // invoke native capture: menus, viewports and scroll positions may have changed.
+      pending.captureError = null;
+      await attachPointEvidence(pending);
+      await set({ draft: pending });
+      captured = true;
+      await chrome.tabs.create({
+        url: chrome.runtime.getURL(`editor.html?draft=${pending.id}`),
+      });
+      return { captured: true };
+    }
     // Save context before invoking native capture; rejected pixels never enter storage.
     await set({ draft: pending });
     const before = await chrome.tabs.sendMessage(tab.id, {
@@ -1904,7 +1929,11 @@ async function route(message, sender) {
           sender,
           undefined,
           typeof message.pointToken === "string" ? message.pointToken : null,
-          message.scope === "fullPage" ? "fullPage" : "visible",
+          message.scope === "points"
+            ? "points"
+            : message.scope === "fullPage"
+              ? "fullPage"
+              : "visible",
         ),
       );
     if (message.type === "resize")

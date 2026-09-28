@@ -20,6 +20,7 @@
     pointText,
     pointThumbnail,
     reviewButton,
+    finalizeButton,
     draftList,
     pointRequest = false,
     pointSignature,
@@ -742,7 +743,7 @@
         const hint = document.createElement("p");
         hint.className = "meta";
         hint.textContent =
-          "Review screenshots, then Send feedback to share with your team.";
+          "Choose Review & send to check saved images and share with your team.";
         preview.append(state, note, hint);
         button(
           "Edit point",
@@ -786,7 +787,13 @@
       pin.onblur = leave;
       occlusionPins.push({ kind: "draft", pin, element, x, y, hidePreview: hide });
     });
-    reviewButton.hidden = annotations.length === 0;
+    reviewButton.hidden = finalizeButton.hidden = annotations.length === 0;
+    finalizeButton.querySelector(".unsent-count").textContent =
+      `${annotations.length} unsent`;
+    finalizeButton.setAttribute(
+      "aria-label",
+      `Review and send ${annotations.length} unsent ${annotations.length === 1 ? "point" : "points"}`,
+    );
     const dockLabel = annotations.length
       ? `Feedbacks · ${annotations.length} not sent${outside ? ` · ${outside} outside this view` : ""}`
       : "Feedbacks";
@@ -914,7 +921,7 @@
     closePointMenu();
     clearChosenPoint();
     renderDraftPoints();
-    notice.textContent = `Point ${annotations.length} saved here, not sent. Right-click another element or review screenshots and send.`;
+    notice.textContent = `Point ${annotations.length} saved here, not sent. Right-click another element or choose Review & send.`;
     revealDrawer(false);
   }
   async function capturePoint(scope = "visible") {
@@ -928,9 +935,14 @@
     }
     pointRequest = true;
     closePointMenu();
-    notice.textContent = "Capturing your review…";
+    notice.textContent =
+      scope === "points" ? "Opening saved points…" : "Capturing your review…";
     try {
-      await send({ type: "capture", scope });
+      await send(
+        pendingReview && scope === "points"
+          ? { type: "openCapturedReview" }
+          : { type: "capture", scope },
+      );
       notice.textContent = "Review the screenshot and send your comments.";
     } catch (error) {
       notice.textContent = error.message;
@@ -1137,8 +1149,23 @@
     };
     drawerHandle.hidden = false;
     reviewDock.append(drawerHandle);
+    finalizeButton = button("", () => capturePoint("points"), reviewDock);
+    finalizeButton.className = "finalize-review";
+    finalizeButton.hidden = true;
+    finalizeButton.title = "Review saved points, then send. No extra screenshot.";
+    const finalizeIcon = icon.cloneNode(true);
+    finalizeIcon
+      .querySelector("path")
+      .setAttribute("d", "M9 5h10v16H5V5h4Zm0-2h6v4H9V3Zm-1 11 3 3 5-6");
+    const finalizeLabel = document.createElement("span");
+    const finalizeTitle = document.createElement("strong");
+    finalizeTitle.textContent = "Review & send";
+    const unsentCount = document.createElement("span");
+    unsentCount.className = "unsent-count";
+    finalizeLabel.append(finalizeTitle, unsentCount);
+    finalizeButton.append(finalizeIcon, finalizeLabel);
     bar.id = "feedbacks-drawer";
-    reviewDock.addEventListener("pointerenter", () => revealDrawer());
+    drawerHandle.addEventListener("pointerenter", () => revealDrawer());
     reviewDock.addEventListener("pointerleave", collapseAfterLeave);
     bar.addEventListener("pointerenter", () => clearTimeout(drawerTimer));
     bar.addEventListener("pointerleave", collapseAfterLeave);
@@ -1328,7 +1355,7 @@
     draftSection.className = "draft-section";
     draftList = document.createElement("ol");
     draftSection.append(draftList);
-    reviewButton = button("Review screenshots", () => capturePoint(), draftSection);
+    reviewButton = button("Review & send", () => capturePoint("points"), draftSection);
     reviewButton.className = "primary";
     reviewButton.hidden = true;
     bar.append(draftSection);

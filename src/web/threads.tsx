@@ -995,15 +995,25 @@ export function ThreadDetail({
                 <Icon name="share" />
               </button>
             )}
-            <button
-              type="button"
-              className="thread-icon-button"
-              aria-label="View or link issues"
-              data-tooltip="View or link issues"
-              onClick={() => openDetail("thread-issues")}
-            >
-              <Icon name="issue" />
-            </button>
+            {project?.permissions.canMaintain ? (
+              <GithubIssue
+                key={`github:${t.id}`}
+                thread={t}
+                project={project}
+                onSaved={setThread}
+                onViewIssues={() => openDetail("thread-issues")}
+              />
+            ) : (
+              <button
+                type="button"
+                className="thread-icon-button"
+                aria-label="View or link issues"
+                data-tooltip="View or link issues"
+                onClick={() => openDetail("thread-issues")}
+              >
+                <Icon name="issue" />
+              </button>
+            )}
             <details
               className="thread-action-menu thread-header-popover"
               onClick={(event) => {
@@ -1018,6 +1028,20 @@ export function ThreadDetail({
                 <Icon name="more" />
               </summary>
               <div className="thread-action-menu-panel">
+                {project?.permissions.canMaintain && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      (
+                        document.getElementById(
+                          "thread-github",
+                        ) as HTMLDialogElement | null
+                      )?.showModal()
+                    }
+                  >
+                    GitHub issue options
+                  </button>
+                )}
                 <button type="button" onClick={() => openDetail("thread-details")}>
                   Details
                 </button>
@@ -1066,9 +1090,6 @@ export function ThreadDetail({
           </div>
         </div>
       </div>
-      {project?.permissions.canMaintain && project.githubConnected && (
-        <GithubIssue thread={t} project={project} onSaved={setThread} />
-      )}
       <ErrorNotice error={error} />
       {projectError && (
         <section>
