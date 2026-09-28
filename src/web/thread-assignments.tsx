@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { z } from "zod";
 import { tagsSchema, type Delegation, type inputSchemas } from "../shared/contracts.js";
 import { api, labels, uid, type Project, type Thread } from "./api.js";
@@ -71,13 +72,13 @@ export function canAssignThread(thread: Thread) {
 export function ThreadAssignments({
   thread,
   project,
-  request,
+  toolbar,
   onRefresh,
   onGithub,
 }: {
   thread: Thread;
   project: Project;
-  request: number;
+  toolbar: HTMLElement | null;
   onRefresh: () => Promise<Thread>;
   onGithub: () => void;
 }) {
@@ -86,7 +87,15 @@ export function ThreadAssignments({
   const [version, setVersion] = useState(0);
   const [offset, setOffset] = useState(0);
   const section = useRef<HTMLElement>(null);
-  const previousRequest = useRef(request);
+  const quick = useAction();
+  const pending = useRef(false);
+  const retry = useRef<ReturnType<typeof assignmentRetry<AssignInput>> | undefined>(
+    undefined,
+  );
+  const members = useLoad(
+    () => api<{ items: Assignee[] }>("members.list", { projectId: project.id }),
+    [project.id, version],
+  );
   const active = useLoad(
     () =>
       api<DelegationPage>("assignments.delegations", {
@@ -124,18 +133,6 @@ export function ThreadAssignments({
     [thread.id, thread.revision, version],
     true,
   );
-  useEffect(() => {
-    if (request === previousRequest.current) return;
-    previousRequest.current = request;
-    setExpanded(true);
-    setEditing((current) => current ?? "new");
-    requestAnimationFrame(() => {
-      section.current?.scrollIntoView({ block: "start", behavior: "instant" });
-      section.current
-        ?.querySelector<HTMLElement>("form select, form input")
-        ?.focus({ preventScroll: true });
-    });
-  }, [request]);
   const liveClaims =
     claims.data?.items.filter(
       (claim) => new Date(claim.expiresAt).getTime() > Date.now(),
@@ -144,155 +141,281 @@ export function ThreadAssignments({
     setVersion((value) => value + 1);
     setOffset(0);
   };
+  const people = writableAssignees(members.data?.items ?? []);
+  const whole = active.data?.items.find((item) => !item.annotationIds.length);
+  const hasPoints = !!active.data?.total && !whole;
+  const value = whole?.userId ?? (hasPoints ? "__points" : "");
+  const openDetails = () => {
+    setExpanded(true);
+    requestAnimationFrame(() => {
+      section.current?.scrollIntoView({ block: "start", behavior: "instant" });
+      section.current
+        ?.querySelector<HTMLElement>("button")
+        ?.focus({ preventScroll: true });
+    });
+  };
+  async function assign(userId: string) {
+    if (userId === "__details" || hasPoints) {
+      openDetails();
+      return;
+    }
+    if (pending.current || userId === value) return;
+    pending.current = true;
+    await quick.run(async () => {
+      if (!userId && whole) {
+        await api("assignments.cancel", {
+          delegationId: whole.id,
+          revision: whole.revision,
+          reason: "Unassigned from the thread member dropdown.",
+          idempotencyKey: `unassign:${whole.id}:${whole.revision}`,
+        });
+      } else {
+        const input: AssignInput = {
+          threadId: thread.id,
+          threadRevision: thread.revision,
+          ...(whole ? { delegationId: whole.id, revision: whole.revision } : {}),
+          annotationIds: [],
+          userId,
+          summary: whole?.summary ?? "Work on this thread",
+          category:
+            whole?.category ??
+            (categories.includes(thread.category as any)
+              ? (thread.category as AssignInput["category"])
+              : "general"),
+          tags: whole?.tags ?? thread.tags ?? [],
+          githubDecision: whole?.githubDecision ?? "undecided",
+          githubRationale: whole?.githubRationale ?? "Not assessed during assignment.",
+        };
+        retry.current = assignmentRetry(retry.current, input, uid);
+        await api("assignments.assign", retry.current.input);
+      }
+      changed();
+    });
+    pending.current = false;
+  }
   return (
-    <section
-      ref={section}
-      id="thread-assignments"
-      className="thread-assignments"
-      aria-labelledby="thread-assignments-heading"
-    >
-      <div className="assignment-heading">
-        <h2 id="thread-assignments-heading">Assigned work</h2>
-        <button
-          type="button"
-          aria-expanded={expanded}
-          aria-controls="assignment-management"
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? "Hide assignments" : "Manage & history"}
-        </button>
-      </div>
-      <ErrorNotice error={active.error} />
-      {active.error && (
-        <button type="button" onClick={changed}>
-          Retry assignments
-        </button>
-      )}
-      {!active.data && !active.error && <Loading />}
-      {active.data &&
-        (active.data.total ? (
-          <ul className="assignment-summary">
-            {active.data.items.slice(0, 3).map((item) => (
-              <li key={item.id}>
-                <strong>{item.memberName}</strong>
-                <span>{assignmentScope(item.annotationIds, thread)}</span>
-                <span>{labels[item.category] ?? item.category}</span>
-                <span>{decisions[item.githubDecision]}</span>
-                <span className="assignment-attribution">
-                  Updated by {assignmentActor(item.updatedBy)} ·{" "}
-                  <HumanTime at={item.updatedAt} />
-                </span>
-              </li>
-            ))}
-            {active.data.total > 3 && (
-              <li>
-                <button type="button" onClick={() => setExpanded(true)}>
-                  View all {active.data.total} assignments
+    <>
+      {toolbar &&
+        createPortal(
+          <div className="thread-assignee field">
+            <select
+              aria-label="Assigned member"
+              title={whole ? `Assigned to ${whole.memberName}` : "Assign this thread"}
+              value={value}
+              disabled={
+                quick.busy ||
+                !active.data ||
+                !members.data ||
+                !!active.error ||
+                !!members.error
+              }
+              onChange={(event) => void assign(event.target.value)}
+            >
+              <option
+                value=""
+                disabled={
+                  hasPoints || !project.permissions.canWrite || !canAssignThread(thread)
+                }
+              >
+                {quick.busy
+                  ? "Saving…"
+                  : !active.data || !members.data
+                    ? "Loading members…"
+                    : "Unassigned"}
+              </option>
+              {hasPoints && (
+                <option value="__points" disabled>
+                  Assigned by point
+                </option>
+              )}
+              {whole && !people.some((person) => person.id === whole.userId) && (
+                <option value={whole.userId} disabled>
+                  {whole.memberName}
+                </option>
+              )}
+              {!hasPoints &&
+                people.map((person) => (
+                  <option
+                    key={person.id}
+                    value={person.id}
+                    disabled={!project.permissions.canWrite || !canAssignThread(thread)}
+                  >
+                    {person.name}
+                  </option>
+                ))}
+              <option value="__details">Points &amp; assignment history…</option>
+            </select>
+            {(quick.error || active.error || members.error) && (
+              <div className="thread-assignee-error" role="alert">
+                {quick.error || active.error || members.error}
+                <button
+                  type="button"
+                  disabled={quick.busy}
+                  onClick={() =>
+                    void quick.run(async () => {
+                      await onRefresh();
+                      retry.current = undefined;
+                      changed();
+                    })
+                  }
+                >
+                  Reload assignments
                 </button>
-              </li>
+              </div>
             )}
-          </ul>
-        ) : (
-          <p className="assignment-empty">
-            No assigned work. Assign the thread or selected open points to a project
-            member.
-          </p>
-        ))}
-      <ErrorNotice
-        error={claims.error ? `Current workers could not load: ${claims.error}` : ""}
-      />
-      {claims.error && (
-        <button type="button" onClick={changed}>
-          Retry current workers
-        </button>
-      )}
-      {!!liveClaims.length && (
-        <div className="assignment-workers" aria-label="Current worker claims">
-          <strong>Working now · temporary claims</strong>
-          {liveClaims.map((claim) => (
-            <p key={claim.id}>
-              {claim.memberName} via {claim.agentName} ·{" "}
-              {assignmentScope(claim.annotationIds, thread)} · lease expires{" "}
-              <HumanTime at={claim.expiresAt} />
+          </div>,
+          toolbar,
+        )}
+      <section
+        hidden={!expanded}
+        ref={section}
+        id="thread-assignments"
+        className="thread-assignments"
+        aria-labelledby="thread-assignments-heading"
+      >
+        <div className="assignment-heading">
+          <h2 id="thread-assignments-heading">Assigned work</h2>
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls="assignment-management"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? "Hide assignments" : "Manage & history"}
+          </button>
+        </div>
+        <ErrorNotice error={active.error} />
+        {active.error && (
+          <button type="button" onClick={changed}>
+            Retry assignments
+          </button>
+        )}
+        {!active.data && !active.error && <Loading />}
+        {active.data &&
+          (active.data.total ? (
+            <ul className="assignment-summary">
+              {active.data.items.slice(0, 3).map((item) => (
+                <li key={item.id}>
+                  <strong>{item.memberName}</strong>
+                  <span>{assignmentScope(item.annotationIds, thread)}</span>
+                  <span>{labels[item.category] ?? item.category}</span>
+                  <span>{decisions[item.githubDecision]}</span>
+                  <span className="assignment-attribution">
+                    Updated by {assignmentActor(item.updatedBy)} ·{" "}
+                    <HumanTime at={item.updatedAt} />
+                  </span>
+                </li>
+              ))}
+              {active.data.total > 3 && (
+                <li>
+                  <button type="button" onClick={() => setExpanded(true)}>
+                    View all {active.data.total} assignments
+                  </button>
+                </li>
+              )}
+            </ul>
+          ) : (
+            <p className="assignment-empty">
+              No assigned work. Assign the thread or selected open points to a project
+              member.
             </p>
           ))}
-          {(claims.data?.total ?? 0) > liveClaims.length && (
-            <p>
-              Showing {liveClaims.length} of {claims.data?.total} current claims.
-            </p>
-          )}
-        </div>
-      )}
-      <div id="assignment-management" hidden={!expanded}>
-        {project.permissions.canWrite && canAssignThread(thread) && !editing && (
-          <button type="button" onClick={() => setEditing("new")}>
-            Assign more work
-          </button>
-        )}
-        {!canAssignThread(thread) && (
-          <p>
-            Completed or archived work cannot receive a new assignment. Assignment history
-            stays available.
-          </p>
-        )}
-        {editing && (
-          <AssignmentForm
-            key={editing === "new" ? "new" : editing.id}
-            thread={thread}
-            initial={editing === "new" ? undefined : editing}
-            canWrite={project.permissions.canWrite}
-            onRefresh={onRefresh}
-            onSaved={() => {
-              setEditing(null);
-              changed();
-            }}
-            onClose={() => setEditing(null)}
-          />
-        )}
-        <ErrorNotice error={all.error} />
-        {all.error && (
+        <ErrorNotice
+          error={claims.error ? `Current workers could not load: ${claims.error}` : ""}
+        />
+        {claims.error && (
           <button type="button" onClick={changed}>
-            Retry assignment history
+            Retry current workers
           </button>
         )}
-        {!all.data && !all.error && <Loading />}
-        {all.data?.items.map((item) => (
-          <AssignmentRecord
-            key={item.id}
-            item={item}
-            thread={thread}
-            canWrite={project.permissions.canWrite}
-            editing={!!editing}
-            onEdit={() => setEditing(item)}
-            onChanged={changed}
-            onGithub={onGithub}
-          />
-        ))}
-        {all.data && (all.data.total > 10 || offset > 0) && (
-          <div className="actions assignment-pagination">
-            <button
-              type="button"
-              disabled={!offset}
-              onClick={() => setOffset(Math.max(0, offset - 10))}
-            >
-              Previous assignments
-            </button>
-            <span>
-              {all.data.total
-                ? `${offset + 1}–${Math.min(offset + 10, all.data.total)} of ${all.data.total}`
-                : "No assignments"}
-            </span>
-            <button
-              type="button"
-              disabled={all.data.nextOffset === null}
-              onClick={() => setOffset(all.data!.nextOffset!)}
-            >
-              Next assignments
-            </button>
+        {!!liveClaims.length && (
+          <div className="assignment-workers" aria-label="Current worker claims">
+            <strong>Working now · temporary claims</strong>
+            {liveClaims.map((claim) => (
+              <p key={claim.id}>
+                {claim.memberName} via {claim.agentName} ·{" "}
+                {assignmentScope(claim.annotationIds, thread)} · lease expires{" "}
+                <HumanTime at={claim.expiresAt} />
+              </p>
+            ))}
+            {(claims.data?.total ?? 0) > liveClaims.length && (
+              <p>
+                Showing {liveClaims.length} of {claims.data?.total} current claims.
+              </p>
+            )}
           </div>
         )}
-      </div>
-    </section>
+        <div id="assignment-management" hidden={!expanded}>
+          {project.permissions.canWrite && canAssignThread(thread) && !editing && (
+            <button type="button" onClick={() => setEditing("new")}>
+              Assign more work
+            </button>
+          )}
+          {!canAssignThread(thread) && (
+            <p>
+              Completed or archived work cannot receive a new assignment. Assignment
+              history stays available.
+            </p>
+          )}
+          {editing && (
+            <AssignmentForm
+              key={editing === "new" ? "new" : editing.id}
+              thread={thread}
+              initial={editing === "new" ? undefined : editing}
+              canWrite={project.permissions.canWrite}
+              onRefresh={onRefresh}
+              onSaved={() => {
+                setEditing(null);
+                changed();
+              }}
+              onClose={() => setEditing(null)}
+            />
+          )}
+          <ErrorNotice error={all.error} />
+          {all.error && (
+            <button type="button" onClick={changed}>
+              Retry assignment history
+            </button>
+          )}
+          {!all.data && !all.error && <Loading />}
+          {all.data?.items.map((item) => (
+            <AssignmentRecord
+              key={item.id}
+              item={item}
+              thread={thread}
+              canWrite={project.permissions.canWrite}
+              editing={!!editing}
+              onEdit={() => setEditing(item)}
+              onChanged={changed}
+              onGithub={onGithub}
+            />
+          ))}
+          {all.data && (all.data.total > 10 || offset > 0) && (
+            <div className="actions assignment-pagination">
+              <button
+                type="button"
+                disabled={!offset}
+                onClick={() => setOffset(Math.max(0, offset - 10))}
+              >
+                Previous assignments
+              </button>
+              <span>
+                {all.data.total
+                  ? `${offset + 1}–${Math.min(offset + 10, all.data.total)} of ${all.data.total}`
+                  : "No assignments"}
+              </span>
+              <button
+                type="button"
+                disabled={all.data.nextOffset === null}
+                onClick={() => setOffset(all.data!.nextOffset!)}
+              >
+                Next assignments
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -321,7 +444,7 @@ function AssignmentForm({
   const people = writableAssignees(members.data?.items ?? []);
   const points = assignmentPoints(thread);
   const [userId, setUserId] = useState(initial?.userId ?? "");
-  const [summary, setSummary] = useState(initial?.summary ?? "");
+  const [summary, setSummary] = useState(initial?.summary ?? "Work on this thread");
   const [scope, setScope] = useState(initial?.annotationIds.length ? "points" : "thread");
   const [selected, setSelected] = useState<string[]>(initial?.annotationIds ?? []);
   const [category, setCategory] = useState<AssignInput["category"]>(
@@ -334,7 +457,9 @@ function AssignmentForm({
   const [decision, setDecision] = useState<keyof typeof decisions>(
     initial?.githubDecision ?? "undecided",
   );
-  const [rationale, setRationale] = useState(initial?.githubRationale ?? "");
+  const [rationale, setRationale] = useState(
+    initial?.githubRationale ?? "Not assessed during assignment.",
+  );
   const [revisions, setRevisions] = useState({
     thread: thread.revision,
     delegation: initial?.revision,
@@ -535,63 +660,66 @@ function AssignmentForm({
             Assigns ownership of this thread. Completed points remain completed.
           </p>
         )}
-        <Field label="Work summary">
-          <input
-            required
-            maxLength={500}
-            value={summary}
-            onChange={(event) => setSummary(event.target.value)}
-          />
-        </Field>
-        <div className="assignment-form-grid">
-          <Field label="Category">
+        <details className="assignment-extra">
+          <summary>Additional details (optional)</summary>
+          <Field label="Work summary">
+            <input
+              required
+              maxLength={500}
+              value={summary}
+              onChange={(event) => setSummary(event.target.value)}
+            />
+          </Field>
+          <div className="assignment-form-grid">
+            <Field label="Category">
+              <select
+                value={category}
+                onChange={(event) =>
+                  setCategory(event.target.value as AssignInput["category"])
+                }
+              >
+                {categories.map((value) => (
+                  <option key={value} value={value}>
+                    {labels[value]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Tags" hint="Separate tags with commas. Up to 12 tags.">
+              <input value={tags} onChange={(event) => setTags(event.target.value)} />
+            </Field>
+          </div>
+          <Field label="GitHub decision">
             <select
-              value={category}
+              value={decision}
               onChange={(event) =>
-                setCategory(event.target.value as AssignInput["category"])
+                setDecision(event.target.value as keyof typeof decisions)
               }
             >
-              {categories.map((value) => (
+              {Object.entries(decisions).map(([value, label]) => (
                 <option key={value} value={value}>
-                  {labels[value]}
+                  {label}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Tags" hint="Separate tags with commas. Up to 12 tags.">
-            <input value={tags} onChange={(event) => setTags(event.target.value)} />
-          </Field>
-        </div>
-        <Field label="GitHub decision">
-          <select
-            value={decision}
-            onChange={(event) =>
-              setDecision(event.target.value as keyof typeof decisions)
-            }
+          <Field
+            label="Reason for GitHub decision"
+            hint="Explain the decision, including what is still uncertain."
           >
-            {Object.entries(decisions).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field
-          label="Reason for GitHub decision"
-          hint="Explain the decision, including what is still uncertain."
-        >
-          <textarea
-            required
-            maxLength={1000}
-            rows={2}
-            value={rationale}
-            onChange={(event) => setRationale(event.target.value)}
-          />
-        </Field>
-        <p className="assignment-hint">
-          Saving an assignment does not create a GitHub issue. Use GitHub issue options
-          separately.
-        </p>
+            <textarea
+              required
+              maxLength={1000}
+              rows={2}
+              value={rationale}
+              onChange={(event) => setRationale(event.target.value)}
+            />
+          </Field>
+          <p className="assignment-hint">
+            Saving an assignment does not create a GitHub issue. Use GitHub issue options
+            separately.
+          </p>
+        </details>
         <div className="actions">
           <button
             className="primary"
