@@ -1406,29 +1406,99 @@ try {
   );
   await page.locator("#lower").scrollIntoViewIfNeeded();
   assert.equal(await saveInlinePoint(page.locator("#lower"), "Bottom point"), 2);
-  await send({ type: "popupAction", tabId: id, action: "capture" });
+  // Finalize from the collapsed dock, using only already saved originals.
+  await mkdir(join(root, ".local/finalize-qa"), { recursive: true });
+  await page.screenshot({ path: join(root, ".local/finalize-qa/pending-points.png") });
+  const finalizeState = await worker.evaluate(async (tabId) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const button = globalThis.__feedbacksQaRoot.querySelector(".finalize-review");
+        return { visible: !!button && !button.hidden, label: button?.textContent };
+      },
+    });
+    return entry.result;
+  }, id);
+  assert.equal(finalizeState.visible, true, "Pending pins need a visible dock action");
+  assert.match(finalizeState.label, /2 unsent/);
+  await worker.evaluate(() => {
+    globalThis.qaNativeCapture = chrome.tabs.captureVisibleTab;
+    chrome.tabs.captureVisibleTab = () => {
+      throw Error("Finalize must not capture");
+    };
+  });
+  // An old completed/empty editor must not swallow a new review.
+  const staleEditor = await context.newPage();
+  await staleEditor.goto(`chrome-extension://${extensionId}/editor.html`);
+  await page.bringToFront();
+  const freshEditor = context.waitForEvent("page");
+  await worker.evaluate(async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        globalThis.__feedbacksQaRoot.querySelector(".finalize-review").click();
+      },
+    });
+  }, id);
+  await worker.evaluate(async () => {
+    for (let i = 0; i < 100; i++) {
+      const { draft } = await chrome.storage.local.get("draft");
+      if (draft?.capturePages?.length === 2 && !draft.captureError) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw Error("Finalizing saved points did not prepare the draft");
+  });
+  await worker.evaluate(() => {
+    chrome.tabs.captureVisibleTab = globalThis.qaNativeCapture;
+  });
   const multiVisible = await draft();
-  assert.equal(multiVisible.capturePages.length, 3);
+  assert.equal(multiVisible.captureScope, "points");
+  assert.equal(multiVisible.capturePages.length, 2);
   assert.deepEqual(
-    multiVisible.capturePages.map((item) => item.pointNumber || 0),
-    [0, 1, 2],
+    multiVisible.capturePages.map((item) => item.pointNumber),
+    [1, 2],
   );
-  assert.equal(
-    multiVisible.pageToolStates[0].some(
-      (shape) => shape.tool === "point" && shape.number === 1,
-    ),
-    false,
-  );
-  assert.equal(
-    multiVisible.pageToolStates[1].some(
-      (shape) => shape.tool === "point" && shape.number === 1,
-    ),
-    true,
-  );
+  for (let i = 0; i < 2; i++)
+    assert.ok(
+      multiVisible.pageToolStates[i].some(
+        (shape) => shape.tool === "point" && shape.number === i + 1,
+      ),
+    );
+  assert.equal(multiVisible.captureError, null);
+  results.inlineReview.finalizeWithoutCapture = true;
   assert.equal(multiVisible.context.pointEvidence, undefined);
   assert.equal(multiVisible.context.liveAnnotations, undefined);
   results.inlineReview.offscreenOriginalRetained = true;
-  await send({ type: "discard" });
+  const pointsEditor = await freshEditor;
+  await pointsEditor.waitForURL(
+    `chrome-extension://${extensionId}/editor.html?draft=${multiVisible.id}`,
+  );
+  assert.notEqual(pointsEditor, staleEditor);
+  await pointsEditor.locator("#send-header:not([disabled])").waitFor();
+  await page.bringToFront();
+  await send({ type: "resume" });
+  const resumedEditors = await worker.evaluate(async (url) => {
+    const editors = await chrome.runtime.getContexts({
+      contextTypes: ["TAB"],
+      documentUrls: [url],
+    });
+    return Promise.all(editors.map((editor) => chrome.tabs.get(editor.tabId)));
+  }, pointsEditor.url());
+  assert.equal(resumedEditors.length, 1, "Resume must reuse the matching editor");
+  assert.equal(resumedEditors[0].active, true);
+  await staleEditor.close();
+  assert.equal(await pointsEditor.locator("#point-notes textarea").count(), 2);
+  await pointsEditor.locator("#send-header").click();
+  await pointsEditor.locator("#thread:not([hidden])").waitFor();
+  const pointsThreadId = (await pointsEditor.locator("#thread").getAttribute("href"))
+    .split("/")
+    .at(-1);
+  const pointsThread = (await post("threads.get", { threadId: pointsThreadId }, auth))
+    .data;
+  assert.equal(pointsThread.assets.length, 2, "Only the two originals should upload");
+  assert.equal(pointsThread.context.annotations.length, 2);
+  assert.equal(await draft(), undefined);
+  await pointsEditor.close();
   await page.bringToFront();
   // New editor tabs change the native capture area in headless Chromium.
   await page.setViewportSize({ width: 900, height: 563 });
@@ -1654,6 +1724,7 @@ try {
         JSON.parse(args[1]?.body || "{}").filename === "full-page-002-of-004.webp"
       ) {
         interrupt = false;
+        await new Promise((resolve) => setTimeout(resolve, 1800));
         throw Error("Synthetic upload interruption");
       }
       return original(...args);
@@ -1667,6 +1738,12 @@ try {
         window.qaUploadProgress.push({
           completed: message.completed,
           total: message.total,
+          fills: ["send", "send-header"].map((id) => ({
+            progress: document
+              .getElementById(id)
+              .style.getPropertyValue("--send-progress"),
+            busy: document.getElementById(id).getAttribute("aria-busy"),
+          })),
           actionsLocked: ["send", "send-header"].every(
             (id) => document.getElementById(id).disabled,
           ),
@@ -1674,12 +1751,32 @@ try {
     });
   });
   await seriesEditor.locator("#send").click();
+  await seriesEditor.locator("#send-header:has-text('Sending 25%')").waitFor();
+  await mkdir(join(root, ".local/finalize-qa"), { recursive: true });
+  await seriesEditor.evaluate(() => scrollTo(0, 0));
+  await seriesEditor.screenshot({
+    path: join(root, ".local/finalize-qa/upload-fill.png"),
+  });
   await seriesEditor.locator("#send:has-text('Retry Send')").waitFor();
   assert.equal(
     (await seriesEditor.locator("#send-header").textContent()).trim(),
     "Retry Send",
   );
   assert.equal(await seriesEditor.locator("#send-header").isEnabled(), true);
+  const progressFills = await seriesEditor.evaluate(() => window.qaUploadProgress);
+  assert.ok(progressFills.length > 0);
+  for (const sample of progressFills)
+    for (const fill of sample.fills) {
+      assert.equal(
+        fill.progress,
+        `${Math.round((sample.completed / sample.total) * 100)}%`,
+      );
+      assert.equal(fill.busy, "true");
+    }
+  assert.equal(
+    await seriesEditor.locator("#send-header").getAttribute("aria-busy"),
+    "false",
+  );
   const interrupted = await draft();
   assert.ok(
     interrupted?.thread?.id,
@@ -2240,6 +2337,115 @@ try {
     path: join(root, ".local/remaining-todos-qa/thread-gallery.png"),
   });
   assert.equal(results.seriesReview.galleryImages, 4);
+  // GitHub toolbar states use local API fixtures; no GitHub writes are made.
+  const githubPage = await context.newPage();
+  let githubConfigured = true,
+    githubMultiple = false,
+    githubLinked = false,
+    githubPending = false;
+  const githubCreates = [];
+  const repositories = ["https://github.com/demo/web", "https://github.com/demo/api"];
+  await githubPage.route(`${access.url}/api/**`, async (route) => {
+    const operation = route.request().url().split("/").at(-1);
+    let data;
+    if (operation === "github.connection")
+      data = {
+        configured: githubConfigured,
+        installation: githubConfigured ? "installed" : "not_configured",
+        repositories: (githubMultiple ? repositories : repositories.slice(0, 1)).map(
+          (repositoryUrl) => ({
+            repositoryUrl,
+            connected: true,
+            installation: "installed",
+          }),
+        ),
+      };
+    else if (operation === "github.issueState")
+      data = {
+        status: githubPending ? "pending" : githubLinked ? "linked" : "none",
+        issueUrl: githubLinked ? `${repositories[0]}/issues/1` : null,
+        canAbandon: false,
+      };
+    else if (operation === "github.issueCreateQuick") {
+      githubCreates.push(route.request().postDataJSON());
+      githubLinked = true;
+      data = seriesThread;
+    } else if (operation === "projects.get") {
+      const response = await route.fetch();
+      const body = await response.json();
+      body.data.githubConnected = true;
+      return route.fulfill({ json: body });
+    } else return route.continue();
+    await route.fulfill({ json: { ok: true, data } });
+  });
+  await githubPage.goto(`${access.url}/threads/${seriesThreadId}`);
+  await githubPage
+    .getByRole("button", { name: "Create GitHub issue", exact: true })
+    .waitFor();
+  assert.equal(await githubPage.locator(".github-issue-control").isVisible(), false);
+  await githubPage.screenshot({
+    path: join(root, ".local/finalize-qa/github-toolbar.png"),
+  });
+  await githubPage
+    .getByRole("button", { name: "Create GitHub issue", exact: true })
+    .click();
+  await githubPage
+    .getByRole("button", { name: "View GitHub issue", exact: true })
+    .waitFor();
+  assert.equal(githubCreates.length, 1);
+  assert.equal(githubCreates[0].repositoryUrl, repositories[0]);
+  await githubPage
+    .getByRole("button", { name: "View GitHub issue", exact: true })
+    .click();
+  await githubPage.getByRole("dialog", { name: "GitHub issue", exact: true }).waitFor();
+  await githubPage.keyboard.press("Escape");
+  githubConfigured = false;
+  githubLinked = false;
+  await githubPage.reload();
+  await githubPage
+    .getByRole("button", { name: "View or link issues", exact: true })
+    .click();
+  await githubPage.locator("#thread-issues[open]").waitFor();
+  assert.equal(githubCreates.length, 1);
+  githubConfigured = true;
+  githubMultiple = true;
+  await githubPage.reload();
+  await githubPage
+    .getByRole("button", { name: "Create GitHub issue", exact: true })
+    .click();
+  await githubPage
+    .getByRole("combobox", { name: /Create Issue in/ })
+    .selectOption(repositories[1]);
+  assert.equal(githubCreates.length, 1);
+  await githubPage.getByRole("button", { name: "Create Issue", exact: true }).click();
+  await githubPage.getByRole("link", { name: "Open GitHub Issue" }).waitFor();
+  assert.equal(githubCreates.length, 2);
+  assert.equal(githubCreates[1].repositoryUrl, repositories[1]);
+  githubPending = true;
+  githubLinked = false;
+  await githubPage.reload();
+  await githubPage
+    .getByText("The last Issue request may have succeeded.", { exact: false })
+    .waitFor();
+  assert.equal(githubCreates.length, 2, "Uncertain requests must never create again");
+  await githubPage.setViewportSize({ width: 320, height: 720 });
+  assert.equal(
+    await githubPage
+      .locator("dialog[open]")
+      .evaluate((el) => el.getBoundingClientRect().right <= innerWidth),
+    true,
+  );
+  await githubPage.screenshot({
+    path: join(root, ".local/finalize-qa/github-pending-mobile.png"),
+  });
+  await githubPage.close();
+  results.githubToolbar = {
+    singleRepositoryQuickCreate: true,
+    noPersistentBanner: true,
+    manualFallback: true,
+    multipleRepositories: true,
+    pendingRecovery: true,
+  };
   await page.bringToFront();
   await send({ type: "activate", tabId: id });
   // Real MediaRecorder, deterministic local canvas stream in place of Chrome's

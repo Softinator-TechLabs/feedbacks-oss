@@ -730,3 +730,32 @@ aside .hint {
     min-width: 0;
   }
 }
+
+/* Fill follows acknowledged image uploads, never simulated elapsed time. */
+.send-action {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  font-variant-numeric: tabular-nums;
+}
+.send-action::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  transform: scaleX(var(--send-progress, 0%));
+  transform-origin: left;
+  background: currentColor;
+  opacity: 0.18;
+  z-index: -1;
+  pointer-events: none;
+  transition: transform 240ms ease-out;
+}
+.send-action[aria-busy="true"] {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .send-action::before {
+    transition: none;
+  }
+}

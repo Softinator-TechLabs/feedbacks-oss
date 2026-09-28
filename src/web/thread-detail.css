@@ -1065,3 +1065,36 @@
   border: 0;
   color: var(--accent);
 }
+
+.github-issue-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 20px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: inherit;
+  background: var(--surface);
+}
+.github-issue-dialog::backdrop {
+  background: #0006;
+}
+.github-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.github-dialog-heading h2 {
+  margin: 0;
+}
+.github-issue-dialog .github-issue-control {
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.github-issue-dialog .github-issue-control > .text-button {
+  margin-top: 12px;
+}

@@ -21,7 +21,7 @@ A Feedbacks project can connect multiple repositories across these installations
 
 ## Create an Issue from feedback
 
-Open a thread. If the project has multiple connected repositories, choose the exact Issue destination first. **Create Issue** then creates an Issue from the original feedback, links it back to the thread and records a verified URL. Use **Review/edit first** when the text needs adjustment. The button is a deliberate maintainer action; incoming comments never create Issues on their own. API and MCP callers must pass `repositoryUrl` when there is more than one connected repository.
+Open a thread. With the GitHub App connected to one repository, the header’s **Create GitHub issue** icon creates an Issue directly. With multiple connected repositories, the icon first opens a repository selector; **Create Issue** then creates an Issue from the original feedback, links it back to the thread and records a verified URL. Use **More actions → GitHub issue options → Review/edit first** when the text needs adjustment. Without a configured App, the header offers **View or link issues** instead. Linked Issues and uncertain requests remain accessible from that same header icon. The button is a deliberate maintainer action; incoming comments never create Issues on their own. API and MCP callers must pass `repositoryUrl` when there is more than one connected repository.
 
 For each image or video, the Issue includes a link to that attachment inside the Feedbacks thread. These links do not expire. The web app reuses your existing sign-in and checks current project access before loading the media. Storage objects remain private; expiring Wasabi/S3 URLs and raw asset API URLs are not copied into new Issues.
 
