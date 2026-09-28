@@ -199,6 +199,44 @@ test("assigned queue filters and local planning date reach the server on every b
   assert.deepEqual(first.summary, { threads: { open: 11 } });
 });
 
+test("explicit thread moves validate the destination and return a compact project readback receipt", async () => {
+  const destinationId = randomUUID();
+  const workPlan = {
+    priority: "high",
+    schedule: "later",
+    scheduledFor: null,
+    timeZone: "Asia/Kolkata",
+  };
+  let calls = 0;
+  const execute = async (operation: string, input: any) => {
+    calls++;
+    assert.equal(operation, "threads.move");
+    assert.deepEqual(input, { threadId, revision: 4, projectId: destinationId });
+    return { ...thread, projectId: destinationId, revision: 5, workPlan };
+  };
+  await assert.rejects(
+    runAgentTool(execute, "execute", {
+      operation: "threads.move",
+      input: { threadId, revision: 4 },
+    }),
+    { code: "VALIDATION" },
+  );
+  assert.equal(calls, 0);
+  const result = await runAgentTool(execute, "execute", {
+    operation: "threads.move",
+    input: { threadId, revision: 4, projectId: destinationId },
+  });
+  assert.equal(calls, 1, "the adapter does not perform extra setup or access changes");
+  assert.equal(result.id, threadId);
+  assert.equal(result.projectId, destinationId);
+  assert.equal(result.revision, 5);
+  assert.deepEqual(result.workPlan, workPlan);
+  assert.equal(result.operation, "threads.move");
+  assert.equal(result.readback, "feedbacks_thread");
+  assert.equal(result.assets, undefined);
+  assert.equal(result.replies, undefined);
+});
+
 test("thread pages expose current revision, complete continuations and precise point state", async () => {
   const execute = async () => thread;
   const first = await runAgentTool(execute, "thread", {

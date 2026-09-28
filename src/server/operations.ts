@@ -1,4 +1,5 @@
 import { manageThreadDeletion, cleanupDeletedObjects } from "./thread-deletion.js";
+import { moveThread } from "./thread-move.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
 import {
@@ -153,6 +154,7 @@ export class Operations {
           ["threads.delete", "threads.deletions", "threads.retryDeletion"].includes(name)
         )
           return manageThreadDeletion(db, a, name, i);
+        if (name === "threads.move") return moveThread(db, a, i);
         if (name.startsWith("threads.")) return feedback(db, a, name, i, this.config);
         if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
         if (name.startsWith("views.")) return views(db, a, name, i);

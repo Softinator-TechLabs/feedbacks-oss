@@ -41,6 +41,16 @@ Read-only review may suggest assignments, category/tags and a GitHub decision; i
 
 `create_issue` is triage metadata, not an external write. Actual GitHub creation requires the user's explicit issue-creation intent, the separate `github.issueCreate` scope and current repository/maintainer permission. An eligible maintainer can separately opt into that scope when issuing their personal key; Help defaults and existing keys do not gain it. Discover the exact GitHub schema, review its issue preview/routing and follow its uncertainty/readback rules before any authorized creation. Do not infer permission from an assignment, profile, GitHub decision or tool discovery.
 
+## Requested project setup and thread moves
+
+Projects can separate a public website from its dashboard even when they share a repository. Repository association is optional. Existing operations cover `projects.create`, collaborative background via `projects.context.save`, approved instructions via `instructions.publish`, and access via `members.grant`. Discover their exact schemas and current permissions; use only those explicitly requested. Context does not publish instructions or grant membership. Never connect GitHub or broaden access merely to route feedback.
+
+Move a thread only on explicit human request. Read its current project/revision and both projects with `projects.get`; identify the requested destination by ID and resolve any ambiguous name. Discover `threads.move`, then execute `{threadId, revision, projectId}` where `projectId` is the destination. The caller needs maintain permission and the operation's token scope in both projects. Existing keys do not gain new scopes automatically.
+
+The move keeps the thread ID, discussion, assets and human work plans, matching or copying custom categories. Destination project permissions apply after the move; guest links are revoked and export snapshots are invalidated. GitHub links remain, with automatic status sync paused for reconciliation. Shared documents, active/uncertain external synchronization, pending GitHub creation or active assignees/workers without destination access can block it. Report the conflict; do not clear assignments, change grants or disconnect integrations to force success.
+
+Read back the thread and verify `projectId` and revision, then refresh any affected queue from offset 0. A `threads.movedOut` change removes the thread from a source-project cache; it does not grant destination access. After a timeout, read back before retrying; after a revision conflict, reload and reconcile. Moving feedback does not authorize implementation, changes to project context/instructions, or external messages.
+
 ## Recovery
 
 `FORBIDDEN`: identify the operation/scope and request appropriately scoped access or human action; never expand access automatically. A denied weighted priority query can use explicitly labelled top-priority-only sorting.

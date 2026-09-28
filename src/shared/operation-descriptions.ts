@@ -70,6 +70,8 @@ export const operationDescriptions: Record<string, string> = {
     "Find previous and next thread in the same filtered and sorted inbox, across pagination. Returns null neighbors if the thread is outside current filters. This is a live view, not an immutable queue.",
   "threads.organize":
     "Replace optional category and tags using the current revision. Read existing tags first to preserve relevant labels. Does not change workflow status.",
+  "threads.move":
+    "Move a thread only on explicit human request using its current revision and destination projectId. Requires maintain access and token scope in both projects. Preserves ID, discussion, assets and work plans; revokes guest links and invalidates export snapshots. Shared documents, active external sync and assignees/workers missing destination access can block it. GitHub links remain with automatic sync paused. Never connect GitHub or widen membership to force a move. Read back projectId and revision.",
   "threads.plan":
     "Set human-selected work priority and timing using the current thread revision. Requires project write access and explicit user intent. Persist dated choices as calendar scheduledFor plus originating IANA timeZone; unscheduled/later use null. Does not start work, change ownership/status or schedule automatic execution. Preserve choices unless the user asks to change them.",
   "threads.annotationPlan":
@@ -117,7 +119,7 @@ export const operationDescriptions: Record<string, string> = {
   "context.export":
     "Export a paginated immutable snapshot with full threads, assets and approvedInstructions. Continue with snapshotId/nextOffset. For later changes use context.changes and refetch affected threads; snapshot reviewer guidance is not live.",
   "context.changes":
-    "Read changes after a cursor; continue while hasMore. Refetch affected threads to obtain current discussion/uploads. After reviewer.guidance.changed, refresh context.reviewers. Events are change notices, not complete thread content.",
+    "Read changes after a cursor; continue while hasMore. Refetch affected threads to obtain current discussion/uploads. For threads.movedOut, remove the thread from the source-project cache; destination access is separate. After reviewer.guidance.changed, refresh context.reviewers. Events are change notices, not complete thread content.",
   "context.reviewers":
     "Read owner-approved advisory reviewer guidance (role/expertise), separate from approved project instructions. Requires context.policy for ordinary agents. Private member notes are excluded.",
   "members.guidance.get":

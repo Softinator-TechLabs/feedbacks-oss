@@ -72,6 +72,12 @@ Members can create personal keys from Setup/Account using their own sign-in. Per
 
 For authorized work, `assignments.claim` records the current member and agent against a whole thread or selected open points. Atomic overlap checks prevent two active claims on the same work while allowing disjoint points. `assignments.list` is paginated; `assignments.renew` extends a two-hour lease at ordinary work checkpoints; `assignments.release` records completed/paused without resolving feedback. Expiry is advisory, not proof the former worker stopped. Coordinate before takeover. These current-worker claims are separate from durable assignments to a project member. No background polling, model-subscription identity inference or autonomous dispatch to another member is installed.
 
+### Set up projects and move feedback
+
+You can ask your agent to create separate projects for a public website and dashboard. Repository association is optional. Existing MCP operations cover project creation, collaborative context, approved instructions and member grants; each requires the appropriate access and your requested scope.
+
+Ask explicitly to move an existing thread to a named destination. The agent checks both projects and the current thread revision, calls `threads.move`, then reads back its new project. Maintain access and token scope are required in both projects. The thread keeps its ID, discussion, assets and plans; destination permissions apply and existing guest links are revoked. Shared documents, active external synchronization or assignees/workers missing destination access can block a move. The agent must not connect GitHub or widen memberships to make it succeed. See [project routing](/reference/manual/project-routing#separate-projects-and-move-existing-feedback).
+
 ### Choose priority and timing
 
 Use the thread controls to set **High, Normal or Low** priority and **Unscheduled, Today, Tomorrow, Next week or Later** timing. Today/Tomorrow/Next week save an actual calendar date and your timezone. Tomorrow remains that saved date as days pass; it does not keep moving forward. Older tasks start as Normal/Unscheduled. The plan applies to the whole thread while point-specific assignees stay intact.
