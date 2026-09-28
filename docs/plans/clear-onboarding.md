@@ -38,3 +38,12 @@ The independent Impeccable reviewer confirmed the positioning, workflow truth, r
 Artifact: public extension 0.1.31, blank default server, title and 116-character summary match the listing. Store listing text is in [Chrome Web Store listing](../chrome-web-store.md).
 
 Deployment, live-domain verification and Chrome Web Store publication have not been performed.
+
+## Visual correction — 28 September 2026
+
+The user rejected the first landing revision as generic and too wordy. Their replacement direction is minimal copy, human pencil annotations, actual running extension/server screenshots and a clear animated handoff. This supersedes the previous landing visual direction; product setup truth and the completed Help/extension changes remain.
+
+- Landing now follows one synthetic request through real extension capture, review/send and a real local server thread. The page has 226 visible main-content words, three selectable scenes, deliberate Play/Pause and screenshot enlargement.
+- Screenshot provenance and a reproducible isolated capture script live in [website assets](../website-assets.md). No customer data or production server was used.
+- Setup and technical-guide links stay inside the published docs. `scripts/publish-docs.mjs` publishes canonical source manuals at build time so they are not separately maintained copies.
+- Verification: site and docs build, comparison consistency, harness/docs checks, three-scene switching, screenshot dialog/Escape, playback/pause, reduced motion, onsite bootstrap navigation and responsive overflow at 390/790/1059/1440 pixels. Independent review scored all four requested corrections resolved (first viewport, precise pencil pointers, craft floor and design persistence), with disposition ship scoped to those fixes. No-JavaScript content, font fallback and 200% CSS zoom also passed. Build, harness/docs, release and formatting checks passed. Live deployment remains unperformed.

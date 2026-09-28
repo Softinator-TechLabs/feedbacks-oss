@@ -32,7 +32,7 @@ These clients share the Feedbacks endpoint, not necessarily configuration-file p
 
 ### Manual connection
 
-The remote endpoint is `https://YOUR-TEAM-SERVER/mcp`; compact clients can use `/mcp?profile=compact`. Configure the personal key as a secret-backed bearer credential through the client's supported settings. For a stdio-only client, build the repository's Node adapter and follow the [agent setup reference](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/agent-setup.md). Never use a browser sign-in link as an MCP token.
+The remote endpoint is `https://YOUR-TEAM-SERVER/mcp`; compact clients can use `/mcp?profile=compact`. Configure the personal key as a secret-backed bearer credential through the client's supported settings. For a stdio-only client, build the repository's Node adapter and follow the [agent setup reference](/reference/manual/agent-setup). Never use a browser sign-in link as an MCP token.
 
 ## Work through your first feedback
 
@@ -48,13 +48,13 @@ For large backlogs or smaller context windows, connect to `/mcp?profile=compact`
 
 A request such as “show today's feedback from this reviewer and discuss what to fix first” first resolves project, author and timezone, counts threads and points separately, and proposes a task order. The developer chooses direct fixes or planning before work starts. Explicit priority flags and advisory weights are distinguished from inferred dependencies. The agent marks agreed work in progress, verifies changes and resolves selected points before closing a complete thread. Current revisions protect writes; no feedback is changed during setup.
 
-Images are returned as native MCP image blocks. Full-page details can be cropped in original pixels. Video playback and PDF rendering require appropriate client tools; a text-only model cannot inspect visual evidence unaided. See the [portable workflow](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/plugins/feedbacks/skills/review-feedback/SKILL.md).
+Images are returned as native MCP image blocks. Full-page details can be cropped in original pixels. Video playback and PDF rendering require appropriate client tools; a text-only model cannot inspect visual evidence unaided. See the [portable workflow](/reference/manual/plugin/feedbacks/skills/review-feedback/SKILL).
 
 An agent can inspect the exact page URL, screenshot context, comments, status and approved project guidance before changing code. It can then report a real commit, PR or deployed view back to the thread. A successful MCP connection grants only the scopes on its key; it does not authorize a source change, Issue creation or resolution on its own. Keep external writes separately authorized.
 
 For website reviews, `threads.get` returns ordered `context.annotations`: each note has its own element selector, tag, page position and captured element rectangle/border details when available. Treat a missing selector or rectangle as a page-position note, not as an element match. Each asset includes an ordered filename, the captured page range and normalized `markings` for point pins, pencil strokes, arrows, rectangles and text. Automatic selected-element rectangles have `origin: "element"`; their `annotationId` links them to the corresponding note. Point marks link to the same ID. A `point-001-original.webp` image preserves that point's original viewport or menu state, with `anchor.viewport` and `anchor.capturedAt` on the note. Inspect it with `assets.get`; do not assume a later page screenshot contains the same state. If there is a `full-page-combined.webp`, its `captureSections` maps retained source page ranges into the merged image, including gaps from removed screenshots. Point originals stay separate from this continuous-page overview. Use `assets.get` on individual images for readable visual detail; the combined image may be scaled down.
 
-For exact operation names, limits and recovery behavior, see the [MCP contract](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/mcp-contract.md) and [operation catalog](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/generated/operations.md).
+For exact operation names, limits and recovery behavior, see the [MCP contract](/reference/manual/mcp-contract) and [operation catalog](/reference/manual/generated/operations).
 
 ### Point decisions and page totals
 

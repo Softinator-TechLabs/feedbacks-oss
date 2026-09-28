@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-28T05:51:10.672062Z",
+  "generatedAt": "2026-09-28T06:25:02.924555+00:00",
   "title": "Design System: Feedbacks",
   "components": [
     {
@@ -16,18 +16,75 @@
       "description": "Native field with the existing label gap, minimum height, and keyboard outline.",
       "html": "<label class=\"ds-app-field\"><span>Project name</span><input type=\"text\" placeholder=\"Website review\" /></label>",
       "css": ".ds-app-field{font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;display:flex;flex-direction:column;gap:8px;color:#202c37;font-size:13.5px;line-height:1.55}.ds-app-field span{font-weight:600}.ds-app-field input{font:inherit;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--control-border,#adb8c1);border-radius:8px;background:var(--surface,#fff);color:#202c37;caret-color:var(--accent,#17324d)}.ds-app-field input::placeholder{color:#687783;opacity:1}.ds-app-field input:hover{border-color:var(--control-hover,#7b8c99)}.ds-app-field input:focus-visible{outline:2px solid var(--focus,#3875a9);outline-offset:2px}"
+    },
+    {
+      "name": "Landing setup action",
+      "kind": "button",
+      "refersTo": "landing-primary",
+      "description": "Primary setup link to the public website docs.",
+      "html": "<a class=\"ds-setup\" href=\"/docs/guide/getting-started\">Set up Feedbacks</a>",
+      "css": ".ds-setup{display:inline-flex;align-items:center;min-height:52px;padding:13px 22px;border-radius:5px;font:600 16px/1.5 Manrope,Arial,sans-serif;color:#fff;background:#20241e;text-decoration:none;transition:transform .18s}.ds-setup:hover{background:#394431;transform:translateY(-2px)}.ds-setup:focus-visible{outline:3px solid #2159b1;outline-offset:5px}@media(prefers-reduced-motion:reduce){.ds-setup{transition:none}.ds-setup:hover{transform:none}}"
+    },
+    {
+      "name": "Landing workflow control",
+      "kind": "nav",
+      "refersTo": "landing-step-selected",
+      "description": "Native pressed-state step with a red pencil underline.",
+      "html": "<nav class=\"ds-steps\" aria-label=\"Feedback workflow\"><button aria-pressed=\"true\">01 Point it out</button><button aria-pressed=\"false\">02 Check &amp; send</button></nav>",
+      "css": ".ds-steps{display:flex;gap:18px;font:600 16px/1.5 Manrope,Arial,sans-serif}.ds-steps button{font:inherit;position:relative;border:0;background:none;color:#596054;min-height:48px;padding:9px 6px;cursor:pointer}.ds-steps button[aria-pressed=\"true\"]{color:#20241e}.ds-steps button[aria-pressed=\"true\"]:after{content:\"\";position:absolute;bottom:0;left:5px;right:3px;height:3px;background:#dc452c;transform:rotate(-1deg)}.ds-steps button:hover{text-decoration:underline}.ds-steps button:focus-visible{outline:3px solid #2159b1;outline-offset:5px}"
+    },
+    {
+      "name": "Landing context label",
+      "kind": "chip",
+      "refersTo": "landing-context",
+      "description": "A piece of evidence accompanying a feedback request.",
+      "html": "<span class=\"ds-context\">Page + element</span>",
+      "css": ".ds-context{display:inline-block;font:600 16px/1.5 Manrope,Arial,sans-serif;color:#20241e;padding:9px 16px;border:1px solid #cad1c1;border-radius:3px}"
+    },
+    {
+      "name": "Landing capture scene",
+      "kind": "card",
+      "refersTo": "landing-scene",
+      "description": "Flat muted-green stage for actual product evidence and a short explanation.",
+      "html": "<section class=\"ds-scene\"><p class=\"ds-note\">this button, right here.</p><h3>Right-click. Say what needs changing.</h3><p>The screenshot + exact element come along.</p></section>",
+      "css": ".ds-scene{font:400 16px/1.5 Manrope,Arial,sans-serif;color:#20241e;background:#edf2e5;border-radius:10px;padding:30px 38px 30px 30px;max-width:520px}.ds-scene .ds-note{font:600 30px Caveat,cursive;letter-spacing:-.6px;transform:rotate(-5deg);margin:0 0 32px 10px}.ds-scene h3{font-size:28px;line-height:1.2;font-weight:800;margin:0 0 18px}.ds-scene p:last-child{margin:0;border-top:1px solid #99a38e;padding-top:16px;font-weight:600}"
+    },
+    {
+      "name": "Landing play control",
+      "kind": "button",
+      "refersTo": "landing-step",
+      "description": "User-started, bounded walkthrough playback.",
+      "html": "<button class=\"ds-play\" aria-pressed=\"false\" aria-label=\"Play the three-step walkthrough\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m8 5 11 7-11 7Z\"/></svg>Play</button>",
+      "css": ".ds-play{display:inline-flex;gap:5px;align-items:center;justify-content:center;font:600 14px/1.5 Manrope,Arial,sans-serif;min-height:44px;padding:8px 18px;border:1px solid #b4bcae;border-radius:30px;background:none;color:#596054;cursor:pointer}.ds-play svg{width:16px;height:16px;fill:currentColor}.ds-play:hover{color:#20241e}.ds-play:focus-visible{outline:3px solid #2159b1;outline-offset:5px}"
     }
   ],
   "narrative": {
-    "northStar": "Context your AI agent can use",
-    "overview": "The public website explains visual feedback through warm paper, heavy Manrope type and coral accents. Plain language and one concrete illustrated request make the evidence and next action easy to understand. This refinement preserves the existing identity.\n\nThe application and extension keep their focused system-font interface, Oxford actions and existing theme behavior. Their density serves reviewing, setup and resolution. Each surface retains its own scale.",
-    "keyCharacteristics": [],
-    "rules": [],
+    "northStar": "The marked-up review desk",
+    "overview": "The public landing uses actual product captures, concise conversational copy and red pencil annotations on a white desk. Bold Manrope carries the reading hierarchy; small Caveat notes add a human voice. Muted green, peach and blue scene backgrounds distinguish capture, review and the shared thread without competing with the screenshot.\n\nThe application and extension keep their focused system-font interface, Oxford actions and existing theme behavior. Their density serves reviewing, setup and resolution. Each surface retains its own scale. Other public pages retain their existing warm-paper and coral website palette; landing overrides do not redefine those surfaces.",
+    "keyCharacteristics": [
+      "Actual product pixels with clearly labeled fictional demo content.",
+      "Brief handwritten notes and target-pointing pencil marks.",
+      "Flat scene surfaces with a small tilt on desktop screenshots.",
+      "Direct setup guidance and deliberate, user-started motion."
+    ],
+    "rules": [
+      {
+        "name": "The Reading Voice Rule",
+        "body": "Use Manrope for product explanation and controls; reserve Caveat for brief annotations alongside the evidence.",
+        "section": "typography"
+      },
+      {
+        "name": "The Evidence Rule",
+        "body": "Annotate actual product captures separately, label fictional demo content and keep the full original available for inspection.",
+        "section": "components"
+      }
+    ],
     "dos": [
       "Do preserve each surface's existing typography, palette and theme behavior.",
       "Do use exact action labels and distinguish local drafts from sent feedback.",
-      "Do preserve original screenshot proportions and label illustrative evidence.",
-      "Do keep drafts safe during navigation and failed requests."
+      "Do preserve original screenshot proportions in zoom and label fictional demo evidence.",
+      "Do keep drafts safe during navigation and failed requests.",
+      "Do keep landing explanations brief, use pencil marks to point at evidence, and link setup guidance to the website docs."
     ],
     "donts": [
       "Don't invent successful writes, automatic fixes, integrations or customer evidence.",
@@ -36,25 +93,327 @@
     ]
   },
   "extensions": {
+    "colorMeta": {
+      "app-oxford": {
+        "role": "primary",
+        "displayName": "App Oxford",
+        "canonical": "#17324d",
+        "tonalRamp": [
+          "oklch(15.00% 0.05904 250.28)",
+          "oklch(26.43% 0.05904 250.28)",
+          "oklch(37.86% 0.05904 250.28)",
+          "oklch(49.29% 0.05904 250.28)",
+          "oklch(60.71% 0.05904 250.28)",
+          "oklch(72.14% 0.05904 250.28)",
+          "oklch(83.57% 0.05904 250.28)",
+          "oklch(95.00% 0.05904 250.28)"
+        ]
+      },
+      "review-draft": {
+        "role": "neutral",
+        "displayName": "Review Draft",
+        "canonical": "#a43e17",
+        "tonalRamp": [
+          "oklch(15.00% 0.14379 39.26)",
+          "oklch(26.43% 0.14379 39.26)",
+          "oklch(37.86% 0.14379 39.26)",
+          "oklch(49.29% 0.14379 39.26)",
+          "oklch(60.71% 0.14379 39.26)",
+          "oklch(72.14% 0.14379 39.26)",
+          "oklch(83.57% 0.14379 39.26)",
+          "oklch(95.00% 0.14379 39.26)"
+        ]
+      },
+      "site-ink": {
+        "role": "neutral",
+        "displayName": "Site Ink",
+        "canonical": "#202020",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "site-paper": {
+        "role": "neutral",
+        "displayName": "Site Paper",
+        "canonical": "#fffdfa",
+        "tonalRamp": [
+          "oklch(15.00% 0.00450 78.30)",
+          "oklch(26.43% 0.00450 78.30)",
+          "oklch(37.86% 0.00450 78.30)",
+          "oklch(49.29% 0.00450 78.30)",
+          "oklch(60.71% 0.00450 78.30)",
+          "oklch(72.14% 0.00450 78.30)",
+          "oklch(83.57% 0.00450 78.30)",
+          "oklch(95.00% 0.00450 78.30)"
+        ]
+      },
+      "site-coral": {
+        "role": "primary",
+        "displayName": "Site Coral",
+        "canonical": "#db4939",
+        "tonalRamp": [
+          "oklch(15.00% 0.18498 29.66)",
+          "oklch(26.43% 0.18498 29.66)",
+          "oklch(37.86% 0.18498 29.66)",
+          "oklch(49.29% 0.18498 29.66)",
+          "oklch(60.71% 0.18498 29.66)",
+          "oklch(72.14% 0.18498 29.66)",
+          "oklch(83.57% 0.18498 29.66)",
+          "oklch(95.00% 0.18498 29.66)"
+        ]
+      },
+      "landing-paper": {
+        "role": "neutral",
+        "displayName": "Landing Paper",
+        "canonical": "#fff",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "landing-ink": {
+        "role": "primary",
+        "displayName": "Landing Ink",
+        "canonical": "#20241e",
+        "tonalRamp": [
+          "oklch(15.00% 0.01249 135.08)",
+          "oklch(26.43% 0.01249 135.08)",
+          "oklch(37.86% 0.01249 135.08)",
+          "oklch(49.29% 0.01249 135.08)",
+          "oklch(60.71% 0.01249 135.08)",
+          "oklch(72.14% 0.01249 135.08)",
+          "oklch(83.57% 0.01249 135.08)",
+          "oklch(95.00% 0.01249 135.08)"
+        ]
+      },
+      "landing-secondary": {
+        "role": "neutral",
+        "displayName": "Landing Secondary",
+        "canonical": "#596054",
+        "tonalRamp": [
+          "oklch(15.00% 0.02076 132.09)",
+          "oklch(26.43% 0.02076 132.09)",
+          "oklch(37.86% 0.02076 132.09)",
+          "oklch(49.29% 0.02076 132.09)",
+          "oklch(60.71% 0.02076 132.09)",
+          "oklch(72.14% 0.02076 132.09)",
+          "oklch(83.57% 0.02076 132.09)",
+          "oklch(95.00% 0.02076 132.09)"
+        ]
+      },
+      "landing-line": {
+        "role": "neutral",
+        "displayName": "Landing Line",
+        "canonical": "#dfe3da",
+        "tonalRamp": [
+          "oklch(15.00% 0.01279 126.38)",
+          "oklch(26.43% 0.01279 126.38)",
+          "oklch(37.86% 0.01279 126.38)",
+          "oklch(49.29% 0.01279 126.38)",
+          "oklch(60.71% 0.01279 126.38)",
+          "oklch(72.14% 0.01279 126.38)",
+          "oklch(83.57% 0.01279 126.38)",
+          "oklch(95.00% 0.01279 126.38)"
+        ]
+      },
+      "landing-pencil": {
+        "role": "primary",
+        "displayName": "Landing Pencil",
+        "canonical": "#dc452c",
+        "tonalRamp": [
+          "oklch(15.00% 0.19178 32.00)",
+          "oklch(26.43% 0.19178 32.00)",
+          "oklch(37.86% 0.19178 32.00)",
+          "oklch(49.29% 0.19178 32.00)",
+          "oklch(60.71% 0.19178 32.00)",
+          "oklch(72.14% 0.19178 32.00)",
+          "oklch(83.57% 0.19178 32.00)",
+          "oklch(95.00% 0.19178 32.00)"
+        ]
+      },
+      "landing-capture-mark": {
+        "role": "primary",
+        "displayName": "Landing Capture Mark",
+        "canonical": "#c63f29",
+        "tonalRamp": [
+          "oklch(15.00% 0.17520 31.88)",
+          "oklch(26.43% 0.17520 31.88)",
+          "oklch(37.86% 0.17520 31.88)",
+          "oklch(49.29% 0.17520 31.88)",
+          "oklch(60.71% 0.17520 31.88)",
+          "oklch(72.14% 0.17520 31.88)",
+          "oklch(83.57% 0.17520 31.88)",
+          "oklch(95.00% 0.17520 31.88)"
+        ]
+      },
+      "landing-capture-scene": {
+        "role": "secondary",
+        "displayName": "Landing Capture Scene",
+        "canonical": "#edf2e5",
+        "tonalRamp": [
+          "oklch(15.00% 0.01799 123.97)",
+          "oklch(26.43% 0.01799 123.97)",
+          "oklch(37.86% 0.01799 123.97)",
+          "oklch(49.29% 0.01799 123.97)",
+          "oklch(60.71% 0.01799 123.97)",
+          "oklch(72.14% 0.01799 123.97)",
+          "oklch(83.57% 0.01799 123.97)",
+          "oklch(95.00% 0.01799 123.97)"
+        ]
+      },
+      "landing-review-scene": {
+        "role": "secondary",
+        "displayName": "Landing Review Scene",
+        "canonical": "#f6ece6",
+        "tonalRamp": [
+          "oklch(15.00% 0.01353 53.35)",
+          "oklch(26.43% 0.01353 53.35)",
+          "oklch(37.86% 0.01353 53.35)",
+          "oklch(49.29% 0.01353 53.35)",
+          "oklch(60.71% 0.01353 53.35)",
+          "oklch(72.14% 0.01353 53.35)",
+          "oklch(83.57% 0.01353 53.35)",
+          "oklch(95.00% 0.01353 53.35)"
+        ]
+      },
+      "landing-thread-scene": {
+        "role": "secondary",
+        "displayName": "Landing Thread Scene",
+        "canonical": "#edf0f9",
+        "tonalRamp": [
+          "oklch(15.00% 0.01248 271.28)",
+          "oklch(26.43% 0.01248 271.28)",
+          "oklch(37.86% 0.01248 271.28)",
+          "oklch(49.29% 0.01248 271.28)",
+          "oklch(60.71% 0.01248 271.28)",
+          "oklch(72.14% 0.01248 271.28)",
+          "oklch(83.57% 0.01248 271.28)",
+          "oklch(95.00% 0.01248 271.28)"
+        ]
+      },
+      "landing-agent-highlight": {
+        "role": "secondary",
+        "displayName": "Landing Agent Highlight",
+        "canonical": "#e4efc3",
+        "tonalRamp": [
+          "oklch(15.00% 0.05889 118.95)",
+          "oklch(26.43% 0.05889 118.95)",
+          "oklch(37.86% 0.05889 118.95)",
+          "oklch(49.29% 0.05889 118.95)",
+          "oklch(60.71% 0.05889 118.95)",
+          "oklch(72.14% 0.05889 118.95)",
+          "oklch(83.57% 0.05889 118.95)",
+          "oklch(95.00% 0.05889 118.95)"
+        ]
+      },
+      "landing-setup-surface": {
+        "role": "neutral",
+        "displayName": "Landing Setup Surface",
+        "canonical": "#f6f7f3",
+        "tonalRamp": [
+          "oklch(15.00% 0.00538 117.92)",
+          "oklch(26.43% 0.00538 117.92)",
+          "oklch(37.86% 0.00538 117.92)",
+          "oklch(49.29% 0.00538 117.92)",
+          "oklch(60.71% 0.00538 117.92)",
+          "oklch(72.14% 0.00538 117.92)",
+          "oklch(83.57% 0.00538 117.92)",
+          "oklch(95.00% 0.00538 117.92)"
+        ]
+      },
+      "landing-action-hover": {
+        "role": "neutral",
+        "displayName": "Landing Action Hover",
+        "canonical": "#394431",
+        "tonalRamp": [
+          "oklch(15.00% 0.03463 132.39)",
+          "oklch(26.43% 0.03463 132.39)",
+          "oklch(37.86% 0.03463 132.39)",
+          "oklch(49.29% 0.03463 132.39)",
+          "oklch(60.71% 0.03463 132.39)",
+          "oklch(72.14% 0.03463 132.39)",
+          "oklch(83.57% 0.03463 132.39)",
+          "oklch(95.00% 0.03463 132.39)"
+        ]
+      },
+      "site-focus": {
+        "role": "neutral",
+        "displayName": "Site Focus",
+        "canonical": "#2159b1",
+        "tonalRamp": [
+          "oklch(15.00% 0.15210 259.42)",
+          "oklch(26.43% 0.15210 259.42)",
+          "oklch(37.86% 0.15210 259.42)",
+          "oklch(49.29% 0.15210 259.42)",
+          "oklch(60.71% 0.15210 259.42)",
+          "oklch(72.14% 0.15210 259.42)",
+          "oklch(83.57% 0.15210 259.42)",
+          "oklch(95.00% 0.15210 259.42)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "landing-display": {
+        "displayName": "Landing headline",
+        "purpose": "Conversational hero, with responsive scale in DESIGN.md."
+      },
+      "landing-pencil-note": {
+        "displayName": "Pencil note",
+        "purpose": "Brief handwritten annotation accompanying product evidence."
+      }
+    },
+    "shadows": [],
     "motion": [
       {
-        "name": "site-button-transition",
-        "value": "150ms",
-        "purpose": "Website action color and background transitions; disabled for reduced motion. Workflow steps update without animation."
+        "name": "landing-action-lift",
+        "value": "180ms",
+        "purpose": "2px hover lift; disabled with reduced motion."
+      },
+      {
+        "name": "landing-scene-enter",
+        "value": "350ms ease-out",
+        "purpose": "Fade from .55 opacity and rise 8px; disabled with reduced motion."
+      },
+      {
+        "name": "landing-scene-color",
+        "value": "400ms",
+        "purpose": "Scene background transition; disabled with reduced motion."
+      },
+      {
+        "name": "landing-playback-step",
+        "value": "6500ms",
+        "purpose": "User-started advance; stops after the final scene and on manual selection, zoom or tab hiding."
       }
     ],
     "breakpoints": [
       {
-        "name": "site-compact",
+        "name": "landing-wide",
+        "value": "1450px"
+      },
+      {
+        "name": "landing-compact",
         "value": "1050px"
       },
       {
-        "name": "landing-stack",
-        "value": "760px"
+        "name": "landing-detail",
+        "value": "900px"
       },
       {
-        "name": "site-mobile",
-        "value": "720px"
+        "name": "landing-detail-split-min",
+        "value": "600px"
       },
       {
         "name": "help-server-copy-stack",

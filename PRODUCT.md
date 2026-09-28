@@ -39,7 +39,7 @@ The architecture is documented in docs/architecture.md. Exact project origins, p
 
 ## Brand Commitments
 
-Feedbacks. A visual-first public website with bold Manrope type, warm paper, coral accents and a concrete illustrated feedback handoff. The application and extension keep their focused system-font interface and Oxford actions. Each surface has its own scale. See DESIGN.md.
+Feedbacks. A visual-first public presence with a concise, human voice and actual product evidence. The landing pairs bold Manrope with brief handwritten Caveat notes and red pencil marks; fictional demo content is clearly labeled. Setup guidance lives on the public website. The application and extension keep their focused system-font interface and Oxford actions. Each surface has its own scale. See DESIGN.md.
 
 ## Product Principles
 

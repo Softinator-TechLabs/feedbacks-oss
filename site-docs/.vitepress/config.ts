@@ -45,6 +45,8 @@ export default defineConfig({
         text: "Operate",
         items: [
           { text: "DevOps: install the server", link: "/guide/self-host" },
+          { text: "Production configuration", link: "/reference/manual/self-hosting" },
+          { text: "Operations & recovery", link: "/reference/manual/operations" },
           { text: "Access and privacy", link: "/guide/access-privacy" },
           { text: "Troubleshooting", link: "/guide/troubleshooting" },
         ],

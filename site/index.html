@@ -54,309 +54,249 @@
         ></a
       >
       <nav aria-label="Main navigation">
-        <a href="#workflow">How it works</a><a href="#setup">Setup</a
-        ><a href="/docs/">Docs</a
-        ><a href="https://github.com/Softinator-TechLabs/feedbacks-oss">GitHub</a>
+        <a href="#workflow">See it work</a><a href="/docs/">Docs</a
+        ><a href="https://github.com/Softinator-TechLabs/feedbacks-oss"
+          >GitHub
+          <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 19 19 5M6 5h13v13" /></svg
+        ></a>
       </nav>
-      <a class="button header-cta" href="/docs/guide/self-host">Set up your server</a>
     </header>
     <main id="main">
-      <section class="hero wrap" aria-labelledby="hero-title">
+      <section class="intro wrap" aria-labelledby="hero-title">
         <h1 id="hero-title">
-          Turn website feedback into <span>context your AI agent can use.</span>
+          Less “which button?”<br />More
+          <span class="marked"
+            >fixing.<svg viewBox="0 0 300 24" aria-hidden="true">
+              <path d="M4 15Q98 2 290 9M16 23Q161 10 283 17" /></svg
+          ></span>
         </h1>
-        <p>
-          Clients point out a change. Testers report a bug. Feedbacks keeps the
-          screenshot, exact page, selected element and project guidance together, so your
-          developer and coding agent know what to fix.
-        </p>
-        <div class="actions">
-          <a class="button primary" href="/docs/guide/self-host"
-            >Set up your team server</a
-          ><a class="source-link" href="/docs/guide/chrome-extension"
-            >Already have a server? Connect the extension</a
-          >
+        <div class="intro-aside">
+          <p>Point out a UI change. <br />Give your AI agent the full picture.</p>
+          <a class="start-button" href="/docs/guide/getting-started"
+            >Set up Feedbacks
+            <span aria-hidden="true"
+              ><svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></span
+          ></a>
+          <p class="setup-note">Open source. Your team’s server first.</p>
         </div>
-        <p class="server-first">
-          Open source · Self-hosted · Your team needs a Feedbacks server first.<br />Install
-          once on your company’s infrastructure; everyone connects to the same address.
-        </p>
       </section>
-      <section class="workflow wrap" id="workflow" aria-labelledby="workflow-title">
-        <div class="section-heading">
-          <h2 id="workflow-title">From “this button”<br />to a clear change request.</h2>
-          <p>
-            One example, from the reviewer’s browser to the developer’s agent. Select a
-            step to follow the handoff.
-          </p>
-        </div>
+      <section class="story wrap" id="workflow" aria-labelledby="workflow-title">
+        <h2 class="sr-only" id="workflow-title">From a click to context</h2>
         <div
-          class="workflow-tabs"
+          class="story-controls"
           role="group"
-          aria-label="Explore the feedback workflow"
+          aria-label="Follow the feedback workflow"
         >
-          <button data-step="capture" aria-pressed="true">1. Point &amp; comment</button
-          ><button data-step="send" aria-pressed="false">2. Review &amp; send</button
-          ><button data-step="agent" aria-pressed="false">3. Read with an agent</button>
+          <button data-scene="0" aria-pressed="true"><span>01</span> Point it out</button
+          ><svg class="step-arrow" viewBox="0 0 32 24" aria-hidden="true">
+            <path d="M3 12h24m-6-6 6 6-6 6" />
+          </svg>
+          <button data-scene="1" aria-pressed="false">
+            <span>02</span> Check &amp; send</button
+          ><svg class="step-arrow" viewBox="0 0 32 24" aria-hidden="true">
+            <path d="M3 12h24m-6-6 6 6-6 6" />
+          </svg>
+          <button data-scene="2" aria-pressed="false">
+            <span>03</span> Fix with your agent
+          </button>
+          <button
+            class="play-story"
+            aria-label="Play the three-step walkthrough"
+            aria-pressed="false"
+          >
+            <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 5 11 7-11 7Z" /></svg
+            ><span class="play-label">Play</span>
+          </button>
         </div>
-        <div class="workflow-demo">
-          <div class="example-page">
-            <div class="example-browser">
-              <span>shop.example / checkout</span><span>Mobile · 390 px</span>
-            </div>
-            <div class="example-checkout">
-              <span class="example-brand">FIELDNOTES</span>
-              <h3>Your next<br />good idea.</h3>
-              <div class="example-order">
-                <span>Pocket notebook<br /><small>Moss · Set of three</small></span
-                ><strong>$24</strong>
-              </div>
-              <div class="target-button">
-                <span>Continue to payment</span><span class="point-pin">1</span>
-              </div>
-              <div class="example-note">
-                <strong>Point 1 · Client feedback</strong>
-                <p>
-                  “The payment button is too close to the order details on mobile. Please
-                  add more space.”
-                </p>
-              </div>
-            </div>
+        <div class="story-stage" data-active="0">
+          <div class="screen-stack">
+            <button class="screen-zoom" aria-label="Enlarge actual extension screenshot">
+              <picture
+                ><source
+                  id="story-detail"
+                  media="(max-width: 900px)"
+                  srcset="/media/workflow/point-detail.png" />
+                <img
+                  id="story-image"
+                  src="/media/workflow/point.png"
+                  width="900"
+                  height="740"
+                  alt="Actual Feedbacks extension: right-click Add to bag on a demo furniture website and write a comment."
+                  fetchpriority="high" /></picture
+              ><svg class="capture-mark" viewBox="0 0 900 740" aria-hidden="true">
+                <path d="M830 290C780 310 670 340 550 422m8-20-8 20 22-4" /></svg
+              ><svg class="detail-mark" viewBox="0 0 405 340" aria-hidden="true">
+                <path d="M310 18C230 2 90 2 38 36m9-17-9 17 20-3" />
+              </svg>
+            </button>
+            <span class="screen-label" id="screen-label"
+              >Chrome extension · on your website</span
+            >
           </div>
-          <div class="handoff" aria-live="polite">
-            <h3 id="demo-title">Right-click the element. Explain the change.</h3>
-            <p id="demo-description">
-              Open the pinned Feedbacks extension on the website. Hover the button,
-              right-click it, write the note and choose Save point.
+          <div class="story-note" aria-live="polite">
+            <div class="pencil-note" id="pencil-note">this button, right here.</div>
+            <h3 id="scene-title">Right-click. <br />Say what needs changing.</h3>
+            <p id="scene-copy">
+              Click the pinned extension. Right-click an element, write your note, then
+              Save point.
             </p>
-            <dl>
-              <div>
-                <dt>Where</dt>
-                <dd>Checkout page · payment button</dd>
-              </div>
-              <div>
-                <dt>Evidence</dt>
-                <dd id="demo-evidence">The point’s original screenshot and viewport</dd>
-              </div>
-              <div>
-                <dt>State</dt>
-                <dd id="demo-state">Saved in this browser. Not sent yet.</dd>
-              </div>
-            </dl>
-            <p class="demo-next" id="demo-next">
-              Add more points, then choose Review &amp; send.
+            <p class="context-slip" id="context-slip">
+              The screenshot + exact element come along.
             </p>
+            <a id="scene-guide" href="/docs/guide/chrome-extension"
+              >Install &amp; pin the extension
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg
+            ></a>
           </div>
         </div>
-        <p class="illustration-note">
-          Illustrative website and feedback. The labels follow the extension’s actual
-          workflow.
+        <div class="story-bottom">
+          <p>Real extension &amp; app screens. Fictional demo project.</p>
+          <p>
+            Click a screenshot to look closer
+            <span aria-hidden="true"
+              ><svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg
+            ></span>
+          </p>
+        </div>
+      </section>
+      <section class="handoff wrap" aria-labelledby="handoff-title">
+        <div class="handoff-heading">
+          <h2 id="handoff-title">“Make <span class="circled">this</span> darker.”</h2>
+          <p>Now “this” comes with context.</p>
+        </div>
+        <div class="context-trail" aria-label="Context delivered to your agent">
+          <span>Screenshot</span><span>Page + element</span><span>Your notes</span
+          ><span>Project guidance</span
+          ><span class="agent-end"
+            >Your AI agent
+            <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 19 19 5M6 5h13v13" /></svg
+          ></span>
+        </div>
+        <p class="agent-instruction">
+          Connect Codex, Claude Code or Antigravity through MCP. Ask it to read the
+          feedback, make the change and verify it.
         </p>
       </section>
-      <section class="context-section wrap" id="agents" aria-labelledby="context-title">
-        <div>
-          <h2 id="context-title">
-            The screenshot shows where.<br />The context explains what.
-          </h2>
-          <p>
-            An AI agent needs more than “make this look better.” Feedbacks brings the
-            reviewer’s request and the evidence into the developer’s own workflow through
-            MCP.
+      <section class="setup-section" id="setup" aria-labelledby="setup-title">
+        <div class="wrap">
+          <div class="setup-heading">
+            <h2 id="setup-title">One team server.<br />Everyone on the same page.</h2>
+            <p>
+              DevOps installs it once on company infrastructure. <br />Reviewers just
+              connect to it.
+            </p>
+          </div>
+          <ol class="setup-path">
+            <li>
+              <a href="/docs/guide/self-host"
+                ><span class="setup-number">1</span><strong>Start the server</strong
+                ><span
+                  >DevOps · installation guide
+                  <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 19 19 5M6 5h13v13" /></svg></span
+              ></a>
+            </li>
+            <li>
+              <a href="/docs/guide/chrome-extension"
+                ><span class="setup-number">2</span><strong>Connect Chrome</strong
+                ><span
+                  >Install → pin → paste server URL
+                  <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 19 19 5M6 5h13v13" /></svg></span
+              ></a>
+            </li>
+            <li>
+              <a href="/docs/guide/team-setup"
+                ><span class="setup-number">3</span><strong>Bring your team</strong
+                ><span
+                  >Projects, context &amp; members
+                  <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 19 19 5M6 5h13v13" /></svg></span
+              ></a>
+            </li>
+            <li>
+              <a href="/docs/guide/mcp"
+                ><span class="setup-number">4</span><strong>Connect your agent</strong
+                ><span
+                  >Developer · personal MCP setup
+                  <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 19 19 5M6 5h13v13" /></svg></span
+              ></a>
+            </li>
+          </ol>
+          <p class="server-tip">
+            Already have a server? <strong>Help → Copy server URL.</strong> Paste it into
+            the extension.
           </p>
-          <a href="/docs/guide/mcp">Connect Codex, Claude Code or Antigravity</a>
+          <div class="role-links">
+            <span>Pick your guide:</span
+            ><a href="/docs/guide/clients"
+              >I’m a client
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></a
+            ><a href="/docs/guide/chrome-extension"
+              >I’m reviewing or testing
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></a
+            ><a href="/docs/guide/self-host"
+              >I’m setting up the server
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></a
+            ><a href="/docs/guide/mcp"
+              >I’m fixing the code
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg
+            ></a>
+          </div>
         </div>
-        <ul class="context-list">
-          <li>
-            <strong>The exact problem</strong
-            ><span
-              >Comment, page URL, viewport and selected element details when
-              available.</span
-            >
-          </li>
-          <li>
-            <strong>The original view</strong
-            ><span
-              >Each point’s screenshot, even if a menu closes or the page layout
-              changes.</span
-            >
-          </li>
-          <li>
-            <strong>Your project’s context</strong
-            ><span>Background, approved instructions and permitted member context.</span>
-          </li>
-          <li>
-            <strong>A traceable outcome</strong
-            ><span
-              >The developer asks the agent to work, checks the fix and records evidence
-              before resolving feedback.</span
-            >
-          </li>
-        </ul>
-      </section>
-      <section class="setup-section wrap" id="setup" aria-labelledby="setup-title">
-        <div class="section-heading">
-          <h2 id="setup-title">Set up the team once.<br />Then start reviewing.</h2>
-          <p>
-            The extension connects to your installation. It does not create or host a team
-            server.
-          </p>
-        </div>
-        <ol class="setup-steps">
-          <li>
-            <div>
-              <h3>DevOps installs the server</h3>
-              <p>
-                Deploy Feedbacks on your company’s server or cloud infrastructure with
-                HTTPS, PostgreSQL and private file storage. Create the first owner
-                account.
-              </p>
-              <a href="/docs/guide/self-host">Server installation guide</a>
-            </div>
-          </li>
-          <li>
-            <div>
-              <h3>Install, pin and connect the extension</h3>
-              <p>
-                Use Chrome’s Extensions menu to pin Feedbacks. Copy the server URL from
-                Help, paste it into the extension and approve the connection.
-              </p>
-              <a href="/docs/guide/chrome-extension">Extension installation guide</a>
-            </div>
-          </li>
-          <li>
-            <div>
-              <h3>The owner prepares projects and people</h3>
-              <p>
-                Add website origins and project context. Connect the GitHub App if you
-                want Issue tracking. Add members, grant project access and set relevant
-                profiles and responsibilities.
-              </p>
-              <a href="/docs/guide/team-setup">Project and member setup</a>
-            </div>
-          </li>
-          <li>
-            <div>
-              <h3>Each developer connects their own agent</h3>
-              <p>
-                Sign in as yourself, create your personal setup prompt and configure MCP
-                in Codex, Claude Code or Antigravity. Ask the agent to read feedback, make
-                the agreed change and report checks.
-              </p>
-              <a href="/docs/guide/mcp">Agent setup and first fix</a>
-            </div>
-          </li>
-        </ol>
-      </section>
-      <section class="roles-section wrap" aria-labelledby="roles-title">
-        <h2 id="roles-title">Find your part in the flow.</h2>
-        <div class="role-row">
-          <h3>I’m a client</h3>
-          <p>
-            Open the team’s review access, point to the change and send feedback. Your
-            team handles hosting and agent setup.
-          </p>
-          <a href="/docs/guide/clients">Client guide</a>
-        </div>
-        <div class="role-row">
-          <h3>I’m reviewing or testing</h3>
-          <p>
-            Connect the extension, capture the problem and say what you expected. Check
-            the result when it is ready.
-          </p>
-          <a href="/docs/guide/chrome-extension">Reviewer guide</a>
-        </div>
-        <div class="role-row">
-          <h3>I’m setting it up</h3>
-          <p>
-            Install the team server and hand its address and owner access to the person
-            organizing projects.
-          </p>
-          <a href="/docs/guide/self-host">DevOps guide</a>
-        </div>
-        <div class="role-row">
-          <h3>I’m fixing the feedback</h3>
-          <p>
-            Connect your coding agent to the project through MCP. Read the evidence, agree
-            the work, fix and verify.
-          </p>
-          <a href="/docs/guide/mcp">Developer guide</a>
-        </div>
-      </section>
-      <section class="questions wrap" aria-labelledby="questions-title">
-        <h2 id="questions-title">Before you start</h2>
-        <details>
-          <summary>Do I need my own server before installing the extension?</summary>
-          <p>
-            Your team needs a running Feedbacks server before anyone can connect or send
-            feedback. DevOps installs it once on your company’s infrastructure. If your
-            team already has one, ask for its URL and your sign-in access.
-          </p>
-        </details>
-        <details>
-          <summary>
-            Does every client need to install a server or connect an AI agent?
-          </summary>
-          <p>
-            No. Clients only need the review access your team provides. For browser
-            capture, use the connected extension. A team can also provide a scoped guest
-            review link when configured. Agent setup is for the developers resolving
-            feedback.
-          </p>
-        </details>
-        <details>
-          <summary>Is GitHub required?</summary>
-          <p>
-            No. Capture and MCP work without GitHub. Install and connect the GitHub App
-            when you want to create Issues from feedback or use optional status sync.
-          </p>
-        </details>
-        <details>
-          <summary>Will the AI agent fix everything automatically?</summary>
-          <p>
-            You choose the work. MCP gives your authorized agent access to feedback and
-            context. The developer asks it to make changes, checks the result and records
-            evidence. Connecting MCP alone does not start fixes.
-          </p>
-        </details>
-      </section>
-      <section class="closing wrap">
-        <h2>Give your next UI fix<br />the context it needs.</h2>
-        <div class="actions">
-          <a class="button primary" href="/docs/guide/getting-started"
-            >Follow the setup guide</a
-          ><a
-            href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
-            >Get the Chrome extension</a
-          >
-        </div>
-        <p>Apache-2.0 · One installation for your team</p>
       </section>
     </main>
+    <dialog id="screen-dialog" aria-label="Full size product screenshot">
+      <button class="close-screen" autofocus>Close ×</button>
+      <div class="zoom-scroll">
+        <img src="/media/workflow/point.png" alt="" width="900" height="650" />
+      </div>
+      <p>Actual product screen · demo content. Scroll to inspect the full image.</p>
+    </dialog>
     <footer class="site-footer wrap landing-footer">
       <div>
         <a class="wordmark" href="/">feedbacks.</a>
         <p>By <a href="https://softinator.ai">Softinator</a>. Built in the open.</p>
       </div>
-      <nav class="footer-comparisons" aria-label="Compare Feedbacks with other tools">
-        <strong><a href="/compare/">Compare Feedbacks with ↗</a></strong>
-        <div>
-          <a href="/compare/bugherd.html">BugHerd</a>
-          <a href="/compare/marker-io.html">Marker.io</a>
-          <a href="/compare/markup-io.html">MarkUp.io</a>
-          <a href="/compare/markup-hero.html">Markup Hero</a>
-          <a href="/compare/redpen-ai.html">Redpen.ai</a>
-          <a href="/compare/pastel.html">Pastel</a>
-          <a href="/compare/ruttl.html">Ruttl</a>
-          <a href="/compare/superflow.html">Superflow</a>
-          <a href="/compare/usersnap.html">Usersnap</a>
-          <a href="/compare/userback.html">Userback</a>
-          <a href="/compare/atarim.html">Atarim</a>
-          <a href="/compare/bugpin.html">BugPin</a>
-          <a href="/compare/fasterfixes.html">FasterFixes</a>
-          <a href="/compare/siteping.html">SitePing</a>
-          <a href="/compare/openreplay.html">OpenReplay + Spot</a>
-        </div>
-      </nav>
+      <details class="compare-disclosure">
+        <summary>Compare tools</summary>
+        <nav class="footer-comparisons" aria-label="Compare Feedbacks with other tools">
+          <strong
+            ><a href="/compare/"
+              >Compare Feedbacks with
+              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 19 5M6 5h13v13" /></svg></a
+          ></strong>
+          <div>
+            <a href="/compare/bugherd.html">BugHerd</a>
+            <a href="/compare/marker-io.html">Marker.io</a>
+            <a href="/compare/markup-io.html">MarkUp.io</a>
+            <a href="/compare/markup-hero.html">Markup Hero</a>
+            <a href="/compare/redpen-ai.html">Redpen.ai</a>
+            <a href="/compare/pastel.html">Pastel</a>
+            <a href="/compare/ruttl.html">Ruttl</a>
+            <a href="/compare/superflow.html">Superflow</a>
+            <a href="/compare/usersnap.html">Usersnap</a>
+            <a href="/compare/userback.html">Userback</a>
+            <a href="/compare/atarim.html">Atarim</a>
+            <a href="/compare/bugpin.html">BugPin</a>
+            <a href="/compare/fasterfixes.html">FasterFixes</a>
+            <a href="/compare/siteping.html">SitePing</a>
+            <a href="/compare/openreplay.html">OpenReplay + Spot</a>
+          </div>
+        </nav>
+      </details>
       <nav aria-label="Footer navigation">
         <a
           href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/CONTRIBUTING.md"

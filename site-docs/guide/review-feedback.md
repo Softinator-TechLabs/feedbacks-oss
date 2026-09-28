@@ -20,7 +20,7 @@ Open a thread to compare the request with its screenshot or video. **Previous** 
 
 A maintainer can create a [GitHub Issue](/guide/github) from a thread in one click after connecting the project. Add a real commit, PR or incorporated design as delivery evidence. Resolve only when the result has been verified. A linked Issue and a reply are not proof that the website changed.
 
-For exact limits and advanced flows, see the [repository review workflow](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/review-workflow.md).
+For exact limits and advanced flows, see the [complete review workflow](/reference/manual/review-workflow).
 
 ## Complete individual points
 

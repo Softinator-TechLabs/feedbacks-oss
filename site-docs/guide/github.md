@@ -31,4 +31,4 @@ Only one native Issue request is allowed per thread. If a GitHub write has an un
 
 Turn on **Status sync** in the project’s GitHub tab only when you want verified GitHub open/closed state to coordinate with Feedbacks open/resolved work status. The sync follows the exact repository recorded on each verified Issue link. New links establish a baseline. A first mismatch, changes on both sides or an uncertain GitHub write pause for a maintainer decision. In progress and ready for review stay open on GitHub; review decisions remain separate. Removing a connected repository pauses project sync; review its linked Issues before enabling it again. Turning sync off stops polling and automatic updates without deleting historical links.
 
-For API details and recovery rules, see the [GitHub App reference](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/api.md#optional-github-app).
+For API details and recovery rules, see the [GitHub App reference](/reference/manual/api#optional-github-app).

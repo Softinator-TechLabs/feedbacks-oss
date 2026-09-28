@@ -94,7 +94,7 @@ Use highlighter, numbered steps, text, blur, simple stamps or an inserted local 
 
 **Record a short tab video** opens Chrome's tab picker. Stop after at most five minutes, preview the clip, add a comment and send it. The clip is stored privately with the thread. Tab audio and microphone are separate options, off by default. Recordings above 40 MiB are discarded. Drag either timeline handle to trim, scrub to inspect a frame and choose Play selection to preview the range. Crop frame is available below. Apply edits before sending; Restore original undoes edits. Navigation continues recording in the selected tab. Chrome Web Store installs update through Chrome; after an update, refresh pages you are reviewing. An unpacked build requires **Reload** in `chrome://extensions`.
 
-Read [access and privacy](/guide/access-privacy) before capturing sensitive pages. For complete extension behavior, see the [source guide](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/extension.md).
+Read [access and privacy](/guide/access-privacy) before capturing sensitive pages. For complete extension behavior, see the [complete extension guide](/reference/manual/extension).
 
 ## Settings and unobtrusive page controls
 
