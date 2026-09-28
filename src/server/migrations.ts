@@ -300,5 +300,15 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       )`);
       await tx.query("INSERT INTO migrations(version) VALUES(21)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=22"))) {
+      await tx.query(`CREATE TABLE login_ip_failures(
+        ip_hash text PRIMARY KEY, failures integer NOT NULL CHECK(failures BETWEEN 1 AND 3),
+        expires_at timestamptz NOT NULL, blocked_until timestamptz
+      )`);
+      await tx.query(
+        "CREATE INDEX login_ip_failures_expiry ON login_ip_failures(expires_at)",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(22)");
+    }
   });
 }

@@ -1,6 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { isIP } from "node:net";
 import { existsSync } from "node:fs";
 import { Operations } from "./operations.js";
 import type { Database } from "./db.js";
@@ -9,7 +10,7 @@ import { assetListThumbnail, assetRow, type AssetStore } from "./assets.js";
 import { documentRow } from "./documents.js";
 import { DomainError, fail } from "./errors.js";
 import { inputSchemas, type OperationName } from "../shared/contracts.js";
-import { Auth, accountLock, hash, secret } from "./auth.js";
+import { Auth, LoginThrottleError, accountLock, hash, secret } from "./auth.js";
 import { remoteMcp } from "./mcp.js";
 import { helpHtml } from "./help.js";
 import { readExtensionRelease } from "./extension-release.js";
@@ -18,6 +19,23 @@ import { guestProjectInspect, guestProjectSubmit } from "./guest-project-links.j
 import { verifyGuestTurnstile } from "./turnstile.js";
 import { widgetInspect, widgetLink } from "./widget.js";
 import { surveyInspect, surveySubmit } from "./surveys.js";
+function canonicalClientIp(value?: string) {
+  if (!value || !isIP(value))
+    fail(
+      "CLIENT_ADDRESS_UNAVAILABLE",
+      "Sign-in could not verify your network address",
+      400,
+    );
+  if (isIP(value) === 4) return value;
+  const [address, zone] = value.split("%", 2);
+  const ipv6 = new URL(`http://[${address}]/`).hostname.slice(1, -1);
+  if (zone) return `${ipv6}%${zone}`;
+  const mapped = /^::ffff:([\da-f]{1,4}):([\da-f]{1,4})$/.exec(ipv6);
+  if (!mapped) return ipv6;
+  const high = Number.parseInt(mapped[1], 16);
+  const low = Number.parseInt(mapped[2], 16);
+  return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+}
 export function createApp(config: Config, database: Database, assets: AssetStore) {
   const app = express(),
     ops = new Operations(database, assets, config),
@@ -307,7 +325,11 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         }
         if (name === "auth.login") {
           requireOrigin(req);
-          const result = await ops.auth.login(i.email, i.password);
+          const result = await ops.auth.login(
+            i.email,
+            i.password,
+            canonicalClientIp(req.ip),
+          );
           res.cookie("feedbacks_session", result.token, {
             httpOnly: true,
             secure: config.production,
@@ -515,6 +537,8 @@ export function createApp(config: Config, database: Database, assets: AssetStore
   }
   app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
     if (res.headersSent) return;
+    if (error instanceof LoginThrottleError)
+      res.setHeader("Retry-After", String(error.retryAfterSeconds));
     const known = error instanceof DomainError;
     const status = known
       ? error.status

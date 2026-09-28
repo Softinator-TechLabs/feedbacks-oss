@@ -64,7 +64,7 @@ Sign in through the HTTPS origin and use the account controls to invite members.
 
 Pin a reviewed source revision or image digest. Back up the database and confirm compatibility before applying migrations. Startup takes a transaction advisory lock before running migrations. Health is exposed at `/healthz`; `/readyz` checks the database but does not test object storage.
 
-Budget `DATABASE_POOL_MAX` across replicas and administrative clients. Start with one replica; multi-replica deployments require a shared ingress authentication throttle because the application limiter is process-local. Configure resource limits and alerting based on measured load.
+Budget `DATABASE_POOL_MAX` across replicas and administrative clients. Password sign-in failures are tracked by normalized client IP in PostgreSQL: the third failure within five minutes blocks that IP for five minutes and returns `Retry-After`. A successful sign-in clears its count. People sharing an IP share this limit, so verify the proxy's real client-IP forwarding. Start with one replica; multi-replica deployments still require a shared ingress throttle because the broader request limiter is process-local. Configure resource limits and alerting based on measured load.
 
 Keep encrypted off-host PostgreSQL backups and an independent object-storage recovery policy. Test a restore into a separate environment before depending on it. Never use `docker compose down -v` on an installation whose data you need. For code rollback, reuse the original database and storage configuration only after checking schema compatibility. See [operations](operations.md).
 

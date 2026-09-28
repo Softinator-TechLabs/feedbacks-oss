@@ -2,7 +2,7 @@ import { randomBytes, randomUUID, createHash } from "node:crypto";
 import argon2 from "argon2";
 import type { Database } from "./db.js";
 import { ownerTokenScopes, type Actor } from "../shared/contracts.js";
-import { fail } from "./errors.js";
+import { DomainError, fail } from "./errors.js";
 export const secret = () => randomBytes(32).toString("base64url");
 export const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 export const person = (u: any): Actor => ({
@@ -42,6 +42,16 @@ export const publicActor = (a: Actor) => ({
   kind: a.kind,
   name: a.name,
 });
+export class LoginThrottleError extends DomainError {
+  constructor(public retryAfterSeconds: number) {
+    const minutes = Math.ceil(retryAfterSeconds / 60);
+    super(
+      "RATE_LIMITED",
+      `Too many failed sign-in attempts from this IP address. Try again in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`,
+      429,
+    );
+  }
+}
 export class Auth {
   constructor(private db: Database) {}
   async bootstrap(email: string, name: string, password: string) {
@@ -62,15 +72,50 @@ export class Auth {
       return person({ ...u, primary_owner: true });
     });
   }
-  async login(email: string, password: string) {
-    return this.db.transaction(async (tx) => {
+  async login(email: string, password: string, clientIp?: string) {
+    const result = await this.db.transaction(async (tx) => {
       await accountLock(tx);
+      const ipHash = clientIp ? hash(clientIp) : undefined;
+      let previous: any;
+      if (ipHash) {
+        await tx.query(`DELETE FROM login_ip_failures WHERE ip_hash IN (
+          SELECT ip_hash FROM login_ip_failures WHERE expires_at<=statement_timestamp()
+          ORDER BY expires_at LIMIT 100
+        )`);
+        previous = await tx.one(
+          `SELECT failures,expires_at>statement_timestamp() AS active,
+          CASE WHEN blocked_until>statement_timestamp() THEN GREATEST(1,CEIL(EXTRACT(EPOCH FROM blocked_until-statement_timestamp()))) ELSE 0 END AS retry_after
+          FROM login_ip_failures WHERE ip_hash=$1`,
+          [ipHash],
+        );
+        if (Number(previous?.retry_after) > 0)
+          return { kind: "blocked" as const, retryAfter: Number(previous.retry_after) };
+      }
       const u = await tx.one(
         "SELECT u.*,EXISTS(SELECT 1 FROM organization_identity WHERE primary_owner_id=u.id) AS primary_owner FROM users u WHERE lower(email)=$1 OR lower(username)=$1",
         [email.trim().toLowerCase()],
       );
-      if (!u || !u.active || !(await argon2.verify(u.password_hash, password)))
-        fail("UNAUTHENTICATED", "Invalid email or password", 401);
+      if (!u || !u.active || !(await argon2.verify(u.password_hash, password))) {
+        if (ipHash) {
+          const failures = previous?.active ? Number(previous.failures) + 1 : 1;
+          const recorded = await tx.one(
+            `INSERT INTO login_ip_failures(ip_hash,failures,expires_at,blocked_until)
+            VALUES($1,$2,statement_timestamp()+interval '5 minutes',CASE WHEN $2=3 THEN statement_timestamp()+interval '5 minutes' ELSE NULL END)
+            ON CONFLICT(ip_hash) DO UPDATE SET failures=EXCLUDED.failures,
+              expires_at=CASE WHEN EXCLUDED.failures=3 OR login_ip_failures.expires_at<=statement_timestamp()
+                THEN EXCLUDED.expires_at ELSE login_ip_failures.expires_at END,
+              blocked_until=EXCLUDED.blocked_until
+            RETURNING CASE WHEN blocked_until IS NOT NULL
+              THEN GREATEST(1,CEIL(EXTRACT(EPOCH FROM blocked_until-statement_timestamp()))) ELSE 0 END AS retry_after`,
+            [ipHash, Math.min(failures, 3)],
+          );
+          if (failures >= 3)
+            return { kind: "blocked" as const, retryAfter: Number(recorded.retry_after) };
+        }
+        return { kind: "invalid" as const };
+      }
+      if (ipHash)
+        await tx.query("DELETE FROM login_ip_failures WHERE ip_hash=$1", [ipHash]);
       const token = secret(),
         csrf = secret(),
         expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
@@ -78,8 +123,12 @@ export class Auth {
         "INSERT INTO sessions(hash,user_id,csrf_hash,expires_at) VALUES($1,$2,$3,$4)",
         [hash(token), u.id, hash(csrf), expiresAt],
       );
-      return { actor: person(u), token, csrf, expiresAt };
+      return { kind: "success" as const, actor: person(u), token, csrf, expiresAt };
     });
+    if (result.kind === "blocked") throw new LoginThrottleError(result.retryAfter);
+    if (result.kind === "invalid")
+      fail("UNAUTHENTICATED", "Invalid email or password", 401);
+    return result;
   }
   async acceptInvite(token: string, name: string, password: string) {
     const passwordHash = await argon2.hash(password);
