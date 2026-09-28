@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Delegated assignments and visible triage](assignment-ui.md)
+
 - [Context-efficient agent workflow](agent-workflow.md)
 
 - [Review defaults and accessible page controls](review-defaults-controls.md)

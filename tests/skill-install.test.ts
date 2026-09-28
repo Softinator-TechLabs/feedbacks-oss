@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { helpHtml } from "../src/server/help.js";
+import { agentSetupPrompt } from "../src/web/agent-setup.js";
 
 test("setup explicitly includes user skill installation and fresh-chat discovery", () => {
   const html = helpHtml("https://feedbacks.example.test", null);
@@ -20,6 +21,53 @@ test("setup explicitly includes user skill installation and fresh-chat discovery
   assert.ok(html.includes("fresh chat"));
   assert.ok(html.includes("secret-free"));
   assert.ok(html.includes("user-level"));
+});
+
+test("copied setup instructions require a bounded read-only preview and a truthful client handoff", () => {
+  const html = helpHtml("https://feedbacks.example.test", null);
+  const template = html.match(
+    /<template id="agent-setup-instructions">([\s\S]*?)<\/template>/,
+  )?.[1];
+  assert.ok(template, "private instructions stay in the authenticated Help template");
+  assert.match(template, /projects\.list/);
+  assert.match(template, /first bounded task preview/);
+  assert.match(template, /limit:10/);
+  assert.match(template, /threads and points separately/);
+  assert.match(template, /zero accessible projects is a valid result/);
+  assert.match(template, /Codex or Antigravity/);
+  assert.match(template, /exact app or connection/);
+  assert.match(template, /fresh chat/);
+  assert.match(template, /Do not restart or quit apps automatically/);
+  assert.match(template, /Do not claim ready/);
+  assert.match(template, /No business writes/);
+});
+
+test("a zero-project setup retains the issued read scopes without inventing project access", () => {
+  const html = helpHtml("https://feedbacks.example.test", null);
+  const template = html.match(
+    /<template id="agent-setup-instructions">([\s\S]*?)<\/template>/,
+  )![1];
+  const prompt = agentSetupPrompt(
+    {
+      id: "synthetic-key",
+      token: "synthetic-secret",
+      origin: "https://feedbacks.example.test",
+      name: "Read-only setup",
+      projects: [],
+      scopes: ["auth.me", "projects.list", "members.profile.get"],
+      expiresAt: "2026-12-01T00:00:00.000Z",
+      canResolve: false,
+    },
+    template,
+  );
+  const metadata = JSON.parse(prompt.match(/```json\n([\s\S]*?)\n```/)![1]);
+  assert.deepEqual(metadata.projects, []);
+  assert.deepEqual(metadata.scopes, ["auth.me", "projects.list", "members.profile.get"]);
+  assert.equal(metadata.ownerAdmin, false);
+  assert.equal(metadata.projectAccess, "listed projects only");
+  assert.equal(metadata.endpoint, "https://feedbacks.example.test/mcp?profile=compact");
+  assert.ok(!prompt.includes("{{MCP_ENDPOINT_JSON}}"));
+  assert.match(prompt, /If threads\.list is not scoped, mark the preview unavailable/);
 });
 
 test("skill installer checks without writing, installs all references, preserves custom files and rejects symlinks", async () => {
@@ -40,6 +88,14 @@ test("skill installer checks without writing, installs all references, preserves
       /members.profile/,
     );
     assert.match(await readFile(join(target, "SKILL.md"), "utf8"), /createdAfter/);
+    assert.equal(
+      await readFile(join(target, "references/workflow.md"), "utf8"),
+      await readFile(
+        "plugins/feedbacks/skills/review-feedback/references/workflow.md",
+        "utf8",
+      ),
+      "the installed workflow must include current delegation guidance verbatim",
+    );
     assert.match(await readFile(join(target, "references/media.md"), "utf8"), /ORIGINAL/);
     await writeFile(join(target, "SKILL.md"), "custom");
     assert.notEqual(run().status, 0);

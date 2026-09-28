@@ -277,5 +277,28 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       );
       await tx.query("INSERT INTO migrations(version) VALUES(20)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=21"))) {
+      await tx.query(`CREATE TABLE work_delegations(
+        id uuid PRIMARY KEY, project_id uuid NOT NULL REFERENCES projects(id),
+        thread_id uuid NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+        annotation_ids jsonb NOT NULL, user_id uuid NOT NULL REFERENCES users(id),
+        summary text NOT NULL, category text NOT NULL, tags jsonb NOT NULL,
+        github_decision text NOT NULL, github_rationale text NOT NULL,
+        state text NOT NULL DEFAULT 'active' CHECK(state IN ('active','cancelled')),
+        revision integer NOT NULL DEFAULT 1, updated_by jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(
+        "CREATE INDEX work_delegations_scope ON work_delegations(project_id,thread_id,state)",
+      );
+      await tx.query(`CREATE TABLE work_delegation_history(
+        id uuid PRIMARY KEY, delegation_id uuid NOT NULL REFERENCES work_delegations(id) ON DELETE CASCADE,
+        action text NOT NULL, revision integer NOT NULL, actor jsonb NOT NULL,
+        reason text, assignment jsonb NOT NULL, actor_id uuid NOT NULL,
+        request_key text NOT NULL, input_hash text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE(actor_id,request_key), UNIQUE(delegation_id,revision)
+      )`);
+      await tx.query("INSERT INTO migrations(version) VALUES(21)");
+    }
   });
 }
