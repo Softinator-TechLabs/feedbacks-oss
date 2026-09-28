@@ -4,6 +4,9 @@ import { MarkdownText } from "./markdown-text.js";
 import { ErrorNotice, Notice, useAction } from "./ui.js";
 import { HumanTime } from "./human-time.js";
 import { Icon } from "./icons.js";
+import { PointWorkPlan } from "./point-work-plan.js";
+import { pointProgress } from "./point-progress.js";
+import { planPriorities, timingLabel } from "./work-plan-model.js";
 
 type Asset = Thread["assets"][number];
 type Annotation = NonNullable<Thread["context"]["annotations"]>[number];
@@ -76,11 +79,13 @@ function position(asset: Asset, item: Annotation, context: Thread["context"]) {
 export function ReviewEvidence({
   thread,
   canResolve = false,
+  canWrite = false,
   canMaintain = false,
   onSaved,
 }: {
   thread: Thread;
   canResolve?: boolean;
+  canWrite?: boolean;
   canMaintain?: boolean;
   onSaved?: (thread: Thread) => void;
 }) {
@@ -102,6 +107,7 @@ export function ReviewEvidence({
     },
     { open: 0, resolved: 0, removed: 0, closed: 0 },
   );
+  const progress = pointProgress(thread);
   async function changePoint(item: Annotation, state: "open" | "resolved" | "removed") {
     if (pending.current || !onSaved) return;
     pending.current = true;
@@ -188,6 +194,8 @@ export function ReviewEvidence({
       <div className="review-point-overview">
         <p>
           {counts.open} open · {counts.resolved} resolved
+          {progress.urgent ? ` · ${progress.urgent} urgent` : ""}
+          {progress.later ? ` · ${progress.later} later` : ""}
           {counts.closed ? ` · ${counts.closed} closed` : ""}
           {counts.removed ? ` · ${counts.removed} removed` : ""}
         </p>
@@ -311,6 +319,21 @@ export function ReviewEvidence({
                       : "Selected element"
                     : "Page position only"}
                 </span>
+                {onSaved && canWrite && state === "open" && !threadClosed ? (
+                  <PointWorkPlan
+                    thread={thread}
+                    annotationId={item.id}
+                    number={index + 1}
+                    onSaved={onSaved}
+                  />
+                ) : (
+                  thread.annotationPlans?.[item.id] && (
+                    <span className="review-point-plan-summary">
+                      {planPriorities[thread.annotationPlans[item.id].priority]} priority
+                      · {timingLabel(thread.annotationPlans[item.id])}
+                    </span>
+                  )
+                )}
                 {item.anchor.selector && (
                   <details className="review-point-context">
                     <summary>Element and box details</summary>

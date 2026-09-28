@@ -169,3 +169,19 @@ test("closed parent controls effective point status without erasing removed poin
   f.thread.work.state = "declined";
   assert.ok(buildTaskHandoff(f).text.includes('"state":"closed"'));
 });
+test("copied task keeps each point's human plan beside its text", () => {
+  const f = fixture();
+  (f.thread as any).annotationPlans = {
+    "point-b": {
+      priority: "high",
+      schedule: "today",
+      scheduledFor: "2026-09-28",
+      timeZone: "Asia/Kolkata",
+    },
+  };
+  const { text } = buildTaskHandoff(f);
+  assert.match(
+    text,
+    /"id":"point-b"[^\n]*"workPlan":\{"priority":"high","schedule":"today"/,
+  );
+});

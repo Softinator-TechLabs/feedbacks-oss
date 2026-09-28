@@ -1381,6 +1381,7 @@ export function ThreadDetail({
             {!!t.context.annotations?.length && (
               <ReviewEvidence
                 thread={t}
+                canWrite={project?.permissions.canWrite}
                 canResolve={project?.permissions.canResolve}
                 canMaintain={project?.permissions.canMaintain}
                 onSaved={setThread}

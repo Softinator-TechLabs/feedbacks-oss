@@ -158,11 +158,30 @@ test("point plans persist independently with project write access, revision chec
       await assert.rejects(call(actor, "threads.annotationPlan", request), {
         code: "FORBIDDEN",
       });
+    const oldKey = await call(writer, "tokens.create", {
+      name: "Old point scope",
+      projectIds: [project.id],
+      scopes: ["threads.get"],
+    });
+    await assert.rejects(
+      call(
+        await f.ops.auth.authenticate(oldKey.token),
+        "threads.annotationPlan",
+        request,
+      ),
+      { code: "FORBIDDEN" },
+    );
+    const key = await call(writer, "tokens.create", {
+      name: "Point planner",
+      projectIds: [project.id],
+      scopes: ["threads.annotationPlan", "threads.get"],
+    });
+    const agent = await f.ops.auth.authenticate(key.token);
     await assert.rejects(
       call(writer, "threads.annotationPlan", { ...request, annotationId: randomUUID() }),
       { code: "NOT_FOUND" },
     );
-    const changed = await call(writer, "threads.annotationPlan", request);
+    const changed = await call(agent, "threads.annotationPlan", request);
     assert.deepEqual(changed.annotationPlans[annotationId], workPlan);
     assert.equal(changed.annotationPlans[thread.context.annotations[1].id], undefined);
     assert.equal(changed.revision, thread.revision + 1);
@@ -195,6 +214,7 @@ test("point plans persist independently with project write access, revision chec
     );
     assert.equal(event.data.annotationId, annotationId);
     assert.deepEqual(event.data.workPlan, workPlan);
+    assert.equal(changed.lastActor.id, agent.id);
   } finally {
     await f.pg.close();
   }

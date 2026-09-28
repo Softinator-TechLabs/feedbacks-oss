@@ -970,6 +970,52 @@
   color: var(--muted);
   font-size: 0.8rem;
 }
+.review-point-plan {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 10px 0 12px;
+}
+.review-point-plan label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+.review-point-plan select {
+  width: min(145px, 100%);
+  min-height: 40px;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+.review-point-plan-summary {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.review-point-plan-recovery {
+  flex-basis: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-surface);
+}
+.review-point-plan-recovery p {
+  margin: 0 0 8px;
+}
+.review-point-plan-recovery .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .review-point-context {
   margin: 6px 0;
   font-size: 0.82rem;

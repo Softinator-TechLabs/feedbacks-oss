@@ -234,6 +234,22 @@ test("thread pages expose current revision, complete continuations and precise p
   assert.equal(points.items[0].id, annotationId);
   assert.equal(points.items[0].effectiveState, "open");
   assert.deepEqual(points.items[0].assetIds, [thread.assets[0].id]);
+  const planned = await runAgentTool(
+    async () => ({
+      ...thread,
+      annotationPlans: {
+        [annotationId]: {
+          priority: "high",
+          schedule: "later",
+          scheduledFor: null,
+          timeZone: "Asia/Kolkata",
+        },
+      },
+    }),
+    "thread",
+    { threadId, section: "points" },
+  );
+  assert.equal(planned.items[0].workPlan.schedule, "later");
   const body = await runAgentTool(execute, "thread", {
     threadId,
     section: "body",

@@ -2329,6 +2329,27 @@ try {
     );
   }
   await inlineThreadPage.setViewportSize({ width: 900, height: 650 });
+  const openPoint = inlineThreadPage.locator(".review-point-list li.open").first();
+  await openPoint.getByLabel("Point 2 timing").selectOption("today");
+  await inlineThreadPage
+    .locator('.thread-heading-meta .point-progress-ring[aria-label*="1 urgent"]')
+    .waitFor();
+  await openPoint.getByLabel("Point 2 priority").selectOption("high");
+  await openPoint.getByText("High priority").waitFor();
+  await inlineThreadPage.reload();
+  const plannedPoint = inlineThreadPage.locator(".review-point-list li.open").first();
+  assert.equal(await plannedPoint.getByLabel("Point 2 priority").inputValue(), "high");
+  assert.equal(await plannedPoint.getByLabel("Point 2 timing").inputValue(), "today");
+  const progressList = await context.newPage();
+  await progressList.goto(`${access.url}/projects/${inlineThread.projectId}`);
+  const progressRow = progressList.locator(
+    `.thread-row:has(a[href^="/threads/${inlineThreadId}"])`,
+  );
+  await progressRow.locator('.point-progress-ring[aria-label*="1 urgent"]').waitFor();
+  await progressRow.screenshot({
+    path: join(root, ".local/remaining-todos-qa/thread-progress-list.png"),
+  });
+  await progressList.close();
   assert.equal(await inlineThreadPage.locator(".review-main-capture").count(), 1);
   assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
   assert.equal(
