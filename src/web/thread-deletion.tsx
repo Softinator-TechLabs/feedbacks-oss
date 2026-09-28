@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api, uid, type Thread } from "./api.js";
 import { ActionState, useAction, useLoad, ErrorNotice } from "./ui.js";
 
@@ -138,6 +138,11 @@ export function ThreadDeletionCleanup({
     true,
   );
   const pending = data?.items.filter((item) => item.cleanup.state !== "complete") ?? [];
+  useEffect(() => {
+    if (!pending.length) return;
+    const timer = window.setInterval(() => setRefresh((value) => value + 1), 30000);
+    return () => window.clearInterval(timer);
+  }, [pending.length]);
   return (
     <>
       <ErrorNotice
@@ -148,13 +153,11 @@ export function ThreadDeletionCleanup({
           Retry cleanup status
         </button>
       )}
-      {!!data?.items.length && (
-        <details className="thread-cleanup" open={pending.length > 0 || undefined}>
+      {pending.length > 0 && (
+        <details className="thread-cleanup" open>
           <summary>
-            Deleted feedback ·{" "}
-            {pending.length
-              ? `${pending.length} cleanup batches need attention`
-              : "current storage objects removed"}
+            Deleted feedback · {pending.length} cleanup{" "}
+            {pending.length === 1 ? "batch needs" : "batches need"} attention
           </summary>
           <p>
             Thread content is deleted. Each cleanup retry removes up to 12 current storage
@@ -162,33 +165,30 @@ export function ThreadDeletionCleanup({
             this is not proof of physical erasure.
           </p>
           <ActionState action={action} />
-          {data.items.map((item) => (
+          {pending.map((item) => (
             <div className="thread-cleanup-row" key={item.id}>
               <span>
                 {item.deletedCount} {item.deletedCount === 1 ? "thread" : "threads"}{" "}
                 deleted · {new Date(item.createdAt).toLocaleString()} ·{" "}
-                {item.cleanup.state === "complete"
-                  ? "Current objects removed"
-                  : `${item.cleanup.remaining} files ${item.cleanup.state === "failed" ? "failed or pending" : "pending"}`}
+                {item.cleanup.remaining} files{" "}
+                {item.cleanup.state === "failed" ? "failed or pending" : "pending"}
               </span>
-              {item.cleanup.state !== "complete" && (
-                <button
-                  disabled={action.busy}
-                  onClick={() =>
-                    void action.run(async () => {
-                      await api("threads.retryDeletion", {
-                        projectId,
-                        deletionId: item.id,
-                      });
-                      setRefresh((value) => value + 1);
-                    })
-                  }
-                >
-                  {item.cleanup.state === "failed"
-                    ? "Retry file cleanup"
-                    : "Check file cleanup now"}
-                </button>
-              )}
+              <button
+                disabled={action.busy}
+                onClick={() =>
+                  void action.run(async () => {
+                    await api("threads.retryDeletion", {
+                      projectId,
+                      deletionId: item.id,
+                    });
+                    setRefresh((value) => value + 1);
+                  })
+                }
+              >
+                {item.cleanup.state === "failed"
+                  ? "Retry file cleanup"
+                  : "Check file cleanup now"}
+              </button>
             </div>
           ))}
         </details>
