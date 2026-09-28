@@ -69,6 +69,12 @@ try {
       pageToolStates: Array.from({ length: 26 }, () => []),
     };
     Object.assign(draft, JSON.parse(localStorage.getItem("qaDraft") || "{}"));
+    if (!draft.pageToolStates[0].some((shape) => shape.tool === "point"))
+      draft.pageToolStates[0].push({
+        tool: "point",
+        number: 1,
+        points: [{ x: 35, y: 35 }],
+      });
     window.qaDraft = draft;
     window.qaPersist = () => localStorage.setItem("qaDraft", JSON.stringify(draft));
     window.qaApproved = [];
@@ -382,9 +388,52 @@ try {
   );
   const approved = await page.evaluate(() => window.qaApproved);
   assert.equal(approved.length, 26);
+  assert.ok(approved[0].imageWithoutPins, "point capture has a pin-free approved image");
   const first = await sharp(Buffer.from(approved[0].image.split(",")[1], "base64"))
     .raw()
     .toBuffer({ resolveWithObject: true });
+  const withoutPins = await sharp(
+    Buffer.from(approved[0].imageWithoutPins.split(",")[1], "base64"),
+  )
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const pinCenter = (35 * 433 + 35) * first.info.channels;
+  assert.notDeepEqual(
+    first.data.subarray(pinCenter, pinCenter + 3),
+    withoutPins.data.subarray(pinCenter, pinCenter + 3),
+    "the hideable image removes the drawn pin",
+  );
+  const markerPixels = await page.evaluate(async () => {
+    const { drawShape } = await import("/extension/screenshot-render.js");
+    const result = {};
+    for (const style of ["none", "ring", "dot", "arrow", "pin"]) {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 100;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, 100, 100);
+      drawShape(
+        {
+          tool: "point",
+          number: 1,
+          markerStyle: style,
+          markerSize: "small",
+          points: [{ x: 50, y: 50 }],
+        },
+        ctx,
+        100,
+      );
+      const data = ctx.getImageData(0, 0, 100, 100).data;
+      let changed = 0;
+      for (let i = 0; i < data.length; i += 4)
+        if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) changed++;
+      result[style] = changed;
+    }
+    return result;
+  });
+  assert.equal(markerPixels.none, 0, "No marker leaves every pixel unchanged");
+  for (const style of ["ring", "dot", "arrow", "pin"])
+    assert.ok(markerPixels[style] > 0, `${style} visibly marks the click location`);
   assert.equal(first.info.width, 433);
   assert.equal(first.info.height, 1000);
   const redaction = (220 * 433 + 320) * first.info.channels;

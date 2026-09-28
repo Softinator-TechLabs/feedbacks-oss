@@ -161,6 +161,22 @@ function render(clean = false) {
     ctx.restore();
   }
 }
+function imageWithoutPins(type) {
+  if (!base || !shapes.some((shape) => shape.tool === "point")) return null;
+  const output = document.createElement("canvas");
+  output.width = canvas.width;
+  output.height = canvas.height;
+  paintScreenshot(
+    output.getContext("2d"),
+    base,
+    shapes.filter((shape) => shape.tool !== "point"),
+    output.width,
+    output.height,
+  );
+  const image = output.toDataURL(type, type === "image/webp" ? 0.9 : undefined);
+  output.width = output.height = 0;
+  return image;
+}
 async function showFullPagePreview() {
   if (!draft?.capturePages || draft.capturePages.length < 2 || loadingBase) return;
   const request = ++previewBuild;
@@ -1149,6 +1165,7 @@ $("send").onclick = $("send-header").onclick = async () => {
             imageRevision: approvalRevision,
             index,
             image: canvas.toDataURL("image/webp", 0.9),
+            imageWithoutPins: imageWithoutPins("image/webp"),
           });
         }
       }
@@ -1161,6 +1178,10 @@ $("send").onclick = $("send-header").onclick = async () => {
         draft.frozen || draft.capturePages?.length
           ? undefined
           : canvas.toDataURL("image/png"),
+      imageWithoutPins:
+        draft.frozen || draft.capturePages?.length
+          ? undefined
+          : imageWithoutPins("image/png"),
     });
     sendingApproval = false;
     completed(result.url);

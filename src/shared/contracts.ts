@@ -176,6 +176,12 @@ export const contextSchema = z.object({
   requestedSize: z.object({ width: z.number(), height: z.number() }).optional(),
   captureDimensions: z.object({ width: z.number(), height: z.number() }).optional(),
   capturedAt: z.string().datetime().optional(),
+  captureMarker: z
+    .object({
+      style: z.enum(["none", "pin", "arrow", "dot", "ring"]),
+      size: z.enum(["small", "medium", "large"]),
+    })
+    .optional(),
   anchor: anchorSchema.optional(),
   annotations: z
     .array(

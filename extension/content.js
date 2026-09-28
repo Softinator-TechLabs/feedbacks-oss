@@ -34,6 +34,8 @@
     threads = [],
     showPins = true,
     showResolved = false,
+    captureMarkerStyle = "ring",
+    captureMarkerSize = "small",
     project,
     timer,
     mode = "custom",
@@ -441,6 +443,7 @@
       preset: mode,
       ...(requested ? { requestedSize: { width: requested, height: innerHeight } } : {}),
       capturedAt: new Date().toISOString(),
+      captureMarker: { style: captureMarkerStyle, size: captureMarkerSize },
       anchor: saved[0]?.anchor || anchor,
       ...(saved.length
         ? {
@@ -827,12 +830,16 @@
     const stage = document.createElement("div");
     stage.className = "point-image-stage";
     stage.append(imageElement);
-    const marker = document.createElement("span");
-    marker.className = "image-point";
-    marker.textContent = String(index + 1);
-    marker.style.left = `${(item.anchor.screenshotPoint.x / item.snapshot.viewport.width) * 100}%`;
-    marker.style.top = `${(item.anchor.screenshotPoint.y / item.snapshot.viewport.height) * 100}%`;
-    stage.append(marker);
+    if (captureMarkerStyle !== "none") {
+      const marker = document.createElement("span");
+      marker.className = "image-point";
+      marker.dataset.style = captureMarkerStyle;
+      marker.dataset.size = captureMarkerSize;
+      marker.textContent = captureMarkerStyle === "pin" ? String(index + 1) : "";
+      marker.style.left = `${(item.anchor.screenshotPoint.x / item.snapshot.viewport.width) * 100}%`;
+      marker.style.top = `${(item.anchor.screenshotPoint.y / item.snapshot.viewport.height) * 100}%`;
+      stage.append(marker);
+    }
     preview.append(stage);
     root.append(preview);
     close.focus();
@@ -1253,6 +1260,44 @@
       pinRow,
     );
     syncPinControls();
+    const markerControls = document.createElement("div");
+    markerControls.className = "capture-marker-controls";
+    bar.append(markerControls);
+    const markerStyleLabel = document.createElement("label");
+    markerStyleLabel.textContent = "Screenshot marker";
+    const markerStyleSelect = document.createElement("select");
+    markerStyleSelect.setAttribute("aria-label", "Screenshot marker for this review");
+    for (const [label, value] of [
+      ["No marker", "none"],
+      ["Outline circle", "ring"],
+      ["Solid circle", "dot"],
+      ["Arrow", "arrow"],
+      ["Numbered pin", "pin"],
+    ])
+      markerStyleSelect.add(new Option(label, value));
+    markerStyleSelect.value = captureMarkerStyle;
+    markerStyleSelect.onchange = () => {
+      captureMarkerStyle = markerStyleSelect.value;
+      markerSizeSelect.disabled = captureMarkerStyle === "none";
+    };
+    markerStyleLabel.append(markerStyleSelect);
+    const markerSizeLabel = document.createElement("label");
+    markerSizeLabel.textContent = "Marker size";
+    const markerSizeSelect = document.createElement("select");
+    markerSizeSelect.setAttribute("aria-label", "Screenshot marker size for this review");
+    for (const [label, value] of [
+      ["Small", "small"],
+      ["Medium", "medium"],
+      ["Large", "large"],
+    ])
+      markerSizeSelect.add(new Option(label, value));
+    markerSizeSelect.value = captureMarkerSize;
+    markerSizeSelect.disabled = captureMarkerStyle === "none";
+    markerSizeSelect.onchange = () => {
+      captureMarkerSize = markerSizeSelect.value;
+    };
+    markerSizeLabel.append(markerSizeSelect);
+    markerControls.append(markerStyleLabel, markerSizeLabel);
     const feedbackRow = document.createElement("div");
     feedbackRow.className = "row feedback-controls";
     bar.append(feedbackRow);
@@ -2003,6 +2048,8 @@
           setClicks(defaults.clickIndicators !== false);
           showPins = defaults.showPins !== false;
           showResolved = defaults.showResolved === true;
+          captureMarkerStyle = defaults.captureMarkerStyle || "ring";
+          captureMarkerSize = defaults.captureMarkerSize || "small";
           syncPinControls();
         }
         if (wasActive) reviewDock.hidden = false;
@@ -2021,6 +2068,17 @@
         }
         project = message.project;
         if (!host?.isConnected) setup(message.css);
+        const styleSelect = root?.querySelector(
+          '[aria-label="Screenshot marker for this review"]',
+        );
+        const sizeSelect = root?.querySelector(
+          '[aria-label="Screenshot marker size for this review"]',
+        );
+        if (styleSelect) styleSelect.value = captureMarkerStyle;
+        if (sizeSelect) {
+          sizeSelect.value = captureMarkerSize;
+          sizeSelect.disabled = captureMarkerStyle === "none";
+        }
         renderPins();
         if (!wasActive) revealDrawer(false);
         clearInterval(timer);

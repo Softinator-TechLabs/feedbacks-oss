@@ -19,6 +19,98 @@ function imageLabel(asset: Asset) {
   return asset.filename || "Attached screenshot";
 }
 
+function EvidenceScreenshot({
+  asset,
+  className,
+  id,
+  loading,
+  hiddenPins,
+  onTogglePins,
+  captureMarker,
+}: {
+  asset: Asset;
+  className?: string;
+  id?: string;
+  loading: "eager" | "lazy";
+  hiddenPins: boolean;
+  onTogglePins: (assetId: string) => void;
+  captureMarker?: Thread["context"]["captureMarker"];
+}) {
+  const points =
+    asset.rendition === "screenshot"
+      ? (asset.markings || []).filter(
+          (mark) => mark.tool === "point" && mark.endpoints[0],
+        )
+      : [];
+  const pointOriginal = /^point-\d+-original\.webp$/.test(asset.filename || "");
+  const markerStyle = captureMarker?.style || (pointOriginal ? "ring" : "pin");
+  const markerSize = captureMarker?.size || "small";
+  const visibleMarkers = markerStyle !== "none" && points.length > 0;
+  const embeddedPins =
+    asset.rendition === "annotated" &&
+    asset.markings?.some((mark) => mark.tool === "point");
+  const maxHeight =
+    className === "review-main-capture" ? 520 : className ? undefined : 320;
+  return (
+    <figure id={id} className={className}>
+      <figcaption className="review-image-caption">
+        <span>{imageLabel(asset)}</span>
+        {visibleMarkers && (
+          <button
+            type="button"
+            className="review-pin-toggle"
+            aria-pressed={!hiddenPins}
+            onClick={() => onTogglePins(asset.id)}
+          >
+            {hiddenPins ? "Show pins" : "Hide pins"}
+          </button>
+        )}
+        {embeddedPins && <span className="review-legacy-pins">Pins saved in image</span>}
+        <a href={asset.url} target="_blank" rel="noopener noreferrer">
+          Open full image
+        </a>
+      </figcaption>
+      <a
+        className="review-image-frame"
+        href={asset.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={
+          maxHeight && asset.width && asset.height
+            ? { maxWidth: `${Math.round((maxHeight * asset.width) / asset.height)}px` }
+            : undefined
+        }
+      >
+        <img
+          src={asset.url}
+          alt={asset.filename || "Page capture"}
+          width={asset.width}
+          height={asset.height}
+          loading={loading}
+        />
+        {!hiddenPins && visibleMarkers && (
+          <span className="review-image-pins" aria-hidden="true">
+            {points.map((mark, index) => (
+              <span
+                className="review-image-pin"
+                data-style={markerStyle}
+                data-size={markerSize}
+                key={`${mark.annotationId || "point"}-${index}`}
+                style={{
+                  left: `${mark.endpoints[0].x * 100}%`,
+                  top: `${mark.endpoints[0].y * 100}%`,
+                }}
+              >
+                {markerStyle === "pin" ? mark.number || index + 1 : null}
+              </span>
+            ))}
+          </span>
+        )}
+      </a>
+    </figure>
+  );
+}
+
 function position(asset: Asset, item: Annotation, context: Thread["context"]) {
   const mark = asset.markings?.find(
     (entry) => entry.tool === "point" && entry.annotationId === item.id,
@@ -93,6 +185,15 @@ export function ReviewEvidence({
   const action = useAction();
   const pending = useRef(false);
   const [filter, setFilter] = useState("all");
+  const [hiddenPins, setHiddenPins] = useState<Set<string>>(() => new Set());
+  const togglePins = (assetId: string) =>
+    setHiddenPins((current) => {
+      const next = new Set(current);
+      if (next.has(assetId)) next.delete(assetId);
+      else next.add(assetId);
+      return next;
+    });
+  useEffect(() => setHiddenPins(new Set()), [thread.id]);
   const threadClosed = ["resolved", "declined"].includes(thread.work.state);
   const stateOf = (item: Annotation) => {
     const state = thread.annotationStates?.[item.id]?.state || "open";
@@ -235,45 +336,30 @@ export function ReviewEvidence({
         </button>
       )}
       {mainCaptures.map((asset) => (
-        <figure id={`asset-${asset.id}`} className="review-main-capture" key={asset.id}>
-          <a href={asset.url} target="_blank" rel="noopener noreferrer">
-            <img
-              src={asset.url}
-              alt={asset.filename || "Page capture"}
-              width={asset.width}
-              height={asset.height}
-              loading="eager"
-            />
-          </a>
-          <figcaption>
-            {imageLabel(asset)} ·{" "}
-            <a href={asset.url} target="_blank" rel="noopener noreferrer">
-              Open full image
-            </a>
-          </figcaption>
-        </figure>
+        <EvidenceScreenshot
+          asset={asset}
+          id={`asset-${asset.id}`}
+          className="review-main-capture"
+          loading="eager"
+          hiddenPins={hiddenPins.has(asset.id)}
+          onTogglePins={togglePins}
+          captureMarker={thread.context.captureMarker}
+          key={asset.id}
+        />
       ))}
       {extraCaptures.length > 0 && (
         <details className="review-extra-captures">
           <summary>More page captures ({extraCaptures.length})</summary>
           {extraCaptures.map((asset) => (
-            <figure id={`asset-${asset.id}`} key={asset.id}>
-              <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                <img
-                  src={asset.url}
-                  alt={asset.filename || "Page capture"}
-                  width={asset.width}
-                  height={asset.height}
-                  loading="lazy"
-                />
-              </a>
-              <figcaption>
-                {imageLabel(asset)} ·{" "}
-                <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                  Open full image
-                </a>
-              </figcaption>
-            </figure>
+            <EvidenceScreenshot
+              asset={asset}
+              id={`asset-${asset.id}`}
+              loading="lazy"
+              hiddenPins={hiddenPins.has(asset.id)}
+              onTogglePins={togglePins}
+              captureMarker={thread.context.captureMarker}
+              key={asset.id}
+            />
           ))}
         </details>
       )}
@@ -398,30 +484,19 @@ export function ReviewEvidence({
                   </details>
                 )}
                 {asset ? (
-                  <figure
+                  <EvidenceScreenshot
+                    asset={asset}
                     id={
                       /^point-\d+-original\.webp$/.test(asset.filename || "")
                         ? `asset-${asset.id}`
                         : undefined
                     }
                     className="review-point-figure"
-                  >
-                    <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={asset.url}
-                        alt={`Point ${index + 1}: ${imageLabel(asset)}`}
-                        width={asset.width}
-                        height={asset.height}
-                        loading="lazy"
-                      />
-                    </a>
-                    <figcaption>
-                      {imageLabel(asset)} ·{" "}
-                      <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                        Open full image
-                      </a>
-                    </figcaption>
-                  </figure>
+                    loading="lazy"
+                    hiddenPins={hiddenPins.has(asset.id)}
+                    onTogglePins={togglePins}
+                    captureMarker={thread.context.captureMarker}
+                  />
                 ) : (
                   <small className="muted">Saved page position</small>
                 )}
