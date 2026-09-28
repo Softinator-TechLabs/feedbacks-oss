@@ -6,16 +6,24 @@ import { chromium } from "playwright";
 
 const server = createServer(async (request, response) => {
   try {
+    response.setHeader(
+      "Content-Security-Policy",
+      "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'",
+    );
     const path = new URL(request.url, "http://localhost").pathname;
     if (path === "/") {
-      response.setHeader("Content-Type", "text/html");
+      response.setHeader("Content-Type", "text/html; charset=utf-8");
       response.end(
-        '<!doctype html><meta name="viewport" content="width=device-width"><style>body{margin:16px;font:16px Arial}main{max-width:620px;margin:auto}</style><main><feedbacks-demo step="install"></feedbacks-demo></main><script defer src="/learn/demo.js"></script>',
+        '<!doctype html><meta name="viewport" content="width=device-width"><main><feedbacks-demo step="install"></feedbacks-demo></main><script defer src="/learn/demo.js"></script>',
       );
-    } else if (/^\/learn\/[a-z0-9-]+\.(js|webp)$/.test(path)) {
+    } else if (/^\/learn\/[a-z0-9-]+\.(js|css|webp)$/.test(path)) {
       response.setHeader(
         "Content-Type",
-        path.endsWith("js") ? "text/javascript" : "image/webp",
+        path.endsWith("js")
+          ? "text/javascript"
+          : path.endsWith("css")
+            ? "text/css"
+            : "image/webp",
       );
       response.end(await readFile(new URL(`../public${path}`, import.meta.url)));
     } else {
@@ -50,6 +58,12 @@ try {
   ]) {
     await demo.evaluate((element, value) => element.setAttribute("step", value), step);
     await demo.locator(".screen > *").waitFor();
+    await page.waitForFunction(
+      () =>
+        getComputedStyle(
+          document.querySelector("feedbacks-demo").shadowRoot.querySelector(".screen"),
+        ).position === "relative",
+    );
     assert.equal(await demo.locator(".play").innerText(), "Play");
     for (const button of await demo.locator(".step").all()) {
       await button.click();
@@ -90,7 +104,7 @@ try {
   await page.waitForTimeout(3000);
   assert.equal(await demo.locator(".caption").innerText(), caption);
   await demo.locator(".play").click();
-  await demo.evaluate((element) => (element.style.display = "none"));
+  await demo.evaluate((element) => (element.hidden = true));
   await page.waitForTimeout(3000);
   assert.equal(await demo.locator(".caption").textContent(), caption);
   assert.deepEqual(errors, []);

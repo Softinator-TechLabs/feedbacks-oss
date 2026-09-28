@@ -99,30 +99,7 @@
       this.index = 0;
       this.motion = matchMedia("(prefers-reduced-motion: reduce)");
       this.paused = this.motion.matches;
-      this.shadowRoot.innerHTML = `<style>
-        :host{display:block;max-width:100%;margin:16px 0;font:inherit;color:inherit}
-        *{box-sizing:border-box}figure{margin:0;border:1px solid var(--border,#dfe3da);border-radius:8px;overflow:hidden;background:var(--surface,#fff)}
-        .screen{position:relative;display:grid;place-items:center;min-width:0;background:#f4f5f1;aspect-ratio:4/3;overflow:hidden}
-        :host([step=agent]) .screen{aspect-ratio:2/1}
-        :host([step=connect]) .screen{aspect-ratio:4/3}
-        .screen:has(.diagram){aspect-ratio:auto;min-height:300px}
-        :host([step=agent]) .screen:has(.diagram){aspect-ratio:auto;min-height:200px}
-        .image{position:absolute;inset:0;width:100%;height:100%;min-height:0;object-fit:contain;display:block;border:0;padding:0;background:transparent;cursor:zoom-in}
-        .image img{display:block;width:100%;height:100%;object-fit:contain}
-        .enter{animation:enter .25s ease-out} @keyframes enter{from{opacity:.45}to{opacity:1}}
-        .foot{padding:12px 16px}.caption{margin:0;font-size:15px;line-height:1.5;min-height:3em}
-        .controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:8px}
-        button{font:inherit;color:inherit;cursor:pointer;min-height:44px;border:1px solid transparent;border-radius:5px;background:transparent;padding:8px 12px}
-        button:hover{background:var(--soft-surface,#edf0e9)}button:focus-visible{outline:2px solid var(--focus,#2159b1);outline-offset:-3px}
-        .step{min-width:44px;padding:8px}.step[aria-pressed=true]{border-color:currentColor;font-weight:700}.play{margin-left:auto;text-decoration:underline;text-underline-offset:3px}
-        .diagram{width:100%;padding:24px;color:#20241e;font-family:Arial,sans-serif}.diagram strong{font-size:clamp(17px,3vw,23px)}
-        .browser-bar{display:flex;align-items:center;gap:10px;border-bottom:1px solid #c6cbbb;padding-bottom:16px;font-size:13px}.address{flex:1;background:#fff;border-radius:5px;padding:10px;overflow:hidden;white-space:nowrap}.icon{width:32px;height:32px;display:grid;place-items:center}
-        svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-        .chrome-card{margin:24px auto 0;background:white;border:1px solid #c6cbbb;border-radius:8px;padding:20px;max-width:340px}.store-action{display:block;width:fit-content;background:#17324d;color:white;padding:10px 14px;border-radius:5px;margin-top:16px;font-size:14px}.extension-row{display:flex;align-items:center;justify-content:space-between;margin-top:20px;padding:12px 0}.selected{color:#17324d;outline:2px solid #17324d;outline-offset:4px;border-radius:3px}
-        .sequence{display:grid;gap:12px}.sequence div{padding:16px;background:#fff;border:1px solid #d0d5c8;border-radius:6px;font-size:15px;opacity:.6}.sequence div.active{opacity:1;border-color:#17324d}.sequence small{display:block;margin-top:6px;color:#596054}.agent-note{background:white;padding:24px;border:1px solid #c6cbbb;border-radius:8px}.agent-note p{line-height:1.6;font-size:15px;margin-bottom:0}
-        dialog{border:1px solid #c6cbbb;padding:12px;max-width:95vw;max-height:95dvh;background:#fff;color:#20241e;border-radius:8px}dialog::backdrop{background:#0009}dialog img{display:block;max-width:100%;height:auto}dialog button{display:block;margin-left:auto}
-        @media(prefers-reduced-motion:reduce){.enter{animation:none}}
-      </style><figure><div class="screen"></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css"><figure><div class="screen"></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         caption = q(".caption"),
