@@ -1,0 +1,64 @@
+.point-progress-ring {
+  --point-progress-resolved: #42a879;
+  --point-progress-urgent: #df776d;
+  --point-progress-later: #d8aa5c;
+  --point-progress-unscheduled: #687b8c;
+  --point-progress-closed: #9aa8b5;
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  color: inherit;
+  vertical-align: middle;
+}
+.point-progress-ring--compact {
+  width: 38px;
+  height: 38px;
+}
+.point-progress-ring:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.point-progress-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.point-progress-ring circle {
+  fill: none;
+  stroke-width: 5;
+}
+.point-progress-resolved {
+  stroke: var(--point-progress-resolved);
+}
+.point-progress-urgent {
+  stroke: var(--point-progress-urgent);
+}
+.point-progress-later {
+  stroke: var(--point-progress-later);
+}
+.point-progress-unscheduled {
+  stroke: var(--point-progress-unscheduled);
+}
+.point-progress-closed {
+  stroke: var(--point-progress-closed);
+}
+.point-progress-fraction {
+  z-index: 1;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.point-progress-ring--compact .point-progress-fraction {
+  font-size: 0.58rem;
+}
+:root[data-theme="dark"] .point-progress-ring {
+  --point-progress-unscheduled: #657687;
+  --point-progress-closed: #8695a4;
+}

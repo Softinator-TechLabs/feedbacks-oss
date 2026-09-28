@@ -27,6 +27,7 @@ type HandoffThread = {
     annotations?: Array<{ id: string; body: string; anchor: unknown }>;
   };
   annotationStates?: Record<string, { state: string }>;
+  annotationPlans?: Record<string, NonNullable<HandoffThread["workPlan"]>>;
   replies: Array<{
     id: string;
     body: string;
@@ -112,7 +113,7 @@ export function buildTaskHandoff({
   const parts = [
     "Work on this specific Feedbacks thread now. This pasted request takes precedence over general backlog suggestions; do not switch to another task. Follow any narrower instruction I provide with it.",
     `Feedbacks server: ${base}\nThread: ${base}/threads/${encodeURIComponent(t.id)}\nProject: ${JSON.stringify(project.name)} (${t.projectId})\nSnapshot copied at: ${copiedAt}; revision: ${t.revision}; last thread update: ${t.updatedAt}\nStatus: ${t.work.state}; archived: ${t.archived}\nScope: ${points.length} points (${open} open), ${t.replies.length} replies, ${t.assets.length} media files. Do not reopen completed/removed points without my request.`,
-    `Human work plan: ${JSON.stringify(t.workPlan ?? { priority: "normal", schedule: "unscheduled", scheduledFor: null, timeZone: "UTC" })}. Dates are planned work, not a moving relative deadline. Do not change priority, schedule or assignment unless asked. If someone else is actively working on this scope, coordinate before taking it.`,
+    `Human thread work plan: ${JSON.stringify(t.workPlan ?? { priority: "normal", schedule: "unscheduled", scheduledFor: null, timeZone: "UTC" })}. Point-specific plans appear with their point records and govern those points. Dates are planned work, not a moving relative deadline. Do not change priority, schedule or assignment unless asked. If someone else is actively working on this scope, coordinate before taking it.`,
     `Start with one fresh status/revision check: feedbacks_thread({"threadId":"${t.id}","section":"overview"}). If this snapshot is current, reuse its included text. Fetch only revised or omitted relevant sections. Read approved project instructions through the installed Feedbacks skill; identify the actual authenticated member, not a shared Codex/Claude subscription. Check existing work assignments/claims before starting; follow the skill to mark authorized work in progress.`,
     `Inspect actual screenshots: feedbacks_asset({"assetId":"<id from media below>","includeImage":true}). Full MCP equivalent: assets.get with the same input. Full-page images may have ordered sections; inspect relevant crops in ORIGINAL image pixels. For videos/documents use metadata and authenticated same-server asset/document access with a capable viewer. Stable links require Feedbacks authorization; never request Wasabi keys or treat a filename as evidence that media was viewed. If MCP is unavailable, use Help setup and restart/reconnect when needed; do not claim media verification.`,
     "If archived or already closed, report the current state and ask before reopening. Implement the requested scope, verify it, then report actual results. Use fresh revisions for changes; mark only verified agreed points/thread resolved through MCP. Feedbacks issues are not automatically GitHub issues: do not create an external issue merely because this prompt mentions one. Ask a focused question if intent is ambiguous or the work requires a meaningful design choice.",
@@ -191,6 +192,7 @@ export function buildTaskHandoff({
       number: index + 1,
       id: p.id,
       state: pointState(p.id),
+      ...(t.annotationPlans?.[p.id] ? { workPlan: t.annotationPlans[p.id] } : {}),
       text: p.body,
       element: p.anchor,
     })),

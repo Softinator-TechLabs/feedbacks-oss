@@ -14,7 +14,11 @@ import { reportedIssue } from "./issue-links.js";
 import { documentRow } from "./documents.js";
 import { assertProjectCategory } from "./projects.js";
 import { figmaReferenceUrl } from "./figma-reference.js";
-import { annotationSummary, setAnnotationStatus } from "./annotation-status.js";
+import {
+  annotationSummary,
+  setAnnotationPlan,
+  setAnnotationStatus,
+} from "./annotation-status.js";
 import type { Config } from "./config.js";
 // Legacy human messages had no reliable intent. Treat them as requests on read;
 // preserve agent responses and explicit intent without rewriting work history.
@@ -466,6 +470,8 @@ export async function feedback(
     at = new Date().toISOString();
   if (op === "threads.annotationStatus") {
     await setAnnotationStatus(db, a, row, i);
+  } else if (op === "threads.annotationPlan") {
+    await setAnnotationPlan(db, a, row, i);
   } else if (op === "threads.organize") {
     assertProjectCategory(await access(db, a, row.project_id), i.category, data.category);
     data.category = i.category;
@@ -598,11 +604,13 @@ export async function feedback(
     op,
     op === "threads.plan"
       ? { workPlan: i.workPlan }
-      : op === "threads.priority"
-        ? { topPriority: i.topPriority }
-        : op === "threads.annotationStatus"
-          ? { annotationId: i.annotationId, state: i.state }
-          : {},
+      : op === "threads.annotationPlan"
+        ? { annotationId: i.annotationId, workPlan: i.workPlan }
+        : op === "threads.priority"
+          ? { topPriority: i.topPriority }
+          : op === "threads.annotationStatus"
+            ? { annotationId: i.annotationId, state: i.state }
+            : {},
   );
   await remember(db, a, op, i, row.id);
   return fullThread(db, a, saved);

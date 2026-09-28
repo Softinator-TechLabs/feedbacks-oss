@@ -84,7 +84,7 @@ export const agentToolDescriptions: Record<AgentTool, string> = {
   queue:
     "Shortlist Feedbacks tasks, default 10 per page. For a broad request first identify auth.me.actor.userId, then use assignedTo with sort:workPlan and planningDate in the user's local calendar; preserve filters with nextOffset. Explicit thread/task requests win. Human priority and persisted scheduledFor dates lead; future/Later work is not an immediate suggestion. Ask which eligible task to begin. Reviewer priority sorting is advisory and requires context.policy. Returns workPlan, previews/counts, not full evidence. Live ordering can change.",
   thread:
-    "Read current status, revision and workPlan in one Feedbacks thread overview, then body, points, discussion, assets, reviewers, evidence, context, diagnostics or history as needed. A current Copy task for agent snapshot can supply included text; fetch omitted or revised sections and inspect actual images. Keep revision as expectedRevision and section contentVersion as expectedContentVersion for continuations. Finish nextOffset/nextTextOffset for relevant sections. Point IDs differ from display numbers.",
+    "Read current status, revision and thread workPlan in one Feedbacks thread overview, then body, points with their own workPlan, discussion, assets, reviewers, evidence, context, diagnostics or history as needed. Point plans govern their points and dates stay fixed. A current Copy task for agent snapshot can supply included text; fetch omitted or revised sections and inspect actual images. Keep revision as expectedRevision and section contentVersion as expectedContentVersion for continuations. Finish nextOffset/nextTextOffset for relevant sections. Point IDs differ from display numbers.",
   asset:
     "Inspect one authorized image with includeImage:true as a native MCP image, optionally cropped in ORIGINAL pixels. Default metadata only. For video, read metadata and use its authenticated same-server URL with a media-capable client; never claim a filename proves playback.",
   describe:
@@ -370,6 +370,7 @@ export async function runAgentTool(
     points: threadPoints(thread).map((p: any) => ({
       ...p,
       decision: thread.annotationStates?.[p.id] ?? null,
+      workPlan: thread.annotationPlans?.[p.id] ?? null,
       effectiveState: pointState(thread, p),
       assetIds: (thread.assets ?? [])
         .filter(
