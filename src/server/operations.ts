@@ -1,4 +1,10 @@
 import { manageThreadDeletion, cleanupDeletedObjects } from "./thread-deletion.js";
+import {
+  recordingPreflight,
+  prepareRecording,
+  commitRecording,
+  recordingRead,
+} from "./recordings.js";
 import { moveThread } from "./thread-move.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
@@ -68,6 +74,7 @@ export class Operations {
     if (name === "assets.upload" || name === "assets.uploadVideo")
       return this.uploadAsset(actor, parsed.data);
     if (name === "documents.upload") return this.uploadDocument(actor, parsed.data);
+    if (name === "recordings.upload") return this.uploadRecording(actor, parsed.data);
     if (name === "qa.compare")
       return compareQaImages(this.db, actor, this.store, parsed.data as any);
     if (name.startsWith("github."))
@@ -156,6 +163,8 @@ export class Operations {
           return manageThreadDeletion(db, a, name, i);
         if (name === "threads.move") return moveThread(db, a, i);
         if (name.startsWith("threads.")) return feedback(db, a, name, i, this.config);
+        if (name.startsWith("recordings."))
+          return recordingRead(db, a, this.store, name, i);
         if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
         if (name.startsWith("views.")) return views(db, a, name, i);
         if (name.startsWith("assets.")) {
@@ -271,6 +280,8 @@ export class Operations {
       a.scopes?.includes(name) ||
       (name === "assets.uploadVideo" && a.scopes?.includes("assets.upload"));
     if (a.scopes && !hasScope) fail("FORBIDDEN", "Operation outside token scope", 403);
+    if (name === "recordings.export" && a.scopes && !a.scopes.includes("threads.get"))
+      fail("FORBIDDEN", "Thread read scope is required for recording export", 403);
     if (
       a.mustChangePassword &&
       !["auth.me", "auth.changePassword", "auth.logout"].includes(name)
@@ -281,6 +292,49 @@ export class Operations {
         403,
       );
     return a;
+  }
+
+  private async uploadRecording(actor: Actor, input: any) {
+    const preflight = await this.db.transaction(async (db) => {
+      await accountLock(db);
+      const current = await this.currentForOperation(db, actor, "recordings.upload");
+      return recordingPreflight(db, current, input);
+    });
+    if (preflight.prior) return JSON.parse(JSON.stringify(preflight.prior));
+    const prepared = prepareRecording(input, preflight.projectId);
+    let committed = false;
+    let cleanupAllowed = true;
+    try {
+      try {
+        await this.store.put(prepared.objectKey, prepared.output, "application/json");
+      } catch {
+        fail(
+          "UPLOAD_FAILED",
+          "Private recording storage is unavailable; retry this capture",
+          503,
+        );
+      }
+      cleanupAllowed = false;
+      let settled;
+      try {
+        settled = await this.db.transaction(async (db) => {
+          await accountLock(db);
+          const current = await this.currentForOperation(db, actor, "recordings.upload");
+          return commitRecording(db, current, input, prepared);
+        });
+      } catch (error) {
+        if (error instanceof DomainError) cleanupAllowed = true;
+        throw error;
+      }
+      committed = settled.committed;
+      cleanupAllowed = !committed;
+      return JSON.parse(JSON.stringify(settled.result));
+    } finally {
+      if (!committed && cleanupAllowed)
+        await this.store.remove(prepared.objectKey).catch(() => {
+          console.error("Uncommitted recording cleanup failed");
+        });
+    }
   }
 
   private async uploadAsset(actor: Actor, i: any) {

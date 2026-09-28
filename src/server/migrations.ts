@@ -310,5 +310,20 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       );
       await tx.query("INSERT INTO migrations(version) VALUES(22)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=23"))) {
+      await tx.query(`CREATE TABLE recordings(
+        id uuid PRIMARY KEY,
+        project_id uuid NOT NULL REFERENCES projects(id),
+        thread_id uuid NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+        object_key text UNIQUE NOT NULL,
+        summary jsonb NOT NULL,
+        byte_size integer NOT NULL CHECK(byte_size BETWEEN 1 AND 16777216),
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(
+        "CREATE INDEX recordings_thread ON recordings(thread_id,created_at DESC,id DESC)",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(23)");
+    }
   });
 }

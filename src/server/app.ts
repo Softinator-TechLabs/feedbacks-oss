@@ -19,6 +19,28 @@ import { guestProjectInspect, guestProjectSubmit } from "./guest-project-links.j
 import { verifyGuestTurnstile } from "./turnstile.js";
 import { widgetInspect, widgetLink } from "./widget.js";
 import { surveyInspect, surveySubmit } from "./surveys.js";
+
+function videoByteRange(value: string, size: number): [number, number] | null {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(value.trim());
+  if (!match || (!match[1] && !match[2]) || size === 0) return null;
+  if (!match[1]) {
+    const suffix = Number(match[2]);
+    return Number.isSafeInteger(suffix) && suffix > 0
+      ? [Math.max(0, size - suffix), size - 1]
+      : null;
+  }
+  const start = Number(match[1]);
+  const end = match[2] ? Number(match[2]) : size - 1;
+  if (
+    !Number.isSafeInteger(start) ||
+    !Number.isSafeInteger(end) ||
+    start >= size ||
+    end < start
+  )
+    return null;
+  return [start, Math.min(end, size - 1)];
+}
+
 function canonicalClientIp(value?: string) {
   if (!value || !isIP(value))
     fail(
@@ -135,11 +157,14 @@ export function createApp(config: Config, database: Database, assets: AssetStore
   // WebM is bounded at 40 MiB; its base64 transport needs up to 54 MiB.
   // Keep the existing smaller limit for all other HTTP operations.
   const smallJson = express.json({ limit: "14mb", strict: true });
+  const recordingJson = express.json({ limit: "20mb", strict: true });
   const mediaJson = express.json({ limit: "56mb", strict: true });
   app.use((req, res, next) =>
     (req.path === "/api/assets.uploadVideo" || req.path === "/mcp"
       ? mediaJson
-      : smallJson)(req, res, next),
+      : req.path === "/api/recordings.upload"
+        ? recordingJson
+        : smallJson)(req, res, next),
   );
   const bearer = (req: Request) =>
     req.get("Authorization")?.match(/^Bearer ([A-Za-z0-9_-]+)$/)?.[1];
@@ -455,7 +480,37 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         res.type("image/webp").send(await assetListThumbnail(assets, objectKey.key));
         return;
       }
-      res.type(objectKey.contentType).send(await assets.get(objectKey.key));
+      const bytes = await assets.get(objectKey.key);
+      res.type(objectKey.contentType);
+      if (objectKey.contentType === "video/webm") {
+        res.set("Accept-Ranges", "bytes");
+        const requestedRange = req.get("Range");
+        // Stored assets expose no strong ETag or Last-Modified validator, so an
+        // If-Range condition cannot match: return the complete representation.
+        if (req.method === "GET" && requestedRange && !req.get("If-Range")) {
+          const range = videoByteRange(requestedRange, bytes.length);
+          if (!range) {
+            res
+              .status(416)
+              .set({
+                "Content-Range": `bytes */${bytes.length}`,
+                "Content-Length": "0",
+              })
+              .end();
+            return;
+          }
+          const [start, end] = range;
+          res
+            .status(206)
+            .set({
+              "Content-Range": `bytes ${start}-${end}/${bytes.length}`,
+              "Content-Length": String(end - start + 1),
+            })
+            .end(bytes.subarray(start, end + 1));
+          return;
+        }
+      }
+      res.send(bytes);
     } catch (e) {
       next(e);
     }

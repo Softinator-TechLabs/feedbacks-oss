@@ -17,6 +17,8 @@ import { redactInsertedImages } from "./screenshot-redaction.js";
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 import { formatPageQa } from "./page-qa.js";
 import { pageOverviewTarget } from "./page-overview.js";
+import { capturedVideoTarget } from "./session-capture.js";
+import { createSessionCoordinator } from "./session-coordinator.js";
 import { createRecordingControls } from "./recording-controls.js";
 import {
   videoTarget,
@@ -45,6 +47,12 @@ const serverSetup = createServerSetup({
   probe: (tabId) => probeFeedbacksServer(chrome, tabId),
 });
 const recordings = createRecordingControls({ chrome, sessionFor });
+const sessionCapture = createSessionCoordinator({
+  chrome,
+  sessionFor,
+  authenticated,
+  ready,
+});
 let polling = false,
   capturing = false,
   sending = false;
@@ -1832,10 +1840,13 @@ async function submit(message) {
   }
 }
 async function route(message, sender) {
+  if (["sessionEvents", "sessionBridgeLimit"].includes(message.type))
+    return sessionCapture.events(message, sender);
   const trusted =
     (!sender.tab && sender.url?.startsWith(chrome.runtime.getURL(""))) ||
     sender.url?.startsWith(chrome.runtime.getURL("editor.html")) ||
     sender.url?.startsWith(chrome.runtime.getURL("video.html")) ||
+    sender.url?.startsWith(chrome.runtime.getURL("session.html")) ||
     sender.url?.startsWith(chrome.runtime.getURL("popup.html")) ||
     sender.url?.startsWith(chrome.runtime.getURL("options.html"));
   if (!trusted) {
@@ -1870,8 +1881,23 @@ async function route(message, sender) {
       return {};
     }
     if (message.type === "openRecorder") return recordings.open(sender);
-    if (message.type === "recordingControl")
+    if (message.type === "recordingControl") {
+      const capture = await sessionCapture.status();
+      if (
+        capture?.active &&
+        capture.target.sourceTabId === sender.tab.id &&
+        capture.recording.mode === "session"
+      ) {
+        if (message.action !== "stop")
+          throw Error("Session recording runs continuously. Stop to review.");
+        const stopped = await sessionCapture.stop();
+        await chrome.tabs
+          .update(stopped.target.ownerTabId, { active: true })
+          .catch(() => {});
+        return {};
+      }
       return recordings.control(sender, message.action);
+    }
     if (message.type === "freezeView") {
       const tab = await chrome.tabs.get(sender.tab.id);
       if (!tab.active || tab.windowId !== sender.tab.windowId)
@@ -1981,6 +2007,7 @@ async function route(message, sender) {
     }
     if (message.type === "stopReview") {
       recordings.stop(sender.tab.id);
+      await sessionCapture.retire(sender.tab.id);
       await chrome.tabs.sendMessage(sender.tab.id, { type: "deactivate" });
       return review.stop(sender.tab.id);
     }
@@ -2192,6 +2219,66 @@ async function route(message, sender) {
         drafts: controls.drafts || 0,
       };
     }
+    case "openSessionRecorder": {
+      const tab = await chrome.tabs.get(message.tabId);
+      if (!tab.active) throw Error("Select the review tab first.");
+      await sessionFor({ tab, frameId: 0, url: tab.url });
+      await chrome.tabs.create({
+        url: chrome.runtime.getURL(`session.html?sourceTabId=${tab.id}`),
+      });
+      return {};
+    }
+    case "sessionContext": {
+      const existing = await sessionCapture.status();
+      if (existing) return existing;
+      const tab = await chrome.tabs.get(message.sourceTabId);
+      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+      return {
+        target: {
+          ...(await videoTarget(tab, session, U.safeUrl)),
+          origin: new URL(tab.url).origin,
+        },
+      };
+    }
+    case "sessionStart":
+      return sessionCapture.start(
+        message.target,
+        message.privacy,
+        message.mode === "video" ? "video" : "session",
+        sender.tab?.id,
+      );
+    case "sessionStatus":
+      return sessionCapture.status();
+    case "sessionStop":
+      return sessionCapture.stop();
+    case "sessionDiscard":
+      return sessionCapture.discard();
+    case "sessionSubmit":
+      return sessionCapture.submit(message, sender.tab?.id);
+    case "sessionCoverage":
+      return sessionCapture.annotate(message.channel, message.detail);
+    case "videoCaptureHandle": {
+      const target = recordings.target(sender.tab?.id, message.target);
+      const handle = crypto.randomUUID();
+      await chrome.scripting.executeScript({
+        target: { tabId: target.sourceTabId },
+        world: "MAIN",
+        func: (handle, origin) => {
+          if (!navigator.mediaDevices?.setCaptureHandleConfig)
+            throw Error(
+              "This Chrome version cannot verify the selected video tab. Turn off debug context to record video only.",
+            );
+          navigator.mediaDevices.setCaptureHandleConfig({
+            handle,
+            exposeOrigin: true,
+            permittedOrigins: [origin],
+          });
+        },
+        args: [handle, chrome.runtime.getURL("").replace(/\/$/, "")],
+      });
+      const tab = await chrome.tabs.get(target.sourceTabId);
+      return { handle, origin: new URL(tab.url).origin };
+    }
     case "openRecorder": {
       const tab = await chrome.tabs.get(message.tabId);
       if (!tab.active) throw Error("Select the review tab first.");
@@ -2229,7 +2316,13 @@ async function route(message, sender) {
         async () => {
           // A recording spans navigation. Use the worker-owned starting context,
           // bound to this recorder and review; current server grants still apply.
-          const target = recordings.target(sender.tab.id, message.target);
+          const target =
+            capturedVideoTarget(
+              await sessionCapture.status(),
+              message.target,
+              sender.tab.id,
+              await videoFingerprint(account.token),
+            ) || recordings.target(sender.tab.id, message.target);
           return {
             projectId: target.projectId,
             body: message.body,
@@ -2241,6 +2334,12 @@ async function route(message, sender) {
         sender.tab.id,
       );
     }
+    case "sessionFrameUpload":
+      if (message.server !== server)
+        throw Error("The connection changed. Open Feedbacks again.");
+      if (!sender.url?.startsWith(chrome.runtime.getURL("video.html?")))
+        throw Error("Open the video recorder to save frames.");
+      return authenticated("assets.upload", message.input, message.server);
     case "videoUpload":
       if (message.server !== server)
         throw Error("The connection changed. Open Feedbacks again.");
@@ -2287,6 +2386,7 @@ async function route(message, sender) {
       await review.syncInstant();
       for (const tabId of Object.keys(state.sessions || {})) {
         recordings.stop(Number(tabId));
+        await sessionCapture.retire(Number(tabId));
         await chrome.tabs
           .sendMessage(Number(tabId), { type: "deactivate" })
           .catch(() => {});
@@ -2355,6 +2455,7 @@ async function route(message, sender) {
       await sessionFor(sender);
       if (message.action === "stop") {
         recordings.stop(tab.id);
+        await sessionCapture.retire(tab.id);
         await chrome.tabs.sendMessage(tab.id, { type: "deactivate" });
         return review.stop(tab.id);
       }

@@ -15,11 +15,14 @@ async function fixture() {
   const pg = new PGlite(),
     db = new Database(pg as any);
   await migrate(db);
+  const objects = new Map<string, Buffer>();
   const ops = new Operations(
     db,
     {
-      put: async () => {},
-      get: async () => Buffer.from("preserved"),
+      put: async (key: string, bytes: Buffer) => {
+        objects.set(key, Buffer.from(bytes));
+      },
+      get: async (key: string) => objects.get(key) ?? Buffer.from("preserved"),
       remove: async () => {
         throw Error("must not delete media");
       },
@@ -643,6 +646,70 @@ test("taxonomy merges matching labels and blocks capacity overflow atomically", 
       projectId: target.id,
     });
     assert.equal(after.categories.filter((c: any) => c.name === "Editorial").length, 1);
+  } finally {
+    await f.pg.close();
+  }
+});
+
+test("moving recorded feedback preserves replay and updates its project metadata", async () => {
+  const f = await fixture();
+  try {
+    const { ops, owner, db, source, target } = f;
+    const sourceMember = await f.member("viewer");
+    const thread = await f.create();
+    const recording = {
+      schemaVersion: 1,
+      id: randomUUID(),
+      startedAt: new Date().toISOString(),
+      durationMs: 100,
+      mode: "session",
+      url: "https://example.test",
+      environment: {},
+      privacy: { maskText: false, maskInputs: false, networkBodies: false },
+      coverage: [{ channel: "replay", status: "complete" }],
+      events: [
+        {
+          seq: 0,
+          atMs: 0,
+          type: "activity",
+          data: { action: "click", label: "Example" },
+        },
+      ],
+    };
+    const uploaded = await ops.executeOperation(owner, "recordings.upload", {
+      threadId: thread.id,
+      revision: thread.revision,
+      idempotencyKey: randomUUID(),
+      recording,
+    });
+    const before = await db.one("SELECT * FROM recordings WHERE id=$1", [recording.id]);
+    await ops.executeOperation(owner, "threads.move", {
+      threadId: thread.id,
+      revision: uploaded.thread.revision,
+      projectId: target.id,
+    });
+    const listed = await ops.executeOperation(owner, "recordings.list", {
+      threadId: thread.id,
+    });
+    assert.equal(listed.items[0].projectId, target.id);
+    assert.equal(
+      (await db.one("SELECT * FROM recordings WHERE id=$1", [recording.id])).object_key,
+      before.object_key,
+    );
+    const exported = await ops.executeOperation(owner, "recordings.export", {
+      recordingId: recording.id,
+    });
+    assert.equal(exported.thread.projectId, target.id);
+    assert.deepEqual(exported.recording.events, recording.events);
+    await assert.rejects(
+      ops.executeOperation(sourceMember, "recordings.get", { recordingId: recording.id }),
+      { code: "FORBIDDEN" },
+    );
+    assert.equal(
+      (await db.query("SELECT id FROM recordings WHERE project_id=$1", [source.id]))
+        .length,
+      0,
+    );
   } finally {
     await f.pg.close();
   }

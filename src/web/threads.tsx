@@ -3,7 +3,7 @@ import {
   ThreadDeletionCleanup,
   ArchiveThreadButton,
 } from "./thread-deletion.js";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ThreadMove } from "./thread-move.js";
 import { ThreadTaskCopy } from "./thread-task-copy.js";
 import { ThreadWorkPlan, WorkPlanSummary } from "./thread-work-plan.js";
@@ -15,6 +15,7 @@ import { ThreadReview } from "./thread-review.js";
 import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
 import { ReviewEvidence } from "./review-evidence.js";
+import { ThreadRecordings } from "./thread-recordings.js";
 import { PointProgressRing } from "./point-progress-ring.js";
 import { usePageLocation, navigate, useUnsavedChanges } from "./navigation.js";
 import { readFilters, readOffset, filterQuery } from "./review-filters.js";
@@ -1044,6 +1045,14 @@ export function ThreadDetail({
         : Promise.resolve(undefined),
     [threadId, project?.id, projectVersion],
   );
+  const [recordingAssets, setRecordingAssets] = useState<{
+    threadId: string;
+    ids: string[];
+  }>({ threadId: "", ids: [] });
+  const handleLinkedAssets = useCallback(
+    (ids: string[]) => setRecordingAssets({ threadId, ids }),
+    [threadId],
+  );
   const assetIds = t?.assets.map((asset) => asset.id).join(",");
   useEffect(() => {
     if (!t || t.context.annotations?.length) return;
@@ -1170,7 +1179,13 @@ export function ThreadDetail({
   const capturePages = t.assets.filter((asset) =>
     /^full-page-\d+-of-\d+\.webp$/.test(asset.filename || ""),
   );
-  const otherAssets = t.assets.filter((asset) => !capturePages.includes(asset));
+  const recordingFrames = t.assets.filter((asset) => asset.recordingFrame);
+  const otherAssets = t.assets.filter(
+    (asset) =>
+      !capturePages.includes(asset) &&
+      !recordingFrames.includes(asset) &&
+      !(recordingAssets.threadId === t.id && recordingAssets.ids.includes(asset.id)),
+  );
   return (
     <>
       <div className="page-heading thread-page-heading">
@@ -1445,68 +1460,97 @@ export function ThreadDetail({
                 onSaved={setThread}
               />
             )}
-            {t.assets?.length > 0 && !t.context.annotations?.length && (
-              <section className="attachments">
-                <h2 className="sr-only">Attachments</h2>
-                {otherAssets.map((asset, index) => (
-                  <figure id={`asset-${asset.id}`} key={asset.id}>
-                    {asset.contentType === "video/webm" ? (
-                      <video
-                        controls
-                        preload="metadata"
-                        src={asset.url}
-                        aria-label="Tab video feedback"
-                      />
-                    ) : (
+            {(otherAssets.length > 0 || capturePages.length > 0) &&
+              !t.context.annotations?.length && (
+                <section className="attachments">
+                  <h2 className="sr-only">Attachments</h2>
+                  {otherAssets.map((asset, index) => (
+                    <figure id={`asset-${asset.id}`} key={asset.id}>
+                      {asset.contentType === "video/webm" ? (
+                        <video
+                          controls
+                          preload="metadata"
+                          src={asset.url}
+                          aria-label="Tab video feedback"
+                        />
+                      ) : (
+                        <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={asset.url}
+                            alt={
+                              asset.filename || `${asset.rendition} attached to feedback`
+                            }
+                            width={asset.width}
+                            height={asset.height}
+                            loading={index === 0 ? "eager" : "lazy"}
+                          />
+                        </a>
+                      )}
+                      <figcaption>
+                        {asset.contentType === "video/webm"
+                          ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
+                          : `${asset.filename ? `${asset.filename} · ` : ""}${asset.width} × ${asset.height} · Open full image`}
+                      </figcaption>
+                    </figure>
+                  ))}
+                  {capturePages.length > 0 && (
+                    <details className="capture-page-set" open={capturePages.length <= 4}>
+                      <summary>
+                        Full-page capture · {capturePages.length} numbered
+                        {capturePages.length === 1 ? " image" : " images"}
+                      </summary>
+                      <div className="capture-page-grid">
+                        {capturePages.map((asset) => (
+                          <figure id={`asset-${asset.id}`} key={asset.id}>
+                            <a
+                              href={asset.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Open ${asset.filename}`}
+                            >
+                              <img
+                                src={asset.url}
+                                alt={asset.filename}
+                                width={asset.width}
+                                height={asset.height}
+                                loading="lazy"
+                              />
+                            </a>
+                            <figcaption>{asset.filename}</figcaption>
+                          </figure>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </section>
+              )}
+            <ThreadRecordings
+              key={t.id}
+              thread={t}
+              canWrite={!!project?.permissions.canWrite}
+              onSaved={setThread}
+              onLinkedAssets={handleLinkedAssets}
+            />
+            {recordingFrames.length > 0 && (
+              <details className="capture-page-set recording-frame-gallery">
+                <summary>Saved video frames · {recordingFrames.length}</summary>
+                <div className="capture-page-grid">
+                  {recordingFrames.map((asset) => (
+                    <figure id={`asset-${asset.id}`} key={asset.id}>
                       <a href={asset.url} target="_blank" rel="noopener noreferrer">
                         <img
                           src={asset.url}
-                          alt={
-                            asset.filename || `${asset.rendition} attached to feedback`
-                          }
-                          width={asset.width}
-                          height={asset.height}
-                          loading={index === 0 ? "eager" : "lazy"}
+                          alt={`Video frame at ${(asset.recordingFrame!.atMs / 1000).toFixed(1)} seconds`}
+                          loading="lazy"
                         />
                       </a>
-                    )}
-                    <figcaption>
-                      {asset.contentType === "video/webm"
-                        ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
-                        : `${asset.filename ? `${asset.filename} · ` : ""}${asset.width} × ${asset.height} · Open full image`}
-                    </figcaption>
-                  </figure>
-                ))}
-                {capturePages.length > 0 && (
-                  <details className="capture-page-set" open={capturePages.length <= 4}>
-                    <summary>
-                      Full-page capture · {capturePages.length} numbered
-                      {capturePages.length === 1 ? " image" : " images"}
-                    </summary>
-                    <div className="capture-page-grid">
-                      {capturePages.map((asset) => (
-                        <figure id={`asset-${asset.id}`} key={asset.id}>
-                          <a
-                            href={asset.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Open ${asset.filename}`}
-                          >
-                            <img
-                              src={asset.url}
-                              alt={asset.filename}
-                              width={asset.width}
-                              height={asset.height}
-                              loading="lazy"
-                            />
-                          </a>
-                          <figcaption>{asset.filename}</figcaption>
-                        </figure>
-                      ))}
-                    </div>
-                  </details>
-                )}
-              </section>
+                      <figcaption>
+                        {(asset.recordingFrame!.atMs / 1000).toFixed(1)}s in recording
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </details>
             )}
             <div className="feedback-reactions">
               <DiscussionLike

@@ -6,6 +6,7 @@
     <title>Tab video feedback · Feedbacks</title>
     <link rel="stylesheet" href="appearance.css" />
     <link rel="stylesheet" href="video.css" />
+    <link rel="stylesheet" href="session-review.css" />
   </head>
   <body>
     <header><strong>Feedbacks</strong><span>Tab video feedback</span></header>
@@ -23,6 +24,39 @@
         <label><input id="tab-audio" type="checkbox" /> Tab audio</label>
         <label><input id="microphone" type="checkbox" /> Microphone</label>
       </fieldset>
+      <fieldset id="debug-options" class="audio-options before-recording">
+        <legend>Debug context</legend>
+        <label
+          ><input id="debug-context" type="checkbox" checked /> Capture DOM replay,
+          console &amp; network</label
+        >
+        <label><input id="mask-inputs" type="checkbox" /> Mask input values</label>
+        <label><input id="mask-text" type="checkbox" /> Mask page text</label>
+        <label
+          ><input id="network-bodies" type="checkbox" /> Include bounded network
+          bodies</label
+        >
+      </fieldset>
+      <details id="redirect-options" class="before-recording">
+        <summary>Capture across redirect sites</summary>
+        <label for="redirect-origins">Additional exact website origins</label>
+        <input
+          id="redirect-origins"
+          type="text"
+          placeholder="https://dashboard.example.com"
+          autocomplete="off"
+        />
+        <button id="authorize-redirects" type="button">Allow redirect sites</button>
+        <p class="hint">
+          Optional. Separate origins with commas. Chrome will ask for access when
+          recording starts. The original project receives the entire capture; other sites
+          remain excluded.
+        </p>
+      </details>
+      <p id="debug-status" class="hint" role="status">
+        Debug capture verifies the selected website tab. Passwords and recognizable
+        credentials are removed from debug data; these controls do not mask video pixels.
+      </p>
       <div class="controls">
         <button id="start" class="primary" disabled>Start recording</button>
         <button id="pause" hidden>Pause recording</button>
@@ -42,13 +76,16 @@
           retention; Feedbacks has no automatic deletion timer.
         </p>
       </details>
-      <video
-        id="preview"
-        controls
-        playsinline
-        hidden
-        aria-label="Recording preview"
-      ></video>
+      <div class="review-workspace">
+        <video
+          id="preview"
+          controls
+          playsinline
+          hidden
+          aria-label="Recording preview"
+        ></video>
+        <section id="capture-inspector" hidden></section>
+      </div>
       <section id="editing" hidden aria-label="Video editor">
         <div class="timeline-heading">
           <strong>Trim video</strong><span id="trim-duration"></span>
@@ -174,6 +211,7 @@
           <button id="reset-edit">Restore original</button>
         </div>
       </section>
+      <div id="saved-frames" hidden></div>
       <section id="review" hidden>
         <label for="comment">Comment for this project</label>
         <textarea
@@ -191,6 +229,7 @@
       <p id="status" role="status"></p>
       <a id="thread" hidden target="_blank" rel="noreferrer">Open feedback</a>
     </main>
+    <script src="webm-duration.js"></script>
     <script type="module" src="video.js"></script>
   </body>
 </html>

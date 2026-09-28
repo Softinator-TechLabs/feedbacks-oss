@@ -177,6 +177,45 @@ export async function assets(db: Database, a: Actor, i: any): Promise<any> {
   };
 }
 
+async function checkRecordingFrame(db: Database, thread: any, input: any) {
+  const frame = input.recordingFrame;
+  if (!frame) return;
+  const row = await db.one(
+    "SELECT summary FROM recordings WHERE id=$1 AND thread_id=$2 AND project_id=$3",
+    [frame.recordingId, thread.id, thread.project_id],
+  );
+  const recording = row?.summary;
+  if (!recording?.video || frame.atMs > recording.durationMs)
+    fail("VALIDATION", "Frame must belong to a video recording on this feedback thread");
+  const video = await db.one(
+    "SELECT data FROM assets WHERE id=$1 AND thread_id=$2 AND project_id=$3 AND status='validated' AND data->>'contentType'='video/webm'",
+    [recording.video.assetId, thread.id, thread.project_id],
+  );
+  if (!video)
+    fail("VALIDATION", "Recording video is unavailable on this feedback thread");
+  const segments = recording.video.segments;
+  const segment = segments?.length
+    ? segments.find(
+        (part: any) => frame.atMs >= part.sourceStartMs && frame.atMs <= part.sourceEndMs,
+      )
+    : null;
+  // Segments use the original recording clock. offsetMs applies only to unedited video.
+  const expected = segments?.length
+    ? segment
+      ? segment.outputStartMs + frame.atMs - segment.sourceStartMs
+      : null
+    : frame.atMs + recording.video.offsetMs;
+  if (
+    expected === null ||
+    !Number.isFinite(expected) ||
+    expected < 0 ||
+    Math.abs(frame.videoTimeMs - expected) > 250 ||
+    (typeof video.data.durationMs === "number" &&
+      (expected > video.data.durationMs || frame.videoTimeMs > video.data.durationMs))
+  )
+    fail("VALIDATION", "Frame time must match a retained moment of the recording video");
+}
+
 export async function assetUploadPreflight(db: Database, a: Actor, i: any) {
   const row = await threadRow(db, a, i.threadId, "write");
   const prior = await retry(
@@ -194,6 +233,7 @@ export async function assetUploadPreflight(db: Database, a: Actor, i: any) {
       },
     };
   checkRevision(row, i.revision);
+  await checkRecordingFrame(db, row, i);
   return { projectId: row.project_id as string, prior: null };
 }
 
@@ -233,6 +273,7 @@ export async function prepareAssetUpload(i: any, config: Config, projectId: stri
     rendition: i.rendition,
     ...(i.filename ? { filename: i.filename } : {}),
     ...(i.captureRegion ? { captureRegion: i.captureRegion } : {}),
+    ...(i.recordingFrame ? { recordingFrame: i.recordingFrame } : {}),
     ...(i.captureSections ? { captureSections: i.captureSections } : {}),
     ...(i.markings?.length ? { markings: i.markings } : {}),
     width: metadata.width,
@@ -351,6 +392,7 @@ export async function commitAssetUpload(
   checkRevision(row, i.revision);
   if (row.project_id !== prepared.projectId)
     fail("CONFLICT", "Feedback changed; reload before retrying", 409);
+  await checkRecordingFrame(db, row, i);
   await db.query(
     "INSERT INTO assets(id,project_id,thread_id,object_key,data,status) VALUES($1,$2,$3,$4,$5,'validated')",
     [prepared.id, row.project_id, row.id, prepared.key, JSON.stringify(prepared.data)],

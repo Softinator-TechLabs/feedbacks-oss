@@ -389,6 +389,11 @@ action("draft", async () => {
   await send({ type: "resume" });
   window.close();
 });
+action("record-session", async () => {
+  if (!tab?.id) throw Error("Open a website first.");
+  await send({ type: "openSessionRecorder", tabId: tab.id });
+  window.close();
+});
 action("record-video", async () => {
   if (!tab?.id || !/^https?:/.test(tab.url || ""))
     throw Error("Open a website before recording a tab video.");

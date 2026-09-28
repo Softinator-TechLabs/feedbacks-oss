@@ -322,7 +322,7 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
             }
             assert.ok(
               profile === "compact"
-                ? (await stdio.listTools()).tools.length === 7
+                ? (await stdio.listTools()).tools.length === 8
                 : (await stdio.listTools()).tools.length > 10,
             );
             const stdioRead = await stdio.callTool({

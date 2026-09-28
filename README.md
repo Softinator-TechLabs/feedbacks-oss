@@ -43,7 +43,7 @@ Production requires HTTPS, PostgreSQL and private S3-compatible storage. Follow 
 
 ## Browser extension
 
-Build with `npm run build:extension`. Load the `extension/` directory from Chrome's **Load unpacked**, or use the ZIP in `dist/extension/`. Enter your own Feedbacks server address and approve pairing in the web application. Website-wide permission is a separate optional action. Existing saved server connections remain available.
+Build with `npm run build:extension`. Load the `dist/extension/unpacked/` directory from Chrome's **Load unpacked**, or use the ZIP in `dist/extension/`. Enter your own Feedbacks server address and approve pairing in the web application. Website-wide permission is a separate optional action. Existing saved server connections remain available.
 
 ## Repository map
 

@@ -87,6 +87,11 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `qa.get`                      | Yes                  | Yes                            |
 | `qa.runNow`                   | No                   | No                             |
 | `qa.runs`                     | Yes                  | Yes                            |
+| `recordings.events`           | Yes                  | Yes                            |
+| `recordings.export`           | Yes                  | Yes                            |
+| `recordings.get`              | Yes                  | Yes                            |
+| `recordings.list`             | Yes                  | Yes                            |
+| `recordings.upload`           | No                   | No                             |
 | `reviewViews.delete`          | No                   | Yes                            |
 | `reviewViews.list`            | Yes                  | Yes                            |
 | `reviewViews.save`            | No                   | Yes                            |

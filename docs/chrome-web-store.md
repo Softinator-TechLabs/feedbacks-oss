@@ -55,11 +55,14 @@ CAPTURE TOOLS
 • Visible-area capture and optional full-page screenshots.
 • Drawing, arrows, text and redaction before sharing.
 • Optional short tab recordings with review before sending.
+• Session replay with activity, console and network evidence, alongside video or on its own.
 • Shared project feedback, discussion and work status.
 
 DATA AND PERMISSIONS
 
 Capture starts when you invoke a review. Chrome asks for access to your selected server. All-site access is optional. Connection information and unfinished drafts are stored locally; submitted comments, screenshots and page context go to the server you choose. Screenshots can contain sensitive page content, so inspect and redact them before sending. Browser-protected pages cannot be captured. Your server operator manages access, storage and retention.
+
+Detailed recording declares the debugger permission and attaches only after an explicit recording action. Session data can include page structure, activity, console messages and network headers; network bodies are an additional option. Recognized credentials are masked, with optional page-text/input masking. Video pixels need separate review. Update the Store permission justifications and data disclosures for this collection before publishing.
 
 Guides: https://feedbacks.softinator.ai/docs/guide/chrome-extension
 Project and member setup: https://feedbacks.softinator.ai/docs/guide/team-setup

@@ -108,6 +108,10 @@ export async function manageThreadDeletion(
     "SELECT id,object_key FROM assets WHERE thread_id=ANY($1::uuid[])",
     [ids],
   );
+  const recordings = await db.query(
+    "SELECT id,object_key FROM recordings WHERE thread_id=ANY($1::uuid[])",
+    [ids],
+  );
   const id = randomUUID();
   await db.query(
     "INSERT INTO thread_deletions(id,project_id,actor_id,request_key,input_hash,thread_ids) VALUES($1,$2,$3,$4,$5,$6)",
@@ -130,6 +134,12 @@ export async function manageThreadDeletion(
         [id, asset.object_key],
       );
   }
+  for (const recording of recordings)
+    await db.query(
+      "INSERT INTO thread_deletion_objects(deletion_id,object_key) VALUES($1,$2)",
+      [id, recording.object_key],
+    );
+  await db.query("DELETE FROM recordings WHERE thread_id=ANY($1::uuid[])", [ids]);
   await db.query("DELETE FROM qa_baselines WHERE thread_id=ANY($1::uuid[])", [ids]);
   await db.query("DELETE FROM assets WHERE thread_id=ANY($1::uuid[])", [ids]);
   await db.query("DELETE FROM replies WHERE thread_id=ANY($1::uuid[])", [ids]);
@@ -144,7 +154,7 @@ export async function manageThreadDeletion(
   // recreate content that a maintainer has already deleted.
   await db.query("DELETE FROM events WHERE project_id=$1 AND entity_id=ANY($2::text[])", [
     input.projectId,
-    [...ids, ...owned.map((a) => a.id)],
+    [...ids, ...owned.map((a) => a.id), ...recordings.map((r) => r.id)],
   ]);
   // Immutable exports may contain the deleted discussion. Invalidate project snapshots.
   await db.query("DELETE FROM export_snapshots WHERE project_id=$1", [input.projectId]);

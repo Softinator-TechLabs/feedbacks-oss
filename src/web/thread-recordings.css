@@ -1,0 +1,342 @@
+.thread-recordings {
+  min-width: 0;
+  container-type: inline-size;
+  margin: 20px 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.recording-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.recording-heading h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+.recording-count {
+  color: var(--muted);
+  font-size: 0.83rem;
+  font-variant-numeric: tabular-nums;
+}
+.recording-empty {
+  margin: 0;
+}
+.recording-state {
+  color: var(--muted);
+  padding: 12px 0;
+}
+.recording-state p {
+  margin: 0 0 8px;
+}
+.recording-select-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.83rem;
+  font-weight: 650;
+}
+.thread-recordings select {
+  width: 100%;
+  max-width: 600px;
+}
+.recording-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 14px;
+  margin: 12px 0 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.recording-break {
+  overflow-wrap: anywhere;
+}
+.recording-coverage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.recording-coverage-item {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+.recording-coverage-partial,
+.recording-coverage-unavailable,
+.recording-coverage-failed {
+  border-style: dashed;
+}
+.recording-privacy,
+.recording-footnote {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.recording-timeline {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 16px 0 12px;
+}
+.recording-timeline button {
+  min-height: 40px;
+}
+.recording-timeline input {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.recording-timeline output {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.recording-workspace {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.recording-media,
+.recording-diagnostics {
+  min-width: 0;
+}
+.recording-media-switch {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.recording-media-switch button {
+  min-height: 38px;
+  padding: 6px 12px;
+  font-size: 0.87rem;
+}
+.recording-media-switch button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+.recording-media-content {
+  min-width: 0;
+}
+.recording-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin-top: 12px;
+}
+.recording-scope > div {
+  display: flex;
+  gap: 5px;
+}
+.recording-scope button {
+  min-height: 36px;
+  padding: 5px 9px;
+  font-size: 0.8rem;
+}
+.recording-scope button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface));
+  border-color: var(--accent);
+}
+.recording-scope p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.recording-tabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scrollbar-color: var(--border) var(--surface);
+}
+.recording-tabs button {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.87rem;
+}
+.recording-tabs button[aria-pressed="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 650;
+}
+.recording-tab-content {
+  min-width: 0;
+  padding-top: 12px;
+}
+.recording-stage {
+  min-height: 300px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+.recording-stage .replayer-wrapper {
+  transform-origin: top left;
+}
+.recording-media-content video {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  background: #111;
+}
+.recording-frame-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px 12px;
+  margin-top: 9px;
+}
+.recording-frame-actions button {
+  min-height: 38px;
+  padding: 6px 12px;
+}
+.recording-frame-actions span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.recording-frame-error {
+  margin: 8px 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+.recording-saved-frame {
+  margin-top: 8px;
+}
+.recording-saved-frame a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.83rem;
+}
+.recording-saved-frame img {
+  display: block;
+  width: 72px;
+  height: 42px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+@container (min-width: 620px) {
+  .recording-workspace {
+    grid-template-columns: minmax(0, 1.35fr) minmax(260px, 1fr);
+    align-items: start;
+  }
+}
+.recording-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 340px;
+  overflow: auto;
+  scrollbar-color: var(--border) var(--surface);
+}
+.recording-events li + li {
+  border-top: 1px solid var(--border);
+}
+.recording-events button {
+  display: grid;
+  grid-template-columns: 65px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 6px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  white-space: normal;
+}
+.recording-events button:hover,
+.recording-events button[aria-expanded="true"],
+.recording-events button.near-cursor {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.recording-events time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.recording-events button > span {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.recording-event-detail {
+  margin-top: 2px;
+  font-size: 0.76rem;
+  font-weight: 400;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.recording-network-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.recording-network-detail > p {
+  margin: 0 0 8px;
+}
+.recording-payload-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.recording-payload-grid section {
+  min-width: 0;
+}
+.recording-payload-grid h4,
+.recording-environment h3 {
+  margin: 10px 0 4px;
+  font-size: 0.83rem;
+}
+.recording-payload-grid pre,
+.recording-environment pre {
+  margin: 0;
+  padding: 10px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface));
+  color: inherit;
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.recording-environment ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+.recording-environment li + li {
+  margin-top: 5px;
+}
+@media (max-width: 650px) {
+  .recording-timeline {
+    grid-template-columns: auto 1fr;
+  }
+  .recording-timeline output {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+  .recording-payload-grid {
+    grid-template-columns: 1fr;
+  }
+  .recording-stage {
+    min-height: 220px;
+  }
+}

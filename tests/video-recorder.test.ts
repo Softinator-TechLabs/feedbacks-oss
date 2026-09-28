@@ -17,7 +17,14 @@ test("lost create acknowledgement retries the original comment and review target
   const nodes: Record<string, any> = Object.fromEntries(
     [...html.matchAll(/id="([^"]+)"/g)].map((match) => [
       match[1],
-      { value: "", textContent: "", hidden: false, disabled: false, readOnly: false },
+      {
+        value: "",
+        textContent: "",
+        hidden: false,
+        disabled: false,
+        readOnly: false,
+        replaceChildren() {},
+      },
     ]),
   );
   const sent: any[] = [];
@@ -117,8 +124,18 @@ test("ending review while the native picker is open stops its eventual stream", 
     "crop-top",
     "crop-width",
     "crop-height",
+    "saved-frames",
+    "redirect-origins",
+    "authorize-redirects",
+    "debug-context",
   ])
-    nodes[id] = { textContent: "", disabled: false, removeAttribute() {} };
+    nodes[id] = {
+      textContent: "",
+      checked: false,
+      disabled: false,
+      removeAttribute() {},
+      replaceChildren() {},
+    };
   let disconnect!: () => void, resolvePicker!: (stream: any) => void;
   let stopped = 0,
     constructed = 0;

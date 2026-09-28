@@ -6,6 +6,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Session replay and agent debug bundles](session-replay.md)
 - [Detect the active Feedbacks server](extension-server-detection.md)
 
 - [Five-minute sign-in lock by client IP](login-ip-throttle.md)

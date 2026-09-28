@@ -30,7 +30,12 @@ for (const tabAudio of [false, true])
       const nodes = Object.fromEntries(
         [...html.matchAll(/id="([^"]+)"/g)].map((m) => [
           m[1],
-          { value: "", checked: false, removeAttribute() {} },
+          {
+            value: "",
+            checked: false,
+            removeAttribute() {},
+            replaceChildren() {},
+          },
         ]),
       ) as any;
       nodes["tab-audio"].checked = tabAudio;
@@ -96,6 +101,7 @@ for (const tabAudio of [false, true])
         }
       }
       const context = vm.createContext({
+        finalizeWebmMetadata: async (file: Blob) => file,
         createVideoTimeline: () => ({
           load() {},
           clear() {},
@@ -180,6 +186,7 @@ for (const tabAudio of [false, true])
       if (!tabAudio && !mic) {
         clock = 1236;
         nodes.stop.onclick();
+        await new Promise((resolve) => setImmediate(resolve));
         assert.equal(
           nodes["trim-end"].value,
           "1.236",

@@ -26,7 +26,9 @@ if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1" && !publicCaptureUrl)
   throw Error("Set FEEDBACKS_QA_PUBLIC_URL to the approved website for live capture QA.");
 const profile = await mkdtemp(join(tmpdir(), "feedbacks-extension-browser-"));
 const extension = join(profile, "extension");
-await cp(join(root, "extension"), extension, { recursive: true });
+// Exercise the same local bundles and HTML that the ZIP ships. Source-only
+// copies omit generated rrweb/WebM scripts and cannot finalize native video.
+await cp(join(root, "dist/extension/unpacked"), extension, { recursive: true });
 const manifestPath = join(extension, "manifest.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 // Isolated fixture grants let headless Chromium run feature checks; this copy
@@ -2865,6 +2867,9 @@ try {
       return stream;
     };
   });
+  // This legacy media fixture is a synthetic canvas stream, not a native tab.
+  // Exercise video-only editing here; real session capture has a separate fixture.
+  await recorderPage.locator("#debug-context").uncheck();
   await recorderPage.locator("#tab-audio").check();
   await recorderPage.locator("#microphone").check();
   await recorderPage.locator("#start").click();

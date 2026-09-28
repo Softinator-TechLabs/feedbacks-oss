@@ -185,3 +185,13 @@ test("copied task keeps each point's human plan beside its text", () => {
     /"id":"point-b"[^\n]*"workPlan":\{"priority":"high","schedule":"today"/,
   );
 });
+
+test("copied task directs recorded issues to local evidence files with honest remote fallback", () => {
+  const { text } = buildTaskHandoff(fixture());
+  assert.match(text, /recordings\.list/);
+  assert.match(text, /feedbacks_recording_materialize/);
+  assert.match(text, /temporary directory/);
+  assert.match(text, /README.*coverage/);
+  assert.match(text, /Remote HTTP MCP/);
+  assert.match(text, /clicks.*typing.*console.*network/);
+});
