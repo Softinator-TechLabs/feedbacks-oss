@@ -13,6 +13,10 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `assets.get`                  | Yes                  | Yes                            |
 | `assets.upload`               | No                   | No                             |
 | `assets.uploadVideo`          | No                   | No                             |
+| `assignments.claim`           | No                   | Yes                            |
+| `assignments.list`            | Yes                  | Yes                            |
+| `assignments.release`         | No                   | Yes                            |
+| `assignments.renew`           | No                   | Yes                            |
 | `auth.me`                     | Yes                  | Yes                            |
 | `context.changes`             | Yes                  | Yes                            |
 | `context.export`              | Yes                  | Yes                            |

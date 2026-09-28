@@ -221,6 +221,7 @@ const contextTextInput = {
   revision: z.number().int().min(0),
 };
 const contextTextOutput = z.object({
+  currentWork: z.string().optional(),
   body: z.string(),
   revision: z.number(),
   userId: id.optional(),
@@ -234,9 +235,50 @@ const contextTextOutput = z.object({
     "member_authored_advisory",
   ]),
 });
+const assignmentOutput = z.object({
+  id,
+  projectId: id,
+  threadId: id,
+  annotationIds: z.array(id),
+  userId: id,
+  memberName: z.string(),
+  agentId: id,
+  agentName: z.string(),
+  summary: z.string(),
+  state: z.enum(["active", "completed", "paused", "expired"]),
+  revision: z.number(),
+  expiresAt: z.string(),
+  updatedAt: z.string(),
+});
 export const inputSchemas = {
+  "assignments.list": z.object({
+    projectId: id,
+    threadId: id.optional(),
+    userId: id.optional(),
+    state: z.enum(["active", "all"]).default("active"),
+    offset: z.number().int().min(0).max(100000).default(0),
+    limit: z.number().int().min(1).max(50).default(10),
+  }),
+  "assignments.claim": z.object({
+    threadId: id,
+    revision,
+    annotationIds: z.array(id).max(100).default([]),
+    summary: z.string().min(1).max(500),
+    idempotencyKey: z.string().min(1).max(200),
+  }),
+  "assignments.renew": z.object({ assignmentId: id, revision }),
+  "assignments.release": z.object({
+    assignmentId: id,
+    revision,
+    outcome: z.enum(["completed", "paused"]),
+  }),
+
   "members.profile.get": z.object({ userId: id.optional(), projectId: id.optional() }),
-  "members.profile.save": z.object({ userId: id.optional(), ...contextTextInput }),
+  "members.profile.save": z.object({
+    userId: id.optional(),
+    ...contextTextInput,
+    currentWork: z.string().max(300).optional(),
+  }),
   "members.responsibility.get": z.object({ projectId: id, userId: id.optional() }),
   "members.responsibility.save": z.object({
     projectId: id,
@@ -885,6 +927,14 @@ const documentOutput = z.object({
   url: z.string(),
 });
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
+  "assignments.list": z.object({
+    items: z.array(assignmentOutput),
+    total: z.number(),
+    nextOffset: z.number().nullable(),
+  }),
+  "assignments.claim": assignmentOutput,
+  "assignments.renew": assignmentOutput,
+  "assignments.release": assignmentOutput,
   "members.profile.get": contextTextOutput,
   "members.profile.save": contextTextOutput,
   "members.responsibility.get": contextTextOutput,
@@ -1367,6 +1417,10 @@ export const scopedAgentOperations = [
 ] as const;
 
 export const agentTokenScopes = [
+  "assignments.list",
+  "assignments.claim",
+  "assignments.renew",
+  "assignments.release",
   "auth.me",
   "members.list",
   "members.profile.get",
@@ -1393,6 +1447,17 @@ export const agentTokenScopes = [
   "reviewViews.list",
   "reviewViews.save",
   "reviewViews.delete",
+] as const;
+
+// Self-service never delegates owner-only policy visibility or external GitHub writes.
+export const selfAgentTokenScopes = agentTokenScopes.filter(
+  (name) => !["context.policy", "context.reviewers", "github.issueCreate"].includes(name),
+);
+export const profileOnlyAgentScopes = [
+  "auth.me",
+  "projects.list",
+  "members.profile.get",
+  "members.profile.save",
 ] as const;
 
 // Authentication and browser/device transport are deliberately separate from
@@ -1429,6 +1494,7 @@ export const ownerTokenScopes = [
   "context.policy",
 ];
 const readOperations = new Set<string>([
+  "assignments.list",
   "members.profile.get",
   "members.responsibility.get",
   "projects.context.get",

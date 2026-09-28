@@ -5,6 +5,8 @@ import {
   inputSchemas,
   agentTokenScopes,
   ownerTokenScopes,
+  selfAgentTokenScopes,
+  profileOnlyAgentScopes,
   type Actor,
   type OperationName,
 } from "../shared/contracts.js";
@@ -23,6 +25,7 @@ import {
   commitAssetUpload,
   type AssetStore,
 } from "./assets.js";
+import { assignments } from "./assignments.js";
 import { memberContext } from "./member-context.js";
 import { instructions, context } from "./context.js";
 import { reviewViews } from "./review-views.js";
@@ -132,6 +135,7 @@ export class Operations {
           name.startsWith("projects.context.")
         )
           return memberContext(db, a, name, i);
+        if (name.startsWith("assignments.")) return assignments(db, a, name, i);
         if (name === "context.reviewers") return reviewerContext(db, a, i.projectId);
         if (name.startsWith("projects.")) return projects(db, a, name, i);
         if (name.startsWith("webhooks.")) return manageWebhooks(db, a, name, i);
@@ -182,20 +186,30 @@ export class Operations {
           };
         }
         if (name === "tokens.create") {
-          ownerOnly(a);
           if (a.kind !== "human")
             fail(
               "FORBIDDEN",
-              "A human owner must issue keys; agent keys cannot create descendants",
+              "A human must issue their own keys; agent keys cannot create descendants",
               403,
             );
+          if (i.ownerAdmin) ownerOnly(a);
           const allowed = new Set<string>(
-            i.ownerAdmin ? ownerTokenScopes : agentTokenScopes,
+            i.ownerAdmin
+              ? ownerTokenScopes
+              : a.owner
+                ? agentTokenScopes
+                : selfAgentTokenScopes,
           );
           if (i.scopes.some((s: string) => !allowed.has(s)))
             fail("VALIDATION", "Unsupported agent scope");
-          if (!i.ownerAdmin && !i.projectIds.length)
-            fail("VALIDATION", "Select at least one project for a scoped key");
+          if (
+            !i.ownerAdmin &&
+            !i.projectIds.length &&
+            i.scopes.some(
+              (s: string) => !(profileOnlyAgentScopes as readonly string[]).includes(s),
+            )
+          )
+            fail("VALIDATION", "Select a project or only personal profile scopes");
           for (const id of i.projectIds)
             await access(db, a, id, i.canResolve ? "resolve" : "read");
           const result = await this.auth.issueToken(db, a, i);

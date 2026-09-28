@@ -1,5 +1,9 @@
 import React, { useState } from "react";
-import { ownerTokenScopes } from "../shared/contracts.js";
+import {
+  ownerTokenScopes,
+  selfAgentTokenScopes,
+  profileOnlyAgentScopes,
+} from "../shared/contracts.js";
 import { agentSetupPrompt, type AgentIssuance } from "./agent-setup.js";
 import { api, type Actor, type Project } from "./api.js";
 import { ActionState, useAction, useLoad, Loading, ErrorNotice } from "./ui.js";
@@ -19,14 +23,20 @@ function HelpAgentSetup({
   const [prompt, setPrompt] = useState("");
   const [showPrompt, setShowPrompt] = useState(false);
 
-  if (!actor?.owner)
+  if (!actor)
     return (
       <section className="help-agent">
         <h2>Connect your coding agent</h2>
-        <p>Ask a workspace owner to create a private agent setup prompt.</p>
+        <p>Sign in to create your personal agent setup prompt.</p>
       </section>
     );
 
+  const scopes = actor.owner
+    ? ownerTokenScopes
+    : projects.length
+      ? selfAgentTokenScopes
+      : profileOnlyAgentScopes;
+  const canResolve = !!projects.length && projects.every((p) => p.permissions.canResolve);
   async function copyAgentSetup() {
     let nextPrompt = prompt;
     if (!issued) {
@@ -36,20 +46,20 @@ function HelpAgentSetup({
         name: string;
         expiresAt: string;
       }>("tokens.create", {
-        name: "Internal agents",
+        name: `${actor!.name} agent`,
         projectIds: projects.map((project) => project.id),
-        scopes: [...ownerTokenScopes],
-        ownerAdmin: true,
+        scopes: [...scopes],
+        ownerAdmin: !!actor!.owner,
         expiresInDays: 90,
-        canResolve: true,
+        canResolve: actor!.owner || canResolve,
       });
       const nextIssued: AgentIssuance = {
         ...result,
         origin: location.origin,
         projects: projects.map(({ id, name }) => ({ id, name })),
-        scopes: [...ownerTokenScopes],
-        ownerAdmin: true,
-        canResolve: true,
+        scopes: [...scopes],
+        ownerAdmin: !!actor!.owner,
+        canResolve: actor!.owner || canResolve,
       };
       nextPrompt = agentSetupPrompt(nextIssued, instructions);
       setIssued(nextIssued);
@@ -75,12 +85,23 @@ function HelpAgentSetup({
           contains the connection details and a private API key.
         </p>
         <p className="help-key-warning">
-          This creates a 90-day key with full owner administration across current and
-          future projects.
-          {actor.primaryOwner
-            ? " It can access your private member notes."
-            : " Primary-owner private notes stay restricted."}{" "}
-          Share it only with an agent you trust.
+          {actor.owner ? (
+            <>
+              This creates a 90-day key with full owner administration across current and
+              future projects.
+              {actor.primaryOwner
+                ? " It can access your private member notes."
+                : " Primary-owner private notes stay restricted."}
+            </>
+          ) : (
+            <>
+              This creates a 90-day personal key for your{" "}
+              {projects.length ? "current projects and profile" : "profile only"}. It acts
+              as you and keeps your existing project permissions.
+            </>
+          )}{" "}
+          Share it only with your own agent. Even with a shared Codex subscription, each
+          member needs their own Feedbacks key.
         </p>
       </div>
       <div className="help-agent-actions">
@@ -104,7 +125,7 @@ function HelpAgentSetup({
               ? "Copy setup again"
               : "Create key and copy setup"}
         </button>
-        <a href="/account#agent-setup">Choose limited access instead</a>
+        <a href="/account#agent-setup">Choose projects and permissions</a>
         <ActionState action={action} />
         {!instructions && (
           <p className="error" role="alert">

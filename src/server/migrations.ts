@@ -261,5 +261,21 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       )`);
       await tx.query("INSERT INTO migrations(version) VALUES(19)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=20"))) {
+      await tx.query(
+        "ALTER TABLE member_profiles ADD COLUMN current_work text NOT NULL DEFAULT ''",
+      );
+      await tx.query(`CREATE TABLE work_claims(
+        id uuid PRIMARY KEY, project_id uuid NOT NULL REFERENCES projects(id), thread_id uuid NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+        annotation_ids jsonb NOT NULL, user_id uuid NOT NULL REFERENCES users(id),agent_id uuid NOT NULL,agent_name text NOT NULL,
+        summary text NOT NULL,state text NOT NULL DEFAULT 'active',revision integer NOT NULL DEFAULT 1,
+        request_key text NOT NULL,input_hash text NOT NULL,expires_at timestamptz NOT NULL DEFAULT now()+interval '2 hours',updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE(agent_id,request_key)
+      )`);
+      await tx.query(
+        "CREATE INDEX work_claims_project ON work_claims(project_id,state,expires_at)",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(20)");
+    }
   });
 }

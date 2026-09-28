@@ -19,3 +19,7 @@
 | GitHub/Jira/Linear issue                                                   | Optional external association. Read provenance; do not create or message externally without authorization.                                                                                                            |
 
 For “today's feedback, make a plan”, return counts and proposed order first, then discuss execution. Empty results mean only the stated filters/scopes returned no matches.
+
+- **Assigned / claimed / kaun kaam kar raha hai:** Read `assignments.list`. A claim identifies the Feedbacks member, named agent, thread and optional point IDs, plus a two-hour renewable expiry. Thread status alone does not identify a worker. Disjoint points may have different agents; overlapping active claims conflict.
+- **My current work / abhi main X par work kar raha hoon:** The member profile's `currentWork` is a broad one-line focus. It is advisory context, separate from an active thread/point claim.
+- **Shared Codex/Claude account:** A model-provider subscription, never the Feedbacks employee identity. Use separate personal Feedbacks keys. Account quota does not establish task ownership or correctness.

@@ -318,3 +318,9 @@ These operations use the same HTTP, MCP and CLI dispatch. Explicit token scopes 
 - `threads.list` and `threads.neighbors` accept `archived:true` to select Archive instead of the inbox. Use `showResolved:true` to include archived threads of every status. Saved review views preserve the archive filter.
 
 See [operations and recovery](operations.md#thread-deletion-and-private-object-cleanup) for retry, concurrency and retention boundaries.
+
+### Member keys and work coordination
+
+Signed-in members may issue keys for themselves within current projects and the personal scope allowlist. Only human owners may delegate owner administration or policy visibility; agents still cannot create descendant keys. No-project personal keys are restricted to identity/project discovery and own-profile operations. Shared model-provider accounts never change the Feedbacks identity.
+
+Revisioned advisory profiles include an optional 300-character currentWork field. Work claims are separate: assignments.list/claim/renew/release coordinate whole threads or selected open points with member/agent attribution and two-hour renewable leases. A claim is not a repository lock, message, assignment to another employee or verification of delivery.

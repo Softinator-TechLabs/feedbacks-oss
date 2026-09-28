@@ -10,6 +10,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import {
+  Client as ModernClient,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
+import { StdioClientTransport as ModernStdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 test("HTTP session requires origin and CSRF; scoped MCP performs read after write and rejects writes", async () => {
@@ -237,45 +242,118 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
     });
     assert.equal(compactDenied.result.isError, true);
     assert.match(compactDenied.result.content[0].text, /FORBIDDEN/);
-    for (const profile of ["full", "compact"])
-      for (const adapterArgs of [
-        ["--import", "tsx", "src/cli/mcp.ts"],
-        ["dist/codex-plugin/feedbacks/mcp.mjs"],
-      ]) {
-        const stdio = new Client({ name: "stdio-verification", version: "1" });
-        try {
-          await stdio.connect(
-            new StdioClientTransport({
-              command: process.execPath,
-              args: adapterArgs,
-              env: {
-                PATH: process.env.PATH ?? "",
-                FEEDBACKS_URL: base,
-                FEEDBACKS_TOKEN: token.data.token,
-                FEEDBACKS_MCP_PROFILE: profile,
-              },
-              stderr: "pipe",
-            }),
-          );
-          assert.ok(
+    for (const profile of ["full", "compact"]) {
+      const modern = new ModernClient(
+        { name: "modern-http-verification", version: "1" },
+        { versionNegotiation: { mode: "auto" } },
+      );
+      try {
+        await modern.connect(
+          new StreamableHTTPClientTransport(new URL(`${base}/mcp?profile=${profile}`), {
+            requestInit: { headers: bearer },
+          }),
+        );
+        assert.equal(modern.getProtocolEra(), "modern");
+        assert.equal(modern.getNegotiatedProtocolVersion(), "2026-07-28");
+        assert.ok(modern.getDiscoverResult());
+        const catalog = await modern.listTools();
+        assert.ok(catalog.tools.every((tool) => tool.inputSchema && tool.outputSchema));
+        const read = await modern.callTool({
+          name: profile === "compact" ? "feedbacks_thread" : "threads.get",
+          arguments: { threadId: created.data.id },
+        });
+        assert.equal(read.structuredContent?.id, created.data.id);
+        const denied = await modern.callTool({
+          name: profile === "compact" ? "feedbacks_execute" : "threads.status",
+          arguments:
             profile === "compact"
-              ? (await stdio.listTools()).tools.length === 7
-              : (await stdio.listTools()).tools.length > 10,
-          );
-          const stdioRead = await stdio.callTool({
-            name: profile === "compact" ? "feedbacks_thread" : "threads.get",
-            arguments: { threadId: created.data.id },
-          });
-          assert.equal((stdioRead.structuredContent as any).id, created.data.id);
-          if (profile === "full")
-            assert.deepEqual(
-              (stdioRead.structuredContent as any).diagnostics,
-              created.data.diagnostics,
-            );
-        } finally {
-          await stdio.close();
-        }
+              ? {
+                  operation: "threads.status",
+                  input: { threadId: created.data.id, revision: 1, state: "in_progress" },
+                }
+              : { threadId: created.data.id, revision: 1, state: "in_progress" },
+        });
+        assert.equal(denied.isError, true);
+        assert.match((denied.content[0] as any).text, /FORBIDDEN/);
+        assert.ok((await modern.listResources()).resources.length >= 6);
+        const guide = await modern.readResource({ uri: "feedbacks://guide/start" });
+        assert.ok((guide.contents[0] as any).text.includes("createdAfter"));
+        assert.ok((await modern.getPrompt({ name: "review-feedback" })).messages.length);
+      } finally {
+        await modern.close();
       }
+    }
+    for (const profile of ["full", "compact"])
+      for (const era of ["legacy", "modern"])
+        for (const adapterArgs of [
+          ["--import", "tsx", "src/cli/mcp.ts"],
+          ["dist/codex-plugin/feedbacks/mcp.mjs"],
+        ]) {
+          const stdio =
+            era === "modern"
+              ? new ModernClient(
+                  { name: "stdio-verification", version: "1" },
+                  { versionNegotiation: { mode: "auto" } },
+                )
+              : new Client({ name: "stdio-verification", version: "1" });
+          const Transport =
+            era === "modern" ? ModernStdioClientTransport : StdioClientTransport;
+          try {
+            await stdio.connect(
+              new Transport({
+                command: process.execPath,
+                args: adapterArgs,
+                env: {
+                  PATH: process.env.PATH ?? "",
+                  FEEDBACKS_URL: base,
+                  FEEDBACKS_TOKEN: token.data.token,
+                  FEEDBACKS_MCP_PROFILE: profile,
+                },
+                stderr: "pipe",
+              }),
+            );
+            if (stdio instanceof ModernClient) {
+              assert.equal(stdio.getProtocolEra(), "modern");
+              assert.equal(stdio.getNegotiatedProtocolVersion(), "2026-07-28");
+            }
+            assert.ok(
+              profile === "compact"
+                ? (await stdio.listTools()).tools.length === 7
+                : (await stdio.listTools()).tools.length > 10,
+            );
+            const stdioRead = await stdio.callTool({
+              name: profile === "compact" ? "feedbacks_thread" : "threads.get",
+              arguments: { threadId: created.data.id },
+            });
+            assert.equal((stdioRead.structuredContent as any).id, created.data.id);
+            const denied = await stdio.callTool({
+              name: profile === "compact" ? "feedbacks_execute" : "threads.status",
+              arguments:
+                profile === "compact"
+                  ? {
+                      operation: "threads.status",
+                      input: {
+                        threadId: created.data.id,
+                        revision: 1,
+                        state: "in_progress",
+                      },
+                    }
+                  : { threadId: created.data.id, revision: 1, state: "in_progress" },
+            });
+            assert.equal(denied.isError, true);
+            assert.match((denied.content as any)[0].text, /FORBIDDEN/);
+            assert.ok(
+              (await stdio.getPrompt({ name: "review-feedback" })).messages.length,
+            );
+            if (profile === "full")
+              assert.deepEqual(
+                (stdioRead.structuredContent as any).diagnostics,
+                created.data.diagnostics,
+              );
+          } finally {
+            await stdio.close();
+          }
+        }
     const cliCall = promisify(execFile)(
       process.execPath,
       ["--import", "tsx", "src/cli/feedbacks.ts", "--agent", "workspace"],

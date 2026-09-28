@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { agentTokenScopes } from "../shared/contracts.js";
+import {
+  agentTokenScopes,
+  selfAgentTokenScopes,
+  profileOnlyAgentScopes,
+} from "../shared/contracts.js";
 import { AgentSetupPrompt, type AgentIssuance } from "./agent-setup.js";
 import { CreateMember, MemberAdministration } from "./account-admin.js";
 import { OwnerLinks } from "./owner-links.js";
@@ -913,19 +917,17 @@ export function Account({
         )}
         <ActionState action={a} />
       </section>
-      {actor.owner && (
+      {
         <details className="section" id="agent-setup">
-          <summary>Connect internal agents</summary>
+          <summary>Connect your coding agent</summary>
+          <p>Personal key · {projects.length} current projects · 90 days</p>
           <p>
-            Default: all {projects.length} current projects · all agent actions · 90 days
-          </p>
-          <p>
-            Use this revocable key in any of your internal agents. New projects need a new
-            key.
+            Use your own Feedbacks key even when sharing a model-provider subscription.
+            Claims identify this member and the named agent. New projects need a new key.
           </p>
           {!projects.length && (
             <p>
-              <a href="/">Create a project first</a> to connect an agent.
+              You can connect an agent to update your profile before joining a project.
             </p>
           )}
           <form
@@ -964,7 +966,7 @@ export function Account({
             <Field label="Key name">
               <input
                 name="name"
-                defaultValue="Internal agents"
+                defaultValue={`${actor.name} agent`}
                 required
                 maxLength={120}
               />
@@ -998,24 +1000,40 @@ export function Account({
               <fieldset>
                 <legend>Allowed operations</legend>
                 <div className="scope-grid">
-                  {agentTokenScopes.map((s) => (
+                  {(actor.owner ? agentTokenScopes : selfAgentTokenScopes).map((s) => (
                     <label className="check" key={s}>
-                      <input name="scopes" type="checkbox" value={s} defaultChecked />
+                      <input
+                        name="scopes"
+                        type="checkbox"
+                        value={s}
+                        defaultChecked={
+                          !!projects.length ||
+                          (profileOnlyAgentScopes as readonly string[]).includes(s)
+                        }
+                      />
                       {s}
                     </label>
                   ))}
                 </div>
               </fieldset>
               <label className="check">
-                <input type="checkbox" name="canResolve" defaultChecked />
+                <input
+                  type="checkbox"
+                  name="canResolve"
+                  defaultChecked={
+                    !!projects.length && projects.every((p) => p.permissions.canResolve)
+                  }
+                />
                 Allow resolving feedback (requires threads.status scope)
               </label>
               <p className="muted">
-                Includes reviewer guidance and importance, never private notes or account
-                administration.
+                {actor.owner
+                  ? "Includes delegated reviewer guidance and importance."
+                  : "Personal keys exclude owner-delegated policy weights and private notes."}{" "}
+                Project permissions still apply; no account administration.
               </p>
             </details>
-            <button className="primary" disabled={a.busy || !projects.length}>
+            <button className="primary" disabled={a.busy}>
               Create agent key
             </button>
             <ActionState action={a} />
@@ -1028,16 +1046,7 @@ export function Account({
             />
           )}
         </details>
-      )}
-      {!actor.owner && (
-        <section className="section" id="agent-setup">
-          <h2>Agent setup</h2>
-          <p>
-            Ask an owner to create a scoped API key and copy its agent setup prompt for
-            you.
-          </p>
-        </section>
-      )}
+      }
     </>
   );
 }

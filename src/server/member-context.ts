@@ -56,7 +56,7 @@ export async function memberContext(db: Database, a: Actor, op: string, i: any) 
   const where = keys.map((key, n) => `${key}=$${n + 1}`).join(" AND ");
   const read = async () =>
     db.one(
-      `SELECT body,revision,trust,updated_by AS "updatedBy",updated_at AS "updatedAt" FROM ${table} WHERE ${where}`,
+      `SELECT body,revision,trust,updated_by AS "updatedBy",updated_at AS "updatedAt"${profile ? ',current_work AS "currentWork"' : ""} FROM ${table} WHERE ${where}`,
       values,
     );
   let row = await read();
@@ -79,6 +79,11 @@ export async function memberContext(db: Database, a: Actor, op: string, i: any) 
       `INSERT INTO ${table}(${columns.join(",")}) VALUES(${columns.map((_, n) => `$${n + 1}`).join(",")}) ON CONFLICT(${keys.join(",")}) DO UPDATE SET body=excluded.body,trust=excluded.trust,updated_by=excluded.updated_by,updated_at=now(),revision=${table}.revision+1`,
       [...values, i.body, trust, a.userId],
     );
+    if (profile && i.currentWork !== undefined)
+      await db.query("UPDATE member_profiles SET current_work=$1 WHERE user_id=$2", [
+        i.currentWork,
+        userId,
+      ]);
     row = await read();
     await event(db, a, profile ? null : i.projectId, userId ?? i.projectId, op, {
       revision: row.revision,
@@ -95,6 +100,7 @@ export async function memberContext(db: Database, a: Actor, op: string, i: any) 
       updatedAt: null,
     }),
     ...(userId ? { userId } : {}),
+    ...(profile && !row ? { currentWork: "" } : {}),
     ...(!profile ? { projectId: i.projectId } : {}),
   };
 }

@@ -2,8 +2,80 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import {
+  Client as ModernClient,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
+import { createMcpHandler } from "@modelcontextprotocol/server";
 import { mcpServer } from "../src/server/mcp.js";
 import { DomainError } from "../src/server/errors.js";
+
+for (const profile of ["full", "compact"] as const)
+  test(`modern ${profile} MCP retains native images, schema validation and scoped errors`, async () => {
+    const handler = createMcpHandler(
+      () =>
+        mcpServer(async (name) => {
+          if (name !== "assets.get") throw new DomainError("FORBIDDEN", "denied", 403);
+          return {
+            id: "8c06f94d-fca6-4333-84b7-671e560812bc",
+            captureId: "8c06f94d-fca6-4333-84b7-671e560812bc",
+            rendition: "screenshot",
+            bytes: 5,
+            contentType: "image/webp",
+            createdAt: "2026-09-28T00:00:00Z",
+            url: "/api/assets/example",
+            image: {
+              data: "aW1hZ2U=",
+              mimeType: "image/webp",
+              width: 100,
+              height: 300,
+              sourceWidth: 1000,
+              sourceHeight: 3000,
+            },
+          };
+        }, profile),
+      { legacy: "reject" },
+    );
+    const client = new ModernClient(
+      { name: "modern-image-schema", version: "1" },
+      { versionNegotiation: { mode: "auto" } },
+    );
+    try {
+      await client.connect(
+        new StreamableHTTPClientTransport(new URL("http://test.local/mcp"), {
+          fetch: (url, init) => handler.fetch(new Request(url, init)),
+        }),
+      );
+      assert.equal(client.getProtocolEra(), "modern");
+      await client.listTools();
+      const name = profile === "compact" ? "feedbacks_asset" : "assets.get";
+      const result = await client.callTool({
+        name,
+        arguments: {
+          assetId: "8c06f94d-fca6-4333-84b7-671e560812bc",
+          includeImage: true,
+        },
+      });
+      assert.equal((result.structuredContent as any).preview.sourceHeight, 3000);
+      assert.deepEqual(result.content[1], {
+        type: "image",
+        data: "aW1hZ2U=",
+        mimeType: "image/webp",
+      });
+      assert.ok(!(result.content[0] as any).text.includes("aW1hZ2U="));
+      const invalid = await client.callTool({ name, arguments: { assetId: "invalid" } });
+      assert.equal(invalid.isError, true);
+      const denied = await client.callTool({
+        name: profile === "compact" ? "feedbacks_queue" : "threads.list",
+        arguments: { projectId: "8c06f94d-fca6-4333-84b7-671e560812bc" },
+      });
+      assert.equal(denied.isError, true);
+      assert.match((denied.content[0] as any).text, /FORBIDDEN/);
+    } finally {
+      await client.close();
+      await handler.close();
+    }
+  });
 
 test("full-profile image preview validates against its advertised output schema", async () => {
   const server = mcpServer(async () => ({

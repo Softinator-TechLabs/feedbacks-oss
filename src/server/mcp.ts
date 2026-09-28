@@ -1,6 +1,14 @@
 import { operationDescriptions } from "../shared/operation-descriptions.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import {
+  McpServer,
+  createMcpHandler,
+  isLegacyRequest,
+} from "@modelcontextprotocol/server";
+import {
+  NodeStreamableHTTPServerTransport,
+  toNodeHandler,
+  toWebRequest,
+} from "@modelcontextprotocol/node";
 import type { Request, Response } from "express";
 import { agentOperations, operationRegistry, type Actor } from "../shared/contracts.js";
 import type { Operations } from "./operations.js";
@@ -130,11 +138,21 @@ export async function remoteMcp(
     !["full", "compact"].includes(req.query.profile as string)
   )
     throw new DomainError("VALIDATION", "Unknown MCP profile", 400);
-  const server = mcpServer(
-    (name, input) => ops.executeOperation(actor, name, input),
-    req.query.profile === "compact" ? "compact" : "full",
-  );
-  const transport = new StreamableHTTPServerTransport({
+  const buildServer = () =>
+    mcpServer(
+      (name, input) => ops.executeOperation(actor, name, input),
+      req.query.profile === "compact" ? "compact" : "full",
+    );
+  // Let the SDK classify the wire protocol. Keep JSON responses for existing
+  // initialization-based clients, including stateless tools/list callers.
+  if (!(await isLegacyRequest(await toWebRequest(req, req.body)))) {
+    const handler = createMcpHandler(buildServer, { legacy: "reject" });
+    res.on("close", () => void handler.close());
+    await toNodeHandler(handler)(req, res, req.body);
+    return;
+  }
+  const server = buildServer();
+  const transport = new NodeStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
   });
