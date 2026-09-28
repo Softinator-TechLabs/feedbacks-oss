@@ -42,65 +42,145 @@
     </section>
     <main id="editor-workspace">
       <section class="image-workspace" aria-label="Screenshot annotation">
-        <div id="tools" role="toolbar" aria-label="Annotation tools">
-          <button data-tool="pencil" aria-pressed="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20Zm10.5-14.5 2-2a2 2 0 0 1 3 0l1 1a2 2 0 0 1 0 3l-2 2"
-              /></svg
-            >Pencil</button
-          ><button data-tool="arrow">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 20 20 4M11 4h9v9" /></svg
-            >Arrow</button
-          ><button data-tool="rectangle">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="4" y="5" width="16" height="14" rx="1" /></svg
-            >Rectangle</button
-          ><button data-tool="text">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 6V4h16v2M12 4v16m-4 0h8" /></svg
-            >Text</button
-          ><button data-tool="redact" title="Permanently cover pixels in this screenshot">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="6" width="18" height="12" rx="1" />
-              <path d="m5 17 12-10m-5 10 7-7" /></svg
-            >Redact</button
-          ><button data-tool="highlighter">Highlighter</button
-          ><button data-tool="steps">Steps</button>
-          <details class="more-tools">
-            <summary>More tools</summary>
-            <div>
-              <button data-tool="crop">Crop export</button
-              ><button data-tool="blur">Blur</button
-              ><button data-tool="sticker">Stickers</button
-              ><button data-tool="image">Image</button>
+        <div class="editor-controls">
+          <div id="tools" role="toolbar" aria-label="Annotation tools">
+            <button data-tool="pencil" aria-pressed="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20Zm10.5-14.5 2-2a2 2 0 0 1 3 0l1 1a2 2 0 0 1 0 3l-2 2"
+                /></svg
+              >Pencil</button
+            ><button data-tool="arrow">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 20 20 4M11 4h9v9" /></svg
+              >Arrow</button
+            ><button data-tool="rectangle">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="5" width="16" height="14" rx="1" /></svg
+              >Rectangle</button
+            ><button data-tool="text">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6V4h16v2M12 4v16m-4 0h8" /></svg
+              >Text</button
+            ><button
+              data-tool="redact"
+              title="Permanently cover pixels in this screenshot"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="6" width="18" height="12" rx="1" />
+                <path d="m5 17 12-10m-5 10 7-7" /></svg
+              >Redact</button
+            ><button data-tool="highlighter">Highlighter</button
+            ><button data-tool="steps">Steps</button>
+            <details class="more-tools">
+              <summary>More tools</summary>
+              <div>
+                <button data-tool="crop">Crop export</button
+                ><button data-tool="blur">Blur</button
+                ><button data-tool="sticker">Stickers</button
+                ><button data-tool="image">Image</button>
+              </div>
+            </details>
+            <button id="undo">Undo</button><button id="reset">Reset annotations</button>
+          </div>
+          <div class="control-row">
+            <div class="export-tools" aria-label="Screenshot export and zoom">
+              <label for="zoom" class="control-label" title="View zoom"
+                ><svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M3 12c2.5-4 5.5-6 9-6s6.5 2 9 6c-2.5 4-5.5 6-9 6s-6.5-2-9-6Z"
+                  />
+                  <circle cx="12" cy="12" r="2.5" /></svg
+                ><span class="visually-hidden">View zoom</span></label
+              ><select id="zoom">
+                <option value="fit">Fit width</option>
+                <option value="1">100% · Actual pixels</option>
+                <option value="2">200%</option>
+              </select>
+              <label for="export-scope" class="export-label">Export</label
+              ><select id="export-scope">
+                <option value="current">Current screenshot</option>
+                <option value="full">Full page · all sections</option>
+              </select>
+              <button
+                data-export="copy"
+                class="icon-action"
+                aria-label="Copy image"
+                title="Copy image"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="8" y="8" width="12" height="12" rx="2" />
+                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                </svg>
+              </button>
+              <details class="download-menu">
+                <summary
+                  aria-label="Download image"
+                  title="Download image"
+                  class="icon-action"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3" />
+                  </svg>
+                </summary>
+                <div>
+                  <button data-export="png">PNG</button
+                  ><button data-export="jpeg">JPEG</button
+                  ><button data-export="webp">WebP</button
+                  ><button data-export="pdf">PDF</button>
+                </div>
+              </details>
             </div>
-          </details>
-          <button id="undo">Undo</button><button id="reset">Reset annotations</button>
-        </div>
-        <div class="export-tools" aria-label="Screenshot export and zoom">
-          <label for="zoom">View</label
-          ><select id="zoom">
-            <option value="fit">Fit width</option>
-            <option value="1">100% · Actual pixels</option>
-            <option value="2">200%</option>
-          </select>
-          <label for="export-scope">Export</label
-          ><select id="export-scope">
-            <option value="current">Current screenshot</option>
-            <option value="full">Full page · all sections</option>
-          </select>
-          <button data-export="copy">Copy image</button>
-          <details class="download-menu">
-            <summary>Download</summary>
-            <div>
-              <button data-export="png">PNG</button
-              ><button data-export="jpeg">JPEG</button
-              ><button data-export="webp">WebP</button
-              ><button data-export="pdf">PDF</button>
-            </div>
-          </details>
+            <nav
+              id="page-navigation"
+              class="page-navigation"
+              aria-label="Screenshot pages"
+              hidden
+            >
+              <button
+                id="page-prev"
+                type="button"
+                class="icon-action"
+                aria-label="Previous screenshot"
+                title="Previous screenshot"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m15 5-7 7 7 7" />
+                </svg>
+              </button>
+              <label for="page-select">Screenshot</label>
+              <select
+                id="page-select"
+                aria-label="Choose screenshot page"
+                title="Choose a section, then draw on it. Marks appear in the combined image."
+              ></select>
+              <button
+                id="page-next"
+                type="button"
+                class="icon-action"
+                aria-label="Next screenshot"
+                title="Next screenshot"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 5 7 7-7 7" />
+                </svg>
+              </button>
+              <button id="full-page-toggle" type="button" aria-pressed="false">
+                Full page preview
+              </button>
+              <button
+                id="remove-current"
+                type="button"
+                class="icon-action"
+                aria-label="Remove screenshot"
+                title="Remove screenshot"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 10v7m4-7v7" />
+                </svg>
+              </button>
+            </nav>
+          </div>
         </div>
         <div id="image-options" class="tool-options" hidden>
           <button id="add-image">Choose local image</button
@@ -130,21 +210,6 @@
           Blur softens an area and can be undone. Use Redact to permanently hide private
           information.
         </p>
-        <nav
-          id="page-navigation"
-          class="page-navigation"
-          aria-label="Screenshot pages"
-          hidden
-        >
-          <button id="page-prev" type="button">← Previous</button>
-          <label for="page-select">Screenshot</label>
-          <select id="page-select" aria-label="Choose screenshot page"></select>
-          <button id="page-next" type="button">Next →</button>
-          <button id="full-page-toggle" type="button" aria-pressed="false">
-            Full page preview
-          </button>
-          <button id="remove-current" type="button">Remove screenshot</button>
-        </nav>
         <p id="series-guide" class="series-guide" hidden>
           Choose a section, then draw on it. Your marks also appear in the combined
           full-page image.
