@@ -1981,3 +1981,49 @@ legend {
 .thread-delete-dialog details {
   margin-top: 12px;
 }
+
+.help-paths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding-block: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.help-onboarding-section {
+  padding-block: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.help-onboarding-section h2 {
+  margin: 0 0 16px;
+}
+.help-onboarding-section li {
+  margin-block: 12px;
+}
+.help-server-copy {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin-block: 8px;
+}
+.help-server-copy input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+.help-server-copy button {
+  flex-shrink: 0;
+}
+.help-simple > .help-agent {
+  margin-top: 24px;
+}
+@media (max-width: 600px) {
+  .help-server-copy {
+    flex-direction: column;
+  }
+}

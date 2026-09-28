@@ -21,7 +21,30 @@
       </nav>
       <main>
         <h1>Extension settings</h1>
-        <p class="intro">Connection, permissions and review controls.</p>
+        <p class="intro">
+          Capture UI changes and client feedback with the screenshots and context your
+          developer’s AI agent needs.
+        </p>
+        <p>
+          <strong>A team server comes first.</strong> Your company installs Feedbacks once
+          on its own infrastructure. Ask the owner for its address and your sign-in
+          access. The extension connects to that server; it does not host one.
+        </p>
+        <p>
+          <a
+            href="https://feedbacks.softinator.ai/docs/guide/self-host"
+            target="_blank"
+            rel="noreferrer"
+            >DevOps server installation</a
+          >
+          ·
+          <a
+            href="https://feedbacks.softinator.ai/docs/guide/chrome-extension"
+            target="_blank"
+            rel="noreferrer"
+            >Install, pin, right-click and send feedback</a
+          >
+        </p>
         <p id="message" role="status" aria-live="polite"></p>
         <section id="connection" aria-labelledby="connection-title">
           <h2 id="connection-title">Server &amp; account</h2>
@@ -36,8 +59,9 @@
           />
           <datalist id="recent-servers"></datalist>
           <p class="hint">
-            Choose a recently used address or enter your team’s server. Changing servers
-            requires approval on that server.
+            In your team’s web app, open Help → Copy server URL, then paste it here. Use
+            the Feedbacks server address, not the website you are reviewing. Changing
+            servers requires approval on that server.
           </p>
           <label class="check"
             ><input id="allow-local" type="checkbox" />Allow local HTTP development

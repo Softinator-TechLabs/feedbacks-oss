@@ -3,7 +3,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "Feedbacks Docs",
   description:
-    "Capture, discuss and resolve website feedback with your team and coding agents.",
+    "Install Feedbacks for your team, capture UI feedback and give AI coding agents the context to fix it.",
   lang: "en-US",
   base: "/docs/",
   cleanUrls: true,
@@ -19,22 +19,24 @@ export default defineConfig({
     nav: [
       { text: "Start", link: "/guide/getting-started" },
       { text: "Use Feedbacks", link: "/guide/review-feedback" },
-      { text: "Developers", link: "/guide/self-host" },
+      { text: "DevOps installation", link: "/guide/self-host" },
     ],
     sidebar: [
       {
         text: "Start here",
         items: [
           { text: "Overview", link: "/" },
-          { text: "Getting started", link: "/guide/getting-started" },
+          { text: "Complete setup flow", link: "/guide/getting-started" },
+          { text: "Clients: leave feedback", link: "/guide/clients" },
+          { text: "Owner: projects and people", link: "/guide/team-setup" },
           { text: "Capture and review", link: "/guide/review-feedback" },
-          { text: "Chrome extension", link: "/guide/chrome-extension" },
+          { text: "Install, pin and send", link: "/guide/chrome-extension" },
         ],
       },
       {
         text: "Connect your tools",
         items: [
-          { text: "AI agents and MCP", link: "/guide/mcp" },
+          { text: "Developers: AI agents and MCP", link: "/guide/mcp" },
           { text: "GitHub Issues", link: "/guide/github" },
           { text: "API and CLI", link: "/reference/api-cli" },
         ],
@@ -42,7 +44,7 @@ export default defineConfig({
       {
         text: "Operate",
         items: [
-          { text: "Self-host", link: "/guide/self-host" },
+          { text: "DevOps: install the server", link: "/guide/self-host" },
           { text: "Access and privacy", link: "/guide/access-privacy" },
           { text: "Troubleshooting", link: "/guide/troubleshooting" },
         ],

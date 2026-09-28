@@ -1,6 +1,8 @@
 # Why Feedbacks
 
-Feedbacks is your team's slate for the web. Take a screenshot, circle a detail or sketch a change with the pencil, and discuss it together. A developer, client and authorized coding agent can follow the same conversation, with the original page context attached. Design and engineering tools can come after the idea is clear.
+Feedbacks prepares website feedback for AI-assisted UI changes and bug fixes. Clients, colleagues and testers mark the exact problem. Developers and their coding agents get the screenshot, original page, selected element, comments and approved project guidance together, then record what they changed and verified.
+
+Start with one server for your team, connect the Chrome extension, prepare projects and member access, then connect each resolving developer’s own agent through MCP. Follow the [complete setup flow](../site-docs/guide/getting-started.md).
 
 ## Keep requests and planned work distinct
 

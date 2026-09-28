@@ -1,8 +1,16 @@
 # Browser extension
 
-## Install from Chrome Web Store
+Feedbacks captures client feedback and UI test findings with the context a developer’s coding agent needs. **Your team needs a running Feedbacks server first.** DevOps installs it once; reviewers need its URL, their own account and project access. Follow the [complete setup order](../site-docs/guide/getting-started.md) or the [DevOps installation guide](../site-docs/guide/self-host.md).
 
-Open the [Feedbacks Chrome Web Store listing](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo) and choose **Add to Chrome**. Pin and open Feedbacks, enter your team's Feedbacks server address, then choose **Connect to server**. Grant access to that server, sign in and approve pairing. Chrome updates the Store installation after a new version is published there. The signed-in app's `/help` page shows its own server address and these steps.
+## Install, pin and connect from Chrome Web Store
+
+1. Open the [Feedbacks Chrome Web Store listing](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo). Choose **Add to Chrome**, then **Add extension**.
+2. Open Chrome’s **Extensions** menu (the puzzle-piece button). Find Feedbacks and click its **pin** so the icon stays in the toolbar.
+3. Sign in to your team’s Feedbacks web app. Open **Help → Copy server URL**.
+4. Click the pinned Feedbacks icon and paste the copied URL into **Your Feedbacks server**. This is the server address, not the website you want to review.
+5. Choose **Connect to server**, allow Chrome’s access to that server, sign in and approve pairing.
+
+Chrome manages updates for Store installations. For your first capture: open the website → click the pinned icon → hover and right-click an element → write the note → **Save point** → **Review & send** to finalize and inspect the evidence → **Send feedback**. Saved points are local drafts until sending. See the [complete reviewer walkthrough](../site-docs/guide/chrome-extension.md).
 
 ## Install from source
 

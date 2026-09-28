@@ -21,6 +21,10 @@
         <a id="update-steps" target="_blank" rel="noreferrer">Update steps</a>
       </div>
     </aside>
+    <p class="onboarding-intro hint">
+      Capture UI changes and client feedback with context for your team’s AI coding
+      agents.
+    </p>
     <p id="connection" role="status"></p>
     <details id="server-settings" class="server-settings">
       <summary id="server-summary">Choose a Feedbacks server</summary>
@@ -35,12 +39,13 @@
       />
       <datalist id="recent-servers"></datalist>
       <p id="server-help" class="hint">
-        Use your team's Feedbacks address. You need an account on that server.
+        Your team must install a Feedbacks server first. Ask your owner for its URL and
+        your account. Copy the address from the server’s Help page and paste it above.
         <a
-          href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/self-hosting.md"
+          href="https://feedbacks.softinator.ai/docs/guide/self-host"
           target="_blank"
           rel="noreferrer"
-          >Set up your own</a
+          >DevOps server installation guide</a
         >.
       </p>
       <button id="pair" class="primary">Connect to server</button>
@@ -143,6 +148,31 @@
         <p id="diagnostics-status" class="hint" role="status">Off</p>
       </details>
     </section>
+    <details class="first-feedback">
+      <summary>How to pin, review and send</summary>
+      <ol>
+        <li>Chrome toolbar → Extensions (puzzle piece) → pin Feedbacks.</li>
+        <li>Open the website, then click the pinned Feedbacks icon to start review.</li>
+        <li>
+          Hover an element, right-click, write a note and choose
+          <strong>Save point</strong>.
+        </li>
+        <li>
+          Choose <strong>Review &amp; send</strong> on the page to finalize and check the
+          saved images.
+        </li>
+        <li>
+          Choose <strong>Send feedback</strong> in the editor to share with your team.
+        </li>
+      </ol>
+      <p class="hint">Saved points stay on this browser until you send them.</p>
+      <a
+        href="https://feedbacks.softinator.ai/docs/guide/chrome-extension"
+        target="_blank"
+        rel="noreferrer"
+        >Full installation and capture guide</a
+      >
+    </details>
     <p id="message" role="status"></p>
     <details class="access-status" aria-label="Chrome access">
       <summary>Chrome access <span id="access-summary">Checking</span></summary>

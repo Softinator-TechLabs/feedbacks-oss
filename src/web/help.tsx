@@ -168,14 +168,154 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
           ?.content.textContent?.trim() ?? "",
     };
   }, []);
+  const serverCopy = useAction();
   return (
     <article className="reading help-page help-simple">
       <div className="help-simple-heading">
         <h1>Help &amp; setup</h1>
         <a href="https://feedbacks.softinator.ai/docs/" target="_blank" rel="noreferrer">
-          Read the documentation ↗
+          All guides
         </a>
       </div>
+      <p>
+        Feedbacks turns client requests and UI test findings into context your developer
+        and AI coding agent can use: screenshots, the exact page, selected elements and
+        project guidance.
+      </p>
+      <nav className="help-paths" aria-label="Choose a setup guide">
+        <a href="https://feedbacks.softinator.ai/docs/guide/clients">Clients</a>
+        <a href="#review-with-extension">Reviewers &amp; testers</a>
+        <a href="https://feedbacks.softinator.ai/docs/guide/self-host">
+          DevOps installation
+        </a>
+        <a href="#connect-agent">Developers using MCP</a>
+      </nav>
+      <section className="help-onboarding-section">
+        <h2>Set up in this order</h2>
+        <ol>
+          <li>
+            <strong>DevOps installs the team server.</strong> One installation on company
+            infrastructure. This Help page belongs to your current server.
+          </li>
+          <li>
+            <strong>Install, pin and connect the extension.</strong> Copy the server URL
+            below. Project capture is available once the owner grants access.
+          </li>
+          <li>
+            <strong>The owner prepares projects and people.</strong> Add website origins,
+            publish project context, optionally connect the GitHub App, add members and
+            set their profiles and responsibilities.{" "}
+            <a href="https://feedbacks.softinator.ai/docs/guide/team-setup">
+              Owner setup guide
+            </a>
+            .
+          </li>
+          <li>
+            <strong>Each developer connects their own agent.</strong> Use a personal setup
+            prompt for Codex, Claude Code or Antigravity. Reviewers do not need MCP to
+            send feedback.
+          </li>
+        </ol>
+      </section>
+      <section id="review-with-extension" className="help-onboarding-section">
+        <h2>Install and connect the Chrome extension</h2>
+        <ol>
+          <li>
+            <a href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer">
+              Open Feedbacks in the Chrome Web Store
+            </a>
+            . Choose <strong>Add to Chrome</strong>, then <strong>Add extension</strong>.
+          </li>
+          <li>
+            Open Chrome’s <strong>Extensions</strong> menu (the puzzle-piece button), find
+            Feedbacks and click its <strong>pin</strong>.
+          </li>
+          <li>
+            Copy this server URL, click the pinned Feedbacks icon and paste it into{" "}
+            <strong>Your Feedbacks server</strong>.
+          </li>
+          <li>
+            Choose <strong>Connect to server</strong>, allow Chrome’s server access, sign
+            in and approve the connection.
+          </li>
+        </ol>
+        <label htmlFor="help-server-url">Your team’s Feedbacks server URL</label>
+        <div className="help-server-copy">
+          <input
+            id="help-server-url"
+            type="text"
+            value={location.origin}
+            readOnly
+            onFocus={(event) => event.currentTarget.select()}
+          />
+          <button
+            disabled={serverCopy.busy}
+            onClick={() =>
+              void serverCopy.run(async () => {
+                try {
+                  await navigator.clipboard.writeText(location.origin);
+                } catch {
+                  throw new Error(
+                    "Clipboard access was denied. Select the server URL above and copy it manually.",
+                  );
+                }
+              }, "Server URL copied. Paste it into Your Feedbacks server in the extension.")
+            }
+          >
+            {serverCopy.busy ? "Copying…" : "Copy server URL"}
+          </button>
+        </div>
+        <ActionState action={serverCopy} />
+        <p className="muted">
+          Use this address, not the website you want to review or the public docs address.
+          No project appears? Ask the owner to grant access and add the website’s origin.
+        </p>
+      </section>
+      <section className="help-onboarding-section">
+        <h2>Send your first feedback</h2>
+        <ol>
+          <li>
+            Open the website and <strong>click the pinned Feedbacks icon</strong> to start
+            review. Choose a project if prompted.
+          </li>
+          <li>
+            Hover the element, <strong>right-click</strong>, write what should change and
+            choose <strong>Save point</strong>. Add more points as needed.
+          </li>
+          <li>
+            Choose <strong>Review &amp; send</strong> to finalize your points. Check the
+            saved screenshots and notes; redact private details.
+          </li>
+          <li>
+            Choose <strong>Send feedback</strong>. Wait for completion, then open the
+            resulting thread on this server.
+          </li>
+        </ol>
+        <p>
+          <strong>Save point is a local draft.</strong> It is not shared until Send
+          feedback. If an upload stops, use <strong>Retry Send</strong> in the same draft.
+        </p>
+        <p>
+          <a href="https://feedbacks.softinator.ai/docs/guide/chrome-extension">
+            Full extension guide: install, pin, capture and send
+          </a>
+        </p>
+      </section>
+      <section id="connect-agent" className="help-onboarding-section">
+        <h2>Resolve feedback with your own coding agent</h2>
+        <p>
+          After the owner sets up your project and member access, sign in as yourself and
+          create your setup prompt below. Paste it into Codex, Claude Code or Antigravity.
+          Ask the agent to verify project access, read the feedback and approved context,
+          then work on the agreed changes. Record checks and fix evidence before
+          resolving.
+        </p>
+        <p>
+          <a href="https://feedbacks.softinator.ai/docs/guide/mcp">
+            MCP setup and first-fix guide
+          </a>
+        </p>
+      </section>
       <ErrorNotice error={error} />
       {data ? (
         <HelpAgentSetup
@@ -186,22 +326,6 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
       ) : (
         !error && <Loading />
       )}
-      <section className="help-chrome-quick">
-        <div>
-          <h2>Review in Chrome</h2>
-          <p>
-            Install the extension, then connect to <code>{location.origin}</code>.
-          </p>
-        </div>
-        <a
-          className="button"
-          href={chromeWebStoreUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Get the extension ↗
-        </a>
-      </section>
       <details
         id="update-extension"
         className="compact-details"

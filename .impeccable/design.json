@@ -1,88 +1,64 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-16T01:00:00Z",
+  "generatedAt": "2026-09-28T05:51:10.672062Z",
   "title": "Design System: Feedbacks",
   "components": [
     {
       "name": "App primary button",
       "kind": "button",
-      "refersTo": "app-button-primary",
       "description": "Incumbent compact application action; retains the app focus and interaction states.",
       "html": "<button class=\"ds-app-primary\" type=\"button\">Save changes</button>",
-      "css": ".ds-app-primary{font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border:1px solid var(--accent,#17324d);border-radius:8px;background:var(--accent,#17324d);color:#fff;font-size:15px;font-weight:600;line-height:1.55;cursor:pointer}.ds-app-primary:enabled:hover{background:#254762;border-color:#254762}.ds-app-primary:enabled:active{background:#10283e}.ds-app-primary:focus-visible{outline:2px solid var(--focus,#3875a9);outline-offset:2px}.ds-app-primary:disabled{color:#66727a;background:#eef1f3;border-color:#d5dce1;cursor:not-allowed}"
+      "css": ".ds-app-primary{font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border:1px solid var(--accent,#17324d);border-radius:7px;background:var(--accent,#17324d);color:#fff;font-size:15px;font-weight:600;line-height:1.55;cursor:pointer}.ds-app-primary:enabled:hover{background:#254762;border-color:#254762}.ds-app-primary:enabled:active{background:#10283e}.ds-app-primary:focus-visible{outline:2px solid var(--focus,#3875a9);outline-offset:2px}.ds-app-primary:disabled{color:#66727a;background:#eef1f3;border-color:#d5dce1;cursor:not-allowed}"
     },
     {
       "name": "App labeled input",
       "kind": "input",
-      "refersTo": "app-input",
       "description": "Native field with the existing label gap, minimum height, and keyboard outline.",
       "html": "<label class=\"ds-app-field\"><span>Project name</span><input type=\"text\" placeholder=\"Website review\" /></label>",
       "css": ".ds-app-field{font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;display:flex;flex-direction:column;gap:8px;color:#202c37;font-size:13.5px;line-height:1.55}.ds-app-field span{font-weight:600}.ds-app-field input{font:inherit;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--control-border,#adb8c1);border-radius:8px;background:var(--surface,#fff);color:#202c37;caret-color:var(--accent,#17324d)}.ds-app-field input::placeholder{color:#687783;opacity:1}.ds-app-field input:hover{border-color:var(--control-hover,#7b8c99)}.ds-app-field input:focus-visible{outline:2px solid var(--focus,#3875a9);outline-offset:2px}"
     }
   ],
   "narrative": {
-    "northStar": "Your team's slate for the web",
-    "overview": "A bold, visual public website with warm paper, heavy type, annotated webpage scraps and short conversations. The application and extension retain their focused review controls.",
-    "keyCharacteristics": [
-      "Visual-first public landing",
-      "Short copy and explicit illustrative examples",
-      "Scoped website font and palette",
-      "Accessible, user-triggered pencil motion"
-    ],
+    "northStar": "Context your AI agent can use",
+    "overview": "The public website explains visual feedback through warm paper, heavy Manrope type and coral accents. Plain language and one concrete illustrated request make the evidence and next action easy to understand. This refinement preserves the existing identity.\n\nThe application and extension keep their focused system-font interface, Oxford actions and existing theme behavior. Their density serves reviewing, setup and resolution. Each surface retains its own scale.",
+    "keyCharacteristics": [],
     "rules": [],
     "dos": [
-      "Keep source and self-hosting primary.",
-      "Keep drafts safe during navigation.",
-      "Preserve screenshot proportions."
+      "Do preserve each surface's existing typography, palette and theme behavior.",
+      "Do use exact action labels and distinguish local drafts from sent feedback.",
+      "Do preserve original screenshot proportions and label illustrative evidence.",
+      "Do keep drafts safe during navigation and failed requests."
     ],
     "donts": [
-      "Do not invent customer evidence or automatic integrations.",
-      "Do not apply marketing display styles to the application."
+      "Don't invent successful writes, automatic fixes, integrations or customer evidence.",
+      "Don't apply marketing display styles to the application or extension.",
+      "Don't treat reviewer guidance or weights as authorization."
     ]
   },
-  "tokens": {
-    "colors": [
-      {
-        "name": "site-ink",
-        "value": "#202020"
-      },
-      {
-        "name": "site-paper",
-        "value": "#fffdfa"
-      },
-      {
-        "name": "site-coral",
-        "value": "#db4939"
-      },
-      {
-        "name": "app-oxford",
-        "value": "#17324d"
-      }
-    ],
-    "typography": [
-      {
-        "name": "site-display",
-        "fontFamily": "Manrope, sans-serif",
-        "fontWeight": 800,
-        "fontSize": "clamp(48px, 6.6vw, 92px)",
-        "lineHeight": 1.08
-      }
-    ],
+  "extensions": {
     "motion": [
       {
-        "name": "site-pencil",
-        "value": "900ms",
-        "purpose": "User-triggered stroke, disabled for reduced motion."
+        "name": "site-button-transition",
+        "value": "150ms",
+        "purpose": "Website action color and background transitions; disabled for reduced motion. Workflow steps update without animation."
       }
     ],
     "breakpoints": [
+      {
+        "name": "site-compact",
+        "value": "1050px"
+      },
+      {
+        "name": "landing-stack",
+        "value": "760px"
+      },
       {
         "name": "site-mobile",
         "value": "720px"
       },
       {
-        "name": "site-compact",
-        "value": "1050px"
+        "name": "help-server-copy-stack",
+        "value": "600px"
       }
     ]
   }

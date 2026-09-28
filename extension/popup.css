@@ -362,3 +362,17 @@ button.text-action {
 .is-paired .diagnostic-controls {
   margin-top: 6px;
 }
+
+.is-paired .onboarding-intro {
+  display: none;
+}
+.first-feedback {
+  margin-block: 12px;
+  font-size: 13px;
+}
+.first-feedback ol {
+  padding-left: 20px;
+}
+.first-feedback li {
+  margin-block: 10px;
+}

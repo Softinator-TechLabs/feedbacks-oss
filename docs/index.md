@@ -22,3 +22,5 @@ The public, searchable user and developer guide is built from [`site-docs`](../s
 | Understand contribution policy    | [Governance](../GOVERNANCE.md), [conduct](../CODE_OF_CONDUCT.md), [trademarks](../TRADEMARKS.md)                                           |
 
 Documentation checks enforce links and index reachability. They do not prove that every prose claim is current. Maintainers and agents must inspect the implementation when a relevant behavior changes.
+
+User onboarding: [complete setup](../site-docs/guide/getting-started.md), [client guide](../site-docs/guide/clients.md), [owner setup](../site-docs/guide/team-setup.md), [Chrome Store listing](chrome-web-store.md).

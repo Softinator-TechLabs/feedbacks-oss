@@ -1,49 +1,39 @@
-const demo = document.querySelector(".main-scrap");
 const steps = {
-  mark: {
-    name: "Maya",
-    role: "Design reviewer",
-    avatar: "M",
-    comment: "“Give this button a little more breathing room.”",
-    status: "Open",
-    explanation: "A screenshot and a pencil mark keep the exact point in view.",
-  },
-  discuss: {
-    name: "Arjun",
-    role: "Product reviewer",
-    avatar: "A",
-    comment: "“Yes. Keep the mobile layout in mind, too.”",
-    status: "Discussing",
-    explanation: "Your team works through the details in one thread.",
-  },
-  agent: {
-    name: "Coding assistant",
-    role: "Connected through MCP",
-    avatar: "AI",
-    comment: "“I have the screenshot and both comments. I’ll check both sizes.”",
-    status: "Context read",
-    explanation:
-      "Your assistant reads the capture, replies and approved reviewer guidance through MCP.",
-  },
+  capture: [
+    "Right-click the element. Explain the change.",
+    "Open the pinned Feedbacks extension on the website. Hover the button, right-click it, write the note and choose Save point.",
+    "The point’s original screenshot and viewport",
+    "Saved in this browser. Not sent yet.",
+    "Add more points, then choose Review & send.",
+  ],
+  send: [
+    "Check the evidence before you share it.",
+    "Choose Review & send to finalize your saved points. Check the images and notes, redact private details, then choose Send feedback.",
+    "Reviewed screenshots and notes attached to the same thread",
+    "Shared only after Send feedback.",
+    "Open the thread on your team’s Feedbacks server.",
+  ],
+  agent: [
+    "Ask your agent to read the feedback.",
+    "The developer connects their own agent through MCP, reads the request with project guidance and asks it to make the agreed change in the codebase.",
+    "Page, element, screenshots, comments and authorized project context",
+    "Developer verifies the change before resolving.",
+    "Record the actual checks and commit or PR in the thread.",
+  ],
 };
-for (const button of document.querySelectorAll("[data-step]"))
+for (const button of document.querySelectorAll("[data-step]")) {
   button.addEventListener("click", () => {
-    const step = button.dataset.step,
-      value = steps[step];
-    demo.dataset.stage = step;
+    const value = steps[button.dataset.step];
     for (const control of document.querySelectorAll("[data-step]"))
       control.setAttribute("aria-pressed", String(control === button));
-    document.querySelector("#example-avatar").textContent = value.avatar;
-    const author = document.querySelector("#example-author"),
-      role = document.createElement("span");
-    role.textContent = value.role;
-    author.replaceChildren(document.createTextNode(value.name + " "), role);
-    document.querySelector("#example-comment").textContent = value.comment;
-    document.querySelector("#example-status").textContent = value.status;
-    document.querySelector("#demo-explanation").textContent = value.explanation;
-    demo.classList.remove("replay");
-    if (step === "mark")
-      requestAnimationFrame(() => {
-        demo.classList.add("replay");
-      });
+    [
+      "demo-title",
+      "demo-description",
+      "demo-evidence",
+      "demo-state",
+      "demo-next",
+    ].forEach((id, index) => {
+      document.getElementById(id).textContent = value[index];
+    });
   });
+}
