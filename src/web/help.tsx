@@ -1,3 +1,4 @@
+import { setServerInExtension } from "./extension-setup.js";
 import React, { useState } from "react";
 import { Icon } from "./icons.js";
 import {
@@ -291,6 +292,7 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
     };
   }, []);
   const serverCopy = useAction();
+  const extensionSetup = useAction();
   return (
     <article className="reading help-page help-quickstart">
       <div className="help-simple-heading">
@@ -370,8 +372,9 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
             {React.createElement("feedbacks-demo", { step: "pin" })}
           </div>
           <p>
-            Paste this URL into the extension, then choose{" "}
-            <strong>Connect to server</strong>.
+            Open the pinned Feedbacks icon on this page to detect your server, then choose{" "}
+            <strong>Connect to server</strong>. You can also send the address to the
+            extension or copy it below.
           </p>
           <div className="help-server-copy">
             <input
@@ -381,6 +384,18 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
               readOnly
               onFocus={(event) => event.currentTarget.select()}
             />
+            <button
+              className="primary"
+              disabled={extensionSetup.busy}
+              onClick={() =>
+                void extensionSetup.run(
+                  setServerInExtension,
+                  "Server set. Continue in extension Settings to connect.",
+                )
+              }
+            >
+              {extensionSetup.busy ? "Setting…" : "Set in extension"}
+            </button>
             <button
               disabled={serverCopy.busy}
               onClick={() =>
@@ -396,6 +411,7 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
               {serverCopy.busy ? "Copying…" : "Copy server URL"}
             </button>
           </div>
+          <ActionState action={extensionSetup} />
           <ActionState action={serverCopy} />
           <LatestExtension />
           <p className="help-review-shortcut">

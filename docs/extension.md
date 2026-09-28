@@ -6,11 +6,13 @@ Feedbacks captures client feedback and UI test findings with the context a devel
 
 1. Open the [Feedbacks Chrome Web Store listing](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo). Choose **Add to Chrome**, then **Add extension**.
 2. Open Chrome’s **Extensions** menu (the puzzle-piece button). Find Feedbacks and click its **pin** so the icon stays in the toolbar. **Pinning is important for quick access:** use that icon whenever you want to start or resume review.
-3. Sign in to your team’s Feedbacks web app. Open **Setup → Copy server URL**.
-4. Click the pinned Feedbacks icon and paste the copied URL into **Your Feedbacks server**. This is the server address, not the website you want to review.
+3. Sign in to your team’s Feedbacks web app and open **Setup**.
+4. Click the pinned Feedbacks icon while this page is active. An updated server identifies itself and the extension fills an empty server setting automatically. **Set in extension**, beside **Copy server URL**, opens extension Settings with that address after you have opened the icon on this tab. Before that first activation, the button explains how to open the icon; older versions can still use copy/paste.
 5. Choose **Connect to server**, allow Chrome’s access to that server, sign in and approve pairing.
 
 Chrome manages updates for Store installations. For your first capture: open the website → click the pinned icon → hover and right-click an element → write the note → **Save point** → **Review & send** to finalize and inspect the evidence → **Send feedback**. Saved points are local drafts until sending. See the [complete reviewer walkthrough](../site-docs/guide/chrome-extension.md).
+
+Detection uses the current tab only and adds no Chrome permissions. It never replaces a saved server, an address you are typing or pending pairing. It does not connect an account automatically. For a fresh local HTTP installation, paste the address and enable the explicit local-server option before connecting; HTTPS is detected automatically. Refreshing the page removes its setup bridge, so reopen the icon before using **Set in extension** again.
 
 ## Install from source
 

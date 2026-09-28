@@ -2,6 +2,7 @@ import { reviewDefaults, updateReviewDefaults } from "./review-preferences.js";
 import { diagnosticCollector, cleanDiagnostics } from "./diagnostics.js";
 import "./utils.js";
 import { createReviewController } from "./review-session.js";
+import { createServerSetup, probeFeedbacksServer } from "./server-discovery.js";
 import { createPairingCoordinator } from "./pairing.js";
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 import { combinedImageSize, combinedImageNeedsResize } from "./combined-image.js";
@@ -36,6 +37,13 @@ const set = async (value) => {
   await ready;
   await chrome.storage.local.set(value);
 };
+const serverSetup = createServerSetup({
+  get,
+  set,
+  defaultServer: DEFAULT,
+  normalize: U.server,
+  probe: (tabId) => probeFeedbacksServer(chrome, tabId),
+});
 const recordings = createRecordingControls({ chrome, sessionFor });
 let polling = false,
   capturing = false,
@@ -1831,6 +1839,15 @@ async function route(message, sender) {
     sender.url?.startsWith(chrome.runtime.getURL("popup.html")) ||
     sender.url?.startsWith(chrome.runtime.getURL("options.html"));
   if (!trusted) {
+    if (message.type === "useDetectedServer" && sender.tab && sender.frameId === 0) {
+      const current = await chrome.tabs.get(sender.tab.id);
+      if (!sender.url || new URL(sender.url).origin !== new URL(current.url).origin)
+        throw Error("Open Feedbacks on this page again.");
+      const result = await serverSetup.detect(sender.tab.id);
+      if (result.status === "set" || result.status === "ready")
+        await chrome.runtime.openOptionsPage();
+      return result;
+    }
     if (sender.tab && sender.frameId === 0 && message.type === "instantStatus") {
       return { enabled: false };
     }
@@ -2085,6 +2102,8 @@ async function route(message, sender) {
   const state = await get(),
     server = state.server || DEFAULT;
   switch (message.type) {
+    case "detectServer":
+      return serverSetup.detect(message.tabId);
     case "settings":
       await pollPair();
       return {
@@ -2236,7 +2255,7 @@ async function route(message, sender) {
     case "saveServerDraft": {
       if (typeof message.value !== "string" || message.value.length > 2048)
         throw Error("Server address is too long.");
-      await set({ serverDraft: message.value });
+      await serverSetup.run(() => set({ serverDraft: message.value }));
       return {};
     }
     case "preparePair": {
@@ -2246,11 +2265,13 @@ async function route(message, sender) {
         !/^[a-f0-9-]{36}$/.test(message.requestId)
       )
         throw Error("Invalid connection request.");
-      return pairing.prepare({
-        server: origin,
-        allowLocal: message.allowLocal === true,
-        requestId: message.requestId,
-      });
+      return serverSetup.run(() =>
+        pairing.prepare({
+          server: origin,
+          allowLocal: message.allowLocal === true,
+          requestId: message.requestId,
+        }),
+      );
     }
     case "finishPair":
       return pairing.finish();
