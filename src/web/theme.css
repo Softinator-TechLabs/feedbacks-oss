@@ -47,13 +47,13 @@
   background: var(--soft-surface);
   border-color: transparent;
 }
-:root[data-theme="dark"] :is(.thread-priority-button, .thread-filter-clear) {
+:root[data-theme="dark"] .thread-filter-clear {
   background: transparent;
   border-color: transparent;
 }
 :root[data-theme="dark"] .thread-priority-button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-  border-color: transparent;
+  border-color: var(--control-border);
 }
 :root[data-theme="dark"] .thread-row-priority-button {
   color: var(--muted);

@@ -14,24 +14,18 @@
   width: 100%;
 }
 .thread-filter-panel {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 8px;
+  position: relative;
 }
 .thread-filter-mobile-toggle {
   display: none;
 }
 .thread-filter-panel > .thread-filters {
-  flex: 1;
   min-width: 0;
-  order: 0;
 }
 .thread-filter-panel > .saved-views {
-  order: 1;
-  flex-shrink: 0;
-  margin-top: 28px;
-  position: relative;
+  position: absolute;
+  top: 8px;
+  right: 8px;
   width: 44px;
   height: 44px;
 }
@@ -64,9 +58,9 @@
 .saved-view-popover {
   position: absolute;
   right: 0;
-  bottom: calc(100% + 8px);
+  top: calc(100% + 8px);
   z-index: 20;
-  width: min(320px, calc(100vw - 32px));
+  width: min(320px, calc(100vw - 64px));
   max-height: min(65dvh, 440px);
   overflow-y: auto;
   padding: 16px;
@@ -106,28 +100,15 @@
 .saved-view-popover .error {
   margin: 10px 0 0;
 }
-@media (min-width: 681px) {
-  .saved-view-popover {
-    top: calc(100% + 8px);
-    bottom: auto;
-  }
-}
 @media (max-width: 680px) {
-  .thread-filter-panel {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 44px;
-    align-items: center;
-    column-gap: 8px;
-    row-gap: 0;
-    padding: 10px 14px;
-  }
   .thread-filter-mobile-toggle {
     display: flex;
     align-items: center;
     gap: 8px;
     min-width: 0;
     min-height: 44px;
-    padding: 0;
+    padding: 0 48px 0 0;
+    width: 100%;
     border: 0;
     background: transparent;
     color: var(--accent);
@@ -157,13 +138,8 @@
     transform: translateY(2px) rotate(225deg);
   }
   .thread-filter-panel > .saved-views {
-    margin-top: 0;
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .thread-filter-panel > .thread-filters {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    top: 14px;
+    right: 14px;
   }
   .thread-filter-panel:not(.is-expanded) > .thread-filters {
     display: none;

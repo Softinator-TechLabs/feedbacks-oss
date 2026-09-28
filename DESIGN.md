@@ -169,7 +169,7 @@ The [extension popup](extension/popup.html) states the running-server and accoun
 
 ### Navigation and review controls
 
-Navigation preserves applied filters and protects unsaved drafts. Optional organization, personal views and diagnostics use disclosure sections. Screenshot comparison preserves proportions and provides a labeled native range control. Arrow-key navigation must not intercept typing, selectors, sliders or dialogs. Keep response obligation, work status and delivery evidence distinct.
+Navigation preserves applied filters and protects unsaved drafts. Thread rows keep a narrow selection column at every breakpoint, with actions below the content on mobile. The Saved views icon stays in the filter panel’s top-right corner without reserving a separate column. Top priority uses the same outlined control treatment as Archive. Optional organization, personal views and diagnostics use disclosure sections. Screenshot comparison preserves proportions and provides a labeled native range control. Arrow-key navigation must not intercept typing, selectors, sliders or dialogs. Keep response obligation, work status and delivery evidence distinct.
 
 ## Do's and Don'ts
 

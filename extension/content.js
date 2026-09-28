@@ -1180,7 +1180,7 @@
     button("Hide", hideControls, barHeading).title =
       "Keep reviewing without the icon. Reopen Feedbacks from Chrome to restore it.";
     button("Exit", exitReview, barHeading).title =
-      "Stop review (R). Draft points stay on this page.";
+      "Stop review (Esc or R). Draft points stay on this page.";
     bar.append(barHeading);
     const dragHint = document.createElement("p");
     dragHint.className = "drag-hint";
@@ -1763,9 +1763,19 @@
     (event) => {
       if (!active) return;
       if (event.key === "Escape") {
+        if (event.isComposing || event.repeat) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
         const imageView = root.querySelector(".point-image-view");
         if (imageView) {
           imageView.remove();
+          return;
+        }
+        if (pointMenu.classList.contains("hidden") && !choosing) {
+          send({ type: "stopReview" }).catch((error) => {
+            notice.textContent = error.message;
+            revealDrawer();
+          });
           return;
         }
         releasePointImage(chosen);

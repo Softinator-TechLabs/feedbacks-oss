@@ -99,6 +99,7 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
     for (const [width, height, device] of [
       [1280, 800, "desktop"],
       [1059, 949, "medium"],
+      [820, 950, "tablet"],
       [390, 844, "mobile"],
     ])
       for (const theme of ["light", "dark"]) {
@@ -159,6 +160,33 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
             await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
             true,
           );
+          const queueLayout = await page.evaluate(() => {
+            const rect = (selector) =>
+              document.querySelector(selector).getBoundingClientRect();
+            const row = rect(".thread-row"),
+              content = rect(".thread-row-content");
+            const panel = rect(".thread-filter-panel"),
+              saved = rect(".saved-views");
+            return {
+              contentShare: content.width / row.width,
+              contentOffset: content.left - row.left,
+              savedTop: saved.top - panel.top,
+              savedRight: panel.right - saved.right,
+              priorityBorder: getComputedStyle(
+                document.querySelector(".thread-priority-button"),
+              ).borderTopColor,
+            };
+          });
+          assert.ok(
+            queueLayout.contentShare > 0.5,
+            "Feedback must not be squeezed into an action column",
+          );
+          assert.ok(queueLayout.contentOffset < 80, "No empty leading column");
+          assert.ok(
+            queueLayout.savedTop < 20 && queueLayout.savedRight < 25,
+            "Saved views stays at the filter's top-right",
+          );
+          assert.notEqual(queueLayout.priorityBorder, "rgba(0, 0, 0, 0)");
           await page.evaluate(() => scrollTo(0, 0));
           images[`queue-${device}-${theme}`] = await page.screenshot({
             type: "png",

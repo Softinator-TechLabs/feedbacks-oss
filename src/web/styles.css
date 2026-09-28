@@ -256,12 +256,8 @@ small {
 .thread-list-quick-actions button {
   white-space: nowrap;
 }
-.thread-priority-button {
-  border-color: transparent;
-  background: transparent;
-}
 .thread-priority-button[aria-pressed="true"] {
-  border-color: transparent;
+  border-color: var(--control-border);
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 .thread-filter-panel {
@@ -1504,7 +1500,7 @@ legend {
     gap: 12px;
   }
   .thread-row {
-    grid-template-columns: minmax(0, 1fr) 145px;
+    grid-template-columns: 36px minmax(0, 1fr) 145px;
   }
   .thread-stats {
     grid-column: 1/-1;
@@ -1732,7 +1728,6 @@ legend {
     flex-basis: 100%;
   }
   .thread-row {
-    grid-template-columns: minmax(0, 1fr) 150px;
     padding: 12px;
     gap: 8px;
   }

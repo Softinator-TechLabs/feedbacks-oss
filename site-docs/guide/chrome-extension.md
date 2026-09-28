@@ -111,3 +111,5 @@ Open **Settings → Review defaults** to choose navigation locking, element high
 The floating Page Controls includes pins, resolved points, **Page comments** and **Start diagnostics**. Page comments opens the configured server with threads filtered to this page across screen sizes. Diagnostics stay local until you inspect and select entries to share with a capture; Stop discards the collection.
 
 **Full page** and **Record video** are directly available in the extension popup. They can create more media for an agent to process and may increase token use. Visible capture remains the primary action.
+
+Press **Esc** or **R** to exit review. Esc closes an open point editor or image preview first; press it again to exit. Saved draft points stay on the page.
