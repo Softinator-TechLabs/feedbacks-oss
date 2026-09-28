@@ -69,7 +69,7 @@ test(
         (await db.query("SELECT version FROM migrations ORDER BY version")).map(
           (r) => r.version,
         ),
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
       );
       const owner = await ops.auth.bootstrap(
         "owner@example.test",
@@ -92,6 +92,29 @@ test(
       const second = await ops.executeOperation(owner, "threads.create", {
         ...base,
         idempotencyKey: "cursor-second",
+      });
+      const claims = await Promise.allSettled(
+        ["worker-a", "worker-b"].map((idempotencyKey) =>
+          ops.executeOperation(owner, "assignments.claim", {
+            threadId: first.id,
+            revision: first.revision,
+            summary: "Concurrent claim",
+            idempotencyKey,
+          }),
+        ),
+      );
+      assert.equal(claims.filter((r) => r.status === "fulfilled").length, 1);
+      assert.equal(
+        claims.filter((r) => r.status === "rejected" && r.reason.code === "CONFLICT")
+          .length,
+        1,
+      );
+      const activeClaim = claims.find((r) => r.status === "fulfilled");
+      assert.ok(activeClaim?.status === "fulfilled");
+      await ops.executeOperation(owner, "assignments.release", {
+        assignmentId: activeClaim.value.id,
+        revision: activeClaim.value.revision,
+        outcome: "paused",
       });
       a = await pool.connect();
       b = await pool.connect();
