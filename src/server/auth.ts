@@ -395,6 +395,7 @@ export class Auth {
             "views.get",
             "views.like",
             "assets.upload",
+            "recordings.upload",
             "assets.get",
             "context.changes",
           ],

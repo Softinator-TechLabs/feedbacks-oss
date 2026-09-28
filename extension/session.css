@@ -1,0 +1,54 @@
+h2 {
+  font-size: 20px;
+  margin-top: 28px;
+}
+#coverage {
+  padding-left: 20px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+#coverage li {
+  margin: 8px 0;
+}
+#evidence {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow: auto;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+details {
+  margin: 18px 0;
+}
+summary {
+  cursor: pointer;
+  min-height: 44px;
+}
+button:focus-visible,
+summary:focus-visible,
+pre:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .controls button {
+    flex: 1 1 100%;
+  }
+  header {
+    padding: 16px 20px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+.session-stopped #privacy,
+.session-stopped #redirect-options,
+.session-stopped #start,
+.session-stopped main > .hint {
+  display: none;
+}
+.session-stopped #review > h2 {
+  display: none;
+}

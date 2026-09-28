@@ -1,4 +1,9 @@
 import { diagnosticsSchema } from "./diagnostics.js";
+import {
+  recordingSchema,
+  recordingEventSchema,
+  RECORDING_EVENTS_PAGE_MAX,
+} from "./recordings.js";
 import { z } from "zod";
 import { tagColors } from "./taxonomy.js";
 const id = z.string().uuid(),
@@ -220,6 +225,11 @@ export const screenshotMarkSchema = z.object({
   annotationId: id.optional(),
   origin: z.enum(["element"]).optional(),
   text: z.string().max(200).optional(),
+});
+export const recordingFrameSchema = z.object({
+  recordingId: id,
+  atMs: z.number().finite().min(0).max(300000),
+  videoTimeMs: z.number().finite().min(0).max(300000),
 });
 export const captureRegionSchema = z.object({
   startY: z.number().finite().min(0),
@@ -793,6 +803,22 @@ export const inputSchemas = {
     context: contextSchema,
     liked: z.boolean(),
   }),
+  "recordings.upload": z.object({
+    ...tm,
+    recording: recordingSchema,
+    idempotencyKey: z.string().min(8).max(200),
+  }),
+  "recordings.list": z.object({ threadId: id }),
+  "recordings.get": z.object({ recordingId: id }),
+  "recordings.events": z.object({
+    recordingId: id,
+    offset: z.number().int().min(0).max(50000).default(0),
+    limit: z.number().int().min(1).max(RECORDING_EVENTS_PAGE_MAX).default(100),
+    type: recordingEventSchema.shape.type.optional(),
+    fromMs: z.number().finite().min(0).max(300000).optional(),
+    toMs: z.number().finite().min(0).max(300000).optional(),
+  }),
+  "recordings.export": z.object({ recordingId: id }),
   "assets.upload": z.object({
     ...tm,
     imageBase64: z.string().max(13982000),
@@ -803,6 +829,7 @@ export const inputSchemas = {
       .regex(/^[a-z0-9][a-z0-9._-]*$/)
       .optional(),
     captureRegion: captureRegionSchema.optional(),
+    recordingFrame: recordingFrameSchema.optional(),
     captureSections: z.array(captureSectionSchema).min(1).optional(),
     markings: z.array(screenshotMarkSchema).max(2000).optional(),
     idempotencyKey: z.string().min(8).max(200),
@@ -876,6 +903,7 @@ const assetMetadataOutput = z.object({
   url: z.string(),
   filename: z.string().optional(),
   captureRegion: captureRegionSchema.optional(),
+  recordingFrame: recordingFrameSchema.optional(),
   captureSections: z.array(captureSectionSchema).optional(),
   markings: z.array(screenshotMarkSchema).optional(),
   projectId: id.optional(),
@@ -1062,6 +1090,43 @@ const documentOutput = z.object({
   bytes: z.number().int().positive(),
   createdAt: z.string(),
   url: z.string(),
+});
+const recordingSummaryOutput = z.object({
+  id,
+  projectId: id,
+  threadId: id,
+  startedAt: z.string(),
+  durationMs: z.number(),
+  mode: z.enum(["session", "video"]),
+  url: z.string(),
+  privacy: recordingSchema.shape.privacy,
+  coverage: recordingSchema.shape.coverage,
+  eventCount: z.number(),
+  video: recordingSchema.shape.video.optional(),
+  createdAt: z.string(),
+});
+const recordingExportThreadOutput = z.object({
+  id,
+  revision: z.number().int().positive(),
+  projectId: id,
+  body: z.string(),
+  context: z.unknown(),
+  createdAt: z.string(),
+  discussionTruncated: z.boolean(),
+  framesTruncated: z.boolean(),
+  frames: z
+    .array(
+      z.object({
+        id,
+        contentType: z.string(),
+        filename: z.string().optional(),
+        recordingFrame: recordingFrameSchema,
+      }),
+    )
+    .max(100),
+  discussion: z.array(
+    z.object({ id, body: z.string(), author: z.unknown(), createdAt: z.string() }),
+  ),
 });
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "assignments.delegations": z.object({
@@ -1530,6 +1595,21 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "threads.retryDeletion": deletionOutput,
   "views.get": viewOutput,
   "views.like": viewOutput,
+  "recordings.upload": z.object({
+    recording: recordingSummaryOutput,
+    thread: threadOutput,
+  }),
+  "recordings.list": z.object({ items: z.array(recordingSummaryOutput) }),
+  "recordings.get": z.object({ recording: recordingSchema }),
+  "recordings.events": z.object({
+    items: z.array(recordingEventSchema),
+    nextOffset: z.number().nullable(),
+    total: z.number(),
+  }),
+  "recordings.export": z.object({
+    recording: recordingSchema,
+    thread: recordingExportThreadOutput,
+  }),
   "assets.get": assetOutput,
   "assets.upload": z.object({ asset: assetOutput, thread: threadOutput }),
   "assets.uploadVideo": z.object({ asset: assetOutput, thread: threadOutput }),
@@ -1598,6 +1678,10 @@ export const agentTokenScopes = [
   "projects.context.get",
   "projects.context.save",
   "projects.taxonomy.get",
+  "recordings.list",
+  "recordings.get",
+  "recordings.events",
+  "recordings.export",
   ...scopedAgentOperations,
   "threads.annotationStatus",
   "threads.annotationPlan",
@@ -1662,7 +1746,9 @@ export const agentOperations = businessOperations.filter(
 // The one-click owner setup must not silently grant external GitHub writes.
 // Issue creation is available only through a separately issued scoped key.
 export const ownerTokenScopes = [
-  ...agentOperations.filter((name) => name !== "github.issueCreate"),
+  ...agentOperations.filter(
+    (name) => name !== "github.issueCreate" && !name.startsWith("recordings."),
+  ),
   "context.policy",
 ];
 const readOperations = new Set<string>([
@@ -1703,6 +1789,10 @@ const readOperations = new Set<string>([
   "reviewViews.list",
   "views.get",
   "assets.get",
+  "recordings.list",
+  "recordings.get",
+  "recordings.events",
+  "recordings.export",
   "instructions.get",
   "context.export",
   "context.changes",

@@ -9,6 +9,7 @@ import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
 import { LocalAssets } from "../src/server/assets.js";
 import { createApp } from "../src/server/app.js";
+import sharp from "sharp";
 
 test("video feedback stays in the authorized project and rejects invalid media", async () => {
   const pg = new PGlite();
@@ -134,6 +135,12 @@ test("video feedback stays in the authorized project and rejects invalid media",
       projectIds: [other.id],
       scopes: ["assets.get"],
     });
+    let storageReads = 0;
+    const readObject = store.get.bind(store);
+    store.get = async (key) => {
+      storageReads++;
+      return readObject(key);
+    };
     server = createApp(ops.config, db, store).listen(0, "127.0.0.1");
     await new Promise<void>((resolve) => server!.once("listening", resolve));
     const origin = `http://127.0.0.1:${(server.address() as any).port}`;
@@ -161,6 +168,98 @@ test("video feedback stays in the authorized project and rejects invalid media",
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type") || "", /^video\/webm/);
     assert.deepEqual(Buffer.from(await response.arrayBuffer()), webm);
+    assert.equal(response.headers.get("accept-ranges"), "bytes");
+    const head = await fetch(url, {
+      method: "HEAD",
+      headers: { Authorization: `Bearer ${token.token}`, Range: "bytes=0-15" },
+    });
+    assert.equal(head.status, 200);
+    assert.equal(head.headers.get("content-length"), String(webm.length));
+    assert.equal((await head.arrayBuffer()).byteLength, 0);
+    const changed = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token.token}`,
+        Range: "bytes=0-15",
+        "If-Range": '"different-representation"',
+      },
+    });
+    assert.equal(changed.status, 200);
+    assert.deepEqual(Buffer.from(await changed.arrayBuffer()), webm);
+    for (const [range, from, to] of [
+      ["bytes=0-15", 0, 15],
+      [`bytes=${webm.length - 16}-`, webm.length - 16, webm.length - 1],
+      ["bytes=-16", webm.length - 16, webm.length - 1],
+      [
+        `bytes=${webm.length - 16}-${webm.length + 20}`,
+        webm.length - 16,
+        webm.length - 1,
+      ],
+    ] as const) {
+      const partial = await fetch(url, {
+        headers: { Authorization: `Bearer ${token.token}`, Range: range },
+      });
+      assert.equal(partial.status, 206);
+      assert.equal(
+        partial.headers.get("content-range"),
+        `bytes ${from}-${to}/${webm.length}`,
+      );
+      assert.equal(partial.headers.get("content-length"), String(to - from + 1));
+      assert.equal(partial.headers.get("accept-ranges"), "bytes");
+      assert.match(partial.headers.get("content-type") || "", /^video\/webm/);
+      assert.deepEqual(
+        Buffer.from(await partial.arrayBuffer()),
+        webm.subarray(from, to + 1),
+      );
+    }
+    for (const range of [
+      `bytes=${webm.length}-`,
+      "bytes=10-5",
+      "bytes=-0",
+      "bytes=-",
+      "bytes=garbage-5",
+      "bytes=0-1,4-5",
+      "items=0-1",
+      "bytes=9007199254740993-",
+    ]) {
+      const invalid = await fetch(url, {
+        headers: { Authorization: `Bearer ${token.token}`, Range: range },
+      });
+      assert.equal(invalid.status, 416, range);
+      assert.equal(invalid.headers.get("content-range"), `bytes */${webm.length}`);
+      assert.equal((await invalid.arrayBuffer()).byteLength, 0);
+    }
+    const wrongProject = await ops.executeOperation(owner, "tokens.create", {
+      name: "Other project reader",
+      projectIds: [project.id],
+      scopes: ["assets.get"],
+    });
+    const beforeDenied = storageReads;
+    assert.equal((await fetch(url, { headers: { Range: "bytes=0-15" } })).status, 401);
+    assert.equal(
+      (
+        await fetch(url, {
+          headers: { Authorization: `Bearer ${wrongProject.token}`, Range: "bytes=0-15" },
+        })
+      ).status,
+      403,
+    );
+    assert.equal(storageReads, beforeDenied, "denied ranges never read private storage");
+    const image = await ops.executeOperation(owner, "assets.upload", {
+      threadId: thread.id,
+      revision: upload.thread.revision,
+      imageBase64: (
+        await sharp({ create: { width: 2, height: 2, channels: 3, background: "blue" } })
+          .png()
+          .toBuffer()
+      ).toString("base64"),
+      idempotencyKey: "ordinary-image-range",
+    });
+    const fullImage = await fetch(`${origin}${image.asset.url}`, {
+      headers: { Authorization: `Bearer ${token.token}`, Range: "bytes=0-1" },
+    });
+    assert.equal(fullImage.status, 200, "image responses preserve full-byte behavior");
+    assert.equal(fullImage.headers.get("content-range"), null);
+    assert.equal((await fullImage.arrayBuffer()).byteLength, image.asset.bytes);
     await assert.rejects(
       ops.executeOperation(reviewer, "assets.get", { assetId: upload.asset.id }),
       { code: "FORBIDDEN" },

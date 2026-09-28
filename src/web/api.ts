@@ -304,6 +304,7 @@ export type Thread = {
     rendition: string;
     contentType: "image/webp" | "video/webm";
     durationMs?: number;
+    recordingFrame?: { recordingId: string; atMs: number; videoTimeMs: number };
     filename?: string;
     captureRegion?: { startY: number; endY: number; pageWidth: number };
     captureSections?: Array<{

@@ -1,4 +1,18 @@
+import { prepareCaptureOrigins } from "./session-origins.js";
+import {
+  createSessionReview,
+  reviewTime,
+  uploadReviewFrames,
+  videoTrimState,
+} from "./session-review.js";
+import {
+  captureHandleMatches,
+  videoSegments,
+  clipRecording,
+  captureOrigins,
+} from "./session-capture.js";
 import { createVideoTimeline } from "./video-timeline.js";
+import { finalizeWebmMetadata } from "./video-metadata.js";
 import {
   VIDEO_MAX_BYTES,
   VIDEO_MAX_MS,
@@ -10,6 +24,101 @@ const sourceTabId = Number(new URL(location.href).searchParams.get("sourceTabId"
 const maxBytes = VIDEO_MAX_BYTES;
 const maxMs = VIDEO_MAX_MS;
 let tabAudioTracks = [];
+let inspector, debugStopped, submittedCapture;
+let savedFrames = [];
+function renderSavedFrames() {
+  const root = $("saved-frames");
+  root.replaceChildren();
+  root.hidden = !savedFrames.length;
+  for (const frame of savedFrames) {
+    const row = document.createElement("div"),
+      img = document.createElement("img"),
+      label = document.createElement("span"),
+      remove = document.createElement("button");
+    img.src = frame.imageBase64;
+    img.alt = `Saved video frame at ${reviewTime(frame.atMs)}`;
+    img.width = 160;
+    label.textContent = `Frame at ${reviewTime(frame.atMs)} · shared when you send`;
+    remove.textContent = "Remove";
+    remove.disabled = !!createAttempt;
+    remove.onclick = () => {
+      if (createAttempt) return;
+      savedFrames = savedFrames.filter((f) => f !== frame);
+      renderSavedFrames();
+    };
+    row.append(img, label, remove);
+    root.append(row);
+  }
+}
+function saveReviewFrame(atMs, videoTimeMs) {
+  try {
+    if (createAttempt) throw Error("Frame selection is frozen for this submission.");
+    if (savedFrames.length >= 5)
+      throw Error("You can save up to 5 frames per recording.");
+    const video = $("preview");
+    if (video.seeking || video.readyState < 2)
+      throw Error("Wait for this frame to finish seeking, then save it.");
+    video.pause();
+    const canvas = document.createElement("canvas"),
+      ratio = Math.min(1, 1280 / video.videoWidth);
+    canvas.width = Math.round(video.videoWidth * ratio);
+    canvas.height = Math.round(video.videoHeight * ratio);
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageBase64 = canvas.toDataURL("image/png");
+    if (imageBase64.length > 2800000)
+      throw Error("This frame exceeds the local frame limit.");
+    savedFrames.push({
+      atMs: Math.round(atMs),
+      videoTimeMs: Math.round(videoTimeMs),
+      imageBase64,
+      key: crypto.randomUUID(),
+    });
+    renderSavedFrames();
+    status("Frame saved locally. It will be shared with the recording when you send.");
+  } catch (error) {
+    status(error.message);
+  }
+}
+async function refreshDebugReview() {
+  if (!debugSession || !debugStop) return;
+  debugStopped = await debugStop;
+  const segments = videoSegments(
+    mediaIntervals,
+    appliedTrim?.start || 0,
+    appliedTrim?.end || originalDuration,
+  );
+  const video = {
+    offsetMs: debugSession.started - videoStartWall,
+    ...(!debugAligned ? { segments } : {}),
+  };
+  const recording = !debugAligned
+    ? clipRecording(debugStopped.recording, segments)
+    : debugStopped.recording;
+  inspector?.dispose();
+  inspector = createSessionReview($("capture-inspector"), {
+    recording,
+    videoElement: $("preview"),
+    video,
+    onFrame: saveReviewFrame,
+  });
+}
+
+let captureHandle,
+  debugSession,
+  debugStop,
+  videoStartWall,
+  debugAligned = true,
+  uploadedVideo;
+let mediaIntervals = [],
+  openInterval,
+  appliedTrim = null;
+function closeMediaInterval() {
+  if (!openInterval || !debugSession) return;
+  const end = Math.min(300000, Date.now() - debugSession.started);
+  if (end > openInterval.sourceStartMs)
+    mediaIntervals.push({ ...openInterval, sourceEndMs: end });
+  openInterval = null;
+}
 let microphone,
   audioContext,
   originalFrame,
@@ -27,7 +136,8 @@ let stream,
   pausedAt = 0,
   pausedMs = 0,
   tooLarge = false,
-  recordingFailed = false;
+  recordingFailed = false,
+  preparingVideo = false;
 let thread,
   uploadKey,
   serverOrigin,
@@ -48,13 +158,24 @@ function publishState(state) {
 function pauseOrResume() {
   if (recorder?.state === "recording") {
     pausedAt = performance.now();
+    closeMediaInterval();
     recorder.pause();
+    if (debugSession) {
+      debugAligned = false;
+      $("debug-status").textContent =
+        "Video pause recorded. Diagnostics will follow the kept video intervals; DOM replay is omitted after pauses.";
+    }
     $("pause").textContent = "Resume recording";
     status("Paused. Resume or stop to review.");
     publishState("paused");
   } else if (recorder?.state === "paused") {
     pausedMs += performance.now() - pausedAt;
     pausedAt = 0;
+    if (debugSession)
+      openInterval = {
+        sourceStartMs: Math.min(300000, Date.now() - debugSession.started),
+        outputStartMs: Math.round(recordingElapsed()),
+      };
     recorder.resume();
     $("pause").textContent = "Pause recording";
     status("Recording this tab.");
@@ -84,6 +205,10 @@ function status(message) {
   $("status").textContent = message;
 }
 function clearPreview() {
+  inspector?.dispose();
+  inspector = null;
+  savedFrames = [];
+  renderSavedFrames();
   blob = null;
   editsPending = false;
   $("send").disabled = false;
@@ -105,6 +230,12 @@ function clearPreview() {
   $("start").textContent = "Start recording";
 }
 function stop() {
+  closeMediaInterval();
+  if (debugSession && !debugStop)
+    debugStop = send({ type: "sessionStop" }).catch((error) => {
+      $("debug-status").textContent = error.message;
+      throw error;
+    });
   if (recorder && recorder.state !== "inactive") recorder.stop();
   stream?.getTracks().forEach((track) => track.stop());
   microphone?.getTracks().forEach((track) => track.stop());
@@ -126,7 +257,24 @@ function startError(error) {
   status(error.message);
 }
 
+let approvedRedirectOrigins = null;
+$("redirect-origins").oninput = () => {
+  approvedRedirectOrigins = null;
+};
+$("authorize-redirects").onclick = async () => {
+  try {
+    approvedRedirectOrigins = await prepareCaptureOrigins(
+      target,
+      $("redirect-origins").value,
+    );
+    status("Redirect sites authorized. Start recording when ready.");
+  } catch (error) {
+    approvedRedirectOrigins = null;
+    status(error.message);
+  }
+};
 $("start").onclick = async () => {
+  if (preparingVideo) return;
   if (!connected) {
     status("Open a new recorder from the current review.");
     return;
@@ -134,6 +282,17 @@ $("start").onclick = async () => {
   $("start").disabled = true;
   // Keep the native picker in the click gesture. It is the capture consent step.
   try {
+    const allowedOrigins = $("debug-context").checked
+      ? captureOrigins(
+          target.origin || new URL(target.url).origin,
+          $("redirect-origins").value,
+        )
+      : [];
+    if (
+      allowedOrigins.length > 1 &&
+      JSON.stringify(approvedRedirectOrigins) !== JSON.stringify(allowedOrigins)
+    )
+      throw Error("Use Allow redirect sites before starting the recording.");
     stream = await navigator.mediaDevices.getDisplayMedia({
       video: {
         displaySurface: "browser",
@@ -151,6 +310,17 @@ $("start").onclick = async () => {
       throw Error("Review ended. Open a new recorder from the current review.");
     if (stream.getVideoTracks()[0]?.getSettings().displaySurface !== "browser")
       throw Error("Choose a Chrome tab in the picker, then try again.");
+    if (
+      $("debug-context").checked &&
+      !captureHandleMatches(
+        stream.getVideoTracks()[0]?.getCaptureHandle?.(),
+        captureHandle?.handle,
+        captureHandle?.origin,
+      )
+    )
+      throw Error(
+        "The selected video source could not be verified as the review tab. Select that exact tab, or turn off debug context to capture video only.",
+      );
     if ($("tab-audio").checked && !stream.getAudioTracks().length)
       throw Error(
         "Tab audio was not shared. Enable Share tab audio in Chrome’s picker, or turn Tab audio off.",
@@ -174,6 +344,34 @@ $("start").onclick = async () => {
       const mixed = new MediaStream([videoTrack, ...destination.stream.getAudioTracks()]);
       stream = mixed;
     }
+    if (debugSession) {
+      await debugStop;
+      await send({ type: "sessionDiscard" });
+      debugSession = null;
+      debugStop = null;
+    }
+    if ($("debug-context").checked) {
+      debugSession = await send({
+        type: "sessionStart",
+        target: { ...target, allowedOrigins },
+        mode: "video",
+        privacy: {
+          maskText: $("mask-text").checked,
+          maskInputs: $("mask-inputs").checked,
+          networkBodies: $("network-bodies").checked,
+        },
+      });
+      debugStop = null;
+      submittedCapture = null;
+      savedFrames = [];
+      renderSavedFrames();
+      debugAligned = true;
+      mediaIntervals = [];
+      openInterval = null;
+      appliedTrim = null;
+      $("debug-status").textContent =
+        "Debug session active · 5 minutes / 12 MiB maximum. Credentials are removed; inspect the video for private pixels.";
+    }
     const options = recordingOptions(stream.getAudioTracks().length > 0);
     clearPreview();
     tooLarge = false;
@@ -195,7 +393,10 @@ $("start").onclick = async () => {
       }
       chunks.push(event.data);
     };
-    recorder.onstop = () => {
+    const stoppedRecorder = recorder;
+    recorder.onstop = async () => {
+      if (recorder !== stoppedRecorder) return;
+      preparingVideo = true;
       durationMs = Math.max(1, Math.min(maxMs, Math.round(recordingElapsed())));
       stream?.getTracks().forEach((track) => track.stop());
       microphone?.getTracks().forEach((track) => track.stop());
@@ -207,51 +408,72 @@ $("start").onclick = async () => {
         audioContext = null;
       }
       clearInterval(timer);
-      $("start").disabled = !connected;
-      $("audio-options").disabled = false;
+      $("start").disabled = true;
       $("stop").hidden = true;
       $("pause").hidden = true;
-      if (tooLarge || recordingFailed || !chunks.length) {
+      try {
+        if (tooLarge || recordingFailed || !chunks.length)
+          throw Error(
+            tooLarge
+              ? "Recording exceeded 40 MiB. Try a shorter clip."
+              : recordingFailed
+                ? "Recording failed. Try again."
+                : "No video was recorded.",
+          );
+        status("Finalizing the local video preview…");
+        const raw = new Blob(chunks, { type: "video/webm" });
+        const ready = await finalizeWebmMetadata(raw, durationMs);
+        if (recorder !== stoppedRecorder) return;
+        blob = ready;
+        originalBlob = ready;
+        originalDuration = durationMs;
+        originalUrl = URL.createObjectURL(originalBlob);
+        previewUrl = URL.createObjectURL(blob);
+        $("preview").src = previewUrl;
+        $("preview").hidden = false;
+        $("review").hidden = false;
+        $("editing").hidden = false;
+        document.body?.classList.add("has-recording");
+        $("start").textContent = "Record again";
+        $("timer").textContent =
+          `${(durationMs / 1000).toFixed(1)} seconds · ${(blob.size / 1024 / 1024).toFixed(1)} MiB`;
+        ["crop-left", "crop-top", "crop-width", "crop-height"].forEach(
+          (id, i) => ($(id).value = i < 2 ? "0" : "100"),
+        );
+        $("trim-start").value = "0";
+        $("trim-end").value = (durationMs / 1000).toFixed(3);
+        timeline.load(originalUrl, originalDuration / 1000);
+        $("edit-state").textContent = "";
+        $("discard").hidden = false;
+        publishState("ready");
+        status("Review the recording, then send or discard it.");
+        void refreshDebugReview().catch((error) => status(error.message));
+      } catch (error) {
         clearPreview();
         publishState("idle");
         status(
-          tooLarge
-            ? "Recording exceeded 40 MiB. Try a shorter clip."
-            : recordingFailed
-              ? "Recording failed. Try again."
-              : "No video was recorded.",
+          error instanceof Error ? error.message : "Could not finalize the recording.",
         );
-        return;
+      } finally {
+        preparingVideo = false;
+        if (recorder === stoppedRecorder) {
+          $("start").disabled = !connected;
+          $("audio-options").disabled = false;
+        }
       }
-      blob = new Blob(chunks, { type: "video/webm" });
-      originalBlob = blob;
-      originalDuration = durationMs;
-      originalUrl = URL.createObjectURL(originalBlob);
-      previewUrl = URL.createObjectURL(blob);
-      $("preview").src = previewUrl;
-      $("preview").hidden = false;
-      $("review").hidden = false;
-      $("editing").hidden = false;
-      document.body?.classList.add("has-recording");
-      $("start").textContent = "Record again";
-      $("timer").textContent =
-        `${(durationMs / 1000).toFixed(1)} seconds · ${(blob.size / 1024 / 1024).toFixed(1)} MiB`;
-      ["crop-left", "crop-top", "crop-width", "crop-height"].forEach(
-        (id, i) => ($(id).value = i < 2 ? "0" : "100"),
-      );
-      $("trim-start").value = "0";
-      $("trim-end").value = (durationMs / 1000).toFixed(3);
-      timeline.load(originalUrl, originalDuration / 1000);
-      $("edit-state").textContent = "";
-      $("discard").hidden = false;
-      publishState("ready");
-      status("Review the recording, then send or discard it.");
     };
     stream.getVideoTracks()[0].addEventListener("ended", stop, { once: true });
     startedAt = performance.now();
     pausedAt = 0;
     pausedMs = 0;
+    videoStartWall = Date.now();
+    if (debugSession)
+      openInterval = {
+        sourceStartMs: Math.min(300000, videoStartWall - debugSession.started),
+        outputStartMs: 0,
+      };
     recorder.start(1000);
+    if (debugSession) $("debug-options").disabled = true;
     $("start").disabled = true;
     $("stop").hidden = false;
     $("pause").hidden = false;
@@ -271,10 +493,17 @@ $("start").onclick = async () => {
 };
 $("stop").onclick = stop;
 $("pause").onclick = pauseOrResume;
-$("discard").onclick = () => {
+$("discard").onclick = async () => {
   stop();
   clearPreview();
   publishState("idle");
+  if (debugSession) {
+    await debugStop;
+    await send({ type: "sessionDiscard" });
+    debugSession = null;
+    debugStop = null;
+    $("debug-options").disabled = false;
+  }
   status("Recording discarded.");
 };
 
@@ -299,6 +528,7 @@ $("send").onclick = async () => {
           idempotencyKey: createKey,
         });
         $("comment").readOnly = true;
+        renderSavedFrames();
       }
       thread = await send(createAttempt);
       $("comment").readOnly = true;
@@ -315,18 +545,64 @@ $("send").onclick = async () => {
       reader.onload = () => resolve(reader.result);
       reader.readAsDataURL(blob);
     });
-    const result = await send({
-      type: "videoUpload",
-      server: serverOrigin,
-      input: {
-        threadId: thread.id,
-        revision: thread.revision,
-        videoBase64,
-        durationMs,
-        idempotencyKey: uploadKey,
-      },
-    });
+    const result =
+      uploadedVideo ||
+      (await send({
+        type: "videoUpload",
+        server: serverOrigin,
+        input: {
+          threadId: thread.id,
+          revision: thread.revision,
+          videoBase64,
+          durationMs,
+          idempotencyKey: uploadKey,
+        },
+      }));
+    uploadedVideo = result;
     thread = result.thread;
+    if (debugSession) {
+      await debugStop;
+      const segments = videoSegments(
+        mediaIntervals,
+        appliedTrim?.start || 0,
+        appliedTrim?.end || originalDuration,
+      );
+      if (!segments.length)
+        throw Error(
+          "No debug interval overlaps the video. Discard the debug session and send video only.",
+        );
+      if (!debugAligned && !submittedCapture)
+        await send({
+          type: "sessionCoverage",
+          channel: "video",
+          detail:
+            "Measured pause/trim segments map the original recording clock to edited video. Only diagnostics inside retained source intervals are shared.",
+        });
+      const capture =
+        submittedCapture ||
+        (await send({
+          type: "sessionSubmit",
+          body: $("comment").value,
+          thread,
+          video: {
+            assetId: result.asset.id,
+            offsetMs: debugSession.started - videoStartWall,
+            ...(!debugAligned ? { segments } : {}),
+          },
+          clipReplay: !debugAligned,
+        }));
+      submittedCapture = capture;
+      thread = capture.thread;
+      thread = await uploadReviewFrames(
+        savedFrames,
+        thread,
+        capture.recording.id,
+        (input) => send({ type: "sessionFrameUpload", server: serverOrigin, input }),
+        (threadId) => send({ type: "videoThread", server: serverOrigin, threadId }),
+      );
+      debugSession = null;
+      $("debug-status").textContent = "Debug context shared with this thread.";
+    }
     $("thread").href = `${serverOrigin}/threads/${thread.id}`;
     clearPreview();
     $("start").hidden = true;
@@ -335,7 +611,7 @@ $("send").onclick = async () => {
     status("Video shared with the project.");
     publishState("sent");
   } catch (error) {
-    if (error.code === "CONFLICT" && thread) {
+    if (error.code === "CONFLICT" && thread && !submittedCapture) {
       try {
         thread = await send({
           type: "videoThread",
@@ -349,7 +625,9 @@ $("send").onclick = async () => {
         /* Show the original conflict below. */
       }
     }
-    status(`${error.message} Keep this tab open and retry Send video.`);
+    status(
+      `${submittedCapture ? "Video and diagnostics are shared; saved frames are still pending. " : ""}${error.message} Keep this tab open and retry Send video.`,
+    );
   } finally {
     $("send").disabled = false;
   }
@@ -375,6 +653,14 @@ else
       $("target").textContent = `${project.name} · ${url}`;
       $("start").disabled = !connected;
       $("audio-options").disabled = false;
+      return send({ type: "videoCaptureHandle", target })
+        .then((value) => {
+          captureHandle = value;
+        })
+        .catch((error) => {
+          $("debug-context").checked = false;
+          $("debug-status").textContent = error.message;
+        });
     })
     .catch((error) => status(error.message));
 window.addEventListener("pagehide", () => {
@@ -403,7 +689,7 @@ $("apply-edit").onclick = async () => {
   for (const id of ["crop-left", "crop-top", "crop-width", "crop-height"])
     $(id).disabled = true;
   try {
-    const edited = await exportVideo({
+    const exported = await exportVideo({
       url: originalUrl,
       start,
       end,
@@ -412,15 +698,36 @@ $("apply-edit").onclick = async () => {
       onProgress: (percent) =>
         status(`Preparing edited video · ${percent}% · keep this tab open`),
     });
+    status("Finalizing edited video metadata…");
+    const editedDurationMs = Math.round((end - start) * 1000);
+    const edited = await finalizeWebmMetadata(exported, editedDurationMs, {
+      signal: exportController.signal,
+    });
     URL.revokeObjectURL(previewUrl);
     blob = edited;
-    durationMs = Math.round((end - start) * 1000);
+    if (debugSession) {
+      ({ appliedTrim, debugAligned } = videoTrimState(
+        start,
+        end,
+        originalDuration,
+        mediaIntervals.length,
+      ));
+      $("debug-status").textContent = debugAligned
+        ? "Full video selected. Debug context uses the original recording clock."
+        : "Measured pause/trim intervals remain aligned; diagnostics outside them and DOM replay are omitted.";
+    }
+    durationMs = editedDurationMs;
     previewUrl = URL.createObjectURL(blob);
     timeline.applied();
     $("preview").src = previewUrl;
     $("edit-state").textContent = "Edits applied · ready to send";
     editsPending = false;
-    status("Edits applied. Preview the video before sending.");
+    savedFrames = [];
+    renderSavedFrames();
+    await refreshDebugReview();
+    status(
+      "Edits applied. Preview the video before sending. Saved frames were cleared because the video changed.",
+    );
   } catch (error) {
     status(error.message);
   } finally {
@@ -440,6 +747,8 @@ $("cancel-edit").onclick = () => exportController?.abort();
 $("reset-edit").onclick = () => {
   if (!originalBlob || createAttempt) return;
   blob = originalBlob;
+  appliedTrim = null;
+  debugAligned = mediaIntervals.length <= 1;
   durationMs = originalDuration;
   URL.revokeObjectURL(previewUrl);
   previewUrl = URL.createObjectURL(blob);
@@ -453,6 +762,9 @@ $("reset-edit").onclick = () => {
   editsPending = false;
   $("send").disabled = false;
   $("edit-state").textContent = "";
+  savedFrames = [];
+  renderSavedFrames();
+  void refreshDebugReview().catch((error) => status(error.message));
   status("Original recording restored.");
 };
 

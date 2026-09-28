@@ -58,7 +58,7 @@ export async function apiClient() {
       "Use an HTTPS server origin (HTTP allowed only on loopback)",
       400,
     );
-  return async (name: string, input: unknown) => {
+  const execute = async (name: string, input: unknown) => {
     const response = await fetch(new URL(`/api/${name}`, url), {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -75,4 +75,67 @@ export async function apiClient() {
       );
     return body.data;
   };
+  return Object.assign(execute, {
+    async downloadAsset(
+      assetId: string,
+      maxBytes: number,
+      contentType: "video/webm" | "image/webp" = "video/webm",
+    ) {
+      if (
+        !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+          assetId,
+        ) ||
+        !Number.isSafeInteger(maxBytes) ||
+        maxBytes <= 0 ||
+        maxBytes > 100 * 1024 * 1024 ||
+        !["video/webm", "image/webp"].includes(contentType)
+      )
+        throw new DomainError("VALIDATION", "Invalid asset download", 400);
+      const response = await fetch(new URL(`/api/assets/${assetId}`, url), {
+        headers: { Authorization: `Bearer ${token}` },
+        redirect: "error",
+        signal: AbortSignal.timeout(60000),
+      });
+      if (
+        !response.ok ||
+        !response.body ||
+        response.headers.get("content-type")?.split(";")[0] !== contentType
+      ) {
+        await response.body?.cancel();
+        throw new DomainError(
+          "ASSET_DOWNLOAD",
+          "Authorized media download failed",
+          response.status || 502,
+        );
+      }
+      const length = Number(response.headers.get("content-length"));
+      if (Number.isFinite(length) && length > maxBytes) {
+        await response.body.cancel();
+        throw new DomainError("ASSET_DOWNLOAD", "Media exceeds local export limit", 413);
+      }
+      const reader = response.body.getReader(),
+        chunks: Uint8Array[] = [];
+      let size = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.length;
+          if (size > maxBytes)
+            throw new DomainError(
+              "ASSET_DOWNLOAD",
+              "Media exceeds local export limit",
+              413,
+            );
+          chunks.push(value);
+        }
+      } catch (error) {
+        await reader.cancel().catch(() => {});
+        throw error;
+      } finally {
+        reader.releaseLock();
+      }
+      return Buffer.concat(chunks);
+    },
+  });
 }

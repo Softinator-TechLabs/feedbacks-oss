@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Session replay and agent debug bundles](session-replay.md)
+
 - [Five-minute sign-in lock by client IP](login-ip-throttle.md)
 - [Human-led work planning and task handoff](human-work-planning.md)
 - [Point planning and progress](../superpowers/plans/2026-09-28-point-planning-progress.md)

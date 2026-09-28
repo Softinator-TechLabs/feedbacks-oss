@@ -10,6 +10,61 @@ import { createMcpHandler } from "@modelcontextprotocol/server";
 import { mcpServer } from "../src/server/mcp.js";
 import { DomainError } from "../src/server/errors.js";
 
+test("only a local adapter exposes materialization and returns a real path receipt", async () => {
+  for (const local of [false, true]) {
+    let requested: unknown;
+    const server = mcpServer(
+      async () => ({}),
+      "compact",
+      local
+        ? {
+            materialize: async (input) => {
+              requested = input;
+              return {
+                directory: "/tmp/feedbacks-recording-test",
+                readme: "/tmp/feedbacks-recording-test/README.md",
+                manifest: "/tmp/feedbacks-recording-test/manifest.json",
+                recordingId: "8c06f94d-fca6-4333-84b7-671e560812bc",
+                eventCount: 3,
+                complete: true,
+                warnings: [],
+                files: ["README.md"],
+              };
+            },
+          }
+        : {},
+    );
+    const client = new Client({ name: "local-recording", version: "1" });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    try {
+      await server.connect(a);
+      await client.connect(b);
+      const found = (await client.listTools()).tools.find(
+        (tool) => tool.name === "feedbacks_recording_materialize",
+      );
+      assert.equal(!!found, local);
+      if (local) {
+        assert.equal(found!.annotations?.readOnlyHint, false);
+        const result = await client.callTool({
+          name: found!.name,
+          arguments: { recordingId: "8c06f94d-fca6-4333-84b7-671e560812bc" },
+        });
+        assert.equal(
+          (result.structuredContent as any).directory,
+          "/tmp/feedbacks-recording-test",
+        );
+        assert.deepEqual(requested, {
+          recordingId: "8c06f94d-fca6-4333-84b7-671e560812bc",
+          includeVideo: true,
+        });
+      }
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  }
+});
+
 for (const profile of ["full", "compact"] as const)
   test(`modern ${profile} MCP retains native images, schema validation and scoped errors`, async () => {
     const handler = createMcpHandler(

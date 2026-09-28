@@ -3,6 +3,7 @@ import { resolve, relative } from "node:path";
 import { zipFiles } from "./zip.mjs";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
+import { build } from "esbuild";
 import { compareChromeVersions, validateReleaseRecord } from "../extension/updates.js";
 
 const root = resolve(import.meta.dirname, ".."),
@@ -20,7 +21,14 @@ try {
 } catch {
   throw Error("Invalid MV3 version.");
 }
-const expected = ["activeTab", "scripting", "storage", "contextMenus", "alarms"];
+const expected = [
+  "activeTab",
+  "scripting",
+  "storage",
+  "contextMenus",
+  "alarms",
+  "debugger",
+];
 if (
   JSON.stringify(manifest.permissions) !== JSON.stringify(expected) ||
   manifest.host_permissions ||
@@ -47,6 +55,63 @@ async function walk(dir) {
   }
   return files.sort();
 }
+const bundled = await build({
+  stdin: {
+    contents:
+      'import { record } from "@rrweb/record"; import {installSessionRecorder} from "./extension/session-page.js"; globalThis.__feedbacksStartSessionCapture = config => installSessionRecorder(record, config);',
+    resolveDir: root,
+  },
+  bundle: true,
+  format: "iife",
+  platform: "browser",
+  target: "chrome120",
+  write: false,
+  minify: true,
+  legalComments: "inline",
+  sourcemap: false,
+  metafile: true,
+});
+const replayBundle = await build({
+  stdin: {
+    contents:
+      'import {Replayer} from "@rrweb/replay"; import {installSessionReplay} from "./extension/session-replay.js"; installSessionReplay(Replayer);',
+    resolveDir: root,
+  },
+  bundle: true,
+  format: "iife",
+  platform: "browser",
+  target: "chrome120",
+  write: false,
+  minify: true,
+  legalComments: "inline",
+  sourcemap: false,
+  metafile: true,
+});
+const webmDurationBundle = await build({
+  stdin: {
+    contents:
+      'import { fixWebmDuration } from "@fix-webm-duration/fix"; globalThis.__feedbacksFixWebmDuration = fixWebmDuration;',
+    resolveDir: root,
+  },
+  bundle: true,
+  format: "iife",
+  platform: "browser",
+  target: "chrome120",
+  write: false,
+  minify: true,
+  legalComments: "inline",
+  sourcemap: false,
+});
+const unpacked = resolve(root, "dist/extension/unpacked");
+await mkdir(unpacked, { recursive: true });
+await writeFile(
+  resolve(root, "dist/extension/rrweb-capture-metafile.json"),
+  JSON.stringify(bundled.metafile, null, 2),
+);
+await writeFile(
+  resolve(root, "dist/extension/rrweb-replay-metafile.json"),
+  JSON.stringify(replayBundle.metafile, null, 2),
+);
 const names = [],
   entries = [];
 const packageFiles = (await walk(source)).map((path) => ({
@@ -82,6 +147,45 @@ for (const { path, name } of packageFiles) {
 }
 if (!names.includes("manifest.json") || !names.includes("icons/128.png"))
   throw Error("Missing manifest or icon.");
+const recorderData = Buffer.from(
+  bundled.outputFiles[0].text.replace(/\/\/# sourceMappingURL=[^\n]*/g, ""),
+);
+if (/\beval\s*\(|new\s+Function\s*\(|sourceMappingURL/.test(recorderData.toString()))
+  throw Error("Unsafe rrweb bundle.");
+entries.push({ name: "rrweb-capture.js", data: recorderData });
+names.push("rrweb-capture.js");
+const replayData = Buffer.from(
+  replayBundle.outputFiles[0].text.replace(/\/\/# sourceMappingURL=[^\n]*/g, ""),
+);
+// PostCSS contains source-map parser strings. Reject executable evaluation and
+// actual source-map comment directives; parser literals are not remote code.
+if (
+  /\beval\s*\(|new\s+Function\s*\(|^\s*\/\/[#@]\s*sourceMappingURL=/m.test(
+    replayData.toString(),
+  )
+)
+  throw Error("Unsafe replay bundle.");
+entries.push({ name: "rrweb-replay.js", data: replayData });
+entries.push({
+  name: "rrweb-replay.css",
+  data: await readFile(resolve(root, "node_modules/@rrweb/replay/dist/style.css")),
+});
+names.push("rrweb-replay.css");
+names.push("rrweb-replay.js");
+const webmDurationData = Buffer.from(webmDurationBundle.outputFiles[0].text);
+if (
+  /\beval\s*\(|new\s+Function\s*\(|^\s*\/\/[#@]\s*sourceMappingURL=/m.test(
+    webmDurationData.toString(),
+  )
+)
+  throw Error("Unsafe WebM duration bundle.");
+entries.push({ name: "webm-duration.js", data: webmDurationData });
+names.push("webm-duration.js");
+for (const entry of entries) {
+  const path = resolve(unpacked, entry.name);
+  await mkdir(resolve(path, ".."), { recursive: true });
+  await writeFile(path, entry.data);
+}
 const zip = zipFiles(entries),
   hash = createHash("sha256").update(zip).digest("hex");
 const channel = preset ? "internal-" : "";
@@ -120,6 +224,7 @@ console.log(
   JSON.stringify(
     {
       owner,
+      unpacked,
       download,
       sha256: hash,
       bytes: zip.length,

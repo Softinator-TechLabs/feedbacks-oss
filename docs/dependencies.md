@@ -13,3 +13,7 @@ React Markdown parses a small CommonMark subset for feedback and discussion. Raw
 VitePress builds the public Markdown guide under `site-docs/` into `dist/site/docs/`, with first-party local search and no hosted search account. The build also exports plain Markdown and `llms.txt` for agents. It runs only in the public site's build stage; it is not part of the application server. The AWS S3 request presigner extends the existing AWS SDK client so private GitHub Issues can include seven-day direct Wasabi links while retaining authenticated Feedbacks links.
 
 `tldts` derives public-suffix-aware registrable domains and subdomains from feedback URLs. This keeps website categorization correct for domains such as `example.co.uk`; localhost and IP hosts retain their literal host identity.
+
+`@rrweb/record` and `@rrweb/replay` are pinned to 2.1.6. The recorder and pre-send replay engine are bundled into the extension at build time; the web client loads the replay engine only when opening a recording. Neither requires an external OpenReplay service. See [session replay](session-replay.md) for capture, coverage and agent export boundaries.
+
+`@fix-webm-duration/fix` and its parser are pinned to 1.0.1 and bundled locally in the extension. They add finite duration metadata to native and edited WebM recordings without re-encoding video frames. No media processing service is used.

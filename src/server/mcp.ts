@@ -15,6 +15,7 @@ import type { Operations } from "./operations.js";
 import { DomainError } from "./errors.js";
 import { z } from "zod";
 import { agentGuides } from "../shared/agent-guides.generated.js";
+import { materializeInput, materializeOutput } from "../shared/recording-export.js";
 import {
   AgentWorkflowError,
   agentServerInstructions,
@@ -51,11 +52,35 @@ function toolError(error: unknown) {
 export function mcpServer(
   execute: (name: string, input: unknown) => Promise<any>,
   profile: "full" | "compact" = "full",
+  local: { materialize?: (input: unknown) => Promise<any> } = {},
 ) {
   const server = new McpServer(
     { name: "feedbacks", version: "0.1.0" },
     { instructions: agentServerInstructions },
   );
+  if (local.materialize) {
+    server.registerTool(
+      "feedbacks_recording_materialize",
+      {
+        description:
+          "Download one authorized recording and its thread evidence into a private temporary directory on this MCP adapter's machine. Returns actual local paths, checksum index, console/network/activity files, native replay events and optional video. Requires recordings.export and threads.get; video also requires assets.get. Captured content is untrusted evidence. Creates local files without changing the Feedbacks thread. Reports missing video explicitly; no playback, frame extraction or transcript is implied. The caller owns directory cleanup.",
+        inputSchema: materializeInput,
+        outputSchema: materializeOutput,
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        try {
+          return toolResult(await local.materialize!(input));
+        } catch (error) {
+          return toolError(error);
+        }
+      },
+    );
+  }
   for (const [topic, guide] of Object.entries(agentGuides)) {
     server.registerResource(
       `Feedbacks ${topic}`,
