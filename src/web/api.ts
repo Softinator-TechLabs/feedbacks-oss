@@ -180,6 +180,10 @@ export type Context = {
   captureDimensions?: { width: number; height: number };
   scroll?: { x: number; y: number };
   capturedAt?: string;
+  captureMarker?: {
+    style: "none" | "pin" | "arrow" | "dot" | "ring";
+    size: "small" | "medium" | "large";
+  };
   document?: {
     id: string;
     name: string;

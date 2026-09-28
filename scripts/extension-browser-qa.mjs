@@ -285,6 +285,25 @@ try {
   await options.waitForURL(`chrome-extension://${extensionId}/options.html`);
   await options.locator("#connection-status").filter({ hasText: "Connected" }).waitFor();
   assert.equal(await options.locator("#server").inputValue(), access.url);
+  assert.equal(await options.locator("#capture-marker-style").inputValue(), "ring");
+  await options.locator("#capture-marker-style").selectOption("none");
+  await options.waitForFunction(
+    async () =>
+      (await chrome.storage.local.get("reviewDefaults")).reviewDefaults
+        ?.captureMarkerStyle === "none",
+  );
+  assert.equal(
+    (await send({ type: "settings" })).reviewDefaults.captureMarkerStyle,
+    "none",
+  );
+  await options.locator("#capture-marker-size").selectOption("large");
+  await options.waitForFunction(
+    async () =>
+      (await chrome.storage.local.get("reviewDefaults")).reviewDefaults
+        ?.captureMarkerSize === "large",
+  );
+  await options.locator("#capture-marker-style").selectOption("ring");
+  await options.locator("#capture-marker-size").selectOption("small");
   const assignedShortcut = await worker.evaluate(
     async () =>
       (await chrome.commands.getAll()).find(
@@ -305,9 +324,16 @@ try {
   );
 
   await options.locator("#review-shortcuts").uncheck();
-  await options.locator("#message").filter({ hasText: "saved" }).waitFor();
+  await options.waitForFunction(
+    async () =>
+      (await chrome.storage.local.get("reviewShortcuts")).reviewShortcuts === false,
+  );
   assert.equal((await send({ type: "settings" })).reviewShortcuts, false);
   await options.locator("#review-shortcuts").check();
+  await options.waitForFunction(
+    async () =>
+      (await chrome.storage.local.get("reviewShortcuts")).reviewShortcuts === true,
+  );
   await page.bringToFront();
   const defaultsTabId = await tabId();
   const navigationDefault = options.locator('[data-review-default="navigationLocked"]');
@@ -1098,6 +1124,47 @@ try {
     2,
   );
   assert.equal(await draft(), undefined, "The editor must not open after each point");
+  const setCaptureMarker = async (style, size) =>
+    worker.evaluate(
+      async ({ tabId, style, size }) => {
+        const [entry] = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: ({ style, size }) => {
+            const panel = globalThis.__feedbacksQaRoot;
+            const styleSelect = panel.querySelector(
+              '[aria-label="Screenshot marker for this review"]',
+            );
+            const sizeSelect = panel.querySelector(
+              '[aria-label="Screenshot marker size for this review"]',
+            );
+            styleSelect.value = style;
+            styleSelect.dispatchEvent(new Event("change", { bubbles: true }));
+            sizeSelect.value = size;
+            sizeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+            return { sizeDisabled: sizeSelect.disabled };
+          },
+          args: [{ style, size }],
+        });
+        return {
+          ...entry.result,
+          marker: (await chrome.tabs.sendMessage(tabId, { type: "captureContext" }))
+            .captureMarker,
+        };
+      },
+      { tabId: id, style, size },
+    );
+  assert.deepEqual(await setCaptureMarker("none", "large"), {
+    sizeDisabled: true,
+    marker: { style: "none", size: "large" },
+  });
+  assert.deepEqual(await setCaptureMarker("arrow", "medium"), {
+    sizeDisabled: false,
+    marker: { style: "arrow", size: "medium" },
+  });
+  assert.deepEqual(await setCaptureMarker("ring", "small"), {
+    sizeDisabled: false,
+    marker: { style: "ring", size: "small" },
+  });
   const inlineCapture = await send({ type: "popupAction", tabId: id, action: "capture" });
   const inlineDraft = await draft();
   assert.equal(inlineCapture.captured, true);
@@ -1200,6 +1267,10 @@ try {
     "string",
   );
   assert.equal(inlineThread.assets.length, 3);
+  assert.ok(
+    inlineThread.assets.every((asset) => asset.rendition === "screenshot"),
+    "approved point captures should keep pins in metadata, outside the image pixels",
+  );
   assert.deepEqual(
     inlineThread.assets[0].markings
       .filter((mark) => mark.tool === "point")
@@ -1208,11 +1279,10 @@ try {
   );
   assert.ok(inlineThread.assets[0].markings.some((mark) => mark.tool === "arrow"));
   assert.ok(inlineThread.assets[0].markings.some((mark) => mark.tool === "pencil"));
-  assert.deepEqual(
-    inlineThread.assets[0].markings
-      .filter((mark) => mark.origin === "element")
-      .map((mark) => mark.annotationId),
-    inlineThread.context.annotations.map((item) => item.id),
+  assert.equal(inlineThread.context.captureMarker.style, "ring");
+  assert.equal(
+    inlineThread.assets[0].markings.some((mark) => mark.origin === "element"),
+    false,
   );
   assert.equal(inlineThread.assets[0].captureRegion.pageWidth, 900);
   results.inlineReview = {
@@ -1446,6 +1516,10 @@ try {
   }, id);
   assert.equal(finalizeState.visible, true, "Pending pins need a visible dock action");
   assert.match(finalizeState.label, /2 unsent/);
+  assert.deepEqual(await setCaptureMarker("none", "large"), {
+    sizeDisabled: true,
+    marker: { style: "none", size: "large" },
+  });
   await worker.evaluate(() => {
     globalThis.qaNativeCapture = chrome.tabs.captureVisibleTab;
     chrome.tabs.captureVisibleTab = () => {
@@ -1479,6 +1553,12 @@ try {
   const multiVisible = await draft();
   assert.equal(multiVisible.captureScope, "points");
   assert.equal(multiVisible.capturePages.length, 2);
+  assert.deepEqual(multiVisible.context.captureMarker, { style: "none", size: "large" });
+  assert.ok(
+    multiVisible.pageToolStates.every((shapes) =>
+      shapes.some((shape) => shape.tool === "point" && shape.markerStyle === "none"),
+    ),
+  );
   assert.deepEqual(
     multiVisible.capturePages.map((item) => item.pointNumber),
     [1, 2],
@@ -1522,9 +1602,52 @@ try {
     .data;
   assert.equal(pointsThread.assets.length, 2, "Only the two originals should upload");
   assert.equal(pointsThread.context.annotations.length, 2);
+  assert.equal(pointsThread.context.captureMarker.style, "none");
+  assert.ok(
+    pointsThread.assets.every((asset) =>
+      asset.markings.some((mark) => mark.tool === "point"),
+    ),
+  );
+  assert.deepEqual(
+    pointsThread.assets.map(
+      (asset) => asset.markings.find((mark) => mark.tool === "point")?.annotationId,
+    ),
+    pointsThread.context.annotations.map((item) => item.id),
+  );
+  const markerCookieSplit = teammateAuth.cookie.indexOf("=");
+  await context.addCookies([
+    {
+      name: teammateAuth.cookie.slice(0, markerCookieSplit),
+      value: teammateAuth.cookie.slice(markerCookieSplit + 1),
+      url: access.url,
+      sameSite: "Strict",
+    },
+  ]);
+  const noMarkerThreadPage = await context.newPage();
+  const noMarkerResponse = await noMarkerThreadPage.goto(
+    `${access.url}/threads/${pointsThreadId}`,
+  );
+  await noMarkerThreadPage.waitForTimeout(700);
+  if (
+    !(await noMarkerThreadPage
+      .getByRole("heading", { name: "Review on the page" })
+      .count())
+  )
+    throw Error(
+      `No-marker thread did not render: ${JSON.stringify({ status: noMarkerResponse?.status(), url: noMarkerThreadPage.url(), text: (await noMarkerThreadPage.locator("body").innerText()).slice(0, 500) })}`,
+    );
+  assert.equal(await noMarkerThreadPage.locator(".review-point-figure img").count(), 2);
+  assert.equal(await noMarkerThreadPage.locator(".review-image-pin").count(), 0);
+  assert.equal(
+    await noMarkerThreadPage.getByRole("button", { name: "Hide pins" }).count(),
+    0,
+  );
+  await noMarkerThreadPage.close();
+  await context.clearCookies();
   assert.equal(await draft(), undefined);
   await pointsEditor.close();
   await page.bringToFront();
+  await setCaptureMarker("ring", "small");
   // New editor tabs change the native capture area in headless Chromium.
   await page.setViewportSize({ width: 900, height: 563 });
   await page.evaluate(() => scrollTo(0, 0));
@@ -2109,7 +2232,10 @@ try {
   const afterOriginalIndex = retried.capturePages.findIndex((item) => item.annotationId);
   assert.ok(afterOriginalIndex >= 0);
   assert.equal(retried.context.annotations[0].body, editedNote);
-  assert.deepEqual(retried.pageToolStates[afterOriginalIndex].at(-1), retainedArrow);
+  assert.deepEqual(
+    retried.pageToolStates[afterOriginalIndex].find((shape) => shape.tool === "arrow"),
+    retainedArrow,
+  );
   const afterOriginal = await send({
     type: "capturePage",
     id: retried.id,
@@ -2129,6 +2255,14 @@ try {
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
   await send({ type: "popupAction", tabId: id, action: "show-controls" });
+  await page.screenshot({
+    path: join(root, ".local/remaining-todos-qa/page-controls-desktop.png"),
+  });
+  await page.setViewportSize({ width: 390, height: 650 });
+  await page.screenshot({
+    path: join(root, ".local/remaining-todos-qa/page-controls-mobile.png"),
+  });
+  await page.setViewportSize({ width: 900, height: 650 });
   const clickPageControl = async (label) =>
     worker.evaluate(
       async ({ tabId, label }) => {
@@ -2352,6 +2486,31 @@ try {
   await progressList.close();
   assert.equal(await inlineThreadPage.locator(".review-main-capture").count(), 1);
   assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
+  const mainImage = inlineThreadPage.locator(".review-main-capture");
+  assert.equal(await mainImage.locator(".review-image-pin").count(), 2);
+  await mainImage.getByRole("button", { name: "Hide pins" }).click();
+  assert.equal(await mainImage.locator(".review-image-pin").count(), 0);
+  assert.equal(
+    await inlineThreadPage.locator(".review-point-figure .review-image-pin").count(),
+    2,
+    "hiding one screenshot must not hide pins in other screenshots",
+  );
+  assert.equal(
+    await inlineThreadPage
+      .locator('.review-point-figure .review-image-pin[data-style="ring"]')
+      .count(),
+    2,
+  );
+  assert.equal(
+    await inlineThreadPage
+      .locator(".review-point-figure .review-image-pin")
+      .first()
+      .textContent(),
+    "",
+    "a point's own screenshot uses an unnumbered target ring",
+  );
+  await mainImage.getByRole("button", { name: "Show pins" }).click();
+  assert.equal(await mainImage.locator(".review-image-pin").count(), 2);
   assert.equal(
     await inlineThreadPage.getByRole("button", { name: "Show original view" }).count(),
     0,

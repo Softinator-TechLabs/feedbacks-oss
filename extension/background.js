@@ -46,43 +46,19 @@ function captureUrl(value) {
   return url.href;
 }
 const unit = (value, size) => Math.max(0, Math.min(1, value / Math.max(1, size)));
-function pointShapes(item, index, region, sx, sy) {
+function pointShapes(item, index, region, sx, sy, marker = {}) {
   const anchor = item.anchor || {};
   const point = anchor.pagePoint;
   if (!point || point.y < region.startY || point.y >= region.endY) return [];
-  const shapes = [];
-  const rect = anchor.rect;
-  if (
-    anchor.selector &&
-    rect &&
-    anchor.screenshotPoint &&
-    [rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) &&
-    rect.width > 0 &&
-    rect.height > 0
-  ) {
-    const pageX = point.x - anchor.screenshotPoint.x + rect.x;
-    const pageY = point.y - anchor.screenshotPoint.y + rect.y;
-    const left = Math.max(0, Math.min(region.width, pageX));
-    const right = Math.max(0, Math.min(region.width, pageX + rect.width));
-    const top = Math.max(region.startY, Math.min(region.endY, pageY));
-    const bottom = Math.max(region.startY, Math.min(region.endY, pageY + rect.height));
-    if (right > left && bottom > top)
-      shapes.push({
-        tool: "rectangle",
-        origin: "element",
-        number: index + 1,
-        points: [
-          { x: left * sx, y: (top - region.startY) * sy },
-          { x: right * sx, y: (bottom - region.startY) * sy },
-        ],
-      });
-  }
-  shapes.push({
-    tool: "point",
-    number: index + 1,
-    points: [{ x: point.x * sx, y: (point.y - region.startY) * sy }],
-  });
-  return shapes;
+  return [
+    {
+      tool: "point",
+      number: index + 1,
+      markerStyle: marker.style || "ring",
+      markerSize: marker.size || "small",
+      points: [{ x: point.x * sx, y: (point.y - region.startY) * sy }],
+    },
+  ];
 }
 function summarizeMarkings(shapes, width, height, annotations = []) {
   return (shapes || []).flatMap((shape) => {
@@ -185,25 +161,28 @@ async function attachPointEvidence(draft, retainedPointStates = new Map()) {
       capturedAt: snapshot.capturedAt,
     };
     draft.capturePages.push(page);
-    draft.pageToolStates.push(
-      retainedPointStates.get(item.id) ??
-        pointShapes(
-          {
-            ...item,
-            anchor: {
-              ...item.anchor,
-              pagePoint: {
-                x: item.anchor.pagePoint.x - scroll.x,
-                y: item.anchor.pagePoint.y,
-              },
+    draft.pageToolStates.push([
+      ...(retainedPointStates.get(item.id) || []).filter(
+        (shape) => shape.origin !== "element" && shape.tool !== "point",
+      ),
+      ...pointShapes(
+        {
+          ...item,
+          anchor: {
+            ...item.anchor,
+            pagePoint: {
+              x: item.anchor.pagePoint.x - scroll.x,
+              y: item.anchor.pagePoint.y,
             },
           },
-          index,
-          { startY: page.startY, endY: page.endY, width: viewport.width },
-          snapshot.width / viewport.width,
-          snapshot.height / viewport.height,
-        ),
-    );
+        },
+        index,
+        { startY: page.startY, endY: page.endY, width: viewport.width },
+        snapshot.width / viewport.width,
+        snapshot.height / viewport.height,
+        draft.context.captureMarker,
+      ),
+    ]);
   }
   // Never send local storage references or current-page projections to the server.
   draft.context = { ...draft.context };
@@ -843,6 +822,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
                   },
                   sx,
                   sy,
+                  before.context.captureMarker,
                 ),
             ),
           );
@@ -996,6 +976,7 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
                 },
                 sx,
                 sy,
+                before.context.captureMarker,
               );
             },
           )
@@ -1004,6 +985,8 @@ async function capture(sender, retryId, pointToken = null, scope = "visible", bo
               {
                 tool: "point",
                 number: 1,
+                markerStyle: before.context.captureMarker?.style || "ring",
+                markerSize: before.context.captureMarker?.size || "small",
                 points: [
                   {
                     x: before.context.anchor.screenshotPoint.x * sx,
@@ -1295,6 +1278,16 @@ async function approveCapturePage(message) {
   if (!blob.size || blob.size > 10 * 1024 * 1024)
     throw Error(`Screenshot ${index + 1} exceeds the server's per-image size.`);
   await putPage(draft.id, index, "approved", blob);
+  if (message.imageWithoutPins) {
+    if (!/^data:image\/(?:png|jpeg|webp);base64,/.test(message.imageWithoutPins))
+      throw Error("The pin-free screenshot is invalid.");
+    const withoutPins = await (await fetch(message.imageWithoutPins)).blob();
+    if (!withoutPins.size || withoutPins.size > 10 * 1024 * 1024)
+      throw Error(
+        `Pin-free screenshot ${index + 1} exceeds the server's per-image size.`,
+      );
+    await putPage(draft.id, index, "without-pins", withoutPins);
+  } else await deletePage(draft.id, index, "without-pins");
   const approvedPageIndices = [...new Set([...(draft.approvedPageIndices || []), index])];
   await set({ draft: { ...draft, approvedPageIndices } });
   return { approved: true };
@@ -1421,7 +1414,10 @@ async function combineApprovedPages(draft) {
     if (!ctx) throw Error("Canvas is unavailable.");
     let sourceTop = 0;
     for (const index of indices) {
-      const bitmap = await createImageBitmap(await getPage(draft.id, index, "approved"));
+      const blob =
+        (draft.combinedWithoutPins && (await getPage(draft.id, index, "without-pins"))) ||
+        (await getPage(draft.id, index, "approved"));
+      const bitmap = await createImageBitmap(blob);
       const top = Math.round((sourceTop / height) * output.height);
       sourceTop += bitmap.height;
       const bottom = Math.round((sourceTop / height) * output.height);
@@ -1491,8 +1487,32 @@ async function submit(message) {
         throw Error(
           "The annotated image is too large. Use Send without screenshot, or discard and capture a smaller window.",
         );
-      if (series && !draft.noImage && draft.includeCombined)
+      if (message.imageWithoutPins && !series && !draft.noImage) {
+        if (!/^data:image\/(?:png|jpeg|webp);base64,/.test(message.imageWithoutPins))
+          throw Error("The pin-free screenshot is invalid.");
+        const withoutPins = await (await fetch(message.imageWithoutPins)).blob();
+        if (!withoutPins.size || withoutPins.size > 10 * 1024 * 1024)
+          throw Error("The pin-free screenshot exceeds the server's per-image size.");
+        await putPage(draft.id, 0, "single-without-pins", withoutPins);
+      } else if (!series) await deletePage(draft.id, 0, "single-without-pins");
+      if (series && !draft.noImage && draft.includeCombined) {
+        const indices = continuousDraft(draft).indices;
+        draft.combinedWithoutPins =
+          indices.some((index) =>
+            draft.pageToolStates?.[index]?.some((shape) => shape.tool === "point"),
+          ) &&
+          (
+            await Promise.all(
+              indices.map(
+                async (index) =>
+                  !draft.pageToolStates?.[index]?.some(
+                    (shape) => shape.tool === "point",
+                  ) || !!(await getPage(draft.id, index, "without-pins")),
+              ),
+            )
+          ).every(Boolean);
         await combineApprovedPages(draft);
+      }
       draft = {
         ...draft,
         frozen: true,
@@ -1555,11 +1575,12 @@ async function submit(message) {
       })
       .catch(() => {});
     if (draft.approvedImage) {
+      const withoutPins = await getPage(draft.id, 0, "single-without-pins");
       if (!draft.uploadAttempt) {
         draft.uploadAttempt = {
           threadId: draft.thread.id,
           revision: draft.thread.revision,
-          rendition: "annotated",
+          rendition: withoutPins ? "screenshot" : "annotated",
           captureRegion: {
             startY: draft.context.scroll?.y || 0,
             endY: (draft.context.scroll?.y || 0) + draft.context.viewport.height,
@@ -1572,9 +1593,19 @@ async function submit(message) {
       }
       let result;
       try {
+        if (draft.uploadAttempt.rendition === "screenshot" && !withoutPins)
+          throw Error(
+            "The approved pin-free screenshot is missing. Retry from this browser.",
+          );
         result = await authenticated(
           "assets.upload",
-          { ...draft.uploadAttempt, imageBase64: draft.approvedImage },
+          {
+            ...draft.uploadAttempt,
+            imageBase64:
+              draft.uploadAttempt.rendition === "screenshot"
+                ? await pageDataUrl(withoutPins)
+                : draft.approvedImage,
+          },
           draft.server,
         );
       } catch (error) {
@@ -1616,7 +1647,8 @@ async function submit(message) {
         index < draft.capturePages.length;
         index++
       ) {
-        const blob = await getPage(draft.id, index, "approved");
+        const withoutPins = await getPage(draft.id, index, "without-pins");
+        const blob = withoutPins || (await getPage(draft.id, index, "approved"));
         if (!blob)
           throw Error(
             `Approved screenshot ${index + 1} is missing. Retry from this browser.`,
@@ -1625,7 +1657,7 @@ async function submit(message) {
           draft.pageUploadAttempt = {
             threadId: draft.thread.id,
             revision: draft.thread.revision,
-            rendition: "annotated",
+            rendition: withoutPins ? "screenshot" : "annotated",
             filename: draft.capturePages[index].name,
             captureRegion: {
               startY: draft.capturePages[index].startY,
@@ -1655,6 +1687,10 @@ async function submit(message) {
         }
         let result;
         try {
+          if (draft.pageUploadAttempt.rendition === "screenshot" && !withoutPins)
+            throw Error(
+              `Pin-free screenshot ${index + 1} is missing. Retry from this browser.`,
+            );
           submitProgress(
             draft,
             `Uploading screenshot ${index + 1} of ${draft.capturePages.length}…`,
@@ -1663,7 +1699,14 @@ async function submit(message) {
           );
           result = await authenticated(
             "assets.upload",
-            { ...draft.pageUploadAttempt, imageBase64: await pageDataUrl(blob) },
+            {
+              ...draft.pageUploadAttempt,
+              imageBase64: await pageDataUrl(
+                draft.pageUploadAttempt.rendition === "screenshot"
+                  ? withoutPins
+                  : await getPage(draft.id, index, "approved"),
+              ),
+            },
             draft.server,
           );
         } catch (error) {
@@ -1708,7 +1751,7 @@ async function submit(message) {
           draft.combinedUploadAttempt = {
             threadId: draft.thread.id,
             revision: draft.thread.revision,
-            rendition: "annotated",
+            rendition: draft.combinedWithoutPins ? "screenshot" : "annotated",
             filename: "full-page-combined.webp",
             captureSections: combinedSections(draft),
             markings: combinedMarkings(draft),

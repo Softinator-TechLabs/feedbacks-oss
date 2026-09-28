@@ -42,8 +42,11 @@ async function refresh() {
     }
     $("review-shortcuts").checked = state.reviewShortcuts;
     for (const input of document.querySelectorAll("[data-review-default]"))
-      if (!input.disabled)
-        input.checked = state.reviewDefaults?.[input.dataset.reviewDefault] === true;
+      if (!input.disabled) {
+        const value = state.reviewDefaults?.[input.dataset.reviewDefault];
+        if (input instanceof HTMLSelectElement) input.value = value;
+        else input.checked = value === true;
+      }
     $("connection-status").textContent = state.pending
       ? "Approve the connection in Feedbacks."
       : state.connected
@@ -163,7 +166,8 @@ for (const input of document.querySelectorAll("[data-review-default]")) {
       await send({
         type: "saveReviewPreferences",
         reviewDefaults: {
-          [input.dataset.reviewDefault]: input.checked,
+          [input.dataset.reviewDefault]:
+            input instanceof HTMLSelectElement ? input.value : input.checked,
         },
       });
       $("message").textContent = "Defaults saved for your next review.";

@@ -108,6 +108,31 @@
             Starting settings for each new review. Page controls let you change the
             current session.
           </p>
+          <h3>Screenshot marker</h3>
+          <p class="hint">
+            The marker shows where you right-clicked. Your point and its screenshot are
+            still saved when you choose No marker.
+          </p>
+          <div class="capture-marker-defaults">
+            <label for="capture-marker-style"
+              >Default marker
+              <select id="capture-marker-style" data-review-default="captureMarkerStyle">
+                <option value="none">No marker</option>
+                <option value="ring">Outline circle</option>
+                <option value="dot">Solid circle</option>
+                <option value="arrow">Arrow</option>
+                <option value="pin">Numbered pin</option>
+              </select>
+            </label>
+            <label for="capture-marker-size"
+              >Default size
+              <select id="capture-marker-size" data-review-default="captureMarkerSize">
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+              </select>
+            </label>
+          </div>
           <div class="preference-list">
             <label class="check"
               ><input type="checkbox" data-review-default="navigationLocked" />Lock page
