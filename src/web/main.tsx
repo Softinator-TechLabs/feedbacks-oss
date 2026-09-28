@@ -110,11 +110,11 @@ function App() {
     return () => window.removeEventListener("feedbacks:account-change", changed);
   }, []);
   useEffect(() => {
-    if (session.error.includes("UNAUTHENTICATED")) {
+    if (session.errorCode === "UNAUTHENTICATED") {
       session.setData(undefined);
       setThreadProject(undefined);
     }
-  }, [session.error]);
+  }, [session.errorCode]);
   if (path === "/reset" && resetToken)
     return (
       <PasswordReplacement
@@ -155,7 +155,7 @@ function App() {
       );
     return (
       <AuthScreen
-        initialError={session.error.includes("UNAUTHENTICATED") ? "" : session.error}
+        initialError={session.errorCode === "UNAUTHENTICATED" ? "" : session.error}
         onAuthenticated={() => {
           if (path === "/sign-in" && params.get("returnTo") === "/help")
             location.href = "/help";

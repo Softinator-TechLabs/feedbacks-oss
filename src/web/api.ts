@@ -129,7 +129,7 @@ async function authenticatedRequest<T>(
 }
 export function errorText(error: unknown) {
   return error instanceof ApiError
-    ? `${error.message} (${error.code})`
+    ? error.message
     : error instanceof Error
       ? error.message
       : "Request failed. Try again.";

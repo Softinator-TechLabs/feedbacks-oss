@@ -61,7 +61,13 @@ export function AuthScreen({
           </Field>
         ) : (
           <Field label="Email">
-            <input name="email" inputMode="email" autoComplete="username" required />
+            <input
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="username"
+              required
+            />
           </Field>
         )}
         <Field label="Password" hint={invite ? "Use at least 10 characters." : undefined}>
