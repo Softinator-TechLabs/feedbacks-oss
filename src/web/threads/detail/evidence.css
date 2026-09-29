@@ -99,6 +99,14 @@
   font-size: 0.8rem;
   overflow-wrap: anywhere;
 }
+.diagnostic-evidence-facts {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
 .diagnostic-evidence-detail {
   min-width: 0;
   padding-top: 4px;

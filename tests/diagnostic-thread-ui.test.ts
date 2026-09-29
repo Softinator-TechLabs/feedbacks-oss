@@ -25,7 +25,16 @@ const complete = {
   status: "complete",
   startedAt,
   createdAt: startedAt,
+  endedAt: "2026-09-29T08:01:00.000Z",
   totalBytes: 5_242_900,
+  domBytes: 5_242_880,
+  stats: {
+    consoleCount: 4,
+    errorCount: 2,
+    httpRequestCount: 7,
+    responseCount: 6,
+    responseBodyCount: 5,
+  },
   fileCount: 1,
   coverage: { dom: "partial", console: "unavailable", network: "stopped" },
 };
@@ -34,6 +43,9 @@ const pending = {
   id: pendingId,
   status: "pending",
   totalBytes: 0,
+  endedAt: undefined,
+  domBytes: undefined,
+  stats: undefined,
   fileCount: 0,
   coverage: { dom: "partial", network: "unavailable" },
 };
@@ -51,6 +63,13 @@ test("thread diagnostics render only small summaries before a user selects evide
   assert.match(html, /Pending/);
   assert.match(html, /Partial/);
   assert.match(html, /Show older diagnostics/);
+  assert.match(html, /Console 4/);
+  assert.match(html, /2 errors/);
+  assert.match(html, /HTTP requests 7/);
+  assert.match(html, /Response bodies 5 of 6/);
+  assert.match(html, /DOM 5 MiB/);
+  assert.match(html, /Response bodies unavailable/);
+  assert.match(html, /Capture window/);
   assert.doesNotMatch(html, /Download captured diagnostics/);
   assert.doesNotMatch(html, /<script>window\.pwned/);
 });
@@ -211,6 +230,10 @@ test(
       await page.goto(`http://127.0.0.1:${address.port}`, { waitUntil: "networkidle" });
       await page.getByRole("heading", { name: "Captured diagnostics" }).waitFor();
       assert.deepEqual(calls, [], "initial render must use thread summaries only");
+      assert.match(
+        await page.locator(".diagnostic-evidence-facts").first().innerText(),
+        /HTTP requests 7 · Response bodies 5 of 6/,
+      );
       assert.match(await page.locator("#root").innerText(), /Pending/);
       assert.match(await page.locator("#root").innerText(), /Partial/);
       await page

@@ -350,7 +350,11 @@ export async function finalizeDiagnosticEvidence(
       fileCount: manifest.files.length,
       endedAt: manifest.endedAt,
       domBytes: manifest.files
-        .filter((file) => file.kind === "dom")
+        .filter(
+          (file) =>
+            file.kind === "dom" &&
+            file.mimeType.split(";")[0].trim().toLowerCase() === "text/html",
+        )
         .reduce((sum, file) => sum + file.byteLength, 0),
       ...(manifest.stats ? { stats: manifest.stats } : {}),
       coverage: Object.fromEntries(

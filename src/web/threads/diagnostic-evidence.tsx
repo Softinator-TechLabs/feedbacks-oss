@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ApiError, api, errorText } from "../api.js";
 import { ErrorNotice } from "../ui.js";
 import type { DiagnosticFile } from "../../shared/screenshot-diagnostics.js";
+import type { DiagnosticStats } from "../../shared/screenshot-diagnostics.js";
 
 export type DiagnosticEvidenceSummary = {
   id: string;
@@ -9,8 +10,11 @@ export type DiagnosticEvidenceSummary = {
   projectId: string;
   status: "pending" | "complete" | "expired";
   startedAt: string;
+  endedAt?: string;
   createdAt: string;
   totalBytes: number;
+  domBytes?: number;
+  stats?: DiagnosticStats;
   fileCount: number;
   coverage: Record<string, "complete" | "partial" | "unavailable" | "stopped">;
 };
@@ -39,6 +43,26 @@ function size(bytes: number) {
 
 function label(value: string) {
   return value.replaceAll("_", " ").replace(/^./, (first) => first.toUpperCase());
+}
+
+function captureFacts(item: DiagnosticEvidenceSummary) {
+  const unknown = "unavailable";
+  const start = new Date(item.startedAt).toLocaleString();
+  const end = item.endedAt ? new Date(item.endedAt).toLocaleString() : unknown;
+  const dom =
+    item.domBytes === undefined
+      ? unknown
+      : `${size(item.domBytes)} (${item.domBytes.toLocaleString()} bytes)`;
+  const stats = item.stats;
+  return [
+    `Capture window ${start} → ${end}`,
+    `DOM ${dom}`,
+    stats
+      ? `Console ${stats.consoleCount.toLocaleString()} (${stats.errorCount.toLocaleString()} errors)`
+      : `Console / errors ${unknown}`,
+    `HTTP requests ${stats ? stats.httpRequestCount.toLocaleString() : unknown}`,
+    `Response bodies ${stats ? `${stats.responseBodyCount.toLocaleString()} of ${stats.responseCount.toLocaleString()} responses` : unknown}`,
+  ].join(" · ");
 }
 
 function accessError(error: unknown) {
@@ -292,6 +316,7 @@ export function DiagnosticEvidencePanel({
                 .map(([channel, status]) => `${label(channel)} ${label(status)}`)
                 .join(" · ")}
             </span>
+            <span className="diagnostic-evidence-facts">{captureFacts(item)}</span>
           </li>
         ))}
       </ul>

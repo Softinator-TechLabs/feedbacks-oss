@@ -19,6 +19,14 @@ export type DiagnosticChannel = (typeof diagnosticKinds)[number];
 const uuid = z.uuid();
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
 const byteLength = z.number().int().nonnegative().max(DIAGNOSTIC_MAX_BYTES);
+export const diagnosticStatsSchema = z.strictObject({
+  consoleCount: z.number().int().nonnegative(),
+  errorCount: z.number().int().nonnegative(),
+  httpRequestCount: z.number().int().nonnegative(),
+  responseCount: z.number().int().nonnegative(),
+  responseBodyCount: z.number().int().nonnegative(),
+});
+export type DiagnosticStats = z.infer<typeof diagnosticStatsSchema>;
 const coverageSchema = z
   .strictObject({
     status: z.enum(["complete", "partial", "unavailable", "stopped"]),
@@ -77,6 +85,7 @@ export const diagnosticManifestSchema = z
     sourceOrigin: z.url(),
     startedAt: z.iso.datetime({ offset: true }),
     endedAt: z.iso.datetime({ offset: true }),
+    stats: diagnosticStatsSchema.optional(),
     coverage: z.record(z.enum(diagnosticKinds), coverageSchema),
     files: z.array(fileSchema).max(16_384),
     totalBytes: byteLength,

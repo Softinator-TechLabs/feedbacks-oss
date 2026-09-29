@@ -12,6 +12,7 @@ test("ordinary thread reads stay small while 5 MiB DOM pages reassemble exactly"
     });
     assert.equal(pending.diagnosticEvidence.count, 1);
     assert.equal(pending.diagnosticEvidence.latest[0].status, "pending");
+    assert.equal(pending.diagnosticEvidence.latest[0].stats, undefined);
     assert.ok(Buffer.byteLength(JSON.stringify(pending)) < 100_000);
     await assert.rejects(
       f.ops.executeOperation(f.owner, "diagnostics.read", {
@@ -29,6 +30,7 @@ test("ordinary thread reads stay small while 5 MiB DOM pages reassemble exactly"
     });
     assert.equal(overview.diagnosticEvidence.count, 1);
     assert.equal(overview.diagnosticEvidence.latest[0].totalBytes, raw.byteLength);
+    assert.equal(overview.diagnosticEvidence.latest[0].stats, undefined);
     assert.ok(!JSON.stringify(overview).includes("a".repeat(1000)));
     const listed = await f.ops.executeOperation(f.owner, "diagnostics.list", {
       threadId: f.thread.id,
@@ -65,6 +67,61 @@ test("ordinary thread reads stay small while 5 MiB DOM pages reassemble exactly"
     }
     assert.equal(hashDiagnostic(Buffer.concat(pages)), hashDiagnostic(raw));
     assert.deepEqual(Buffer.concat(pages), raw);
+  } finally {
+    await f.close();
+  }
+});
+
+test("thread summary carries exact capture metrics without raw diagnostic values", async () => {
+  const f = await diagnosticFixture(Buffer.from("<html>synthetic</html>"));
+  const endedAt = new Date(Date.parse(f.startedAt) + 60_000).toISOString();
+  const metadata = Buffer.from('{"type":"frame","html":"synthetic"}\n');
+  const metadataFileId = randomUUID();
+  f.manifest.files.push({
+    fileId: metadataFileId,
+    kind: "dom",
+    mimeType: "application/jsonl",
+    byteLength: metadata.byteLength,
+    sha256: hashDiagnostic(metadata),
+    chunks: [
+      { sequence: 0, byteLength: metadata.byteLength, sha256: hashDiagnostic(metadata) },
+    ],
+  });
+  f.manifest.totalBytes += metadata.byteLength;
+  Object.assign(f.manifest, {
+    endedAt,
+    stats: {
+      consoleCount: 4,
+      errorCount: 2,
+      httpRequestCount: 7,
+      responseCount: 6,
+      responseBodyCount: 5,
+    },
+  });
+  try {
+    await f.ops.executeOperation(f.owner, "diagnostics.putChunk", {
+      evidenceId: f.evidenceId,
+      fileId: metadataFileId,
+      sequence: 0,
+      sha256: hashDiagnostic(metadata),
+      contentBase64: metadata.toString("base64"),
+    });
+    await f.upload();
+    const overview = await f.ops.executeOperation(f.owner, "threads.get", {
+      threadId: f.thread.id,
+    });
+    const summary = overview.diagnosticEvidence.latest[0];
+    assert.equal(summary.endedAt, endedAt);
+    assert.equal(summary.domBytes, Buffer.byteLength("<html>synthetic</html>"));
+    assert.deepEqual(summary.stats, {
+      consoleCount: 4,
+      errorCount: 2,
+      httpRequestCount: 7,
+      responseCount: 6,
+      responseBodyCount: 5,
+    });
+    assert.ok(Buffer.byteLength(JSON.stringify(overview)) < 100_000);
+    assert.ok(!JSON.stringify(summary).includes("synthetic</html>"));
   } finally {
     await f.close();
   }

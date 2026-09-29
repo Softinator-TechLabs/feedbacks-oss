@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { diagnosticStatsSchema } from "../screenshot-diagnostics.js";
 import {
   id,
   name,
@@ -80,8 +81,11 @@ export const diagnosticEvidenceSummaryOutput = z.object({
   projectId: id,
   status: z.enum(["pending", "complete", "expired"]),
   startedAt: z.string().datetime(),
+  endedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
   totalBytes: z.number().int().nonnegative(),
+  domBytes: z.number().int().nonnegative().optional(),
+  stats: diagnosticStatsSchema.optional(),
   fileCount: z.number().int().nonnegative(),
   coverage: z.record(
     z.string(),

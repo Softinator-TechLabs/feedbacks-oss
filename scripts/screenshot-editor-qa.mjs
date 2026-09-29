@@ -160,6 +160,76 @@ try {
     ctx.fillRect(300, 200, 80, 80);
     const blob = await canvas.convertToBlob({ type: "image/png" });
     for (let i = 0; i < 26; i++) await putPage("synthetic-editor", i, "source", blob);
+    const { createDiagnosticEvidenceStore } = await import(
+      "/extension/diagnostics/evidence-store.js"
+    );
+    const store = createDiagnosticEvidenceStore();
+    const evidenceId = "11111111-1111-4111-8111-111111111111";
+    const fileId = "22222222-2222-4222-8222-222222222222";
+    const bytes = new TextEncoder().encode("<main>Synthetic DOM</main>");
+    const chunk = await store.putEvidenceChunk(evidenceId, fileId, 0, bytes);
+    const manifest = {
+      schemaVersion: 1,
+      id: evidenceId,
+      sourceOrigin: "https://example.test",
+      startedAt: "2026-09-29T08:00:00.000Z",
+      endedAt: "2026-09-29T08:01:00.000Z",
+      coverage: {
+        dom: {
+          status: "complete",
+          observedCount: 1,
+          capturedBytes: bytes.length,
+          reasons: [],
+        },
+        console: {
+          status: "partial",
+          observedCount: 25,
+          capturedBytes: 0,
+          reasons: ["debugger_detached"],
+        },
+        network: {
+          status: "partial",
+          observedCount: 38,
+          capturedBytes: 0,
+          reasons: ["debugger_detached"],
+        },
+        body: {
+          status: "partial",
+          observedCount: 8,
+          capturedBytes: 0,
+          reasons: ["body_unavailable"],
+        },
+      },
+      stats: {
+        consoleCount: 4,
+        errorCount: 2,
+        httpRequestCount: 7,
+        responseCount: 6,
+        responseBodyCount: 5,
+      },
+      files: [
+        {
+          fileId,
+          kind: "dom",
+          mimeType: "text/html",
+          byteLength: bytes.length,
+          sha256: chunk.sha256,
+          chunks: [chunk],
+        },
+      ],
+      totalBytes: bytes.length,
+    };
+    await store.putEvidenceState(evidenceId, {
+      manifest,
+      sourceUrl: "https://example.test",
+    });
+    window.qaDraft.diagnosticEvidence = {
+      evidenceId,
+      totalBytes: bytes.length,
+      coverage: manifest.coverage,
+    };
+    window.qaDraft.includeDiagnostics = true;
+    window.qaPersist();
   });
   await page.goto(`${origin}/extension/editor.html`);
   await page.waitForFunction(
@@ -167,6 +237,27 @@ try {
       document.querySelector("#canvas").width === 433 &&
       !document.querySelector('[data-tool="highlighter"]').disabled,
   );
+  await page.locator("#diagnostics-review summary").click();
+  await page.waitForFunction(() =>
+    document.querySelector(".diagnostic-facts")?.textContent.includes("HTTP requests"),
+  );
+  const diagnosticFacts = await page.locator(".diagnostic-facts").innerText();
+  assert.match(diagnosticFacts, /Console \/ errors\s+4 messages · 2 errors/);
+  assert.match(diagnosticFacts, /HTTP requests\s+7 observed/);
+  assert.match(diagnosticFacts, /Response bodies\s+5 of 6 responses/);
+  assert.match(diagnosticFacts, /DOM snapshot\s+26 bytes/);
+  assert.doesNotMatch(diagnosticFacts, /38 (?:requests|observed)/);
+  await mkdir(join(root, ".local/screenshot-editor-qa"), { recursive: true });
+  await page.locator("#diagnostics-review").screenshot({
+    path: join(root, ".local/screenshot-editor-qa/diagnostics-desktop.png"),
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator("#diagnostics-review").screenshot({
+    path: join(root, ".local/screenshot-editor-qa/diagnostics-compact.png"),
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator("#diagnostics-review summary").click();
+  await page.evaluate(() => scrollTo(0, 0));
   // The wide review workspace has two control rows, and opening menus keeps
   // the capture anchored at the same position.
   await page.setViewportSize({ width: 1979, height: 1280 });
