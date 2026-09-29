@@ -7,7 +7,8 @@ import { ThreadList, ThreadDetail } from "./threads/index.js";
 import { Members } from "./members/list.js";
 import { Instructions } from "./projects/instructions.js";
 import { Account } from "./account/account.js";
-import { Help, Privacy } from "./help.js";
+import { Help } from "./help/index.js";
+import { Privacy } from "./help/privacy.js";
 import { PasswordReplacement } from "./account/password-replacement.js";
 import { OwnerLinkSignIn } from "./owner-links.js";
 import {
