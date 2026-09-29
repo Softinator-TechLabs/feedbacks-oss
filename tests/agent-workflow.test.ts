@@ -481,7 +481,7 @@ test("start reads the selected task once, distinguishes its reviewed thread and 
     snapshotRevision: thread.revision,
   });
   assert.equal(result.task.id, threadId);
-  assert.equal(result.task.archived, false);
+  assert.equal(result.task.archived, undefined);
   assert.equal(result.reviewedPage.threadId, referenced);
   assert.equal(result.reviewedPage.relationship, "reviewed_thread");
   assert.equal(result.snapshot.matches, true);
@@ -532,8 +532,8 @@ test("body-only feedback does not count its legacy anchor as a numbered comment"
     "thread",
     { threadId },
   );
-  assert.equal(result.counts.points, 0);
-  assert.equal(result.counts.openPoints, 0);
+  assert.equal(result.counts.points, undefined);
+  assert.equal(result.counts.openPoints, undefined);
   assert.equal(result.counts.legacyAnchor, true);
 });
 

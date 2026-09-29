@@ -2,6 +2,8 @@
 
 Use this guide for a specific unresolved task question. Start with relevant text/source and one image when pixels matter. For runtime questions choose one recording/time range or diagnostic channel and bounded search/read results. Full materialization is for questions targeted reads cannot answer, or an explicit bundle request. Available recordings/diagnostics do not require inspection. Stop when evidence is sufficient for the requested fix and verification.
 
+The start result can include one native screenshot or saved video frame with `media.assetId` and its timestamp; reuse it. A video without a saved frame provides its media lookup and asks for the relevant moment, never an automatic export. The start image uses at most 1280 pixels; request a larger image/crop if needed.
+
 Read the paginated `assets` section for opaque IDs, types, dimensions, capture regions/sections and markings. Inspect one relevant image using `asset includeImage:true`; MCP emits a native image block. Metadata dimensions are ORIGINAL pixels; image dimensions describe the preview.
 
 - Match `markings[].annotationId` to the chosen point. Prefer `point-NNN-original.webp` for its original viewport/menu state. Check `anchor.viewport`, `capturedAt` and pixel ratio.

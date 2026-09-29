@@ -283,3 +283,59 @@ test("MCP errors preserve actionable scope information", async () => {
     await server.close();
   }
 });
+
+test("task start delivers one native image without copying its pixels into structured content", async () => {
+  const threadId = "a0000000-0000-4000-8000-000000000001",
+    assetId = "a0000000-0000-4000-8000-000000000002";
+  const calls: string[] = [];
+  const server = mcpServer(async (name) => {
+    calls.push(name);
+    if (name === "auth.me")
+      return { actor: { id: "agent", userId: "member" }, projects: [] };
+    if (name === "threads.get")
+      return {
+        id: threadId,
+        projectId: threadId,
+        revision: 1,
+        body: "Make this label readable",
+        context: { url: "https://example.test/form", annotations: [] },
+        work: { state: "open" },
+        replies: [],
+        assets: [{ id: assetId, contentType: "image/png", rendition: "screenshot" }],
+      };
+    if (name === "instructions.get") return { items: [], revision: 1 };
+    if (name === "assignments.list" || name === "assignments.delegations")
+      return { items: [], total: 0, nextOffset: null };
+    if (name === "assets.get")
+      return {
+        id: assetId,
+        image: {
+          data: "c3ludGhldGljLXBpeGVscw==",
+          mimeType: "image/png",
+          width: 800,
+          height: 600,
+        },
+      };
+    throw Error(`Unexpected call ${name}`);
+  }, "compact");
+  const client = new Client({ name: "small-task", version: "1" });
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  try {
+    await server.connect(a);
+    await client.connect(b);
+    const r = await client.callTool({
+      name: "feedbacks_start",
+      arguments: { threadId, includeImage: true },
+    });
+    const images = (r.content as any[]).filter((c) => c.type === "image");
+    assert.equal(images.length, 1);
+    assert.equal(images[0].data, "c3ludGhldGljLXBpeGVscw==");
+    assert.ok(!JSON.stringify(r.structuredContent).includes(images[0].data));
+    assert.equal((r.structuredContent as any).media.included, true);
+    assert.equal(calls.filter((c) => c === "assets.get").length, 1);
+    assert.ok(calls.every((c) => !c.endsWith("claim") && !c.endsWith("status")));
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});

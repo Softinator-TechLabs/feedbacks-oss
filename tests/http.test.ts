@@ -245,7 +245,7 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
     assert.equal(started.result.structuredContent.task.id, created.data.id);
     assert.equal(started.result.structuredContent.snapshot.matches, true);
     assert.equal(started.result.structuredContent.coordination.verified, false);
-    assert.equal(started.result.structuredContent.media.inspected, false);
+    assert.equal(started.result.structuredContent.media, undefined);
     const compactDenied = await compactRpc("tools/call", {
       name: "feedbacks_execute",
       arguments: {
