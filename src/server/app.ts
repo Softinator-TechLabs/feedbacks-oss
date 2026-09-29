@@ -8,6 +8,7 @@ import type { AssetStore } from "./assets.js";
 import { registerOperationRoute } from "./http/operation-route.js";
 import { registerAssetDownloadRoutes } from "./http/asset-download-routes.js";
 import { registerDiagnosticDownloadRoutes } from "./http/diagnostic-download-routes.js";
+import { registerThreadArchiveRoutes } from "./http/thread-archive-routes.js";
 import { DomainError, fail } from "./errors.js";
 import { LoginThrottleError } from "./auth.js";
 import { widgetLink } from "./widget.js";
@@ -180,6 +181,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
   });
   registerOperationRoute(app, config, database, ops, rate, bearer, cookie, requireOrigin);
   registerDiagnosticDownloadRoutes(app, database, assets, ops, bearer, cookie);
+  registerThreadArchiveRoutes(app, database, assets, ops, bearer, cookie);
   registerAssetDownloadRoutes(app, database, assets, ops, bearer, cookie);
   app.post("/mcp", async (req, res, next) => {
     try {

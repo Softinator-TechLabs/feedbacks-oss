@@ -72,6 +72,7 @@ export function ThreadRecordings({
   const [replayError, setReplayError] = useState("");
   const [replayReady, setReplayReady] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState("");
+  const [focusedEventSeq, setFocusedEventSeq] = useState<number | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [frameBusy, setFrameBusy] = useState(false);
   const [frameError, setFrameError] = useState("");
@@ -131,6 +132,7 @@ export function ThreadRecordings({
     setEvidenceScope("all");
     setFollowPlayback(true);
     setSelectedRequest("");
+    setFocusedEventSeq(null);
     setVideoReady(false);
     setFrameError("");
     setSavedFrame(null);
@@ -695,6 +697,7 @@ export function ThreadRecordings({
                     replayClockRef.current = null;
                     setPlaying(false);
                   } else {
+                    setFocusedEventSeq(null);
                     setDiagnosticTab("everything");
                     setEvidenceScope("all");
                     replayClockRef.current = {
@@ -713,9 +716,13 @@ export function ThreadRecordings({
                   setVideoMuted(video.muted);
                 }}
                 enterFullscreen={() => void playerShellRef.current?.requestFullscreen()}
-                seek={seek}
+                seek={(atMs) => {
+                  setFocusedEventSeq(null);
+                  seek(atMs);
+                }}
                 selectMark={(mark) => {
                   setFollowPlayback(false);
+                  setFocusedEventSeq(mark.seq ?? null);
                   setDiagnosticTab(
                     mark.type === "network"
                       ? "network"
@@ -777,6 +784,7 @@ export function ThreadRecordings({
                             src={videoAsset.url}
                             gap={!!videoGap}
                             onPlay={(video) => {
+                              setFocusedEventSeq(null);
                               selectedVideoGapRef.current = false;
                               checkVideoFrame(video);
                               setDiagnosticTab("everything");
@@ -811,6 +819,12 @@ export function ThreadRecordings({
                                 )
                                   setVideoReady(true);
                               }
+                            }}
+                            onTogglePlayback={() => {
+                              const video = videoRef.current;
+                              if (!video) return;
+                              if (video.paused) void video.play();
+                              else video.pause();
                             }}
                           />
                           <RecordingFrameControls
@@ -847,6 +861,8 @@ export function ThreadRecordings({
                   setEvidenceScope={setEvidenceScope}
                   selectedRequest={selectedRequest}
                   setSelectedRequest={setSelectedRequest}
+                  focusedEventSeq={focusedEventSeq}
+                  setFocusedEventSeq={setFocusedEventSeq}
                 />
               </div>
             </>

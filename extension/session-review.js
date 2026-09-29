@@ -44,6 +44,9 @@ export function createSessionReview(
     pendingSeek = null,
     selectedGap = false,
     eventPage = 0,
+    focusedSeq = null,
+    followPlayback = true,
+    lastAutoScrollSeq = null,
     annotationDialog;
   const token = crypto.randomUUID();
   const channels = ["activity", "console", "network", "performance"];
@@ -101,7 +104,8 @@ export function createSessionReview(
   root.hidden = false;
   root.replaceChildren();
   root.classList.add("session-review");
-  root.append(make("h2", "Recorded moments"));
+  root.setAttribute("role", "region");
+  root.setAttribute("aria-label", "Recorded moments");
   const guide = make("details", null, "review-guide");
   guide.append(make("summary", "About this capture"));
   guide.append(
@@ -120,9 +124,9 @@ export function createSessionReview(
       "hint",
     ),
   );
-  root.append(guide);
+  let coverage;
   if (recording.coverage?.length) {
-    const coverage = make("details", null, "review-coverage");
+    coverage = make("details", null, "review-coverage");
     const gaps = recording.coverage.filter((c) => c.status !== "complete");
     coverage.append(
       make(
@@ -134,9 +138,9 @@ export function createSessionReview(
       coverage.append(
         make("p", `${c.channel}: ${c.status}${c.detail ? ` — ${c.detail}` : ""}`, "hint"),
       );
-    root.append(coverage);
   }
-  let frame, timelineStrip;
+  let frame, timelineStrip, timelinePlayhead;
+  let videoDurationMs = recording.durationMs;
   const replayStatus = make("p", "", "hint");
   if (!videoElement) {
     frame = make("iframe");
@@ -167,7 +171,7 @@ export function createSessionReview(
     const strip = make("div", null, "review-timeline-events");
     timelineStrip = strip;
     strip.setAttribute("aria-label", "Events on the video timeline");
-    const videoDurationMs =
+    videoDurationMs =
       timelineDurationMs ||
       (video?.segments?.length
         ? Math.max(
@@ -237,16 +241,28 @@ export function createSessionReview(
       mark.onclick = () => {
         pause();
         selected = event.type;
+        allEvents = true;
+        mode.checked = true;
         detailEvent = event;
+        focusedSeq = event.seq;
+        lastAutoScrollSeq = null;
+        eventPage = Math.floor(
+          byChannel[event.type].findIndex((item) => item.seq === event.seq) / 200,
+        );
         seek(event.atMs);
       };
       strip.append(mark);
     }
-    if (editTimeline)
-      editTimeline.insertBefore(strip, editTimeline.querySelector(".timeline-playback"));
-    else root.append(strip);
+    if (editTimeline) {
+      const lane = editTimeline.querySelector(".timeline-rail");
+      lane.append(strip);
+      timelinePlayhead = make("div", null, "review-timeline-playhead");
+      timelinePlayhead.setAttribute("aria-hidden", "true");
+      lane.append(timelinePlayhead);
+    } else root.append(strip);
   }
   const gap = make("p", "", "hint");
+  gap.hidden = true;
   root.append(gap);
   if (annotations.length) {
     const notes = make("section", null, "review-annotations");
@@ -273,7 +289,8 @@ export function createSessionReview(
       card.append(jump, content);
       notes.append(card);
     }
-    root.append(notes);
+    // Screenshot comments stay below the playback diagnostics.
+    var annotationNotes = notes;
   }
   let saveFrameButton;
   if (videoElement && onFrame) {
@@ -285,11 +302,12 @@ export function createSessionReview(
       if (selectedGap || pendingSeek !== null || source === null) {
         gap.textContent =
           "Seek to a retained video moment and wait for the frame before saving.";
+        gap.hidden = false;
         return;
       }
       onFrame(source, videoElement.currentTime * 1000);
     };
-    root.append(save);
+    var frameAction = save;
   }
   const tabs = make("div", null, "review-tabs");
   tabs.setAttribute("role", "tablist");
@@ -301,6 +319,8 @@ export function createSessionReview(
     b.onclick = () => {
       selected = channel;
       eventPage = 0;
+      focusedSeq = null;
+      lastAutoScrollSeq = null;
       detailEvent = null;
       details.hidden = true;
       details.open = false;
@@ -310,6 +330,21 @@ export function createSessionReview(
     tabs.append(b);
   }
   root.append(tabs);
+  const follow = make("button", "Following playback", "review-follow");
+  follow.type = "button";
+  follow.setAttribute("aria-pressed", "true");
+  follow.onclick = () => {
+    followPlayback = !followPlayback;
+    follow.setAttribute("aria-pressed", String(followPlayback));
+    follow.textContent = followPlayback ? "Following playback" : "Follow playback";
+    if (followPlayback) {
+      selected = "everything";
+      focusedSeq = null;
+      lastAutoScrollSeq = null;
+      render();
+    }
+  };
+  root.append(follow);
   const modeLabel = make("label", null, "review-mode"),
     mode = make("input");
   mode.type = "checkbox";
@@ -336,12 +371,22 @@ export function createSessionReview(
   details.append(detailSummary, detailBody);
   details.hidden = true;
   root.append(details);
+  if (frameAction) root.append(frameAction);
+  if (annotationNotes) root.append(annotationNotes);
+  root.append(guide);
+  if (coverage) root.append(coverage);
   function replay(message) {
     frame?.contentWindow?.postMessage({ token, ...message }, "*");
   }
   function render() {
     range.value = String(at);
     clock.textContent = `${reviewTime(at)} / ${reviewTime(recording.durationMs)}`;
+    if (timelinePlayhead) {
+      const videoAt = sourceToVideo(at, video);
+      timelinePlayhead.hidden = videoAt === null;
+      if (videoAt !== null)
+        timelinePlayhead.style.left = `${Math.max(0, Math.min(100, ((videoAt + timelineStartMs) / Math.max(1, videoDurationMs)) * 100))}%`;
+    }
     const cutoff = recording.environment?.replayStoppedAtMs;
     if (frame) {
       const unavailable = Number.isFinite(cutoff) && at >= cutoff;
@@ -356,6 +401,10 @@ export function createSessionReview(
       detailEvent?.type === "network"
         ? reviewState(recording.events, at)
         : null;
+    if (playing && followPlayback) {
+      selected = "everything";
+      focusedSeq = null;
+    }
     const rows =
       selected === "everything"
         ? allEvents
@@ -380,6 +429,7 @@ export function createSessionReview(
       b.textContent = `${channel[0].toUpperCase() + channel.slice(1)} (${count})`;
       b.setAttribute("aria-selected", String(channel === selected));
     }
+    const previousScrollTop = content.scrollTop;
     content.replaceChildren();
     if (!rows.length)
       content.append(
@@ -397,8 +447,12 @@ export function createSessionReview(
       const reached = rows.findLastIndex((event) => event.atMs <= at);
       if (reached >= 0) eventPage = Math.floor(reached / 200);
     }
+    if (focusedSeq !== null) {
+      const focusedIndex = rows.findIndex((event) => event.seq === focusedSeq);
+      if (focusedIndex >= 0) eventPage = Math.floor(focusedIndex / 200);
+    }
     eventPage = Math.min(eventPage, Math.max(0, Math.ceil(rows.length / 200) - 1));
-    const activeSeq = rows.findLast((event) => event.atMs <= at)?.seq;
+    const activeSeq = focusedSeq ?? rows.findLast((event) => event.atMs <= at)?.seq;
     for (const e of rows.slice(eventPage * 200, (eventPage + 1) * 200)) {
       const b = make("button", null, "review-event");
       b.type = "button";
@@ -415,6 +469,8 @@ export function createSessionReview(
       if (e.data?.level === "error" || e.data?.error || e.data?.status >= 400)
         b.classList.add("review-error");
       b.onclick = () => {
+        focusedSeq = e.seq;
+        lastAutoScrollSeq = null;
         seek(e.atMs);
         detailEvent = e;
         if (e.type === "environment") selected = "environment";
@@ -422,13 +478,22 @@ export function createSessionReview(
       };
       content.append(b);
     }
-    if (playing) {
+    content.scrollTop = previousScrollTop;
+    if ((playing && followPlayback) || focusedSeq !== null) {
       const active = content.querySelector('[aria-current="true"]');
-      if (active) {
+      if (active && activeSeq !== lastAutoScrollSeq) {
         const view = content.getBoundingClientRect();
         const row = active.getBoundingClientRect();
         const delta = row.top + row.height / 2 - (view.top + view.height / 2);
-        if (Math.abs(delta) > 8) content.scrollTop += delta;
+        if (Math.abs(delta) > 8)
+          content.scrollTo({
+            top: content.scrollTop + delta,
+            behavior:
+              playing && !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                ? "smooth"
+                : "instant",
+          });
+        lastAutoScrollSeq = activeSeq ?? null;
       }
     }
     if (detailEvent) {
@@ -481,6 +546,7 @@ export function createSessionReview(
       }
       gap.textContent =
         ms === null ? "This moment is outside the retained video intervals." : "";
+      gap.hidden = !gap.textContent;
       if (ms !== null && Math.abs(videoElement.currentTime * 1000 - ms) > 40) {
         pendingSeek = ms;
         videoElement.currentTime = ms / 1000;
@@ -510,6 +576,8 @@ export function createSessionReview(
       return;
     }
     if (at >= recording.durationMs) seek(0);
+    focusedSeq = null;
+    if (followPlayback) selected = "everything";
     playing = true;
     play.textContent = "Pause";
     if (videoElement) void videoElement.play().catch(() => pause());
@@ -518,8 +586,11 @@ export function createSessionReview(
   };
   range.oninput = () => {
     pause();
+    focusedSeq = null;
     seek(Number(range.value));
   };
+  const onVideoClick = () => play.click();
+  videoElement?.addEventListener("click", onVideoClick);
   const onTime = () => {
     if (selectedGap) return;
     if (pendingSeek !== null) {
@@ -538,6 +609,7 @@ export function createSessionReview(
       selectedGap = false;
       if (saveFrameButton) saveFrameButton.disabled = false;
       gap.textContent = "";
+      gap.hidden = true;
       onTime();
     }
     playing = true;
@@ -575,6 +647,7 @@ export function createSessionReview(
     dispose() {
       disposed = true;
       timelineStrip?.remove();
+      timelinePlayhead?.remove();
       annotationDialog?.close();
       annotationDialog?.remove();
       annotationDialog = null;
@@ -584,6 +657,7 @@ export function createSessionReview(
       videoElement?.removeEventListener("seeked", onTime);
       videoElement?.removeEventListener("timeupdate", onTime);
       videoElement?.removeEventListener("pause", onPause);
+      videoElement?.removeEventListener("click", onVideoClick);
       root.replaceChildren();
       root.hidden = true;
     },

@@ -110,7 +110,7 @@ try {
   assert.ok(!serialized.includes("CANARY_INPUT"), "explicit input privacy");
   assert.ok(!serialized.includes("CANARY_START"));
   await recorder.waitForTimeout(1300);
-  await recorder.getByRole("heading", { name: "Recorded moments" }).waitFor();
+  await recorder.getByRole("region", { name: "Recorded moments" }).waitFor();
   await recorder.waitForFunction(
     () =>
       document

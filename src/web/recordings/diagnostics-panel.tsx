@@ -150,6 +150,8 @@ export function RecordingDiagnostics({
   setEvidenceScope,
   selectedRequest,
   setSelectedRequest,
+  focusedEventSeq,
+  setFocusedEventSeq,
 }: {
   recording: Recording;
   cursorMs: number;
@@ -163,6 +165,8 @@ export function RecordingDiagnostics({
   setEvidenceScope: (scope: EvidenceScope) => void;
   selectedRequest: string;
   setSelectedRequest: (key: string) => void;
+  focusedEventSeq: number | null;
+  setFocusedEventSeq: (seq: number | null) => void;
 }) {
   const [everythingPage, setEverythingPage] = useState(0);
   const eventListRef = useRef<HTMLOListElement>(null);
@@ -225,13 +229,17 @@ export function RecordingDiagnostics({
       : everythingPageStart + everythingPageSize - 1,
   );
   const latestMoment = combinedEvents[reachedEventCount - 1] ?? null;
-  const activeEventSeq = visibleEvents
-    .filter((event) => event.atMs <= cursorMs)
-    .at(-1)?.seq;
-  const activeEverythingSeq = latestMoment?.seq;
-  const activeExchangeKey = visibleExchanges
-    .filter((exchange) => exchange.atMs <= cursorMs)
-    .at(-1)?.key;
+  const activeEventSeq =
+    visibleEvents.find((event) => event.seq === focusedEventSeq)?.seq ??
+    visibleEvents.filter((event) => event.atMs <= cursorMs).at(-1)?.seq;
+  const activeEverythingSeq =
+    visibleCombinedEvents.find((event) => event.seq === focusedEventSeq)?.seq ??
+    latestMoment?.seq;
+  const activeExchangeKey =
+    (selectedRequest && visibleExchanges.some((item) => item.key === selectedRequest)
+      ? selectedRequest
+      : null) ??
+    visibleExchanges.filter((exchange) => exchange.atMs <= cursorMs).at(-1)?.key;
   const visibleCount = eventType
     ? visibleEvents.length
     : diagnosticTab === "everything"
@@ -256,22 +264,12 @@ export function RecordingDiagnostics({
     if (!playing || !followPlayback || !latestMoment) return;
     if (followedEventRef.current === latestMoment.seq) return;
     followedEventRef.current = latestMoment.seq;
-    if (diagnosticTab !== "everything")
-      setDiagnosticTab(latestMoment.type as DiagnosticTab);
     setEvidenceScope("all");
     if (latestMoment.type === "network") {
       const data = latestMoment.data as Record<string, unknown> | null;
       if (typeof data?.requestId === "string") setSelectedRequest(data.requestId);
     }
-  }, [
-    playing,
-    followPlayback,
-    latestMoment,
-    diagnosticTab,
-    setDiagnosticTab,
-    setEvidenceScope,
-    setSelectedRequest,
-  ]);
+  }, [playing, followPlayback, latestMoment, setEvidenceScope, setSelectedRequest]);
 
   useEffect(() => {
     const list = eventListRef.current;
@@ -282,7 +280,16 @@ export function RecordingDiagnostics({
     const rowBounds = current.getBoundingClientRect();
     const centerDelta =
       rowBounds.top + rowBounds.height / 2 - (listBounds.top + listBounds.height / 2);
-    if (Math.abs(centerDelta) > 8) list.scrollTop += centerDelta;
+    if (Math.abs(centerDelta) > 8)
+      list.scrollTo({
+        top: list.scrollTop + centerDelta,
+        behavior:
+          playing &&
+          followPlayback &&
+          !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "smooth"
+            : "instant",
+      });
   }, [
     activeEventSeq,
     activeEverythingSeq,
@@ -290,6 +297,9 @@ export function RecordingDiagnostics({
     diagnosticTab,
     evidenceScope,
     shownEverythingPage,
+    focusedEventSeq,
+    playing,
+    followPlayback,
   ]);
   return (
     <div className="recording-diagnostics">
@@ -353,6 +363,7 @@ export function RecordingDiagnostics({
                     type="button"
                     aria-current={!activeEverythingSeq ? "true" : undefined}
                     onClick={() => {
+                      setFocusedEventSeq(null);
                       setDiagnosticTab("environment");
                       seek(0);
                     }}
@@ -372,7 +383,10 @@ export function RecordingDiagnostics({
                   <button
                     type="button"
                     aria-current={activeEverythingSeq === event.seq ? "true" : undefined}
-                    onClick={() => seek(event.atMs)}
+                    onClick={() => {
+                      setFocusedEventSeq(event.seq);
+                      seek(event.atMs);
+                    }}
                   >
                     <time>{formatRecordingTime(event.atMs)}</time>
                     <span>
@@ -432,7 +446,10 @@ export function RecordingDiagnostics({
                   <button
                     type="button"
                     aria-current={activeEventSeq === event.seq ? "true" : undefined}
-                    onClick={() => seek(event.atMs)}
+                    onClick={() => {
+                      setFocusedEventSeq(event.seq);
+                      seek(event.atMs);
+                    }}
                   >
                     <time>{formatRecordingTime(event.atMs)}</time>
                     <span>
@@ -465,6 +482,7 @@ export function RecordingDiagnostics({
                       aria-expanded={selectedRequest === item.key}
                       aria-current={activeExchangeKey === item.key ? "true" : undefined}
                       onClick={() => {
+                        setFocusedEventSeq(null);
                         setSelectedRequest(item.key);
                         seek(item.atMs);
                       }}

@@ -66,6 +66,7 @@ export function RecordingVideoStage({
   onFrameReady,
   onSeeking,
   onTimeUpdate,
+  onTogglePlayback,
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   src: string;
@@ -76,6 +77,7 @@ export function RecordingVideoStage({
   onFrameReady: (video: HTMLVideoElement) => void;
   onSeeking: () => void;
   onTimeUpdate: (video: HTMLVideoElement) => void;
+  onTogglePlayback: () => void;
 }) {
   return (
     <div className="recording-video-stage">
@@ -84,6 +86,14 @@ export function RecordingVideoStage({
         preload="metadata"
         src={src}
         aria-label="Linked recording video"
+        tabIndex={0}
+        onClick={onTogglePlayback}
+        onKeyDown={(event) => {
+          if (event.key === " " || event.key === "Enter") {
+            event.preventDefault();
+            onTogglePlayback();
+          }
+        }}
         onPlay={(event) => onPlay(event.currentTarget)}
         onPause={onPause}
         onEnded={onPause}
