@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createCaptureStore, captureElapsed } from "../extension/session-capture.js";
-import { createSessionCoordinator } from "../extension/session-coordinator.js";
-import { createRecordingAnnotations } from "../extension/recording-annotations.js";
+import {
+  createCaptureStore,
+  captureElapsed,
+} from "../extension/session/session-capture.js";
+import { createSessionCoordinator } from "../extension/session/session-coordinator.js";
+import { createRecordingAnnotations } from "../extension/recordings/recording-annotations.js";
 
 async function fixture(mode = "video", initiallyPaused = false) {
   let data: any = {};

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createCaptureStore } from "../extension/session-capture.js";
-import { createSessionCoordinator } from "../extension/session-coordinator.js";
+import { createCaptureStore } from "../extension/session/session-capture.js";
+import { createSessionCoordinator } from "../extension/session/session-coordinator.js";
 
 test("Stop ends live collection even when durable recording storage keeps failing", async () => {
   let data: any = {};

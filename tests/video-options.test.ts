@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
-import { editRegion } from "../extension/video-media.js";
+import { editRegion } from "../extension/video/video-media.js";
 
 test("crop rejects off-frame and invalid regions", () => {
   assert.deepEqual(editRegion([25, 10, 50, 80], 1600, 900), {
@@ -174,14 +174,17 @@ for (const tabAudio of [false, true])
       });
       vm.runInContext(
         (
-          await readFile(new URL("../extension/video-media.js", import.meta.url), "utf8")
+          await readFile(
+            new URL("../extension/video/video-media.js", import.meta.url),
+            "utf8",
+          )
         ).replaceAll("export ", ""),
         context,
       );
       vm.runInContext(
         (
           await readFile(new URL("../extension/video.js", import.meta.url), "utf8")
-        ).replace(/^import[\s\S]*?from "\.\/video-media.js";\n/, ""),
+        ).replace(/^import[\s\S]*?from "\.\/video\/video-media.js";\n/, ""),
         context,
       );
       await new Promise((resolve) => setImmediate(resolve));

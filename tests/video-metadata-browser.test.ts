@@ -17,7 +17,7 @@ test(
     const helperBundle = await build({
       stdin: {
         contents:
-          'import {finalizeWebmMetadata} from "./extension/video-metadata.js"; import {exportVideo} from "./extension/video-media.js"; globalThis.finalizeWebmMetadata=finalizeWebmMetadata;globalThis.exportVideo=exportVideo;',
+          'import {finalizeWebmMetadata} from "./extension/video/video-metadata.js"; import {exportVideo} from "./extension/video/video-media.js"; globalThis.finalizeWebmMetadata=finalizeWebmMetadata;globalThis.exportVideo=exportVideo;',
         resolveDir: process.cwd(),
       },
       bundle: true,

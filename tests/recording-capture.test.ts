@@ -4,7 +4,7 @@ import {
   createCaptureStore,
   sanitizeCapture,
   captureHandleMatches,
-} from "../extension/session-capture.js";
+} from "../extension/session/session-capture.js";
 
 function memory() {
   let data: any = {};
@@ -157,7 +157,7 @@ test("video evidence only accepts exact Chrome capture handle", () => {
 });
 
 test("pause intervals intersect an applied trim into exact video source/output segments", async () => {
-  const { videoSegments } = await import("../extension/session-capture.js");
+  const { videoSegments } = await import("../extension/session/session-capture.js");
   const segments = videoSegments(
     [
       { sourceStartMs: 100, sourceEndMs: 1100, outputStartMs: 0 },
@@ -172,7 +172,7 @@ test("pause intervals intersect an applied trim into exact video source/output s
   ]);
 });
 test("edited evidence removes excluded diagnostics and all unsafe DOM baseline", async () => {
-  const { clipRecording } = await import("../extension/session-capture.js");
+  const { clipRecording } = await import("../extension/session/session-capture.js");
   const recording: any = {
     events: [
       { seq: 0, atMs: 0, type: "replay", data: { secret: "outside" } },
@@ -200,7 +200,7 @@ test("edited evidence removes excluded diagnostics and all unsafe DOM baseline",
 
 test("edited video upload retry accepts identical frozen coverage without changing immutable evidence", async () => {
   const { createSessionCoordinator } = await import(
-    "../extension/session-coordinator.js"
+    "../extension/session/session-coordinator.js"
   );
   const storage = memory();
   const frozen = {
@@ -264,7 +264,9 @@ test("queued capture uses occurrence clock and sorts late-arriving batches befor
 });
 
 test("cross-origin child iframe document does not suspend top-level recording scope", async () => {
-  const { isTopDocumentRequest } = await import("../extension/session-coordinator.js");
+  const { isTopDocumentRequest } = await import(
+    "../extension/session/session-coordinator.js"
+  );
   assert.equal(
     isTopDocumentRequest({ type: "Document", frameId: "child" }, "main"),
     false,
@@ -324,7 +326,7 @@ test("ordinary deeply nested DOM snapshots keep their rrweb node structure", () 
 });
 
 test("activity names semantic controls while respecting page text privacy and never input values", async () => {
-  const { semanticTarget } = await import("../extension/session-capture.js");
+  const { semanticTarget } = await import("../extension/session/session-capture.js");
   const button = {
     tagName: "BUTTON",
     textContent: "Save profile",
@@ -345,7 +347,7 @@ test("activity names semantic controls while respecting page text privacy and ne
 
 test("normal stop drains the final MAIN batch before freezing the durable recording", async () => {
   const { createSessionCoordinator } = await import(
-    "../extension/session-coordinator.js"
+    "../extension/session/session-coordinator.js"
   );
   const storage = memory(),
     store = createCaptureStore({ storage });
@@ -392,7 +394,7 @@ test("normal stop drains the final MAIN batch before freezing the durable record
 });
 
 test("typing activity preserves timing-ready input meaning only when privacy permits", async () => {
-  const { inputActivity } = await import("../extension/session-capture.js");
+  const { inputActivity } = await import("../extension/session/session-capture.js");
   const element = (tag: string, type: string, value: string, attrs: any = {}) => ({
     tagName: tag,
     type,
@@ -445,7 +447,7 @@ test("typing activity preserves timing-ready input meaning only when privacy per
 });
 
 test("click child nodes resolve semantic controls and input fields retain safe identity", async () => {
-  const { semanticTarget } = await import("../extension/session-capture.js");
+  const { semanticTarget } = await import("../extension/session/session-capture.js");
   const button = { tagName: "BUTTON", textContent: "Submit", getAttribute: () => null };
   const span = {
     tagName: "SPAN",
@@ -466,7 +468,7 @@ test("click child nodes resolve semantic controls and input fields retain safe i
 });
 
 test("passive console object previews preserve useful fields and redact named credentials", async () => {
-  const { consoleArgument } = await import("../extension/session-coordinator.js");
+  const { consoleArgument } = await import("../extension/session/session-coordinator.js");
   const arg = consoleArgument({
     type: "object",
     description: "Object",
@@ -576,7 +578,7 @@ test("capture budget counts UTF-8 bytes for multibyte diagnostics", async () => 
 
 test("explicit redirect origins retain original recording project and reject unknown hosts", async () => {
   const { captureOrigins, originAllowed } = await import(
-    "../extension/session-capture.js"
+    "../extension/session/session-capture.js"
   );
   const allowed = captureOrigins(target.origin, ["https://dashboard.site.test"]);
   assert.deepEqual(allowed, [target.origin, "https://dashboard.site.test"]);
@@ -644,7 +646,7 @@ test("capture caches loaded baseline without rereading storage per event and fai
 });
 
 test("video submission uses captured original target after redirect without rebinding to another recorder", async () => {
-  const { capturedVideoTarget } = await import("../extension/session-capture.js");
+  const { capturedVideoTarget } = await import("../extension/session/session-capture.js");
   const original = { ...target, ownerTabId: 9, routeFingerprint: "bound" };
   const capture = {
     target: original,
@@ -806,7 +808,7 @@ test("large DOM mutations retain diagnostics and replay exhaustion only freezes 
 
 test("video diagnostics stop never replaces the native recorder controls with ready", async () => {
   const { createSessionCoordinator } = await import(
-    "../extension/session-coordinator.js"
+    "../extension/session/session-coordinator.js"
   );
   const storage = memory();
   await createCaptureStore({ storage }).start(target, privacy, "video");
@@ -880,9 +882,9 @@ test("DOM replay budget reserves space for later diagnostics", async () => {
 
 test("recording controls authorize approved redirects without granting another tab or review", async () => {
   const { createSessionCoordinator } = await import(
-    "../extension/session-coordinator.js"
+    "../extension/session/session-coordinator.js"
   );
-  const { videoFingerprint } = await import("../extension/video-target.js");
+  const { videoFingerprint } = await import("../extension/video/video-target.js");
   const storage = memory(),
     store = createCaptureStore({ storage });
   const scoped = { ...target, allowedOrigins: [target.origin, "https://redirect.test"] };

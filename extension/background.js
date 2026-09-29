@@ -1,9 +1,12 @@
-import { reviewDefaults, updateReviewDefaults } from "./review-preferences.js";
-import { diagnosticCollector, cleanDiagnostics } from "./diagnostics.js";
+import { reviewDefaults, updateReviewDefaults } from "./review/review-preferences.js";
+import { diagnosticCollector, cleanDiagnostics } from "./diagnostics/diagnostics.js";
 import "./utils.js";
-import { createReviewController } from "./review-session.js";
-import { createServerSetup, probeFeedbacksServer } from "./server-discovery.js";
-import { createPairingCoordinator } from "./pairing.js";
+import { createReviewController } from "./review/review-session.js";
+import {
+  createServerSetup,
+  probeFeedbacksServer,
+} from "./connection/server-discovery.js";
+import { createPairingCoordinator } from "./connection/pairing.js";
 import { fullPagePlan, verifyFullPageStep } from "./capture/full-page.js";
 import { combinedImageSize, combinedImageNeedsResize } from "./capture/combined-image.js";
 import {
@@ -14,7 +17,7 @@ import {
   pageDataUrl,
 } from "./capture/page-store.js";
 import { redactInsertedImages } from "./capture/screenshot-redaction.js";
-import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
+import { maskDraftDiagnostic } from "./diagnostics/diagnostic-redaction.js";
 import { formatPageQa } from "./capture/page-qa.js";
 import { pageOverviewTarget } from "./capture/page-overview.js";
 import {
@@ -26,16 +29,16 @@ import {
   combinedMarkings,
   combinedSections,
 } from "./capture/markings.js";
-import { capturedVideoTarget, captureOrigins } from "./session-capture.js";
-import { createSessionCoordinator } from "./session-coordinator.js";
-import { createRecordingAnnotations } from "./recording-annotations.js";
-import { createRecordingControls } from "./recording-controls.js";
+import { capturedVideoTarget, captureOrigins } from "./session/session-capture.js";
+import { createSessionCoordinator } from "./session/session-coordinator.js";
+import { createRecordingAnnotations } from "./recordings/recording-annotations.js";
+import { createRecordingControls } from "./recordings/recording-controls.js";
 import {
   videoTarget,
   videoFingerprint,
   replayableVideoCreate,
   clearVideoCreateForTab,
-} from "./video-target.js";
+} from "./video/video-target.js";
 const U = globalThis.FeedbacksUtil;
 import { DEFAULT_SERVER as DEFAULT } from "./config.js";
 const ready = chrome.storage.local.setAccessLevel({

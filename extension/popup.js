@@ -1,5 +1,9 @@
-import { checkForUpdates, createReleaseSelectionGate, releaseLinks } from "./updates.js";
-import { prepareCaptureOrigins } from "./session-origins.js";
+import {
+  checkForUpdates,
+  createReleaseSelectionGate,
+  releaseLinks,
+} from "./connection/updates.js";
+import { prepareCaptureOrigins } from "./session/session-origins.js";
 
 const $ = (id) => document.getElementById(id);
 const send = async (message) => {

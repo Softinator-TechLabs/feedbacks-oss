@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import "../extension/utils.js";
-import { createReviewController } from "../extension/review-session.js";
+import { createReviewController } from "../extension/review/review-session.js";
 
 function fixture(t: test.TestContext) {
   const server = "https://feedback.test";

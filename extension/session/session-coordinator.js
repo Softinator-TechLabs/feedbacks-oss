@@ -12,7 +12,7 @@ import {
   originAllowed,
 } from "./session-capture.js";
 import { createSessionStorage } from "./session-storage.js";
-import { videoFingerprint } from "./video-target.js";
+import { videoFingerprint } from "../video/video-target.js";
 import { installSessionBridge } from "./session-bridge.js";
 
 // CDP previews are passive values captured by Chrome; never invoke getters or

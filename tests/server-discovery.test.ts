@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   createServerSetup,
   probeFeedbacksServer,
-} from "../extension/server-discovery.js";
+} from "../extension/connection/server-discovery.js";
 import "../extension/utils.js";
 
 function fixture(initial = {}, detected = "https://feedback.example.test") {
@@ -89,7 +89,9 @@ test("discovery checks the active document origin again after injection", async 
 test("in-page discovery accepts only the product marker and installs one status-only bridge", async () => {
   const vm = await import("node:vm");
   // @ts-expect-error Native extension JavaScript.
-  const { inspectFeedbacksPage } = await import("../extension/server-discovery.js");
+  const { inspectFeedbacksPage } = await import(
+    "../extension/connection/server-discovery.js"
+  );
   for (const identity of [
     { product: "feedbacks", setupVersion: 1 },
     { product: "other", setupVersion: 1 },

@@ -40,6 +40,7 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Split all 137 input and output schemas across ten domain modules. Kept the original `contracts.ts` import path, every public export, both operation key orders, scopes, and registry composition. The full Node 22 check passed.
 - 2026-09-29: Moved screenshot, page storage, redaction, export, and full-page helpers into `extension/capture/`. Kept manifest entrypoints and allowed only that explicit nested directory in packaging and synthetic browser serving. Nine focused tests and the extension Chromium QA scenarios passed.
 - 2026-09-29: Extracted worker point-evidence and marking projection into `extension/capture/markings.js`. The full Node 22 check and Chromium capture workflow pass; `background.js` is 187 lines shorter.
+- 2026-09-29: Grouped internal extension session, recording, video, review, connection, and diagnostic modules by responsibility. Kept all manifest, HTML, and script-injection entrypoint filenames stable. Updated test fixtures and the explicit ZIP allowlist. The full Node 22 check and all extension Chromium QA scenarios pass.
 
 ## Completion receipt
 
