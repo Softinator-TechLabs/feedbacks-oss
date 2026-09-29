@@ -6,6 +6,7 @@ import { ThreadWorkPlan } from "./work-plan.js";
 import { ThreadStatus } from "./status.js";
 import { ThreadAssignments } from "../assignments/thread-assignments.js";
 import { ThreadReview } from "./review.js";
+import { DiscussionReply } from "./reply.js";
 import { DiscussionLike } from "../discussion-like.js";
 import { ContextPanel } from "./context.js";
 import { ReviewEvidence } from "./detail/evidence.js";
@@ -33,7 +34,7 @@ import {
 import { Icon } from "../icons.js";
 import { GuestLinks } from "../guest-review.js";
 import { GithubIssue } from "../github/issue.js";
-import { api, uid, date, labels, type Project, type Thread } from "../api.js";
+import { api, uid, labels, type Actor, type Project, type Thread } from "../api.js";
 import {
   builtInCategories,
   categoryName,
@@ -53,9 +54,11 @@ import {
 } from "../ui.js";
 export function ThreadDetail({
   threadId,
+  actor,
   onProject,
 }: {
   threadId: string;
+  actor: Actor;
   onProject: (p: Project) => void;
 }) {
   const [version, setVersion] = useState(0),
@@ -644,41 +647,27 @@ export function ThreadDetail({
                   </h2>
                   {t.replies?.length ? (
                     t.replies.map((r) => (
-                      <article className="reply" key={r.id}>
-                        <div className="meta">
-                          <strong>{r.author.name}</strong>
-                          <span>
-                            {r.author.kind === "agent" ? "Agent" : "Team member"}
-                          </span>
-                          <span>
-                            {(r.intent ??
-                              (r.author.kind === "agent" ? "response" : "request")) ===
-                            "request"
-                              ? "Requests follow-up"
-                              : "Response"}
-                          </span>
-                          <HumanTime at={r.createdAt} />
-                        </div>
-                        <MarkdownText body={r.body} className="message" />
-                        <DiscussionLike
-                          threadId={t.id}
-                          replyId={r.id}
-                          target={`reply by ${r.author.name} from ${date(r.createdAt)}`}
-                          likes={r.likes}
-                          canWrite={!!project?.permissions.canWrite}
-                          onSaved={(likes) =>
-                            setThread(
-                              (current) =>
-                                current && {
-                                  ...current,
-                                  replies: current.replies.map((item) =>
-                                    item.id === r.id ? { ...item, likes } : item,
-                                  ),
-                                },
-                            )
-                          }
-                        />
-                      </article>
+                      <DiscussionReply
+                        key={r.id}
+                        threadId={t.id}
+                        revision={t.revision}
+                        reply={r}
+                        actor={actor}
+                        canWrite={!!project?.permissions.canWrite}
+                        members={members?.items ?? []}
+                        onSaved={setThread}
+                        onLikesSaved={(likes) =>
+                          setThread(
+                            (current) =>
+                              current && {
+                                ...current,
+                                replies: current.replies.map((item) =>
+                                  item.id === r.id ? { ...item, likes } : item,
+                                ),
+                              },
+                          )
+                        }
+                      />
                     ))
                   ) : (
                     <p className="muted">No replies yet.</p>

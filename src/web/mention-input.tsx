@@ -7,11 +7,13 @@ export function MentionInput({
   onChange,
   members,
   onMention,
+  label = "Reply",
 }: {
   value: string;
   onChange: (value: string, edit?: MentionEdit) => void;
   members: Member[];
   onMention: (mention: MentionRange) => void;
+  label?: string;
 }) {
   const id = useId(),
     input = useRef<HTMLTextAreaElement>(null),
@@ -111,7 +113,7 @@ export function MentionInput({
         <span>Markdown</span>
       </div>
       <label className="sr-only" htmlFor={id}>
-        Reply
+        {label}
       </label>
       <textarea
         ref={input}
@@ -120,7 +122,11 @@ export function MentionInput({
         rows={5}
         required
         maxLength={12000}
-        placeholder="Write a reply… Use @ to mention someone."
+        placeholder={
+          label === "Edit comment"
+            ? "Edit your comment… Use @ to mention someone."
+            : "Write a reply… Use @ to mention someone."
+        }
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={choices.length > 0}

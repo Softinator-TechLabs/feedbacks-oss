@@ -6,6 +6,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Discussion comment edit and delete](discussion-comment-management.md)
 - [Compact extension review controls](compact-extension-review-controls.md)
 - [Project administration tabs](project-administration-tabs.md)
 - [Compact Account navigation](account-mobile-navigation.md)

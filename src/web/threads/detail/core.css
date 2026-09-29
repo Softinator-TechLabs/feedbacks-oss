@@ -121,6 +121,28 @@
 .reply-actions button {
   flex-shrink: 0;
 }
+.reply-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.reply-controls > button {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+.reply-edit-form {
+  margin-top: 12px;
+}
+.reply-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
 .context-back {
   margin-bottom: 12px;
   padding-inline: 0;

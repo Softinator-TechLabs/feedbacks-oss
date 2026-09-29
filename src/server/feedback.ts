@@ -70,6 +70,20 @@ export async function remember(db: Database, a: Actor, op: string, i: any, id: s
       [a.id, op, i.idempotencyKey, hash(JSON.stringify(i)), id],
     );
 }
+async function validateReplyMentions(
+  db: Database,
+  projectId: string,
+  mentions: string[],
+) {
+  for (const userId of mentions) {
+    const member = await db.one(
+      "SELECT u.id FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1 WHERE u.id=$2 AND u.active=true AND (u.owner=true OR g.user_id IS NOT NULL)",
+      [projectId, userId],
+    );
+    if (!member)
+      fail("FORBIDDEN", "Mention must reference an active project member", 403);
+  }
+}
 export async function feedback(
   db: Database,
   a: Actor,
@@ -265,14 +279,7 @@ export async function feedback(
     data.topPriority = i.topPriority;
   } else if (op === "threads.reply") {
     data.response = (await fullThread(db, a, row)).response;
-    for (const userId of i.mentions) {
-      const member = await db.one(
-        "SELECT u.id FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1 WHERE u.id=$2 AND u.active=true AND (u.owner=true OR g.user_id IS NOT NULL)",
-        [row.project_id, userId],
-      );
-      if (!member)
-        fail("FORBIDDEN", "Mention must reference an active project member", 403);
-    }
+    await validateReplyMentions(db, row.project_id, i.mentions);
     const intent = i.intent ?? (a.kind === "agent" ? "response" : "request");
     if (a.kind === "agent" && intent === "request")
       fail("VALIDATION", "Only a human participant can create a human request");
@@ -294,6 +301,38 @@ export async function feedback(
       data.response.state = "responded";
       data.response.lastResponse = { actor, at };
     }
+  } else if (op === "threads.editReply" || op === "threads.deleteReply") {
+    const reply = await db.one(
+      "SELECT id,data FROM replies WHERE thread_id=$1 AND id=$2 FOR UPDATE",
+      [row.id, i.replyId],
+    );
+    if (!reply) fail("NOT_FOUND", "Comment not found in this discussion", 404);
+    if (
+      a.kind !== "human" ||
+      !a.sessionHash ||
+      !["human", "extension"].includes(reply.data.author?.kind) ||
+      reply.data.author?.userId !== a.userId
+    )
+      fail("FORBIDDEN", "Only the comment author can change this comment", 403);
+    if (op === "threads.editReply") {
+      await validateReplyMentions(db, row.project_id, i.mentions);
+      await db.query("UPDATE replies SET data=$3 WHERE thread_id=$1 AND id=$2", [
+        row.id,
+        reply.id,
+        JSON.stringify({
+          ...reply.data,
+          body: i.body,
+          mentions: i.mentions,
+          editedAt: at,
+        }),
+      ]);
+    } else {
+      await db.query("DELETE FROM replies WHERE thread_id=$1 AND id=$2", [
+        row.id,
+        reply.id,
+      ]);
+    }
+    data.response = (await fullThread(db, a, row)).response;
   } else if (op === "threads.status") {
     await access(
       db,
@@ -385,15 +424,17 @@ export async function feedback(
     a,
     row,
     op,
-    op === "threads.plan"
-      ? { workPlan: i.workPlan }
-      : op === "threads.annotationPlan"
-        ? { annotationId: i.annotationId, workPlan: i.workPlan }
-        : op === "threads.priority"
-          ? { topPriority: i.topPriority }
-          : op === "threads.annotationStatus"
-            ? { annotationId: i.annotationId, state: i.state }
-            : {},
+    op === "threads.editReply" || op === "threads.deleteReply"
+      ? { replyId: i.replyId }
+      : op === "threads.plan"
+        ? { workPlan: i.workPlan }
+        : op === "threads.annotationPlan"
+          ? { annotationId: i.annotationId, workPlan: i.workPlan }
+          : op === "threads.priority"
+            ? { topPriority: i.topPriority }
+            : op === "threads.annotationStatus"
+              ? { annotationId: i.annotationId, state: i.state }
+              : {},
   );
   await remember(db, a, op, i, row.id);
   return fullThread(db, a, saved);

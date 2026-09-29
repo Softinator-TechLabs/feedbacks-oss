@@ -304,6 +304,7 @@ function App() {
             <ThreadDetail
               key={threadMatch[1]}
               threadId={threadMatch[1]}
+              actor={actor}
               onProject={(project) =>
                 setThreadProject({ threadId: threadMatch[1], project })
               }

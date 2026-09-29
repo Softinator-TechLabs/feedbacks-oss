@@ -95,6 +95,18 @@ export const threadsInputs = {
     idempotencyKey: z.string().min(8).max(200),
     mentions: z.array(id).max(30).default([]),
   }),
+  "threads.editReply": z.object({
+    ...tm,
+    replyId: id,
+    body: text,
+    mentions: z.array(id).max(30).default([]),
+    idempotencyKey: z.string().min(8).max(200),
+  }),
+  "threads.deleteReply": z.object({
+    ...tm,
+    replyId: id,
+    idempotencyKey: z.string().min(8).max(200),
+  }),
   "threads.status": z.object({
     ...tm,
     state: z.enum(["open", "in_progress", "ready_for_review", "resolved", "declined"]),
@@ -205,6 +217,8 @@ export const threadsOutputs = {
   }),
   "threads.create": threadOutput,
   "threads.reply": threadOutput,
+  "threads.editReply": threadOutput,
+  "threads.deleteReply": threadOutput,
   "threads.status": threadOutput,
   "threads.annotationStatus": threadOutput,
   "threads.review": threadOutput,
