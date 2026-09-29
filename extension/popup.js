@@ -27,6 +27,7 @@ let overviewTicket = 0;
 async function refreshOverview() {
   const ticket = ++overviewTicket;
   $("feedback-counts").textContent = "Loading feedback…";
+  $("feedback-summary").textContent = "Loading…";
   $("page-feedback").removeAttribute("href");
   const scope = $("feedback-scope").value || "page";
   try {
@@ -40,11 +41,17 @@ async function refreshOverview() {
           ? "View threads at this size"
           : "View page threads";
     const summary = result.summary;
+    const threads = summary?.threads.total ?? result.total ?? 0;
+    $("feedback-summary").textContent =
+      `${threads} ${threads === 1 ? "thread" : "threads"}`;
     $("feedback-counts").textContent = summary
-      ? `${summary.points.open} open · ${summary.points.resolved} resolved${summary.points.closed ? ` · ${summary.points.closed} closed` : ""} points · ${summary.threads.total} threads (${summary.threads.closed} closed)${result.drafts ? ` · ${result.drafts} not sent` : ""}`
+      ? `${summary.points.open} open · ${summary.points.resolved} resolved${summary.points.closed ? ` · ${summary.points.closed} closed` : ""}${result.drafts ? ` · ${result.drafts} not sent` : ""}`
       : `${result.total ?? 0} threads · Update the server for point counts.`;
   } catch (error) {
-    if (ticket === overviewTicket) $("feedback-counts").textContent = error.message;
+    if (ticket === overviewTicket) {
+      $("feedback-summary").textContent = "Unavailable";
+      $("feedback-counts").textContent = error.message;
+    }
   }
 }
 $("feedback-scope").onchange = () => void refreshOverview();
@@ -141,13 +148,14 @@ async function start(projectId) {
     $("connection").className = "connected";
     showAccess("tab-access", "ready", "Ready");
     $("routing").textContent =
-      "Right-click a point on " + new URL(result.origin).hostname + ".";
+      `Reviewing ${result.project.name} · Right-click to comment`;
+    $("routing").title =
+      `Reviewing ${result.project.name} on ${new URL(result.origin).hostname}`;
     $("project-choice").hidden = result.choices.length < 2;
     $("project").replaceChildren(...result.choices.map((p) => new Option(p.name, p.id)));
     $("project").value = result.project.id;
     $("review-controls").hidden = false;
-    $("review-title").textContent = result.project.name;
-    $("review-title").title = new URL(result.origin).hostname;
+    $("stop").hidden = false;
     void refreshOverview();
     const controls = await send({ type: "popupAction", tabId: tab.id, action: "state" });
     const diagnostics = await send({
@@ -174,6 +182,7 @@ async function start(projectId) {
     showAccess("tab-access", "blocked", "Not ready");
     $("routing").textContent = e.message;
     $("review-controls").hidden = true;
+    $("stop").hidden = true;
     $("retry").hidden = false;
   }
 }
@@ -223,6 +232,7 @@ async function refresh() {
     $("choose").hidden = state.hasDraft;
     if (state.captureError) $("message").textContent = state.captureError;
     $("project-choice").hidden = true;
+    $("stop").hidden = true;
     $("connection").className = "";
     $("connection").textContent = state.connected
       ? "Connected"
@@ -400,11 +410,6 @@ for (const id of [
   });
 action("draft", async () => {
   await send({ type: "resume" });
-  window.close();
-});
-action("record-session", async () => {
-  if (!tab?.id) throw Error("Open a website first.");
-  await send({ type: "openSessionRecorder", tabId: tab.id });
   window.close();
 });
 action("record-video", async () => {

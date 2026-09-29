@@ -38,7 +38,27 @@ test(
               if ((window as any).controlError && input.type === "recordingControl")
                 return { ok: false, error: "Recorder connection lost. Try again." };
               if (input.type === "threads")
-                return { ok: true, data: { items: [], nextOffset: null } };
+                return {
+                  ok: true,
+                  data: {
+                    items: [
+                      {
+                        id: "other-size",
+                        revision: 1,
+                        archived: false,
+                        pins: { defaultVisible: true },
+                        work: { state: "open" },
+                        author: { name: "Teammate" },
+                        body: "Review at the saved size",
+                        context: {
+                          url: "https://example.test/review",
+                          viewport: { width: 390, height: 740 },
+                        },
+                      },
+                    ],
+                    nextOffset: null,
+                  },
+                };
               return { ok: true, data: { active: false } };
             },
             onMessage: {
@@ -69,6 +89,36 @@ test(
       const drawer = page.locator(".bar");
       const handle = page.locator(".drawer-handle");
       await handle.hover();
+      await drawer.getByText("Comments on other screen sizes (1)").waitFor();
+      assert.match(await drawer.locator(".meta").innerText(), /1 comment on this page/);
+      await drawer.getByText("Comments on other screen sizes (1)").click();
+      assert.equal(await drawer.getByRole("button", { name: /390 × 740/ }).count(), 0);
+      await handle.hover();
+      assert.match(await handle.getAttribute("title"), /arrow keys/i);
+      await mkdir(".local/review-controls-qa", { recursive: true });
+      await drawer.screenshot({
+        path: ".local/review-controls-qa/page-controls-light.png",
+      });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await drawer.screenshot({
+        path: ".local/review-controls-qa/page-controls-dark.png",
+      });
+      await page.emulateMedia({ colorScheme: "light" });
+      assert.equal(
+        await drawer.getByText("Review tools", { exact: true }).isVisible(),
+        true,
+      );
+      assert.equal(
+        await drawer.getByRole("button", { name: "Navigation locked" }).isVisible(),
+        false,
+      );
+      assert.equal(await drawer.getByText("1280 × 800").count(), 0);
+      await drawer.getByText("Review tools", { exact: true }).click();
+      assert.equal(
+        await drawer.getByRole("button", { name: "Navigation locked" }).isVisible(),
+        true,
+      );
+      await drawer.getByText("Review tools", { exact: true }).click();
       assert.equal(
         await page.getByRole("button", { name: "Screenshot", exact: true }).isVisible(),
         true,
@@ -259,6 +309,11 @@ test(
       await message(page, { type: "recordingState", state: "ready" });
       await handle.hover();
       assert.equal(
+        await drawer.locator(".recording-controls + .feedback-controls").count(),
+        1,
+        "recording row returns above Page comments",
+      );
+      assert.equal(
         await page.getByRole("button", { name: "Review video", exact: true }).isVisible(),
         true,
       );
@@ -266,6 +321,7 @@ test(
         await page.getByRole("button", { name: "Screenshot", exact: true }).isVisible(),
         true,
       );
+      await drawer.getByText("Review tools", { exact: true }).click();
       assert.equal(
         await page
           .getByRole("button", { name: "Navigation locked", exact: true })

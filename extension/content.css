@@ -17,7 +17,7 @@
   overflow: auto;
   width: 316px;
   max-width: calc(100vw - 32px);
-  padding: 12px;
+  padding: 14px;
   background: #fff;
   border: 1px solid #dce1e5;
   border-radius: 10px;
@@ -72,11 +72,13 @@
 .review-bar-heading strong {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .review-bar-heading button {
-  min-height: 30px;
-  padding: 4px 7px;
-  font-size: 12px;
+  min-height: 32px;
+  padding: 5px;
 }
 .bar.hidden {
   display: none !important;
@@ -129,9 +131,45 @@ button:focus-visible {
   outline: 2px solid #3875a9;
   outline-offset: 2px;
 }
+.bar summary:focus-visible,
+.bar select:focus-visible,
+.bar input:focus-visible {
+  outline: 2px solid #3875a9;
+  outline-offset: 2px;
+}
+.icon-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 38px;
+  padding: 7px;
+}
+.icon-control svg,
+.capture-controls svg,
+.feedback-controls svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.capture-controls {
+  flex-wrap: nowrap;
+}
+.capture-controls .primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 1;
+}
 .meta {
   color: #596672;
-  margin: 6px 0;
+  margin: 2px 0 10px;
   max-width: 540px;
 }
 .notice {
@@ -540,6 +578,11 @@ button:focus-visible {
   .draft-state {
     color: #b0bec9;
   }
+  .capture-marker-controls select {
+    background: #171e25;
+    color: #e5ebf0;
+    border-color: #52616d;
+  }
   .point-image-view {
     background: #171e25;
     color: #e5ebf0;
@@ -589,6 +632,17 @@ button:focus-visible {
 }
 .recording-controls {
   align-items: stretch;
+}
+.recording-controls .recording-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  padding-inline: 9px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 .recording-primary::before {
   content: "";
@@ -678,7 +732,8 @@ button:focus-visible {
 }
 .navigation-controls button,
 .pin-controls button,
-.feedback-controls button {
+.feedback-controls button,
+.diagnostics-controls button {
   flex: 1 1 calc(50% - 6px);
   padding: 6px 8px;
   font-size: 12px;
@@ -686,6 +741,57 @@ button:focus-visible {
 }
 .feedback-controls {
   margin-top: 8px;
+}
+.feedback-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.review-tools {
+  border-top: 1px solid #dce1e5;
+  margin-top: 10px;
+  padding-top: 4px;
+}
+.review-tools > summary {
+  cursor: pointer;
+  padding: 4px 0;
+  color: #596672;
+  font-size: 12px;
+  font-weight: 600;
+}
+.review-tools-body {
+  padding-top: 4px;
+}
+.review-tools-body > button,
+.review-tools-body .diagnostics-controls button {
+  width: 100%;
+  margin-top: 8px;
+}
+.section-label {
+  display: block;
+  margin: 12px 0 5px;
+  color: #596672;
+  font-size: 12px;
+  font-weight: 600;
+}
+.size-controls {
+  flex-wrap: nowrap;
+}
+.size-controls .icon-control {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  .review-tools {
+    border-color: #40515e;
+  }
+  .review-tools > summary,
+  .section-label {
+    color: #b0bec9;
+  }
 }
 .point-evidence {
   display: flex;
@@ -743,17 +849,6 @@ button:focus-visible {
 .review-dock .review-drag:active {
   cursor: grabbing;
 }
-.drag-hint {
-  margin: 5px 0 8px;
-  font-size: 11px;
-  color: #596672;
-}
-@media (prefers-color-scheme: dark) {
-  .drag-hint {
-    color: #b8c6d0;
-  }
-}
-
 .review-dock .finalize-review {
   display: inline-flex;
   align-items: center;
