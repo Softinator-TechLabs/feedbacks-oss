@@ -23,7 +23,7 @@ Use incremental feature folders and extraction. Keep browser and server entrypoi
 - [x] Divide shared operation schemas into domain modules under `src/shared/contracts/`, preserving the single typed operation registry and generated catalog.
 - [x] Extract extension capture, editing, and session concerns into focused folders while keeping manifest entrypoints, Chrome message behavior, and ZIP contents compatible.
 - [x] Split extension browser QA setup and shared page fixture into focused modules.
-- [ ] Split the remaining sequential acceptance scenario runner into independent workflows.
+- [x] Split the remaining sequential acceptance scenario runner into independent workflows.
 - [x] Reassess server transport and dispatch for focused extraction; preserve transaction and authorization boundaries.
 - [ ] Run focused checks after every stage, then the full check, extension browser acceptance, native PostgreSQL checks where server behavior changes, and exact-revision CI. Review the final diff and update architecture and quality guidance.
 
@@ -58,6 +58,8 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: The synthetic app visual QA exposed two stale Help selectors already present on `main`. Updated them to the current heading and button text; the browser then captured 56 route/viewport/theme screenshots with zero blocked requests. The filter UI browser check also passed.
 - 2026-09-29: PR #117 CI exposed a race in the extracted extension setup acceptance flow: the page status could update before Playwright observed the newly opened Options tab. The test now awaits the page event and Options URL. Its full local capture/review scenario and all six CI checks passed on `fc5f174`. A concurrent local video export test failed once under browser load, then passed in isolation; the complete recording browser suite passed 22/22 in CI.
 - 2026-09-29: Follow-up QA runner work groups thread review, project-switch defaults, ordered capture and upload retry, page review and combined upload, changing-page retry, and diagnostics masking under `scripts/qa/extension/`. The entry runner fell from 2,394 to about 1,685 lines while preserving scenario order and results. The extraction exposed a fixed-delay point-capture test race and a teammate hover assertion race; both now wait for their expected state with a bounded timeout. The full Chromium capture/review script passed after the latest extraction. Additional inline review scenarios remain in the runner.
+- 2026-09-29: The next QA stage groups review interactions, canceled capture safety, inline submission, shared pins, pending point finalization, multi-scroll review, and full-page scope sampling into feature scenarios. The entry runner fell from 1,712 to 551 lines. Each workflow receives explicit browser and fixture dependencies; inline submission returns its thread and marker helper, and shared-pin review returns the reviewer session for its following scenario. Product runtime files remain unchanged.
+- 2026-09-29: Grouped the extension QA modules under `scripts/qa/extension/setup/`, `capture/`, and `review/`; kept the GitHub toolbar and recording controls at the extension QA root. Updated the shared fixture import and architecture/quality links. The runner's import paths are the only production-neutral callsite change.
 
 ## Completion receipt
 
@@ -70,3 +72,7 @@ Remaining risks or follow-up: `extension/content.js` retains a large shared stat
 ## Follow-up QA runner stage
 
 Branch: `codex/modular-qa-runner`, based on merged PR #117. This stage changes QA harness organization only; the application and extension source are unchanged. Node 22 `npm run check` passed (328 pass, 22 skipped, 0 fail; build, sandbox smoke, release package included). The complete packaged extension browser command passed: capture/review, screenshot editor, session replay, session origins, and recording navigation. Exact-revision CI is pending at this point. The inline review and capture setup portion of the runner still needs a later focused split.
+
+## Inline review QA stage
+
+Branch: `codex/modular-qa-inline`, based on merged PR #118. This stage completes the acceptance runner extraction without changing application or extension runtime source. The extracted review interaction, inline submission, shared-pin, pending-point, multi-scroll, and full-page scope workflows passed focused Chromium capture/review runs. Full Node 22 `npm run check` passed after folder grouping (328 pass, 22 skipped, 0 fail; build, sandbox smoke, release package included). The complete five-script packaged browser sequence passed on rerun. An earlier local run failed at the unchanged recording trim drag assertion while multiple Chromium QA jobs ran on the same host; the assertion now reports measured trim values if it recurs. The cause is not confirmed. Exact-revision CI remains the merge gate.

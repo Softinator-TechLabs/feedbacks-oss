@@ -120,7 +120,10 @@ export async function verifyRecordingControls({
   await dragHandle("#trim-end-handle", 0.3);
   const trimStart = Number(await recorderPage.locator("#trim-start").inputValue());
   const trimEnd = Number(await recorderPage.locator("#trim-end").inputValue());
-  assert.ok(trimStart > 5 && trimEnd > trimStart);
+  assert.ok(
+    trimStart > 5 && trimEnd > trimStart,
+    JSON.stringify({ trimStart, trimEnd, trimTrack }),
+  );
   assert.equal(await recorderPage.locator("#send").isEnabled(), false);
   await recorderPage.locator("#trim-play").click();
   await recorderPage.locator("#trim-pause-icon:visible").waitFor();

@@ -1,28 +1,31 @@
-import { verifySharedPins } from "./qa/extension/shared-pins.mjs";
-import { verifyPendingPoints } from "./qa/extension/pending-points.mjs";
-import { verifyMultiscrollReview } from "./qa/extension/multiscroll-review.mjs";
-import { verifyInlineSubmission } from "./qa/extension/inline-submission.mjs";
-import { verifyReviewInteractions } from "./qa/extension/review-interactions.mjs";
-import { verifyCaptureSafety } from "./qa/extension/capture-safety.mjs";
-import { verifyChangingCapture } from "./qa/extension/changing-capture.mjs";
-import { verifyDiagnostics } from "./qa/extension/diagnostics.mjs";
-import { verifyOrderedCapture } from "./qa/extension/ordered-capture.mjs";
-import { verifyPageReview } from "./qa/extension/page-review.mjs";
-import { verifyThreadReview } from "./qa/extension/thread-review.mjs";
-import { verifyReviewDefaults } from "./qa/extension/review-defaults.mjs";
+import { verifyFullpageScopes } from "./qa/extension/capture/fullpage-scopes.mjs";
+import { verifySharedPins } from "./qa/extension/review/shared-pins.mjs";
+import { verifyPendingPoints } from "./qa/extension/review/pending-points.mjs";
+import { verifyMultiscrollReview } from "./qa/extension/review/multiscroll-review.mjs";
+import { verifyInlineSubmission } from "./qa/extension/review/inline-submission.mjs";
+import { verifyReviewInteractions } from "./qa/extension/review/review-interactions.mjs";
+import { verifyCaptureSafety } from "./qa/extension/capture/capture-safety.mjs";
+import { verifyChangingCapture } from "./qa/extension/capture/changing-capture.mjs";
+import { verifyDiagnostics } from "./qa/extension/review/diagnostics.mjs";
+import { verifyOrderedCapture } from "./qa/extension/capture/ordered-capture.mjs";
+import { verifyPageReview } from "./qa/extension/capture/page-review.mjs";
+import { verifyThreadReview } from "./qa/extension/review/thread-review.mjs";
+import { verifyReviewDefaults } from "./qa/extension/review/review-defaults.mjs";
 import { verifyGithubToolbar } from "./qa/extension/github-toolbar.mjs";
 import { verifyRecordingControls } from "./qa/extension/recording-controls.mjs";
-import { verifyPublicCapture } from "./qa/extension/public-capture.mjs";
-import { verifyPopupOptions } from "./qa/extension/popup-options.mjs";
-import { previewDimensions, installReviewFixture } from "./qa/extension/fixture.mjs";
-import { verifySetup } from "./qa/extension/setup.mjs";
+import { verifyPublicCapture } from "./qa/extension/capture/public-capture.mjs";
+import { verifyPopupOptions } from "./qa/extension/setup/popup-options.mjs";
+import {
+  previewDimensions,
+  installReviewFixture,
+} from "./qa/extension/setup/fixture.mjs";
+import { verifySetup } from "./qa/extension/setup/setup.mjs";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
-import sharp from "sharp";
 
 const root = process.cwd();
 const publicCaptureUrl = process.env.FEEDBACKS_QA_PUBLIC_URL;
@@ -391,61 +394,16 @@ try {
     waitReview,
     inspectReview,
   });
-  for (const scope of ["short", "long", "tall", "tooLong", "clipped"]) {
-    fixture.mode = scope;
-    if (["tall", "tooLong"].includes(scope))
-      await page.setViewportSize({ width: 1200, height: 800 });
-    await toFixture();
-    if (scope === "clipped") {
-      const width = await page.evaluate(() => ({
-        root: document.scrollingElement.scrollWidth,
-        body: document.body.scrollWidth,
-        viewport: innerWidth,
-      }));
-      assert.equal(width.root, width.viewport);
-      assert.ok(width.body > width.viewport);
-    }
-    await page.evaluate(() => scrollTo(0, 120));
-    const before = await page.evaluate(() => scrollY);
-    const result = await send({ type: "popupAction", tabId: id, action: "capture-full" });
-    const captured = await draft();
-    results[scope] = {
-      captured: result?.captured,
-      scope: captured?.captureScope,
-      hasImage: Boolean(captured?.image),
-      pageCount: captured?.capturePages?.length || 0,
-      firstName: captured?.capturePages?.[0]?.name,
-      lastName: captured?.capturePages?.at(-1)?.name,
-      notice: captured?.captureNotice,
-      scrollRestored: Math.abs((await page.evaluate(() => scrollY)) - before) < 2,
-    };
-    assert.equal(result?.captured, true, JSON.stringify({ scope, error: result?.error }));
-    if (
-      ["long", "tall", "tooLong", "clipped"].includes(scope) &&
-      captured?.capturePages?.length
-    ) {
-      const first = await send({ type: "capturePage", id: captured.id, index: 0 });
-      const last = await send({
-        type: "capturePage",
-        id: captured.id,
-        index: captured.capturePages.length - 1,
-      });
-      const pixels = Buffer.from(first.image.split(",")[1], "base64");
-      const size = await sharp(pixels).metadata();
-      results[scope].firstHeight = size.height;
-      results[scope].lastHeight = (
-        await sharp(Buffer.from(last.image.split(",")[1], "base64")).metadata()
-      ).height;
-      await mkdir(join(root, ".local/remaining-todos-qa"), { recursive: true });
-      if (scope === "long")
-        await writeFile(
-          join(root, ".local/remaining-todos-qa/full-page-first.webp"),
-          pixels,
-        );
-    }
-    await send({ type: "discard" });
-  }
-
+  await verifyFullpageScopes({
+    fixture,
+    page,
+    toFixture,
+    send,
+    id,
+    draft,
+    results,
+    root,
+  });
   const { seriesThreadId, seriesThread } = await verifyOrderedCapture({
     fixture,
     page,
