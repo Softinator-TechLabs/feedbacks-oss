@@ -32,6 +32,8 @@ Open your website and click the pinned extension. **Right-click** the element, w
 
 Choose **Review & send**, check the screenshots, then **Send feedback**. Your developer receives the context for the fix.
 
+New screenshot reviews include captured page diagnostics by default. The review panel shows a short preview, channel coverage and a **Download diagnostics** archive; uncheck **Include captured diagnostics** to send only the feedback and screenshots. Change the default in extension **Settings → Review defaults**. To include earlier console and network activity, use **Start diagnostics** before reproducing the issue. The complete artifact stays private to the project; an interrupted send can be resumed with **Retry Send**.
+
 <Demo step="send" />
 
 **Save point is only a draft.** Nothing is shared until you send it.

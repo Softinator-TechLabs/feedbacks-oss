@@ -24,6 +24,6 @@ The public, searchable user and developer guide is built from [`site-docs`](../s
 
 Documentation checks enforce links and index reachability. They do not prove that every prose claim is current. Maintainers and agents must inspect the implementation when a relevant behavior changes.
 
-Proposed work, not implemented: [screenshot diagnostic evidence design](superpowers/specs/2026-09-29-screenshot-diagnostic-evidence-design.md) and [implementation plan](superpowers/plans/2026-09-29-screenshot-diagnostic-evidence.md).
+Screenshot diagnostic evidence: [reviewer workflow](extension.md#screenshot-diagnostic-evidence), [approved design](superpowers/specs/2026-09-29-screenshot-diagnostic-evidence-design.md) and [implementation plan](superpowers/plans/2026-09-29-screenshot-diagnostic-evidence.md).
 
 User onboarding: [complete setup](../site-docs/guide/getting-started.md), [client guide](../site-docs/guide/clients.md), [owner setup](../site-docs/guide/team-setup.md), [Chrome Store listing](chrome-web-store.md).

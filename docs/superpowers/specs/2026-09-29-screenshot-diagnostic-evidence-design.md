@@ -1,6 +1,6 @@
 # Screenshot diagnostic evidence
 
-Status: approved in conversation on 2026-09-29; implementation is pending. This is not implemented behavior.
+Status: approved in conversation on 2026-09-29; implementation in progress. The canonical guides describe verified behavior after release.
 
 ## Outcome
 
