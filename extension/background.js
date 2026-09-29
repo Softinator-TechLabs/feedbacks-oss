@@ -71,6 +71,13 @@ const sessionCapture = createSessionCoordinator({
 });
 const diagnosticEvidenceStore = createDiagnosticEvidenceStore();
 const rawDiagnostics = new Map();
+async function retireRawDiagnostics(tabId) {
+  const raw = rawDiagnostics.get(tabId);
+  if (!raw) return;
+  rawDiagnostics.delete(tabId);
+  const status = await raw.stop();
+  await diagnosticEvidenceStore.deleteEvidence(status.evidenceId);
+}
 const rawDebuggerSource = {
   isAttached: (tabId) => sessionCapture.isRecordingDebuggerAttached(tabId),
   attach: (tabId) => chrome.debugger.attach({ tabId }, "1.3"),
@@ -1171,6 +1178,7 @@ async function route(message, sender) {
     if (message.type === "stopReview") {
       recordings.stop(sender.tab.id);
       await sessionCapture.retire(sender.tab.id);
+      await retireRawDiagnostics(sender.tab.id);
       await chrome.tabs.sendMessage(sender.tab.id, { type: "deactivate" });
       return review.stop(sender.tab.id);
     }
@@ -1616,6 +1624,7 @@ async function route(message, sender) {
       for (const tabId of Object.keys(state.sessions || {})) {
         recordings.stop(Number(tabId));
         await sessionCapture.retire(Number(tabId));
+        await retireRawDiagnostics(Number(tabId));
         await chrome.tabs
           .sendMessage(Number(tabId), { type: "deactivate" })
           .catch(() => {});
@@ -1630,7 +1639,20 @@ async function route(message, sender) {
     case "activate": {
       const result = await review.activate(message.tabId, message.projectId);
       const { sessions = {} } = await chrome.storage.local.get("sessions");
-      const reviewId = sessions[message.tabId]?.reviewId;
+      const currentSession = sessions[message.tabId];
+      const reviewId = currentSession?.reviewId;
+      const raw = rawDiagnostics.get(message.tabId);
+      if (
+        raw &&
+        (raw.status().sourceOrigin !== currentSession?.origin ||
+          !sameDiagnosticBinding(raw.status().binding, {
+            server: currentSession?.server,
+            projectId: currentSession?.projectId,
+            reviewId,
+            ownerIdentity: await diagnosticAccountIdentity(currentSession?.server),
+          }))
+      )
+        await retireRawDiagnostics(message.tabId);
       if (!(await sessionCapture.restore(message.tabId, reviewId))) {
         // Validate the bound review before restoring the native recorder clock.
         const state = recordings.state(message.tabId, reviewId);
@@ -1694,6 +1716,7 @@ async function route(message, sender) {
       if (message.action === "stop") {
         recordings.stop(tab.id);
         await sessionCapture.retire(tab.id);
+        await retireRawDiagnostics(tab.id);
         await chrome.tabs.sendMessage(tab.id, { type: "deactivate" });
         return review.stop(tab.id);
       }
@@ -1799,12 +1822,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   return true;
 });
 chrome.tabs.onRemoved.addListener(async (id) => {
-  const raw = rawDiagnostics.get(id);
-  rawDiagnostics.delete(id);
-  if (raw) {
-    await raw.stop().catch(() => {});
-    await diagnosticEvidenceStore.deleteEvidence(raw.status().evidenceId).catch(() => {});
-  }
+  await retireRawDiagnostics(id).catch(() => {});
   recordings.stop(id);
   await clearVideoCreateForTab(chrome.storage.session, id);
   await deleteDraftPages(`point-${id}`);
