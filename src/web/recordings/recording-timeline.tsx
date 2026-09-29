@@ -86,6 +86,11 @@ export function RecordingTimeline({
   enterFullscreen,
   seek,
   selectMark,
+  videoSize,
+  setVideoSize,
+  inspectorLayout,
+  setInspectorLayout,
+  frameActions,
 }: {
   recording: Recording;
   marks: TimelineMark[];
@@ -101,6 +106,11 @@ export function RecordingTimeline({
   enterFullscreen: () => void;
   seek: (atMs: number) => void;
   selectMark: (mark: TimelineMark) => void;
+  videoSize: "compact" | "large";
+  setVideoSize: (value: "compact" | "large") => void;
+  inspectorLayout: "below" | "beside";
+  setInspectorLayout: (value: "below" | "beside") => void;
+  frameActions?: React.ReactNode;
 }) {
   return (
     <>
@@ -132,6 +142,24 @@ export function RecordingTimeline({
             >
               <Icon name="expand" />
             </button>
+            <button
+              type="button"
+              aria-pressed={videoSize === "large"}
+              onClick={() => setVideoSize(videoSize === "large" ? "compact" : "large")}
+            >
+              {videoSize === "large" ? "Smaller" : "Larger"}
+            </button>
+            <button
+              type="button"
+              className="recording-layout-toggle"
+              aria-pressed={inspectorLayout === "beside"}
+              onClick={() =>
+                setInspectorLayout(inspectorLayout === "beside" ? "below" : "beside")
+              }
+            >
+              {inspectorLayout === "beside" ? "Below" : "Beside"}
+            </button>
+            {frameActions}
           </>
         )}
         <output htmlFor="thread-recording-timeline" title="Recorded session time">

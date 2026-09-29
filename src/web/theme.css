@@ -215,6 +215,33 @@
 :root[data-theme="dark"] .thread-tabs button[aria-pressed="true"] {
   color: var(--accent);
 }
+:root[data-theme="dark"] :is(.account-tabs, .section-tabs, .recording-tabs) button {
+  margin-inline: 2px;
+  padding-inline: 12px;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+:root[data-theme="dark"]
+  :is(.account-tabs, .section-tabs, .recording-tabs)
+  button:enabled:hover {
+  background: var(--soft-surface);
+  border-color: transparent;
+  color: #e3eff9;
+}
+:root[data-theme="dark"] :is(.account-tabs, .section-tabs) button[aria-selected="true"],
+:root[data-theme="dark"] .recording-tabs button[aria-pressed="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+:root[data-theme="dark"]
+  :is(.account-tabs, .section-tabs)
+  button[aria-selected="true"]:enabled:hover,
+:root[data-theme="dark"] .recording-tabs button[aria-pressed="true"]:enabled:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
 :root[data-theme="dark"]
   :is(.mention-menu button[aria-selected="true"], .thread-tools a:hover .icon-action) {
   background: #293847;

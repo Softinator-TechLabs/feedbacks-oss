@@ -138,6 +138,22 @@ export function createVideoTimeline({ onChange, onError }) {
       onError(error.message);
     }
   };
+  video.addEventListener("click", () => {
+    video.focus({ preventScroll: true });
+    $("trim-play").click();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.code !== "Space" || event.repeat || !duration || video.hidden) return;
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.closest("button, input, textarea, select, a, summary, [contenteditable]") ||
+        target.isContentEditable)
+    )
+      return;
+    event.preventDefault();
+    $("trim-play").click();
+  });
   $("trim-mute").onclick = () => {
     video.muted = !video.muted;
     $("trim-mute").textContent = video.muted ? "Unmute" : "Mute";

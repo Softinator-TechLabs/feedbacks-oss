@@ -86,7 +86,7 @@ test(
                                   items: [
                                     {
                                       id: "point-one",
-                                      atMs: 1400,
+                                      atMs: 200,
                                       body: "Point visible before send",
                                       imageBase64:
                                         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lZsAAAAASUVORK5CYII=",
@@ -268,7 +268,10 @@ test(
         stopping.elapsedMs,
         "metadata finalization is excluded from video duration",
       );
-      await page.waitForTimeout(100);
+      await page
+        .locator("#capture-inspector")
+        .filter({ hasText: "Point visible before send" })
+        .waitFor();
       assert.match(
         await page.locator("#capture-inspector").innerText(),
         /Point visible before send/,
@@ -280,6 +283,69 @@ test(
           })),
         ),
       );
+      await page.setViewportSize({ width: 1440, height: 900 });
+      const playerChrome = await page.evaluate(() => {
+        const controls = Array.from(
+          document.querySelectorAll<HTMLButtonElement>(".timeline-playback > button"),
+        ).filter((button) => !button.hidden);
+        const video = document.querySelector<HTMLElement>("#preview")!;
+        const timeline = document.querySelector<HTMLElement>("#editing")!;
+        const inspector = document.querySelector<HTMLElement>("#capture-inspector")!;
+        return {
+          heights: controls.map((button) => button.getBoundingClientRect().height),
+          borders: [video, timeline, inspector].map(
+            (element) => getComputedStyle(element).borderLeftColor,
+          ),
+          seams: [
+            getComputedStyle(video).borderBottomWidth,
+            getComputedStyle(timeline).borderTopWidth,
+          ],
+        };
+      });
+      assert.ok(playerChrome.heights.length >= 4);
+      assert.ok(playerChrome.heights.every((height) => height === 44));
+      assert.equal(new Set(playerChrome.borders).size, 1);
+      assert.deepEqual(playerChrome.seams, ["0px", "0px"]);
+      await page.locator("#review-layout").click();
+      assert.equal(
+        await page.locator(".review-workspace").getAttribute("data-layout"),
+        "side",
+      );
+      const sideVideo = (await page.locator("#preview").boundingBox())!;
+      const sideTimeline = (await page.locator("#editing").boundingBox())!;
+      const sideInspector = (await page.locator("#capture-inspector").boundingBox())!;
+      const sideTools = (await page.locator("#video-edit-tools").boundingBox())!;
+      const sideComment = (await page.locator("#review").boundingBox())!;
+      assert.ok(sideInspector.x >= sideVideo.x + sideVideo.width - 2);
+      assert.ok(Math.abs(sideInspector.y - sideVideo.y) <= 4);
+      assert.ok(Math.abs(sideVideo.x - sideTimeline.x) <= 4);
+      assert.ok(Math.abs(sideVideo.width - sideTimeline.width) <= 4);
+      assert.ok(
+        sideTools.y >=
+          Math.max(
+            sideTimeline.y + sideTimeline.height,
+            sideInspector.y + sideInspector.height,
+          ),
+      );
+      assert.ok(sideComment.y >= sideTools.y + sideTools.height);
+      assert.ok(sideTools.width > sideVideo.width);
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      await page.locator("#video-size").click();
+      assert.equal(
+        await page.locator("#video-size").getAttribute("aria-pressed"),
+        "true",
+      );
+      await page.screenshot({
+        path: "output/playwright/recording-video-state/inspector-beside-dark.png",
+      });
+      await page.setViewportSize({ width: 375, height: 740 });
+      const narrowVideo = (await page.locator("#preview").boundingBox())!;
+      const narrowInspector = (await page.locator("#capture-inspector").boundingBox())!;
+      assert.ok(narrowInspector.y >= narrowVideo.y + narrowVideo.height);
+      assert.equal(await page.locator("#review-layout").isVisible(), false);
       await page.locator("#comment").fill("Point should travel with this video");
       await page.locator("#send").click();
       await page

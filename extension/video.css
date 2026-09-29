@@ -307,12 +307,13 @@ video {
 }
 .timeline-playback {
   justify-content: flex-start;
+  flex-wrap: wrap;
   font-size: 13px;
   margin-bottom: 8px;
 }
-.timeline-playback #trim-mute,
-.timeline-playback #trim-fullscreen {
-  min-height: 40px;
+.timeline-playback > button {
+  height: 44px;
+  min-height: 44px;
   padding: 6px 10px;
 }
 .review-primary:fullscreen {
@@ -409,7 +410,10 @@ body:has(.review-timeline-playhead) #trim-playhead {
   border-color: var(--control-line);
 }
 .has-recording video {
-  max-height: min(360px, 38vh);
+  max-height: min(360px, 42vh);
+}
+.has-recording.video-large video {
+  max-height: min(760px, 72vh);
 }
 
 #capture-health {

@@ -19,6 +19,7 @@ The existing viewers split marks from the seek rail and select the latest event 
 - [x] Move video edit and capture explanations after the evidence feed.
 - [x] Add the portable archive with authorization, completeness and content tests.
 - [x] Update session-replay guidance, run checks and inspect desktop/mobile renders.
+- [x] Follow-up: make both video views compact by default, offer larger/beside layouts, keep frame and event-paging actions by playback, and fix video/Space play-pause and dark-mode control contrast with browser regressions.
 - [ ] Confirm CI, release deployment and live readback.
 
 ## Compatibility and recovery
@@ -31,11 +32,13 @@ No migration or capture format change. Existing recordings and standalone screen
 - Keep trim thumbnails and handles hidden until Edit video is opened, and keep the keyboard seek input accessible without drawing a second ruler.
 - Keep secondary editing controls behind a disclosure below the evidence list.
 - Keep the human download independent of MCP setup; the MCP materializer remains the agent-oriented private temporary-directory path.
+- The pre-send and thread viewers default to the same compact, below-video evidence layout. Users can expand the video or put only the diagnostics inspector beside it on wide screens; editing and discussion remain below. Playback stays a single video/timeline clock.
+- Extension appearance is a page-level local preference; it does not alter captured websites or stored evidence.
 
 ## Completion receipt
 
-Source revision: pending (extension 0.1.41).
-Checks and results: `npm run check` passed; 24 recording browser tests passed; portable archive content and authorization tests passed. Desktop light/dark and mobile synthetic review captures were inspected.
+Source revision: pending (extension 0.1.47 in the current worktree).
+Checks and results: prior timeline/archive checks passed; follow-up browser checks pass for compact layout, Space/click playback, dark control contrast and tab spacing. Full follow-up checks pending.
 Artifacts: pending.
 Deployment and live verification: pending.
 Remaining risks or follow-up: pending.

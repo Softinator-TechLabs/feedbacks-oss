@@ -134,6 +134,9 @@ try {
       storage: {
         onChanged: { addListener() {} },
         local: {
+          async get() {
+            return {};
+          },
           async remove() {
             localStorage.removeItem("qaDraft");
           },
