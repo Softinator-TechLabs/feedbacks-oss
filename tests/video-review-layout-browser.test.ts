@@ -43,7 +43,7 @@ test(
           document.getElementById(id)!.hidden = false;
         document.querySelector<HTMLElement>(".timeline-playback")!.hidden = false;
         document.getElementById("capture-inspector")!.innerHTML =
-          '<div class="review-tabs"><button aria-selected="true">Everything (3)</button><button>Activity</button><button>Console</button><button>Network</button></div><button class="review-follow" aria-pressed="true">Following playback</button><div class="review-events"><button class="review-event"><time>0:01.2</time><span class="review-event-tag">Activity</span>Clicked Submit</button><button class="review-event"><time>0:02.1</time><span class="review-event-tag">Console</span>Warning in form</button><button class="review-event"><time>0:02.4</time><span class="review-event-tag">Network</span>POST /submit · 500</button></div>';
+          '<div class="review-tabs"><button aria-selected="true">Everything (490)</button><button>Activity (24)</button><button>Console (4)</button><button>Network (457)</button><button>Performance (3)</button><button>Environment (2)</button></div><button class="review-follow" aria-pressed="true">Following playback</button><div class="review-events"><button class="review-event"><time>0:01.2</time><span class="review-event-tag">Activity</span>Clicked Submit</button><button class="review-event"><time>0:02.1</time><span class="review-event-tag">Console</span>Warning in form</button><button class="review-event"><time>0:02.4</time><span class="review-event-tag">Network</span>POST /submit · 500</button></div>';
         document.getElementById("capture-inspector")!.classList.add("session-review");
         document
           .querySelector("#editing .timeline-rail")!
@@ -61,6 +61,12 @@ test(
       assert.ok(video.width >= 1050 && inspector.width >= 1050);
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      assert.equal(
+        await page
+          .locator(".review-tabs")
+          .evaluate((tabs) => tabs.scrollWidth <= tabs.clientWidth),
         true,
       );
       assert.ok(controls.y < video.y);
@@ -108,6 +114,12 @@ test(
       assert.ok(sideTools.width > sideVideo.width);
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      assert.equal(
+        await page
+          .locator(".review-tabs")
+          .evaluate((tabs) => tabs.scrollWidth <= tabs.clientWidth),
         true,
       );
       await page.locator(".review-workspace").evaluate((element: HTMLElement) => {
@@ -181,6 +193,12 @@ test(
       });
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      assert.equal(
+        await page
+          .locator(".review-tabs")
+          .evaluate((tabs) => tabs.scrollWidth <= tabs.clientWidth),
         true,
       );
       const mobileVideo = (await page.locator("#preview").boundingBox())!;
