@@ -218,13 +218,6 @@
 .agent-handoff h3 {
   margin: 0 0 12px;
 }
-.agent-handoff ol {
-  padding-left: 22px;
-  margin: 0 0 12px;
-}
-.agent-handoff li + li {
-  margin-top: 6px;
-}
 .agent-handoff .actions {
   margin-block: 14px;
 }
@@ -248,4 +241,59 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
+}
+
+.agent-setup-flow {
+  display: grid;
+  gap: 10px;
+  margin-block: 16px;
+}
+.agent-setup-flow > div {
+  display: grid;
+  grid-template-columns: 1fr 20px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+.agent-setup-flow span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 8px;
+  background: var(--soft-surface);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+.agent-setup-flow span svg {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+}
+.agent-setup-flow > div > svg {
+  color: var(--muted);
+}
+.agent-handoff-options > section {
+  display: flex;
+  flex-direction: column;
+}
+.agent-handoff-options > section > .actions {
+  margin-top: auto;
+  margin-bottom: 0;
+  padding-top: 12px;
+}
+.agent-handoff-options > section > button {
+  margin-top: auto;
+  align-self: flex-start;
+}
+.agent-key-warning {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.agent-setup-help {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.agent-setup-help p {
+  max-width: 65ch;
 }

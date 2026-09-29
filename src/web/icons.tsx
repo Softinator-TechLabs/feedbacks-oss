@@ -1,6 +1,10 @@
 import React from "react";
 
 const paths = {
+  key: "M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM10 11v10m0-4h4m-4 4h3",
+  terminal: "M3 4h18v16H3zM7 9l3 3-3 3m6 0h4",
+  chat: "M4 4h16v12H9l-5 4V4ZM8 8h8m-8 4h5",
+  arrowRight: "M4 12h16m-6-6 6 6-6 6",
   copy: "M9 9h12v12H9zM5 15H3V3h12v2",
   download: "M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4",
   calendar: "M3 5h18v16H3zM7 3v4M17 3v4M3 11h18",

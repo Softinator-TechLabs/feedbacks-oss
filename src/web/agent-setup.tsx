@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Icon } from "./icons.js";
 import { ActionState, ErrorNotice, Loading, useAction, useLoad } from "./ui.js";
 
 export type AgentIssuance = Readonly<{
@@ -62,6 +63,37 @@ ${metadata}
 \`\`\``;
 }
 
+function SetupFlow({ quick = false }: { quick?: boolean }) {
+  return (
+    <div className="agent-setup-flow">
+      <div>
+        <span>
+          <Icon name="note" />
+          {quick ? "Prompt + key" : "Prompt"}
+        </span>
+        <Icon name="arrowRight" />
+        <span>
+          <Icon name="chat" />
+          Agent
+        </span>
+      </div>
+      {!quick && (
+        <div>
+          <span>
+            <Icon name="key" />
+            Key
+          </span>
+          <Icon name="arrowRight" />
+          <span>
+            <Icon name="terminal" />
+            Local setup
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Shared by quick Setup and the advanced Account issuance flow. */
 export function AgentSetupChoices({
   issued,
@@ -79,6 +111,7 @@ export function AgentSetupChoices({
   const action = useAction();
   const [preview, setPreview] = useState<AgentSetupMode>();
   const [showKey, setShowKey] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   async function copyPrompt(mode: AgentSetupMode) {
     if (!instructions) return;
     const current = issued ?? (await createKey?.());
@@ -88,8 +121,9 @@ export function AgentSetupChoices({
       await navigator.clipboard.writeText(agentSetupPrompt(current, instructions, mode));
     } catch {
       setPreview(mode);
+      setHelpOpen(true);
       throw new Error(
-        "Key retained in this tab. Clipboard unavailable; select the prompt below or retry. Retrying uses the same key.",
+        "Clipboard blocked. Copy below or retry; your key is saved in this tab.",
       );
     }
   }
@@ -98,29 +132,20 @@ export function AgentSetupChoices({
       <div className="agent-handoff-options">
         <section aria-label="Keep key out of chat">
           <h3>
-            Keep key out of chat <span className="badge">Recommended</span>
+            Keep key local <span className="badge">Recommended</span>
           </h3>
-          <ol>
-            <li>Copy the setup prompt and paste it into your coding agent.</li>
-            <li>Let the agent prepare a command for your computer.</li>
-            <li>Return here, copy the key, then run the command locally.</li>
-          </ol>
-          <p>
-            The command saves the key in your client’s private configuration without
-            printing it in chat. The prompt still shares server and project metadata.
-          </p>
+          <SetupFlow />
           <div className="actions">
             <button
-              className="primary"
               disabled={action.busy || !instructions}
               onClick={() =>
                 void action.run(
                   () => copyPrompt("separate"),
-                  "Setup prompt copied without the API key. Paste it into your agent first.",
+                  "Prompt copied. Paste it into your agent.",
                 )
               }
             >
-              {issued ? "Copy setup prompt (no key)" : "Create key & copy setup prompt"}
+              {issued ? "Copy prompt" : "Create & copy prompt"}
             </button>
             <button
               disabled={action.busy || !issued}
@@ -130,107 +155,118 @@ export function AgentSetupChoices({
                     await navigator.clipboard.writeText(issued!.token);
                   } catch {
                     setShowKey(true);
+                    setHelpOpen(true);
                     throw new Error(
-                      "Clipboard unavailable. Select the key below and use it only in your local setup command.",
+                      "Clipboard blocked. Copy the key below for local setup.",
                     );
                   }
-                }, "Key copied. Use the local setup command; do not paste it into chat.")
+                }, "Key copied. Use locally, not in chat.")
               }
             >
               Copy key
             </button>
           </div>
-          <p className="muted">
-            Clipboard history or sync may retain the key. This keeps it out of the chat
-            transcript; your local agent can still access its configuration.
-          </p>
         </section>
         <section aria-label="Quick setup with key">
-          <h3>Quick setup with key</h3>
-          <p>
-            <strong>Includes your API key.</strong> Pasting shares it with the chat
-            provider and anyone who can access that conversation. Use only a
-            client/provider you trust with this credential.
-          </p>
-          <p>
-            Turning training off does not guarantee that the chat is not stored or
-            accessible.
+          <h3>Quick setup</h3>
+          <SetupFlow quick />
+          <p className="agent-key-warning">
+            Shares your key with the chat provider. Trusted agents only.
           </p>
           <button
+            className="primary"
             disabled={action.busy || !instructions}
             onClick={() =>
               void action.run(
                 () => copyPrompt("quick"),
-                "Prompt and API key copied. Pasting shares the credential with your chat provider.",
+                "Copied with key. Paste only into a trusted agent.",
               )
             }
           >
-            {issued ? "Copy prompt + key" : "Create key & copy prompt + key"}
+            {issued ? "Copy prompt + key" : "Create & copy all"}
           </button>
         </section>
       </div>
       <ActionState action={action} />
-      {issued && (
-        <>
-          <p>
-            Both options use this same key with its original permissions and expiry.
-            Refreshing loses the key shown here; revoke it in Account if needed.
-          </p>
-          {instructions &&
-            (["separate", "quick"] as const).map((mode) => (
-              <details
-                key={mode}
-                open={preview === mode}
-                onToggle={(event) => {
-                  if (event.currentTarget.open) setPreview(mode);
-                  else setPreview((current) => (current === mode ? undefined : current));
-                }}
-              >
-                <summary>
-                  {mode === "separate"
-                    ? "Preview setup prompt without key"
-                    : "Reveal prompt including private key"}
-                </summary>
-                {preview === mode && (
-                  <textarea
-                    aria-label={
-                      mode === "separate"
-                        ? "Agent setup prompt without key"
-                        : "Private agent setup prompt"
-                    }
-                    value={agentSetupPrompt(issued, instructions, mode)}
-                    readOnly
-                    rows={10}
-                  />
-                )}
-              </details>
-            ))}
-          <details
-            open={showKey}
-            onToggle={(event) => setShowKey(event.currentTarget.open)}
-          >
-            <summary>Reveal key for manual local setup</summary>
-            {showKey && (
-              <textarea
-                aria-label="Private API key for local setup"
-                value={issued.token}
-                readOnly
-                rows={2}
-              />
-            )}
-          </details>
-          <button
-            disabled={action.busy}
-            onClick={() => {
-              setPreview(undefined);
-              setShowKey(false);
-              onClear();
-            }}
-          >
-            Forget key in this tab
-          </button>
-        </>
-      )}
+      <details
+        className="agent-setup-help"
+        open={helpOpen}
+        onToggle={(event) => setHelpOpen(event.currentTarget.open)}
+      >
+        <summary>Help & manual copy</summary>
+        <p>
+          Paste the prompt into your agent first. When it prepares a local command, return
+          to copy the key and run that command. Keep the key out of chat.
+        </p>
+        <p>
+          Quick setup includes the key. Anyone with chat access may see it; turning
+          training off does not guarantee no storage. Clipboard history or sync may retain
+          it. The local agent can access its private configuration.
+        </p>
+        <p>
+          The prompt includes server and project details. Both options use the same key.
+          Refreshing loses this copy; revoke it in Account if needed.
+        </p>
+        {issued && (
+          <>
+            {instructions &&
+              (["separate", "quick"] as const).map((mode) => (
+                <details
+                  key={mode}
+                  open={preview === mode}
+                  onToggle={(event) => {
+                    if (event.currentTarget.open) setPreview(mode);
+                    else
+                      setPreview((current) => (current === mode ? undefined : current));
+                  }}
+                >
+                  <summary>
+                    {mode === "separate"
+                      ? "Preview setup prompt without key"
+                      : "Reveal prompt including private key"}
+                  </summary>
+                  {preview === mode && (
+                    <textarea
+                      aria-label={
+                        mode === "separate"
+                          ? "Agent setup prompt without key"
+                          : "Private agent setup prompt"
+                      }
+                      value={agentSetupPrompt(issued, instructions, mode)}
+                      readOnly
+                      rows={10}
+                    />
+                  )}
+                </details>
+              ))}
+            <details
+              open={showKey}
+              onToggle={(event) => setShowKey(event.currentTarget.open)}
+            >
+              <summary>Reveal key for manual local setup</summary>
+              {showKey && (
+                <textarea
+                  aria-label="Private API key for local setup"
+                  value={issued.token}
+                  readOnly
+                  rows={2}
+                />
+              )}
+            </details>
+            <button
+              disabled={action.busy}
+              onClick={() => {
+                setPreview(undefined);
+                setShowKey(false);
+                setHelpOpen(false);
+                onClear();
+              }}
+            >
+              Forget key in this tab
+            </button>
+          </>
+        )}
+      </details>
     </div>
   );
 }

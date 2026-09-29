@@ -74,9 +74,7 @@ try {
     return result.data;
   };
   await page.goto(access.url + "/help");
-  await page
-    .getByRole("button", { name: "Create key & copy setup prompt", exact: true })
-    .waitFor();
+  await page.getByRole("button", { name: "Create & copy prompt", exact: true }).waitFor();
   assert.equal(creations, 0, "opening Setup must not issue keys");
   assert.equal(
     await page
@@ -92,7 +90,7 @@ try {
   await page.evaluate(() => {
     window.setupClipboard.denied = true;
   });
-  const issued = await issueOnClick("Create key & copy setup prompt");
+  const issued = await issueOnClick("Create & copy prompt");
   const selectable = page.getByRole("textbox", {
     name: "Agent setup prompt without key",
     exact: true,
@@ -133,9 +131,7 @@ try {
   await page.evaluate(() => {
     window.setupClipboard.denied = false;
   });
-  await page
-    .getByRole("button", { name: "Copy setup prompt (no key)", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Copy prompt", exact: true }).click();
   const separate = await clipboard();
   assert.equal(separate.includes(issued.token), false);
   assert.equal(metadata(separate).authentication.source, "local-clipboard");
@@ -145,7 +141,7 @@ try {
   await page.getByRole("button", { name: "Copy key", exact: true }).click();
   assert.equal((await clipboard()) === issued.token, true);
   assert.equal(creations, 1, "denial, retry and switching modes must reuse one issuance");
-  await page.getByText("Preview setup prompt without key", { exact: true }).click();
+  await page.getByText("Help & manual copy", { exact: true }).click();
   await page
     .getByRole("region", { name: "Keep key out of chat", exact: true })
     .scrollIntoViewIfNeeded();
@@ -153,6 +149,9 @@ try {
   await page
     .locator(".help-agent")
     .screenshot({ path: "output/playwright/setup-handoff-desktop.png" });
+  await page
+    .locator(".help-page")
+    .screenshot({ path: "output/playwright/setup-page-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator(".agent-handoff").scrollIntoViewIfNeeded();
   assert.ok(
@@ -163,15 +162,15 @@ try {
     .locator(".help-agent")
     .screenshot({ path: "output/playwright/setup-handoff-mobile.png" });
   await page
-    .getByRole("button", { name: "Copy setup prompt (no key)", exact: true })
-    .focus();
+    .locator(".help-page")
+    .screenshot({ path: "output/playwright/setup-page-mobile.png" });
+  await page.getByRole("button", { name: "Copy prompt", exact: true }).focus();
   await page.keyboard.press("Enter");
   assert.equal((await clipboard()).includes(issued.token), false);
+  await page.getByText("Help & manual copy", { exact: true }).click();
   await page.getByRole("button", { name: "Forget key in this tab", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Create key & copy setup prompt", exact: true })
-    .waitFor();
-  const quickIssued = await issueOnClick("Create key & copy prompt + key");
+  await page.getByRole("button", { name: "Create & copy prompt", exact: true }).waitFor();
+  const quickIssued = await issueOnClick("Create & copy all");
   await page.getByRole("button", { name: "Copy prompt + key", exact: true }).waitFor();
   assert.equal(
     metadata(await clipboard()).authentication.secret === quickIssued.token,
@@ -204,16 +203,14 @@ try {
     .getByRole("button", { name: "Retry loading setup instructions", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Copy setup prompt (no key)", exact: true })
+    .getByRole("button", { name: "Copy prompt", exact: true })
     .waitFor({ state: "visible" });
   await page.waitForFunction(() =>
     [...document.querySelectorAll("button")].some(
-      (b) => b.textContent === "Copy setup prompt (no key)" && !b.disabled,
+      (b) => b.textContent === "Copy prompt" && !b.disabled,
     ),
   );
-  await page
-    .getByRole("button", { name: "Copy setup prompt (no key)", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Copy prompt", exact: true }).click();
   assert.equal((await clipboard()).includes(accountIssued.token), false);
   assert.equal(creations, 3);
   console.log(
@@ -231,7 +228,7 @@ try {
         "desktop/mobile layout",
         "keyboard activation",
       ],
-      screenshots: 2,
+      screenshots: 4,
     }),
   );
 } finally {
