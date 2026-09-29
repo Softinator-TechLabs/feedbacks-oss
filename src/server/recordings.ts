@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Database } from "./db.js";
 import type { Actor } from "../shared/contracts.js";
 import type { AssetStore } from "./assets.js";
+import type { Config } from "./config.js";
 import { event } from "./access.js";
 import {
   checkRevision,
@@ -132,7 +133,7 @@ export async function commitRecording(
     result: { recording: summary(rows[0]), thread: await fullThread(db, actor, saved) },
   };
 }
-export function prepareRecording(input: any, projectId: string) {
+export function prepareRecording(input: any, projectId: string, config: Config) {
   const sanitized = redactRecording(input.recording as Recording);
   // Sanitization must preserve the shared schema and deterministic retry identity.
   const checked = recordingSchema.safeParse(sanitized);
@@ -143,7 +144,7 @@ export function prepareRecording(input: any, projectId: string) {
     sanitized: checked.data,
     output,
     bytes: output.length,
-    objectKey: `recordings/${projectId}/${randomUUID()}.json`,
+    objectKey: `feedbacks/${config.production ? "production" : "development"}/organizations/${config.organizationId}/projects/${projectId}/feedback/${input.threadId}/recordings/${randomUUID()}.json`,
   };
 }
 export async function recordingRead(
@@ -196,7 +197,7 @@ export async function recordingRead(
       [thread.id],
     );
     const frames = await db.query(
-      "SELECT id,data FROM assets WHERE thread_id=$1 AND project_id=$2 AND status='validated' AND data->>'contentType' LIKE 'image/%' AND data->'recordingFrame'->>'recordingId'=$3 ORDER BY data->>'createdAt',id LIMIT 101",
+      "SELECT id,data FROM assets WHERE thread_id=$1 AND project_id=$2 AND status='validated' AND NOT (data ? 'supersededBy') AND data->>'contentType' LIKE 'image/%' AND data->'recordingFrame'->>'recordingId'=$3 ORDER BY data->>'createdAt',id LIMIT 101",
       [thread.id, thread.project_id, recording.id],
     );
     return {

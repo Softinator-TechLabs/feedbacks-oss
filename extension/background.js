@@ -17,7 +17,7 @@ import { redactInsertedImages } from "./screenshot-redaction.js";
 import { maskDraftDiagnostic } from "./diagnostic-redaction.js";
 import { formatPageQa } from "./page-qa.js";
 import { pageOverviewTarget } from "./page-overview.js";
-import { capturedVideoTarget } from "./session-capture.js";
+import { capturedVideoTarget, captureOrigins } from "./session-capture.js";
 import { createSessionCoordinator } from "./session-coordinator.js";
 import { createRecordingAnnotations } from "./recording-annotations.js";
 import { createRecordingControls } from "./recording-controls.js";
@@ -1978,7 +1978,9 @@ async function route(message, sender) {
         capture.target.reviewId !== session.reviewId
       )
         throw Error("This session recording is no longer available.");
-      const owner = await chrome.tabs.get(capture.target.ownerTabId).catch(() => null);
+      const owner = Number.isSafeInteger(capture.target.ownerTabId)
+        ? await chrome.tabs.get(capture.target.ownerTabId).catch(() => null)
+        : null;
       if (owner?.url?.startsWith(chrome.runtime.getURL("session.html")))
         await chrome.tabs.update(owner.id, { active: true });
       else
@@ -1998,9 +2000,15 @@ async function route(message, sender) {
         if (message.action !== "stop")
           throw Error("Session recording runs continuously. Stop to review.");
         const stopped = await sessionCapture.stop();
-        await chrome.tabs
-          .update(stopped.target.ownerTabId, { active: true })
-          .catch(() => {});
+        const owner = Number.isSafeInteger(stopped.target.ownerTabId)
+          ? await chrome.tabs.get(stopped.target.ownerTabId).catch(() => null)
+          : null;
+        if (owner?.url?.startsWith(chrome.runtime.getURL("session.html")))
+          await chrome.tabs.update(owner.id, { active: true });
+        else
+          await chrome.tabs.create({
+            url: chrome.runtime.getURL(`session.html?sourceTabId=${sender.tab.id}`),
+          });
         return {};
       }
       return recordings.control(sender, message.action);
@@ -2338,11 +2346,30 @@ async function route(message, sender) {
     case "openSessionRecorder": {
       const tab = await chrome.tabs.get(message.tabId);
       if (!tab.active) throw Error("Select the review tab first.");
-      await sessionFor({ tab, frameId: 0, url: tab.url });
-      await chrome.tabs.create({
-        url: chrome.runtime.getURL(`session.html?sourceTabId=${tab.id}`),
-      });
-      return {};
+      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+      const target = {
+        ...(await videoTarget(tab, session, U.safeUrl)),
+        origin: new URL(tab.url).origin,
+      };
+      const { videoRecordingOptions = {}, recordingRedirectOrigins = {} } =
+        await chrome.storage.local.get([
+          "videoRecordingOptions",
+          "recordingRedirectOrigins",
+        ]);
+      target.allowedOrigins = captureOrigins(
+        target.origin,
+        recordingRedirectOrigins[target.origin] || [],
+      );
+      const capture = await sessionCapture.start(
+        target,
+        {
+          maskText: !!videoRecordingOptions.maskText,
+          maskInputs: !!videoRecordingOptions.maskInputs,
+          networkBodies: !!videoRecordingOptions.networkBodies,
+        },
+        "session",
+      );
+      return { state: "recording", recordingId: capture.recording.id };
     }
     case "sessionContext": {
       const existing = await sessionCapture.status();
@@ -2413,6 +2440,30 @@ async function route(message, sender) {
       const tab = await chrome.tabs.get(target.sourceTabId);
       return { handle, origin: new URL(tab.url).origin };
     }
+    case "videoStreamId": {
+      if (
+        !sender.tab?.id ||
+        !sender.url?.startsWith(chrome.runtime.getURL("video.html?")) ||
+        !Number.isSafeInteger(message.sourceTabId)
+      )
+        throw Error("Open the recorder from the selected website tab.");
+      const recorderUrl = new URL(sender.url);
+      if (
+        recorderUrl.searchParams.get("autoStart") !== "1" ||
+        Number(recorderUrl.searchParams.get("sourceTabId")) !== message.sourceTabId
+      )
+        throw Error("Recording tab context changed.");
+      const tab = await chrome.tabs.get(message.sourceTabId);
+      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+      if (session.reviewId !== recorderUrl.searchParams.get("reviewId"))
+        throw Error("The page review changed. Start a new recording.");
+      return {
+        streamId: await chrome.tabCapture.getMediaStreamId({
+          targetTabId: tab.id,
+          consumerTabId: sender.tab.id,
+        }),
+      };
+    }
     case "openRecorder": {
       const tab = await chrome.tabs.get(message.tabId);
       if (!tab.active) throw Error("Select the review tab first.");
@@ -2426,9 +2477,14 @@ async function route(message, sender) {
         sender.tab?.id,
         await videoTarget(tab, session, U.safeUrl),
       );
+      const { recordingRedirectOrigins = {} } = await chrome.storage.local.get(
+        "recordingRedirectOrigins",
+      );
+      const origin = new URL(tab.url).origin;
       return {
         project: projects.items.find((project) => project.id === session.projectId),
         ...target,
+        allowedOrigins: captureOrigins(origin, recordingRedirectOrigins[origin] || []),
       };
     }
     case "videoCreate": {

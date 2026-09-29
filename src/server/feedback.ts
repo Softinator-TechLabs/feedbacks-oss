@@ -223,11 +223,13 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
       likes: likes.get(r.id) ?? { uniqueLikes: 0, liked: false },
       createdAt: new Date(r.created_at).toISOString(),
     })),
-    assets: assets.map((r) => ({
-      id: r.id,
-      ...r.data,
-      url: `/api/assets/${r.id}`,
-    })),
+    assets: assets
+      .filter((r) => !r.data.supersededBy)
+      .map((r) => ({
+        id: r.id,
+        ...r.data,
+        url: `/api/assets/${r.id}`,
+      })),
     pins: {
       defaultVisible:
         !data.archived && !["resolved", "declined"].includes(data.work.state),

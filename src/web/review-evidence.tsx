@@ -27,6 +27,7 @@ function EvidenceScreenshot({
   hiddenPins,
   onTogglePins,
   captureMarker,
+  onAnnotate,
 }: {
   asset: Asset;
   className?: string;
@@ -35,6 +36,7 @@ function EvidenceScreenshot({
   hiddenPins: boolean;
   onTogglePins: (assetId: string) => void;
   captureMarker?: Thread["context"]["captureMarker"];
+  onAnnotate?: (asset: Asset) => void;
 }) {
   const points =
     asset.rendition === "screenshot"
@@ -69,6 +71,11 @@ function EvidenceScreenshot({
         <a href={asset.url} target="_blank" rel="noopener noreferrer">
           Open full image
         </a>
+        {onAnnotate && (
+          <button type="button" onClick={() => onAnnotate(asset)}>
+            Add or revise marks
+          </button>
+        )}
       </figcaption>
       <a
         className="review-image-frame"
@@ -174,12 +181,14 @@ export function ReviewEvidence({
   canWrite = false,
   canMaintain = false,
   onSaved,
+  onAnnotate,
 }: {
   thread: Thread;
   canResolve?: boolean;
   canWrite?: boolean;
   canMaintain?: boolean;
   onSaved?: (thread: Thread) => void;
+  onAnnotate?: (asset: Asset) => void;
 }) {
   const annotations = thread.context.annotations || [];
   const action = useAction();
@@ -270,12 +279,10 @@ export function ReviewEvidence({
     return () => removeEventListener("hashchange", openLinkedAsset);
   }, [thread.id, assetIds]);
   const locationFor = (item: Annotation) =>
-    images.find(
-      (asset) =>
-        /^point-\d+-original\.webp$/.test(asset.filename || "") &&
-        asset.markings?.some(
-          (mark) => mark.tool === "point" && mark.annotationId === item.id,
-        ),
+    images.find((asset) =>
+      asset.markings?.some(
+        (mark) => mark.tool === "point" && mark.annotationId === item.id,
+      ),
     ) ||
     numbered.find((asset) => position(asset, item, thread.context)) ||
     (combined && position(combined, item, thread.context) ? combined : undefined) ||
@@ -344,6 +351,7 @@ export function ReviewEvidence({
           hiddenPins={hiddenPins.has(asset.id)}
           onTogglePins={togglePins}
           captureMarker={thread.context.captureMarker}
+          onAnnotate={canWrite ? onAnnotate : undefined}
           key={asset.id}
         />
       ))}
@@ -358,6 +366,7 @@ export function ReviewEvidence({
               hiddenPins={hiddenPins.has(asset.id)}
               onTogglePins={togglePins}
               captureMarker={thread.context.captureMarker}
+              onAnnotate={canWrite ? onAnnotate : undefined}
               key={asset.id}
             />
           ))}
@@ -399,11 +408,13 @@ export function ReviewEvidence({
                 </div>
                 <MarkdownText body={item.body} />
                 <span className="review-point-kind">
-                  {item.anchor.selector
-                    ? item.anchor.confidence === "unmatched"
-                      ? "Selected element · changed after selection"
-                      : "Selected element"
-                    : "Page position only"}
+                  {asset?.recordingFrame
+                    ? `Video frame · ${(asset.recordingFrame.atMs / 1000).toFixed(1)}s`
+                    : item.anchor.selector
+                      ? item.anchor.confidence === "unmatched"
+                        ? "Selected element · changed after selection"
+                        : "Selected element"
+                      : "Page position only"}
                 </span>
                 {onSaved && canWrite && state === "open" && !threadClosed ? (
                   <PointWorkPlan
@@ -496,6 +507,7 @@ export function ReviewEvidence({
                     hiddenPins={hiddenPins.has(asset.id)}
                     onTogglePins={togglePins}
                     captureMarker={thread.context.captureMarker}
+                    onAnnotate={canWrite ? onAnnotate : undefined}
                   />
                 ) : (
                   <small className="muted">Saved page position</small>

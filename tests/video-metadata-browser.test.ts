@@ -99,14 +99,21 @@ test(
           });
           const edits = [];
           for (let attempt = 0; attempt < 3; attempt++) {
-            const editedRaw = await (window as any).exportVideo({
-              url: URL.createObjectURL(fixed),
-              start: 0.1,
-              end: 0.5,
-              crop: [0, 0, 100, 100],
-              signal: new AbortController().signal,
-              onProgress: () => {},
-            });
+            let editedRaw: Blob;
+            try {
+              editedRaw = await (window as any).exportVideo({
+                url: URL.createObjectURL(fixed),
+                start: 0.1,
+                end: 0.5,
+                crop: [0, 0, 100, 100],
+                signal: new AbortController().signal,
+                onProgress: () => {},
+              });
+            } catch (error) {
+              throw Error(
+                `${animated ? "moving" : "static"} export ${attempt + 1}: ${(error as Error).message}`,
+              );
+            }
             const edited = await (window as any).finalizeWebmMetadata(editedRaw, 400);
             const editedVideo = await observation(edited);
             await new Promise<void>((resolve) => {

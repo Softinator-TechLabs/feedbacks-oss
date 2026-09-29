@@ -18,7 +18,7 @@ test(
       await page.route("https://recorder.test/**", (route) =>
         route.fulfill({ contentType: "text/html", body: html }),
       );
-      await page.goto("https://recorder.test/video.html?sourceTabId=10");
+      await page.goto("https://recorder.test/video.html?sourceTabId=10&autoStart=1");
       await page.addScriptTag({ content: "globalThis.__name = value => value;" });
       for (const name of ["appearance.css", "video.css", "session-review.css"])
         await page.addStyleTag({ path: `extension/${name}` });
@@ -26,6 +26,7 @@ test(
         const w = window as any;
         w.published = [];
         w.requests = [];
+        w.failRecordingUpload = true;
         w.recording = {
           id: "11111111-1111-4111-8111-111111111111",
           startedAt: new Date().toISOString(),
@@ -52,31 +53,71 @@ test(
             }),
             sendMessage: async (message: any) => {
               w.requests.push(message.type);
+              if (message.type === "sessionSubmit" && w.failRecordingUpload)
+                return {
+                  ok: false,
+                  code: "UPLOAD_FAILED",
+                  error: "Private recording storage is unavailable; retry this capture",
+                };
               const data =
-                message.type === "videoContext"
-                  ? {
-                      sourceTabId: 10,
-                      projectId: "project",
-                      reviewId: "review",
-                      project: { name: "Fixture" },
-                      url: "https://page.test",
-                      server: "https://server.test",
-                      viewport: { width: 1280, height: 720 },
-                    }
-                  : message.type === "videoCaptureHandle"
-                    ? { handle: "fixture", origin: "https://page.test" }
-                    : message.type === "sessionStart"
-                      ? { started: Date.now() }
-                      : message.type === "sessionHealth"
-                        ? w.health
-                        : message.type === "sessionStop"
-                          ? { recording: w.recording }
-                          : message.type === "recordingAnnotations"
-                            ? { recordingId: w.recording.id, items: [] }
-                            : {};
+                message.type === "videoStreamId"
+                  ? { streamId: "exact-tab-stream" }
+                  : message.type === "videoContext"
+                    ? {
+                        sourceTabId: 10,
+                        projectId: "project",
+                        reviewId: "review",
+                        project: { name: "Fixture" },
+                        url: "https://page.test",
+                        server: "https://server.test",
+                        viewport: { width: 1280, height: 720 },
+                      }
+                    : message.type === "videoCaptureHandle"
+                      ? { handle: "fixture", origin: "https://page.test" }
+                      : message.type === "sessionStart"
+                        ? { started: Date.now() }
+                        : message.type === "sessionHealth"
+                          ? w.health
+                          : message.type === "sessionStop"
+                            ? { recording: w.recording }
+                            : message.type === "recordingAnnotations"
+                              ? {
+                                  recordingId: w.recording.id,
+                                  items: [
+                                    {
+                                      id: "point-one",
+                                      atMs: 1400,
+                                      body: "Point visible before send",
+                                      imageBase64:
+                                        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lZsAAAAASUVORK5CYII=",
+                                    },
+                                  ],
+                                }
+                              : message.type === "videoCreate"
+                                ? { id: "draft-thread", revision: 1 }
+                                : message.type === "videoUpload"
+                                  ? {
+                                      asset: { id: "video-asset" },
+                                      thread: { id: "draft-thread", revision: 2 },
+                                    }
+                                  : message.type === "sessionSubmit"
+                                    ? {
+                                        recording: { id: w.recording.id },
+                                        thread: { id: "draft-thread", revision: 3 },
+                                      }
+                                    : message.type === "sessionFrameUpload"
+                                      ? { thread: { id: "draft-thread", revision: 4 } }
+                                      : {};
               return { ok: true, data };
             },
           },
+          storage: {
+            local: {
+              get: async () => ({ videoRecordingOptions: {} }),
+              set: async () => {},
+            },
+          },
+          tabs: { getCurrent: async () => ({ id: 10 }), update: async () => {} },
         };
         const canvas = document.createElement("canvas");
         canvas.width = 320;
@@ -88,7 +129,10 @@ test(
           context.fillStyle = "white";
           context.fillText(String(Date.now()), 20, 20);
         }, 50);
-        navigator.mediaDevices.getDisplayMedia = async (options) => {
+        navigator.mediaDevices.getDisplayMedia = async () => {
+          throw Error("The one-click path must not open Chrome's picker");
+        };
+        navigator.mediaDevices.getUserMedia = async (options) => {
           w.captureOptions = options;
           const stream = canvas.captureStream(10);
           const track = stream.getVideoTracks()[0];
@@ -118,8 +162,6 @@ test(
         format: "iife",
       });
       await page.addScriptTag({ content: bundle.outputFiles[0].text });
-      await page.locator("#start:enabled").waitFor();
-      await page.locator("#start").click();
       await page.waitForFunction(() =>
         (window as any).published.some((entry: any) => entry.state === "recording"),
       );
@@ -144,6 +186,10 @@ test(
         capture.options.video.height,
         undefined,
         "source height must not be forcibly downscaled",
+      );
+      assert.equal(
+        capture.options.video.mandatory.chromeMediaSourceId,
+        "exact-tab-stream",
       );
       assert.equal(capture.hint, "detail");
       await page.locator("#capture-health").filter({ hasText: "7 actions" }).waitFor();
@@ -222,6 +268,38 @@ test(
         stopping.elapsedMs,
         "metadata finalization is excluded from video duration",
       );
+      await page.waitForTimeout(100);
+      assert.match(
+        await page.locator("#capture-inspector").innerText(),
+        /Point visible before send/,
+        JSON.stringify(
+          await page.evaluate(() => ({
+            status: document.getElementById("status")?.textContent,
+            requests: (window as any).requests,
+            duration: document.getElementById("timer")?.textContent,
+          })),
+        ),
+      );
+      await page.locator("#comment").fill("Point should travel with this video");
+      await page.locator("#send").click();
+      await page
+        .getByRole("status")
+        .filter({ hasText: "timeline evidence and screenshot points are still pending" })
+        .waitFor();
+      assert.match(
+        await page.locator("#thread").innerText(),
+        /draft feedback.*video pending/,
+      );
+      assert.equal(await page.locator("#send").isVisible(), true);
+      await page.evaluate(() => {
+        (window as any).failRecordingUpload = false;
+      });
+      await page.locator("#send").click();
+      await page
+        .getByRole("status")
+        .filter({ hasText: "Video shared with the project" })
+        .waitFor();
+      assert.match(await page.locator("#thread").innerText(), /feedback with recording/);
     } finally {
       await browser.close();
     }

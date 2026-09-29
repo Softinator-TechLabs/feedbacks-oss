@@ -80,7 +80,12 @@
   grid-template-columns: auto minmax(80px, 1fr) auto;
   gap: 10px;
   align-items: center;
-  margin: 16px 0 12px;
+  margin: 12px 0 0;
+  padding: 10px 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-surface);
+  order: 2;
 }
 .recording-timeline button {
   min-height: 40px;
@@ -90,16 +95,87 @@
   min-width: 0;
   accent-color: var(--accent);
 }
+.recording-timeline > label.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .recording-timeline output {
   color: var(--muted);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.recording-timeline-marks {
+  position: relative;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  height: 38px;
+  margin: -6px 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.recording-timeline-mark {
+  position: absolute;
+  top: 0;
+  width: 7px;
+  min-width: 7px;
+  height: 7px;
+  min-height: 7px !important;
+  padding: 0;
+  transform: translateX(-50%);
+  border: 0;
+  border-radius: 2px;
+  background: #63b79d;
+}
+.recording-timeline-mark[data-channel="console"] {
+  top: 9px;
+  background: #c89a57;
+}
+.recording-timeline-mark[data-channel="network"] {
+  top: 18px;
+  background: #5481a0;
+}
+.recording-timeline-mark[data-channel="point"] {
+  top: 27px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #9b69bb;
+}
+.recording-timeline-mark[data-error="true"] {
+  background: #da6d64;
+}
+.recording-timeline-mark:hover,
+.recording-timeline-mark:focus-visible {
+  width: 11px;
+  z-index: 2;
+  outline: 2px solid var(--surface);
+}
 .recording-workspace {
-  display: grid;
-  gap: 18px;
-  min-width: 0;
+  display: contents;
+}
+.thread-recordings:has(.recording-workspace) {
+  display: flex;
+  flex-direction: column;
+}
+.recording-media {
+  display: contents;
+}
+.recording-media-switch {
+  order: 0;
+}
+.recording-media-content {
+  order: 1;
+}
+.recording-diagnostics {
+  order: 5;
+  margin-top: 12px;
 }
 .recording-media,
 .recording-diagnostics {
@@ -120,8 +196,39 @@
   border-color: var(--accent);
   color: var(--surface);
 }
+:root[data-theme="dark"] .recording-media-switch button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+:root[data-theme="dark"] .recording-timeline-mark {
+  border-color: transparent;
+  background: #6ec9aa;
+}
+:root[data-theme="dark"] .recording-timeline-mark[data-channel="console"] {
+  background: #e0ae67;
+}
+:root[data-theme="dark"] .recording-timeline-mark[data-channel="network"] {
+  background: #79b1d4;
+}
+:root[data-theme="dark"] .recording-timeline-mark[data-channel="point"] {
+  background: #ca9be9;
+}
+:root[data-theme="dark"] .recording-timeline-mark[data-error="true"] {
+  background: #f08c83;
+}
 .recording-media-content {
+  display: contents;
+}
+.recording-media-content > * {
+  order: 1;
   min-width: 0;
+}
+.recording-media-content > .recording-frame-actions,
+.recording-media-content > .recording-frame-error,
+.recording-media-content > .recording-saved-frame,
+.recording-media-content > .recording-footnote {
+  order: 4;
 }
 .recording-scope {
   display: flex;
@@ -190,6 +297,7 @@
   display: block;
   width: 100%;
   max-height: 520px;
+  border-radius: 8px;
   background: #111;
 }
 .recording-frame-actions {
@@ -229,12 +337,6 @@
   object-fit: cover;
   border: 1px solid var(--border);
   border-radius: 4px;
-}
-@container (min-width: 620px) {
-  .recording-workspace {
-    grid-template-columns: minmax(0, 1.35fr) minmax(260px, 1fr);
-    align-items: start;
-  }
 }
 .recording-events {
   list-style: none;
@@ -327,7 +429,7 @@
 }
 @media (max-width: 650px) {
   .recording-timeline {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
   }
   .recording-timeline output {
     grid-column: 1 / -1;

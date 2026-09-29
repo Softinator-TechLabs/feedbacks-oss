@@ -47,6 +47,11 @@ async function refresh() {
         if (input instanceof HTMLSelectElement) input.value = value;
         else input.checked = value === true;
       }
+    const { videoRecordingOptions = {} } = await chrome.storage.local.get(
+      "videoRecordingOptions",
+    );
+    for (const input of document.querySelectorAll("[data-video-default]"))
+      input.checked = videoRecordingOptions[input.dataset.videoDefault] === true;
     $("connection-status").textContent = state.pending
       ? "Approve the connection in Feedbacks."
       : state.connected
@@ -180,6 +185,21 @@ for (const input of document.querySelectorAll("[data-review-default]")) {
       await refresh();
       if (keepFocus && document.activeElement === document.body) input.focus();
     }
+  };
+}
+for (const input of document.querySelectorAll("[data-video-default]")) {
+  input.onchange = async () => {
+    const { videoRecordingOptions = {} } = await chrome.storage.local.get(
+      "videoRecordingOptions",
+    );
+    await chrome.storage.local.set({
+      videoRecordingOptions: {
+        ...videoRecordingOptions,
+        [input.dataset.videoDefault]: input.checked,
+      },
+    });
+    $("message").textContent = "Recording defaults saved.";
+    $("message").dataset.kind = "success";
   };
 }
 $("check-updates").hidden = Boolean(manifest.update_url);

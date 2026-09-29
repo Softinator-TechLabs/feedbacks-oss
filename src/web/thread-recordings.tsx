@@ -147,11 +147,16 @@ export function ThreadRecordings({
   canWrite = false,
   onSaved,
   onLinkedAssets,
+  onAnnotateFrame,
 }: {
   thread: Thread;
   canWrite?: boolean;
   onSaved?: (saved: Thread) => void;
   onLinkedAssets?: (assetIds: string[]) => void;
+  onAnnotateFrame?: (frame: {
+    imageBase64: string;
+    recordingFrame: { recordingId: string; atMs: number; videoTimeMs: number };
+  }) => void;
 }) {
   const [summaries, setSummaries] = useState<RecordingSummary[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -303,10 +308,19 @@ export function ThreadRecordings({
             .at(-1) as FrameAsset)
         : null;
   const annotationFrames = linkedFrames.flatMap((frame) => {
-    const annotation = recordingAnnotation(
-      recording?.events || [],
-      frame.recordingFrame!,
+    const embedded = recordingAnnotation(recording?.events || [], frame.recordingFrame!);
+    const point = thread.context?.annotations?.find(
+      (item) => item.id === frame.recordingFrame?.annotationId,
     );
+    const annotation =
+      embedded ??
+      (point
+        ? {
+            id: point.id,
+            body: point.body,
+            atMs: frame.recordingFrame!.atMs,
+          }
+        : null);
     return annotation ? [{ frame, annotation }] : [];
   });
 
@@ -491,7 +505,7 @@ export function ThreadRecordings({
     setMediaMode(next);
   }
 
-  async function saveCurrentFrame() {
+  function captureCurrentFrame(): PendingFrame | null {
     const video = videoRef.current;
     if (
       !recording?.video ||
@@ -503,7 +517,7 @@ export function ThreadRecordings({
       !video.videoHeight
     ) {
       setFrameError("Wait for the video frame to finish loading before saving it.");
-      return;
+      return null;
     }
     video.pause();
     const videoTimeMs = Math.round(video.currentTime * 1000);
@@ -513,40 +527,60 @@ export function ThreadRecordings({
       setFrameError(
         "This video frame is outside the retained recording timeline. Seek to a retained frame and try again.",
       );
-      return;
+      return null;
     }
     const atMs = clampTime(mapped, recording.durationMs);
     cursorRef.current = atMs;
     setCursorMs(atMs);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvas is unavailable");
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageBase64 = canvas.toDataURL("image/png");
+      if (
+        !imageBase64.startsWith("data:image/png;base64,") ||
+        imageBase64.length > 13_982_000
+      )
+        throw new Error("The frame is too large to attach");
+      return { imageBase64, atMs, videoTimeMs, key: uid() };
+    } catch (error) {
+      setFrameError(
+        error instanceof Error
+          ? `Could not capture this frame: ${error.message}.`
+          : "Could not capture this frame.",
+      );
+      return null;
+    }
+  }
+
+  function annotateCurrentFrame() {
+    if (!recording || !onAnnotateFrame) return;
+    const frame = captureCurrentFrame();
+    if (!frame) return;
+    onAnnotateFrame({
+      imageBase64: frame.imageBase64,
+      recordingFrame: {
+        recordingId: recording.id,
+        atMs: frame.atMs,
+        videoTimeMs: frame.videoTimeMs,
+      },
+    });
+  }
+
+  async function saveCurrentFrame() {
+    const frame = captureCurrentFrame();
+    if (!frame || !recording) return;
     let pending = pendingFrameRef.current;
     if (
       !pending ||
-      Math.abs(pending.atMs - atMs) > 250 ||
-      Math.abs(pending.videoTimeMs - videoTimeMs) > 250
+      Math.abs(pending.atMs - frame.atMs) > 250 ||
+      Math.abs(pending.videoTimeMs - frame.videoTimeMs) > 250
     ) {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("Canvas is unavailable");
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageBase64 = canvas.toDataURL("image/png");
-        if (
-          !imageBase64.startsWith("data:image/png;base64,") ||
-          imageBase64.length > 13_982_000
-        )
-          throw new Error("The frame is too large to attach");
-        pending = { imageBase64, atMs, videoTimeMs, key: uid() };
-        pendingFrameRef.current = pending;
-      } catch (error) {
-        setFrameError(
-          error instanceof Error
-            ? `Could not capture this frame: ${error.message}.`
-            : "Could not capture this frame.",
-        );
-        return;
-      }
+      pending = frame;
+      pendingFrameRef.current = pending;
     }
     setFrameBusy(true);
     setFrameError("");
@@ -625,6 +659,66 @@ export function ThreadRecordings({
     : diagnosticTab === "network"
       ? exchanges.length
       : 0;
+  const timelineMarks = useMemo(() => {
+    if (!recording) return [];
+    const marks = new Map<
+      string,
+      {
+        atMs: number;
+        type: RecordingChannel | "point";
+        label: string;
+        error: boolean;
+        count: number;
+        position: number;
+      }
+    >();
+    for (const event of recording.events) {
+      if (!["activity", "console", "network"].includes(event.type)) continue;
+      const position = Math.round((event.atMs / Math.max(1, recording.durationMs)) * 200);
+      const key = `${event.type}:${position}`;
+      const data = event.data as Record<string, unknown> | null;
+      const error =
+        data?.level === "error" ||
+        !!data?.error ||
+        (typeof data?.status === "number" && data.status >= 400);
+      const prior = marks.get(key);
+      if (prior) {
+        prior.count++;
+        prior.error ||= error;
+      } else {
+        marks.set(key, {
+          atMs: event.atMs,
+          type: event.type,
+          label: eventTitle(event.type, event.data),
+          error,
+          count: 1,
+          position: Math.max(0, Math.min(200, position)),
+        });
+      }
+    }
+    for (const { annotation } of annotationFrames) {
+      marks.set(`point:${annotation.id}`, {
+        atMs: annotation.atMs,
+        type: "point",
+        label: annotation.body,
+        error: false,
+        count: 1,
+        position: Math.max(
+          0,
+          Math.min(
+            200,
+            Math.round((annotation.atMs / Math.max(1, recording.durationMs)) * 200),
+          ),
+        ),
+      });
+    }
+    return [...marks.values()]
+      .sort(
+        (a, b) =>
+          Number(b.type === "point") - Number(a.type === "point") || a.atMs - b.atMs,
+      )
+      .slice(0, 600);
+  }, [recording, thread.assets, thread.context?.annotations]);
   return (
     <section className="thread-recordings" aria-labelledby="thread-recordings-heading">
       <div className="recording-heading">
@@ -764,6 +858,34 @@ export function ThreadRecordings({
                   onChange={(event) => seek(Number(event.target.value))}
                   aria-valuetext={`${formatRecordingTime(cursorMs)} of ${formatRecordingTime(recording.durationMs)}`}
                 />
+                <div
+                  className="recording-timeline-marks"
+                  aria-label="Events on recording timeline"
+                >
+                  {timelineMarks.map((mark, index) => (
+                    <button
+                      key={`${mark.type}-${mark.position}-${index}`}
+                      type="button"
+                      className="recording-timeline-mark"
+                      data-channel={mark.type}
+                      data-error={mark.error}
+                      style={{ left: `${mark.position / 2}%` }}
+                      title={`${formatRecordingTime(mark.atMs)} · ${mark.label}${mark.count > 1 ? ` · ${mark.count} events` : ""}`}
+                      aria-label={`${mark.type} at ${formatRecordingTime(mark.atMs)}: ${mark.label}`}
+                      onClick={() => {
+                        setDiagnosticTab(
+                          mark.type === "network"
+                            ? "network"
+                            : mark.type === "console"
+                              ? "console"
+                              : "activity",
+                        );
+                        setEvidenceScope("all");
+                        seek(mark.atMs);
+                      }}
+                    />
+                  ))}
+                </div>
                 <output htmlFor="thread-recording-timeline">
                   {formatRecordingTime(cursorMs)} /{" "}
                   {formatRecordingTime(recording.durationMs)}
@@ -885,9 +1007,18 @@ export function ThreadRecordings({
                               >
                                 {frameBusy ? "Saving frame…" : "Save frame"}
                               </button>
+                              {onAnnotateFrame && (
+                                <button
+                                  type="button"
+                                  disabled={!canSaveFrame}
+                                  onClick={annotateCurrentFrame}
+                                >
+                                  Annotate frame
+                                </button>
+                              )}
                               <span>
-                                Choose a moment in the activity or timeline, then save the
-                                video frame to this thread.
+                                Choose a moment in the activity or timeline, then save or
+                                mark its frame on this thread.
                               </span>
                             </div>
                           )}

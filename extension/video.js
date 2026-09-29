@@ -21,7 +21,46 @@ import {
   exportVideo,
 } from "./video-media.js";
 const $ = (id) => document.getElementById(id);
-const sourceTabId = Number(new URL(location.href).searchParams.get("sourceTabId"));
+const recorderUrl = new URL(location.href);
+const sourceTabId = Number(recorderUrl.searchParams.get("sourceTabId"));
+const autoStart = recorderUrl.searchParams.get("autoStart") === "1";
+let captureDefaults = {},
+  pendingTabError;
+// Stream IDs expire quickly; consume the one-use ID before server context loads.
+const pendingTabStream = autoStart
+  ? chrome.storage.local
+      .get("videoRecordingOptions")
+      .then(async (saved) => {
+        captureDefaults = saved.videoRecordingOptions || {};
+        const result = await chrome.runtime.sendMessage({
+          type: "videoStreamId",
+          sourceTabId,
+        });
+        if (!result.ok) throw Error(result.error);
+        const streamId = result.data.streamId;
+        return navigator.mediaDevices.getUserMedia({
+          video: {
+            mandatory: {
+              chromeMediaSource: "tab",
+              chromeMediaSourceId: streamId,
+              maxFrameRate: 24,
+            },
+          },
+          audio: captureDefaults.tabAudio
+            ? {
+                mandatory: {
+                  chromeMediaSource: "tab",
+                  chromeMediaSourceId: streamId,
+                },
+              }
+            : false,
+        });
+      })
+      .catch((error) => {
+        pendingTabError = error;
+        return null;
+      })
+  : null;
 const maxBytes = VIDEO_MAX_BYTES;
 const maxMs = VIDEO_MAX_MS;
 let tabAudioTracks = [];
@@ -375,10 +414,38 @@ function startError(error) {
   clearPreview();
   $("start").disabled = !connected;
   publishState("idle");
-  status(error.message);
+  if (autoStart) $("start").hidden = true;
+  status(
+    autoStart
+      ? `${error.message} Return to the website and choose Record video again.`
+      : error.message,
+  );
+  if (autoStart)
+    void chrome.tabs
+      .getCurrent()
+      .then((tab) => chrome.tabs.update(tab.id, { active: true }))
+      .catch(() => {});
 }
 
 let approvedRedirectOrigins = null;
+for (const id of [
+  "tab-audio",
+  "microphone",
+  "mask-inputs",
+  "mask-text",
+  "network-bodies",
+]) {
+  $(id).addEventListener("change", () => {
+    const options = {
+      tabAudio: $("tab-audio").checked,
+      microphone: $("microphone").checked,
+      maskInputs: $("mask-inputs").checked,
+      maskText: $("mask-text").checked,
+      networkBodies: $("network-bodies").checked,
+    };
+    void chrome.storage.local.set({ videoRecordingOptions: options }).catch(() => {});
+  });
+}
 $("redirect-origins").oninput = () => {
   approvedRedirectOrigins = null;
 };
@@ -417,23 +484,27 @@ $("start").onclick = async () => {
     startedAt = undefined;
     stoppedAt = pausedAt = pausedMs = 0;
     publishState("starting");
-    stream = await navigator.mediaDevices.getDisplayMedia({
-      video: {
-        displaySurface: "browser",
-        frameRate: { ideal: 24, max: 24 },
-      },
-      audio: $("tab-audio").checked,
-      systemAudio: "exclude",
-      surfaceSwitching: "exclude",
-      selfBrowserSurface: "exclude",
-      monitorTypeSurfaces: "exclude",
-    });
+    stream = autoStart
+      ? await pendingTabStream
+      : await navigator.mediaDevices.getDisplayMedia({
+          video: { displaySurface: "browser", frameRate: { ideal: 24, max: 24 } },
+          audio: $("tab-audio").checked,
+          systemAudio: "exclude",
+          surfaceSwitching: "exclude",
+          selfBrowserSurface: "exclude",
+          monitorTypeSurfaces: "exclude",
+        });
+    if (!stream) throw pendingTabError || Error("Chrome could not capture this tab.");
     if (!connected)
       throw Error("Review ended. Open a new recorder from the current review.");
-    if (stream.getVideoTracks()[0]?.getSettings().displaySurface !== "browser")
+    if (
+      !autoStart &&
+      stream.getVideoTracks()[0]?.getSettings().displaySurface !== "browser"
+    )
       throw Error("Choose a Chrome tab in the picker, then try again.");
     if (
       $("debug-context").checked &&
+      !autoStart &&
       !captureHandleMatches(
         stream.getVideoTracks()[0]?.getCaptureHandle?.(),
         captureHandle?.handle,
@@ -447,13 +518,20 @@ $("start").onclick = async () => {
       throw Error(
         "Tab audio was not shared. Enable Share tab audio in Chrome’s picker, or turn Tab audio off.",
       );
+    if (stream.getAudioTracks().length) {
+      audioContext = new AudioContext();
+      audioContext
+        .createMediaStreamSource(new MediaStream(stream.getAudioTracks()))
+        .connect(audioContext.destination);
+      await audioContext.resume();
+    }
     if ($("microphone").checked) {
       microphone = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
         video: false,
       });
       if (!connected) throw Error("Review ended. Open a new recorder.");
-      audioContext = new AudioContext();
+      audioContext ||= new AudioContext();
       const destination = audioContext.createMediaStreamDestination();
       if (stream.getAudioTracks().length)
         audioContext
@@ -683,6 +761,7 @@ $("send").onclick = async () => {
       $("start").hidden = true;
       $("discard").hidden = true;
       $("thread").href = `${serverOrigin}/threads/${thread.id}`;
+      $("thread").textContent = "Open draft feedback · video pending";
       $("thread").hidden = false;
       status("Comment saved. Uploading the video now.");
     }
@@ -756,6 +835,7 @@ $("send").onclick = async () => {
       $("debug-status").textContent = "Debug context shared with this thread.";
     }
     $("thread").href = `${serverOrigin}/threads/${thread.id}`;
+    $("thread").textContent = "Open feedback with recording";
     clearPreview();
     $("start").hidden = true;
     $("send").hidden = true;
@@ -778,7 +858,7 @@ $("send").onclick = async () => {
       }
     }
     status(
-      `${submittedCapture ? "Video and diagnostics are shared; saved frames are still pending. " : ""}${error.message} Keep this tab open and retry Send video.`,
+      `${submittedCapture ? "Video and diagnostics are shared; saved frames are still pending. " : uploadedVideo ? "Video reached the draft feedback; timeline evidence and screenshot points are still pending. " : thread ? "Draft feedback was created; video and evidence are still pending. " : ""}${error.message} Keep this tab open and retry Send video.`,
     );
   } finally {
     $("send").disabled = false;
@@ -803,15 +883,34 @@ else
       });
       serverOrigin = server;
       $("target").textContent = `${project.name} · ${url}`;
+      $("redirect-origins").value = (result.allowedOrigins || []).slice(1).join(", ");
+      approvedRedirectOrigins = result.allowedOrigins || null;
       $("start").disabled = !connected;
       $("audio-options").disabled = false;
-      return send({ type: "videoCaptureHandle", target })
+      return (
+        autoStart ? Promise.resolve() : send({ type: "videoCaptureHandle", target })
+      )
         .then((value) => {
           captureHandle = value;
         })
         .catch((error) => {
+          if (autoStart) return;
           $("debug-context").checked = false;
           $("debug-status").textContent = error.message;
+        })
+        .then(async () => {
+          if (!autoStart) return;
+          await pendingTabStream;
+          for (const [key, id] of Object.entries({
+            tabAudio: "tab-audio",
+            microphone: "microphone",
+            maskInputs: "mask-inputs",
+            maskText: "mask-text",
+            networkBodies: "network-bodies",
+          }))
+            if (typeof captureDefaults[key] === "boolean")
+              $(id).checked = captureDefaults[key];
+          $("start").click();
         });
     })
     .catch((error) => status(error.message));

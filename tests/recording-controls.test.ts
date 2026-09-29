@@ -121,6 +121,8 @@ test("recording controls stay with their source tab and stop on disconnect", asy
   await controller.open({ tab: { id: 10 } });
   assert.equal(created.length, 1);
   assert.match(created[0].url, /reviewId=review-b/);
+  assert.match(created[0].url, /autoStart=1/);
+  assert.equal(created[0].active, false);
   connect({
     ...port,
     sender: {

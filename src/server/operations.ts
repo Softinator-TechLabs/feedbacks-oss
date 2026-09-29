@@ -301,13 +301,21 @@ export class Operations {
       return recordingPreflight(db, current, input);
     });
     if (preflight.prior) return JSON.parse(JSON.stringify(preflight.prior));
-    const prepared = prepareRecording(input, preflight.projectId);
+    const prepared = prepareRecording(input, preflight.projectId, this.config);
     let committed = false;
     let cleanupAllowed = true;
     try {
       try {
         await this.store.put(prepared.objectKey, prepared.output, "application/json");
-      } catch {
+      } catch (error) {
+        const failure = error as {
+          name?: string;
+          $metadata?: { httpStatusCode?: number };
+        };
+        console.error("Private recording object write failed", {
+          name: failure?.name || "UnknownError",
+          status: failure?.$metadata?.httpStatusCode ?? null,
+        });
         fail(
           "UPLOAD_FAILED",
           "Private recording storage is unavailable; retry this capture",
@@ -353,7 +361,7 @@ export class Operations {
 
     const prepared =
       i.videoBase64 === undefined
-        ? await prepareAssetUpload(i, this.config, preflight.projectId)
+        ? await prepareAssetUpload(i, this.config, preflight.projectId, preflight.source)
         : await prepareVideoUpload(i, this.config, preflight.projectId);
     let committed = false;
     let cleanupAllowed = true;

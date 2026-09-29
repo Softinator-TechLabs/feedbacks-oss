@@ -156,6 +156,32 @@
             >
           </div>
           <h3>Recording defaults</h3>
+          <p class="hint">
+            Record video and Record session start on the current tab with one click.
+            Chrome may ask for microphone access the first time.
+          </p>
+          <div class="preference-list">
+            <label class="check"
+              ><input type="checkbox" data-video-default="tabAudio" />Include tab sound in
+              video</label
+            >
+            <label class="check"
+              ><input type="checkbox" data-video-default="microphone" />Include microphone
+              in video</label
+            >
+            <label class="check"
+              ><input type="checkbox" data-video-default="maskInputs" />Mask typed values
+              in debug context</label
+            >
+            <label class="check"
+              ><input type="checkbox" data-video-default="maskText" />Mask page text in
+              replay</label
+            >
+            <label class="check"
+              ><input type="checkbox" data-video-default="networkBodies" />Include bounded
+              network bodies</label
+            >
+          </div>
           <div class="preference-list">
             <label class="check"
               ><input
@@ -177,8 +203,8 @@
             >
           </div>
           <p class="hint">
-            After recording, your review controls are restored. Tab audio and microphone
-            are chosen separately before recording.
+            Activity, console, network and replay are always captured with video. After
+            recording, your review controls are restored.
           </p>
         </section>
         <section id="shortcuts" aria-labelledby="shortcuts-title">

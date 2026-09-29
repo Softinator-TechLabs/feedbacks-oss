@@ -133,7 +133,7 @@ try {
       .length >= 3,
   );
   await recorder.reload();
-  await recorder.getByRole("heading", { name: "Review before sending" }).waitFor();
+  await recorder.getByRole("heading", { name: "Recorded moments" }).waitFor();
   const restored = await send({ type: "sessionStatus" });
   assert.equal(restored.recording.events.length, state.recording.events.length);
   console.log(

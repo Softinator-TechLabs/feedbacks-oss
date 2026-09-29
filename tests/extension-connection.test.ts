@@ -37,6 +37,7 @@ async function popup({
   let interval: (() => void) | undefined;
   let allowed = true,
     updateChecks = 0;
+  let recordingRedirectOrigins: Record<string, string[]> = {};
   const state = {
     server,
     connected,
@@ -79,7 +80,19 @@ async function popup({
       return { status: "not-permitted", newer: false };
     },
     releaseLinks: () => ({}),
+    prepareCaptureOrigins: async (target: { url: string }, input: string) => [
+      new URL(target.url).origin,
+      ...input.split(/[\s,]+/).filter(Boolean),
+    ],
     chrome: {
+      storage: {
+        local: {
+          get: async () => ({ recordingRedirectOrigins }),
+          set: async (value: { recordingRedirectOrigins: Record<string, string[]> }) => {
+            recordingRedirectOrigins = value.recordingRedirectOrigins;
+          },
+        },
+      },
       extension: { getViews: () => (toolbarPopup ? [window] : []) },
       commands: {
         getAll: async () => [{ name: "_execute_action", shortcut: "Command+Shift+Y" }],
@@ -146,7 +159,9 @@ async function popup({
   // Only replace module wiring; the real popup handlers and shared URL validator run.
   const source = (
     await readFile(new URL("../extension/popup.js", import.meta.url), "utf8")
-  ).replace(/^import[\s\S]*?from "\.\/updates\.js";\s*/, "");
+  )
+    .replace(/^import[\s\S]*?from "\.\/updates\.js";\s*/, "")
+    .replace(/^import[\s\S]*?from "\.\/session-origins\.js";\s*/, "");
   vm.runInContext(source, context);
   await new Promise((resolve) => setImmediate(resolve));
   return {
@@ -161,12 +176,35 @@ async function popup({
       allowed = value;
     },
     updateChecks: () => updateChecks,
+    recordingRedirects: () => recordingRedirectOrigins,
     tick: async () => {
       interval?.();
       await new Promise((resolve) => setImmediate(resolve));
     },
   };
 }
+
+test("record buttons start from one popup click and redirect origins stay scoped to the source site", async () => {
+  const video = await popup({ connected: true, serverAllowed: true });
+  video.nodes["record-redirect-origins"].value = "https://dashboard.example.test";
+  await video.nodes["save-record-redirects"].onclick();
+  assert.deepEqual(JSON.parse(JSON.stringify(video.recordingRedirects())), {
+    "https://review.example.test": ["https://dashboard.example.test"],
+  });
+  await video.nodes["record-video"].onclick();
+  assert.ok(
+    video.sent.some((message) => message.type === "openRecorder" && message.tabId === 1),
+  );
+  assert.equal(video.closed(), 1);
+  const session = await popup({ connected: true, serverAllowed: true });
+  await session.nodes["record-session"].onclick();
+  assert.ok(
+    session.sent.some(
+      (message) => message.type === "openSessionRecorder" && message.tabId === 1,
+    ),
+  );
+  assert.equal(session.closed(), 1);
+});
 
 test("popup pairs only with the entered server and keeps broad website permission explicit", async () => {
   const { nodes, state, requested, sent, setAllowed } = await popup();

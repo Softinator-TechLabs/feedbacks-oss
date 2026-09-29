@@ -28,6 +28,7 @@ const expected = [
   "contextMenus",
   "alarms",
   "debugger",
+  "tabCapture",
 ];
 if (
   JSON.stringify(manifest.permissions) !== JSON.stringify(expected) ||

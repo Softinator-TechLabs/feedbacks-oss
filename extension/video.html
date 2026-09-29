@@ -18,7 +18,8 @@
       </h1>
       <p id="target"></p>
       <p class="hint before-recording">
-        Up to 5 minutes · compressed WebM. Choose your website tab in Chrome’s picker.
+        Up to 5 minutes · compressed WebM. Recording starts on the current website tab
+        from Feedbacks.
       </p>
       <fieldset id="audio-options" class="audio-options">
         <legend>Audio</legend>
@@ -72,167 +73,171 @@
       <details class="hint before-recording">
         <summary>Recording &amp; privacy</summary>
         <p>
-          Recording stops at 5 minutes or 40 MiB. Audio is off unless selected. Enable
-          Share tab audio in Chrome’s picker for website sound. Microphone access uses a
-          separate permission prompt. Navigation in the selected tab continues recording;
-          use this recorder to pause or stop if page controls are unavailable. Review or
-          discard it before sending, especially if you selected another tab. Only your
-          selected project can access an uploaded recording. Your server operator controls
-          retention; Feedbacks has no automatic deletion timer.
+          Recording stops at 5 minutes or 40 MiB. Audio is off unless selected in
+          Settings. Microphone access may show a separate permission prompt. Navigation in
+          the selected tab continues recording; use this recorder to pause or stop if page
+          controls are unavailable. Review or discard it before sending, especially if you
+          selected another tab. Only your selected project can access an uploaded
+          recording. Your server operator controls retention; Feedbacks has no automatic
+          deletion timer.
         </p>
       </details>
       <div class="review-workspace">
-        <video
-          id="preview"
-          controls
-          playsinline
-          hidden
-          aria-label="Recording preview"
-        ></video>
-        <section id="capture-inspector" hidden></section>
-      </div>
-      <section id="editing" hidden aria-label="Video editor">
-        <div class="timeline-heading">
-          <strong>Trim video</strong><span id="trim-duration"></span>
-        </div>
-        <p class="hint timeline-hint">
-          Drag either end to trim. Play to preview your selection.
-        </p>
-        <div class="timeline">
-          <div id="trim-track">
-            <canvas id="trim-thumbnails" aria-hidden="true"></canvas>
-            <div id="trim-selection" aria-hidden="true"></div>
-            <div id="trim-playhead" aria-hidden="true"></div>
-            <button
-              id="trim-start-handle"
-              class="trim-handle"
-              role="slider"
-              aria-label="Trim start"
-              aria-orientation="horizontal"
-              title="Drag to trim the beginning"
-            >
-              <span></span>
-            </button>
-            <button
-              id="trim-end-handle"
-              class="trim-handle"
-              role="slider"
-              aria-label="Trim end"
-              aria-orientation="horizontal"
-              title="Drag to trim the end"
-            >
-              <span></span>
-            </button>
-          </div>
-          <input
-            id="trim-seek"
-            type="range"
-            min="0"
-            max="300"
-            step="0.01"
-            value="0"
-            aria-label="Seek preview"
-          />
-          <div class="timeline-playback">
-            <button id="trim-play" aria-label="Play selection" title="Play selection">
-              <svg id="trim-play-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m8 5 11 7-11 7Z" />
-              </svg>
-              <svg id="trim-pause-icon" viewBox="0 0 24 24" aria-hidden="true" hidden>
-                <path d="M8 5v14M16 5v14" />
-              </svg>
-            </button>
-            <output
-              ><span id="trim-current">0:00.0</span> /
-              <span id="trim-total">0:00.0</span></output
-            >
-            <span class="trim-bounds"
-              ><span id="trim-start-label"></span> — <span id="trim-end-label"></span
-            ></span>
-          </div>
-        </div>
-        <details id="precise-trim">
-          <summary>Precise adjustments</summary>
-          <div class="edit-fields">
-            <label
-              >Start (seconds)<input
-                id="trim-start"
-                type="number"
+        <div class="review-primary">
+          <video
+            id="preview"
+            controls
+            playsinline
+            hidden
+            aria-label="Recording preview"
+          ></video>
+          <section id="editing" hidden aria-label="Video editor">
+            <div class="timeline-heading">
+              <strong>Trim video</strong><span id="trim-duration"></span>
+            </div>
+            <p class="hint timeline-hint">
+              Drag either end to trim. Play to preview your selection.
+            </p>
+            <div class="timeline">
+              <div id="trim-track">
+                <canvas id="trim-thumbnails" aria-hidden="true"></canvas>
+                <div id="trim-selection" aria-hidden="true"></div>
+                <div id="trim-playhead" aria-hidden="true"></div>
+                <button
+                  id="trim-start-handle"
+                  class="trim-handle"
+                  role="slider"
+                  aria-label="Trim start"
+                  aria-orientation="horizontal"
+                  title="Drag to trim the beginning"
+                >
+                  <span></span>
+                </button>
+                <button
+                  id="trim-end-handle"
+                  class="trim-handle"
+                  role="slider"
+                  aria-label="Trim end"
+                  aria-orientation="horizontal"
+                  title="Drag to trim the end"
+                >
+                  <span></span>
+                </button>
+              </div>
+              <input
+                id="trim-seek"
+                type="range"
                 min="0"
-                step="0.001"
-                value="0"
-            /></label>
-            <label
-              >End (seconds)<input
-                id="trim-end"
-                type="number"
-                min="0.01"
                 max="300"
-                step="0.001"
-            /></label>
-          </div>
-        </details>
-        <details id="crop-editing">
-          <summary>Crop frame</summary>
-          <p class="hint">Drag on the frame to select the area to keep.</p>
-          <canvas
-            id="crop-preview"
-            aria-label="Crop preview. Use the percentage fields to adjust with a keyboard."
-          ></canvas>
-          <div class="edit-fields crop-fields">
-            <label
-              >Left (%)<input id="crop-left" type="number" min="0" max="99" value="0"
-            /></label>
-            <label
-              >Top (%)<input id="crop-top" type="number" min="0" max="99" value="0"
-            /></label>
-            <label
-              >Width (%)<input
-                id="crop-width"
-                type="number"
-                min="1"
-                max="100"
-                value="100"
-            /></label>
-            <label
-              >Height (%)<input
-                id="crop-height"
-                type="number"
-                min="1"
-                max="100"
-                value="100"
-            /></label>
-          </div>
-        </details>
-        <p id="edit-state" class="hint" role="status"></p>
-        <div class="controls edit-actions">
-          <button
-            id="apply-edit"
-            title="Prepare the selected clip for sending. Export takes about as long as the clip."
-          >
-            Apply edits
-          </button>
-          <button id="cancel-edit" hidden>Cancel export</button>
-          <button id="reset-edit">Restore original</button>
+                step="0.01"
+                value="0"
+                aria-label="Seek preview"
+              />
+              <div class="timeline-playback">
+                <button id="trim-play" aria-label="Play selection" title="Play selection">
+                  <svg id="trim-play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m8 5 11 7-11 7Z" />
+                  </svg>
+                  <svg id="trim-pause-icon" viewBox="0 0 24 24" aria-hidden="true" hidden>
+                    <path d="M8 5v14M16 5v14" />
+                  </svg>
+                </button>
+                <output
+                  ><span id="trim-current">0:00.0</span> /
+                  <span id="trim-total">0:00.0</span></output
+                >
+                <span class="trim-bounds"
+                  ><span id="trim-start-label"></span> — <span id="trim-end-label"></span
+                ></span>
+              </div>
+            </div>
+            <details id="precise-trim">
+              <summary>Precise adjustments</summary>
+              <div class="edit-fields">
+                <label
+                  >Start (seconds)<input
+                    id="trim-start"
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    value="0"
+                /></label>
+                <label
+                  >End (seconds)<input
+                    id="trim-end"
+                    type="number"
+                    min="0.01"
+                    max="300"
+                    step="0.001"
+                /></label>
+              </div>
+            </details>
+            <details id="crop-editing">
+              <summary>Crop frame</summary>
+              <p class="hint">Drag on the frame to select the area to keep.</p>
+              <canvas
+                id="crop-preview"
+                aria-label="Crop preview. Use the percentage fields to adjust with a keyboard."
+              ></canvas>
+              <div class="edit-fields crop-fields">
+                <label
+                  >Left (%)<input id="crop-left" type="number" min="0" max="99" value="0"
+                /></label>
+                <label
+                  >Top (%)<input id="crop-top" type="number" min="0" max="99" value="0"
+                /></label>
+                <label
+                  >Width (%)<input
+                    id="crop-width"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value="100"
+                /></label>
+                <label
+                  >Height (%)<input
+                    id="crop-height"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value="100"
+                /></label>
+              </div>
+            </details>
+            <p id="edit-state" class="hint" role="status"></p>
+            <div class="controls edit-actions">
+              <button
+                id="apply-edit"
+                title="Prepare the selected clip for sending. Export takes about as long as the clip."
+              >
+                Apply edits
+              </button>
+              <button id="cancel-edit" hidden>Cancel export</button>
+              <button id="reset-edit">Restore original</button>
+            </div>
+          </section>
         </div>
-      </section>
-      <div id="saved-frames" hidden></div>
-      <section id="review" hidden>
-        <label for="comment">Comment for this project</label>
-        <textarea
-          id="comment"
-          rows="5"
-          maxlength="12000"
-          placeholder="What should change, and why?"
-        ></textarea>
-        <p class="hint">
-          Your recording stays in this tab until you choose Send video. Closing this tab
-          discards it.
-        </p>
-        <button id="send" class="primary">Send video</button>
-      </section>
-      <p id="status" role="status"></p>
-      <a id="thread" hidden target="_blank" rel="noreferrer">Open feedback</a>
+        <div class="review-secondary">
+          <section id="capture-inspector" hidden></section>
+          <div id="saved-frames" hidden></div>
+          <section id="review" hidden>
+            <label for="comment">Comment for this project</label>
+            <textarea
+              id="comment"
+              rows="5"
+              maxlength="12000"
+              placeholder="What should change, and why?"
+            ></textarea>
+            <p class="hint">
+              Your recording stays in this tab until you choose Send video. Closing this
+              tab discards it.
+            </p>
+            <button id="send" class="primary">Send video</button>
+          </section>
+          <p id="status" role="status"></p>
+          <a id="thread" hidden target="_blank" rel="noreferrer">Open feedback</a>
+        </div>
+      </div>
     </main>
     <script src="webm-duration.js"></script>
     <script type="module" src="video.js"></script>

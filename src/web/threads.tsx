@@ -16,6 +16,7 @@ import { DiscussionLike } from "./discussion-like.js";
 import { ContextPanel } from "./thread-context.js";
 import { ReviewEvidence } from "./review-evidence.js";
 import { ThreadRecordings } from "./thread-recordings.js";
+import { ScreenshotMarkup, type MarkupTarget } from "./screenshot-markup.js";
 import { PointProgressRing } from "./point-progress-ring.js";
 import { usePageLocation, navigate, useUnsavedChanges } from "./navigation.js";
 import { readFilters, readOffset, filterQuery } from "./review-filters.js";
@@ -1049,6 +1050,7 @@ export function ThreadDetail({
     threadId: string;
     ids: string[];
   }>({ threadId: "", ids: [] });
+  const [markupTarget, setMarkupTarget] = useState<MarkupTarget | null>(null);
   const handleLinkedAssets = useCallback(
     (ids: string[]) => setRecordingAssets({ threadId, ids }),
     [threadId],
@@ -1094,7 +1096,9 @@ export function ThreadDetail({
     uploadRetry = useRef<{ image: string; revision: number; key: string } | undefined>(
       undefined,
     );
-  useUnsavedChanges(!!reply.trim() || mentions.length > 0 || !!image || a.busy);
+  useUnsavedChanges(
+    !!reply.trim() || mentions.length > 0 || !!image || !!markupTarget || a.busy,
+  );
   useEffect(() => {
     const close = () => {
       for (const open of document.querySelectorAll<HTMLDetailsElement>(
@@ -1458,6 +1462,7 @@ export function ThreadDetail({
                 canResolve={project?.permissions.canResolve}
                 canMaintain={project?.permissions.canMaintain}
                 onSaved={setThread}
+                onAnnotate={(asset) => setMarkupTarget({ kind: "asset", asset })}
               />
             )}
             {(otherAssets.length > 0 || capturePages.length > 0) &&
@@ -1490,6 +1495,15 @@ export function ThreadDetail({
                         {asset.contentType === "video/webm"
                           ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
                           : `${asset.filename ? `${asset.filename} · ` : ""}${asset.width} × ${asset.height} · Open full image`}
+                        {asset.contentType.startsWith("image/") &&
+                          project?.permissions.canWrite && (
+                            <button
+                              type="button"
+                              onClick={() => setMarkupTarget({ kind: "asset", asset })}
+                            >
+                              Add or revise marks
+                            </button>
+                          )}
                       </figcaption>
                     </figure>
                   ))}
@@ -1517,6 +1531,14 @@ export function ThreadDetail({
                               />
                             </a>
                             <figcaption>{asset.filename}</figcaption>
+                            {project?.permissions.canWrite && (
+                              <button
+                                type="button"
+                                onClick={() => setMarkupTarget({ kind: "asset", asset })}
+                              >
+                                Add or revise marks
+                              </button>
+                            )}
                           </figure>
                         ))}
                       </div>
@@ -1530,6 +1552,11 @@ export function ThreadDetail({
               canWrite={!!project?.permissions.canWrite}
               onSaved={setThread}
               onLinkedAssets={handleLinkedAssets}
+              onAnnotateFrame={
+                project?.permissions.canWrite
+                  ? (frame) => setMarkupTarget({ kind: "frame", ...frame })
+                  : undefined
+              }
             />
             {recordingFrames.length > 0 && (
               <details className="capture-page-set recording-frame-gallery">
@@ -1547,10 +1574,31 @@ export function ThreadDetail({
                       <figcaption>
                         {(asset.recordingFrame!.atMs / 1000).toFixed(1)}s in recording
                       </figcaption>
+                      {project?.permissions.canWrite && (
+                        <button
+                          type="button"
+                          onClick={() => setMarkupTarget({ kind: "asset", asset })}
+                        >
+                          Add or revise marks
+                        </button>
+                      )}
                     </figure>
                   ))}
                 </div>
               </details>
+            )}
+            {markupTarget && project?.permissions.canWrite && (
+              <ScreenshotMarkup
+                key={
+                  markupTarget.kind === "asset"
+                    ? markupTarget.asset.id
+                    : `${markupTarget.recordingFrame.recordingId}-${markupTarget.recordingFrame.atMs}`
+                }
+                thread={t}
+                target={markupTarget}
+                onSaved={setThread}
+                onClose={() => setMarkupTarget(null)}
+              />
             )}
             <div className="feedback-reactions">
               <DiscussionLike
