@@ -261,16 +261,18 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.locator("#diagnostics-review summary").click();
   await page.evaluate(() => scrollTo(0, 0));
-  // The wide review workspace has two control rows, and opening menus keeps
-  // the capture anchored at the same position.
+  // A single screenshot uses one wide control row. Full-page navigation may
+  // add a second row; menus stay over the image without shifting it.
   await page.setViewportSize({ width: 1979, height: 1280 });
   const controlLayout = () =>
     page.evaluate(() => {
       const rect = (selector) => document.querySelector(selector).getBoundingClientRect();
+      const controls = rect(".editor-controls");
       const tools = rect("#tools");
       const actions = rect(".control-row");
       const capture = rect("#image-review");
       return {
+        controlsTop: controls.top,
         toolsTop: tools.top,
         toolsBottom: tools.bottom,
         actionsTop: actions.top,
@@ -279,31 +281,56 @@ try {
         overflow: document.documentElement.scrollWidth > innerWidth,
       };
     });
-  const compact = await controlLayout();
+  const wide = await controlLayout();
   await mkdir(join(root, ".local/screenshot-editor-qa"), { recursive: true });
   await page.screenshot({
-    path: join(root, ".local/screenshot-editor-qa/compact-header.png"),
+    path: join(root, ".local/screenshot-editor-qa/wide-header.png"),
   });
+  assert.ok(wide.toolsBottom <= wide.actionsTop, "full-page navigation wraps as a group");
+  assert.ok(wide.actionsBottom < wide.captureTop, "capture starts after the controls");
+  assert.equal(wide.overflow, false, "controls stay within the review workspace");
+  await page.locator("#page-navigation").evaluate((nav) => (nav.hidden = true));
+  const singlePage = await controlLayout();
   assert.ok(
-    compact.toolsBottom <= compact.actionsTop,
-    "annotation and capture actions occupy separate rows",
+    Math.abs(singlePage.toolsTop - singlePage.actionsTop) <= 1,
+    "single screenshot controls occupy one row on wide screens",
   );
-  assert.ok(
-    compact.actionsBottom < compact.captureTop,
-    "capture starts after the second row",
-  );
-  assert.equal(compact.overflow, false, "controls stay within the review workspace");
+  await page.screenshot({
+    path: join(root, ".local/screenshot-editor-qa/wide-single-header.png"),
+  });
+  await page.locator("#page-navigation").evaluate((nav) => (nav.hidden = false));
+  for (const tool of [
+    "pencil",
+    "arrow",
+    "rectangle",
+    "text",
+    "redact",
+    "highlighter",
+    "steps",
+  ]) {
+    assert.equal(
+      await page.locator(`[data-tool="${tool}"] svg`).count(),
+      1,
+      `${tool} has a matching toolbar icon`,
+    );
+  }
   await page.locator(".more-tools summary").click();
   const open = await controlLayout();
   await page.screenshot({
-    path: join(root, ".local/screenshot-editor-qa/compact-header-more-tools.png"),
+    path: join(root, ".local/screenshot-editor-qa/wide-header-more-tools.png"),
   });
-  assert.equal(
-    open.captureTop,
-    compact.captureTop,
-    "More tools does not move the capture",
-  );
+  assert.equal(open.captureTop, wide.captureTop, "More tools does not move the capture");
   await page.locator(".more-tools summary").click();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const medium = await controlLayout();
+  assert.ok(
+    medium.toolsBottom <= medium.actionsTop,
+    "medium workspace wraps export controls below the tools",
+  );
+  assert.equal(medium.overflow, false, "medium workspace has no horizontal overflow");
+  await page.screenshot({
+    path: join(root, ".local/screenshot-editor-qa/medium-header.png"),
+  });
   await page.setViewportSize({ width: 1440, height: 1000 });
   const drag = async (x, y, x2, y2) => {
     const r = await page.locator("#canvas").boundingBox();
@@ -473,6 +500,15 @@ try {
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
     "mobile page fits viewport",
+  );
+  assert.equal(
+    await page.evaluate(() => {
+      const top = (selector) =>
+        document.querySelector(selector).getBoundingClientRect().top;
+      return top("#zoom") === top(".download-menu summary");
+    }),
+    true,
+    "mobile zoom and export actions stay on one row",
   );
   await page.screenshot({
     path: join(root, ".local/screenshot-editor-qa/mobile-dark.png"),

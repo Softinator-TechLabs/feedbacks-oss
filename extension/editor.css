@@ -54,6 +54,9 @@ main {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
   min-width: 0;
   align-items: center;
   overflow: visible;
@@ -64,12 +67,15 @@ main {
   border-color: transparent;
   background: transparent;
 }
-#tools button[data-tool] {
+#tools button[data-tool],
+#undo {
   display: inline-flex;
   align-items: center;
   gap: 7px;
 }
-#tools button[data-tool] svg {
+#tools button[data-tool] svg,
+#undo svg,
+.more-tools summary svg {
   width: 17px;
   height: 17px;
   flex: none;
@@ -200,7 +206,7 @@ main {
   font-size: 12px;
 }
 #undo {
-  margin-left: auto;
+  margin-left: 4px;
 }
 .text-label {
   display: flex;
@@ -579,16 +585,21 @@ aside .hint {
   resize: vertical;
 }
 
-/* The annotation toolbar and capture controls occupy two stable rows. */
+/* Keep the workbench controls together when space permits, then wrap by task. */
 .editor-controls {
-  display: grid;
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
   margin-bottom: 10px;
 }
 .control-row {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex: 0 0 auto;
+  max-width: 100%;
+  margin-left: auto;
   min-width: 0;
   overflow: visible;
 }
@@ -602,18 +613,26 @@ aside .hint {
   flex: none;
   white-space: nowrap;
 }
+.zoom-control {
+  position: relative;
+  flex: none;
+}
 .tool-options {
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
 .export-tools .control-label {
+  position: absolute;
+  z-index: 1;
+  inset: 0 auto 0 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
+  width: 36px;
   height: 44px;
   flex: none;
   color: var(--muted);
+  pointer-events: none;
 }
 .control-label svg {
   width: 18px;
@@ -644,10 +663,12 @@ aside .hint {
   max-width: 100%;
 }
 #zoom {
-  width: 145px;
+  width: 140px;
+  padding-left: 35px;
 }
 #export-scope {
-  width: 180px;
+  width: 120px;
+  margin-left: 6px;
 }
 .tool-options span {
   color: var(--muted);
@@ -677,18 +698,40 @@ aside .hint {
   flex: none;
 }
 .more-tools {
-  margin-inline: 8px;
+  margin-inline: 2px;
 }
 .more-tools summary {
-  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.more-tools summary svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 140ms ease-out;
+}
+.more-tools[open] > summary svg {
+  transform: rotate(180deg);
+}
+.more-tools summary:hover {
+  background: var(--hover);
 }
 .download-menu summary,
 .more-tools summary {
   min-height: 44px;
-  border: 1px solid var(--control-line);
   border-radius: 8px;
   cursor: pointer;
   list-style: none;
+}
+.download-menu summary {
+  border: 1px solid var(--control-line);
+}
+.more-tools summary {
+  border: 1px solid transparent;
 }
 .download-menu[open] > summary,
 .more-tools[open] > summary {
@@ -745,11 +788,23 @@ aside .hint {
   .control-row {
     gap: 10px;
   }
+  .export-tools {
+    gap: 4px;
+  }
   #zoom {
-    width: 130px;
+    width: 128px;
   }
   #export-scope {
-    width: 160px;
+    width: 128px;
+    margin-left: 0;
+  }
+}
+@media (max-width: 360px) {
+  .zoom-control {
+    flex: 1 0 100%;
+  }
+  #zoom {
+    width: 100%;
   }
 }
 
@@ -773,6 +828,9 @@ aside .hint {
   .export-tools {
     flex: 1 1 auto;
     min-width: 0;
+  }
+  .control-row {
+    margin-left: 0;
   }
 }
 

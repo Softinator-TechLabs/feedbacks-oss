@@ -584,7 +584,7 @@ function renderThumbnails(fresh) {
       : `Screenshot ${index + 1}`;
     const range = document.createElement("small");
     range.textContent = page.annotationId
-      ? `${page.viewportWidth}px wide · At time of comment`
+      ? "At time of comment"
       : `${page.startY}–${page.endY}px`;
     open.append(image, label, range);
     open.onclick = () => changePage(index);
@@ -643,9 +643,7 @@ async function loadBase(fresh) {
     ...pages.map(
       (page, index) =>
         new Option(
-          page.annotationId
-            ? `Point ${page.pointNumber} · Original ${page.viewportWidth}px view`
-            : `${page.name} · ${page.startY}–${page.endY}px`,
+          page.annotationId ? `Point ${page.pointNumber} · Original view` : page.name,
           String(index),
         ),
     ),
