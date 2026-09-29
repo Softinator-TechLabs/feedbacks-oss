@@ -50,7 +50,12 @@ test(
           },
         };
       });
-      for (const file of ["utils.js", "frame-dom.js", "content.js"])
+      for (const file of [
+        "utils.js",
+        "frame-dom.js",
+        "review/anchor-evidence.js",
+        "content.js",
+      ])
         await page.addScriptTag({ path: `extension/${file}` });
       const css = await readFile("extension/content.css", "utf8");
       await message(page, {
@@ -549,7 +554,12 @@ test(
           },
         };
       });
-      for (const file of ["utils.js", "frame-dom.js", "content.js"])
+      for (const file of [
+        "utils.js",
+        "frame-dom.js",
+        "review/anchor-evidence.js",
+        "content.js",
+      ])
         await page.addScriptTag({ path: `extension/${file}` });
       await message(page, {
         type: "activate",

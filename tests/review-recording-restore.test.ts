@@ -120,7 +120,10 @@ test("recording navigation restores its original project on an explicitly approv
   await f.controller.restoreRecording(7, f.target);
   assert.deepEqual(f.requests, [["projects.list", {}, f.server]]);
   assert.deepEqual(f.injections, [
-    { target: { tabId: 7 }, files: ["utils.js", "frame-dom.js", "content.js"] },
+    {
+      target: { tabId: 7 },
+      files: ["utils.js", "frame-dom.js", "review/anchor-evidence.js", "content.js"],
+    },
   ]);
   assert.equal(f.messages.length, 1);
   assert.deepEqual(f.messages[0].project, {
