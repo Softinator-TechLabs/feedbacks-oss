@@ -149,6 +149,15 @@ export function ThreadRecordings({
     api<{ recording: Recording }>("recordings.get", { recordingId: selectedId })
       .then(({ recording: value }) => {
         if (serial === requestSerial.current) {
+          const firstPlayableMs = value.video
+            ? clampTime(
+                value.video.segments?.[0]?.sourceStartMs ??
+                  Math.max(0, -value.video.offsetMs),
+                value.durationMs,
+              )
+            : 0;
+          cursorRef.current = firstPlayableMs;
+          setCursorMs(firstPlayableMs);
           setRecording(value);
           setMediaMode(value.video ? "video" : "replay");
         }

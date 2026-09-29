@@ -824,6 +824,19 @@ test(
         (await page.locator(".recording-footnote").last().textContent()) ?? "",
         /No video frame matches this moment/,
       );
+
+      // A trimmed capture may start after the session clock begins. Opening it
+      // should land on playable media instead of a disabled Play button.
+      recording.video.segments = [
+        { sourceStartMs: 500, sourceEndMs: 2500, outputStartMs: 0 },
+      ];
+      await page.reload();
+      await page.getByRole("button", { name: "Play video" }).waitFor();
+      assert.equal(await page.locator("#thread-recording-timeline").inputValue(), "500");
+      assert.equal(
+        await page.getByRole("button", { name: "Play video" }).isEnabled(),
+        true,
+      );
     } finally {
       await browser.close();
       server.close();
