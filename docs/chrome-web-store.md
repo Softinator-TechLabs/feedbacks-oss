@@ -2,6 +2,22 @@
 
 Use this copy for the public, server-neutral extension. Verify the uploaded ZIP, live privacy page and dashboard fields before submission. Packaging a ZIP does not publish a Store update.
 
+## What to update for 0.1.49
+
+This worksheet replaces the prepared 0.1.47 handoff. The public Store page showed version 0.1.27 and the older **Feedbacks: Website Review** listing on 2026-09-29; the publisher dashboard may also contain an unpublished draft. Version 0.1.49 includes the merged recording-review and agent-task changes through PR #157. Check the dashboard's published and pending versions before uploading; a prepared ZIP is not a published version.
+
+| Dashboard field                                                               | Action for this update                                                                                                    |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Package**                                                                   | Upload the new `feedbacks-extension-0.1.49.zip` inside this bundle. Do not upload the outer handoff ZIP.                  |
+| **Store listing → Title and short description**                               | Replace the older public values with the values below; both match the new package manifest.                               |
+| **Store listing → Detailed description**                                      | Replace the full field with the block below. It now describes the aligned video/session review and focused agent handoff. |
+| **Store listing → Screenshots**                                               | Replace the four ordered screenshots with the current images supplied in this bundle.                                     |
+| **Store listing → Icon and small promo tile**                                 | Compare with the existing listing; the current files are supplied under `artwork/` if replacement is needed.              |
+| **Store listing → Category, language and URLs**                               | Keep the values below unless the existing dashboard differs; verify each link.                                            |
+| **Privacy practices → Single purpose, permissions, remote code and data use** | Recheck every answer against the declarations below and the new package. The permission set did not change since 0.1.47.  |
+| **Distribution**                                                              | Keep the item's current visibility, regions and rollout choices.                                                          |
+| **Test instructions**                                                         | Use the updated reviewer steps below and provide demo access only in Google's private fields if requested.                |
+
 ## Package identity
 
 - Existing Store item: `dcpfpkfmegpgbfkeeileabpcbbmnoobo`.
@@ -34,14 +50,16 @@ CAPTURE AND REVIEW
 • Keep several points in a local draft, then review the screenshots before sending.
 • Mark screenshots with pencil, shapes, arrows and text; redact visible private information before sharing.
 • Capture a full page when one view is not enough. Open page comments and resolved points when you need the team's history.
+• Keep the on-page review controls in view while opening more tools and options.
 
 VIDEO AND SESSION CONTEXT
 • Record a short tab video with a synchronized browser session, or choose session-only capture in the recording options.
-• Review activity, console, network and page replay on a shared timeline. Coverage labels show when a channel or part of the session was unavailable.
+• Review video or page replay with activity, console, network and other available events on one synchronized timeline. Use a larger player or place the event inspector beside it on a wide screen.
+• Select an event to inspect that moment, and save or annotate a video frame for the thread. Coverage labels show when a channel or part of the session was unavailable.
 • Network request and response bodies are a separate recording option. Page text and input masking can be enabled. Video pixels need their own visual review before sending.
 
 FOR DEVELOPERS
-Feedbacks keeps submitted comments, screenshots, page URLs and recording evidence in the project on your chosen server. Authorized teammates can download a complete thread bundle with its discussion, page context, approved images, recordings and available diagnostics for offline review. Developers and coding agents can also read the relevant thread through Feedbacks MCP or API. Connecting an agent does not automatically make changes or send data to an AI provider.
+Feedbacks keeps submitted comments, screenshots, page URLs and recording evidence in the project on your chosen server. Authorized teammates can download a complete thread bundle with its discussion, page context, approved images, recordings and available diagnostics for offline review. Developers can copy a focused task link for a coding agent. With permission, the agent can start with the problem and one relevant screenshot or saved video frame, then request more recording or diagnostic evidence only when needed through Feedbacks MCP or API. Connecting an agent does not automatically make changes or send data to an AI provider.
 
 SETUP
 Your organization needs a Feedbacks server and an account first. Self-host the open-source application or ask your team for its server URL and project access. Pin the extension, connect it to that server, open a website, start review, and send only after inspecting the draft.
@@ -111,7 +129,7 @@ If the dashboard asks for reviewer access, provide a separate non-sensitive demo
 2. Open its Setup page, copy the server URL, and connect the extension. Approve server access and the connection.
 3. Open the supplied demonstration website. Use the pinned Feedbacks popup to start review, right-click a point, save a comment, then open Review & send.
 4. Inspect or mark the screenshot and send the synthetic feedback. Open the resulting thread to view its page context and discussion, then use Download complete thread bundle.
-5. On the demonstration website, start Record video + session, stop after a few seconds, inspect the event timeline and discard the sample. No payment or real customer data is needed.
+5. On the demonstration website, start Record video + session, stop after a few seconds, inspect the shared video/event timeline and its larger or beside view, then discard the sample. No payment or real customer data is needed.
 ```
 
 ## Dashboard update order
