@@ -22,10 +22,10 @@
 }
 .member-directory-controls input,
 .member-directory-controls select {
-  padding: 10px 12px;
+  padding: 10px 38px 10px 12px;
   border: 1px solid var(--control-border);
   border-radius: 8px;
-  background: var(--surface);
+  background-color: var(--surface);
   color: inherit;
   font: inherit;
 }

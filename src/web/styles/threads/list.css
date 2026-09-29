@@ -54,10 +54,10 @@
 .thread-row-actions select {
   width: 100%;
   min-height: 36px;
-  padding: 5px 7px;
+  padding: 5px 38px 5px 7px;
   border: 1px solid var(--control-border);
   border-radius: 6px;
-  background: var(--surface);
+  background-color: var(--surface);
   color: var(--accent);
   font: inherit;
   font-weight: 600;

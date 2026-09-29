@@ -795,7 +795,7 @@ aside .hint {
     width: 128px;
   }
   #export-scope {
-    width: 128px;
+    width: 120px;
     margin-left: 0;
   }
 }
@@ -818,6 +818,11 @@ aside .hint {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+@media (max-width: 1680px) {
+  .control-row {
+    margin-left: 0;
+  }
+}
 @media (max-width: 1250px) {
   #tools,
   .control-row,
@@ -828,9 +833,6 @@ aside .hint {
   .export-tools {
     flex: 1 1 auto;
     min-width: 0;
-  }
-  .control-row {
-    margin-left: 0;
   }
 }
 
