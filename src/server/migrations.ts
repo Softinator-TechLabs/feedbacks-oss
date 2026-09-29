@@ -325,5 +325,9 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       );
       await tx.query("INSERT INTO migrations(version) VALUES(23)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=24"))) {
+      await tx.query("ALTER TABLE account_links ADD COLUMN secret_suffix text");
+      await tx.query("INSERT INTO migrations(version) VALUES(24)");
+    }
   });
 }

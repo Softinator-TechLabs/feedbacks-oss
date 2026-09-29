@@ -1250,6 +1250,75 @@ legend {
 .token-row details {
   max-width: 70ch;
 }
+.account-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 22px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  scrollbar-width: thin;
+}
+:root .account-tabs button {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 9px 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  white-space: nowrap;
+}
+:root .account-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+.account-panel {
+  max-width: 960px;
+  padding-top: 24px;
+}
+.account-panel[hidden] {
+  display: none;
+}
+.account-panel > .section:first-child {
+  margin-top: 0;
+}
+.account-group {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.account-group > summary {
+  padding: 12px 0;
+  color: var(--accent);
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-group[open] > summary {
+  margin-bottom: 0;
+}
+.account-group .token-row {
+  padding: 12px 0;
+}
+.account-group .token-row:last-child {
+  border-bottom: 0;
+}
+@media (max-width: 440px) {
+  .account-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 12px;
+    overflow: visible;
+  }
+  :root .account-tabs button {
+    min-width: 0;
+    justify-content: flex-start;
+    text-align: left;
+  }
+}
 .secret {
   background: #eaf0f5;
   padding: 20px;
@@ -1541,6 +1610,7 @@ legend {
     padding: 14px 18px;
     gap: 12px;
     align-items: center;
+    flex-wrap: nowrap;
   }
   .topbar > .brand {
     flex: 1;
@@ -1551,6 +1621,7 @@ legend {
   .mobile-site-menu {
     display: block;
     position: relative;
+    flex: 0 0 60px;
   }
   .mobile-site-menu > summary {
     display: flex;
@@ -1567,6 +1638,9 @@ legend {
   }
   .mobile-site-menu > summary::-webkit-details-marker {
     display: none;
+  }
+  .mobile-site-menu[open] > summary {
+    margin-bottom: 0;
   }
   .topbar .mobile-site-menu nav {
     position: absolute;
