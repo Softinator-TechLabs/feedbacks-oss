@@ -228,7 +228,7 @@ try {
     await shot(app, "project-3");
     await app.goto(`${access.url}/help`);
     await app
-      .getByRole("button", { name: "Create key & copy setup prompt", exact: true })
+      .getByRole("button", { name: "Create & copy prompt", exact: true })
       .waitFor();
     await sharp(await app.locator("#review-with-extension").screenshot())
       .webp({ quality: 85 })
@@ -239,14 +239,9 @@ try {
     await context.grantPermissions(["clipboard-write", "clipboard-read"], {
       origin: access.url,
     });
+    await app.getByRole("button", { name: "Create & copy prompt", exact: true }).click();
     await app
-      .getByRole("button", { name: "Create key & copy setup prompt", exact: true })
-      .click();
-    await app
-      .getByText(
-        "Setup prompt copied without the API key. Paste it into your agent first.",
-        { exact: true },
-      )
+      .getByText("Prompt copied. Paste it into your agent.", { exact: true })
       .waitFor();
     await sharp(await app.locator(".help-agent").screenshot())
       .webp({ quality: 85 })

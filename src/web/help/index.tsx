@@ -23,11 +23,12 @@ function LatestExtension() {
   }, []);
   if (!version) return null;
   return (
-    <div className="help-latest-extension">
-      <p>
-        <strong>Need the latest version?</strong> Chrome Web Store may be a version behind
-        while an update is under review.
-      </p>
+    <details
+      className="help-watch"
+      id="update-extension"
+      open={location.hash === "#update-extension" || undefined}
+    >
+      <summary>Manual install · v{version}</summary>
       <a
         className="button"
         href={`/downloads/feedbacks-extension.zip?v=${encodeURIComponent(version)}`}
@@ -35,33 +36,27 @@ function LatestExtension() {
       >
         Download latest · v{version}
       </a>
-      <details
-        className="help-watch"
-        id="update-extension"
-        open={location.hash === "#update-extension" || undefined}
-      >
-        <summary>Install manually in Chrome</summary>
-        <ol>
-          <li>
-            Download the ZIP above and <strong>extract it</strong>.
-          </li>
-          <li>
-            Open <code>chrome://extensions</code> and turn on{" "}
-            <strong>Developer mode</strong>.
-          </li>
-          <li>
-            Choose <strong>Load unpacked</strong> and select the extracted folder.
-          </li>
-        </ol>
-        <p className="muted">
-          If both copies appear, turn off the Store copy and pin the manual one.
-        </p>
-        <p className="muted">
-          Already installed manually? Replace the files in that folder, then click{" "}
-          <strong>Reload</strong> in Chrome. Finish unsent reviews first.
-        </p>
-      </details>
-    </div>
+
+      <ol>
+        <li>
+          Download the ZIP above and <strong>extract it</strong>.
+        </li>
+        <li>
+          Open <code>chrome://extensions</code> and turn on{" "}
+          <strong>Developer mode</strong>.
+        </li>
+        <li>
+          Choose <strong>Load unpacked</strong> and select the extracted folder.
+        </li>
+      </ol>
+      <p className="muted">
+        If both copies appear, turn off the Store copy and pin the manual one.
+      </p>
+      <p className="muted">
+        Already installed manually? Replace the files in that folder, then click{" "}
+        <strong>Reload</strong> in Chrome. Finish unsent reviews first.
+      </p>
+    </details>
   );
 }
 
@@ -90,7 +85,6 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
         <h1>Let’s get you connected</h1>
         <a href="https://feedbacks.softinator.ai/docs/">Docs</a>
       </div>
-      <p className="muted">Your team’s server is already set up.</p>
       <ol className="help-steps">
         <li>
           {project && actor ? (
@@ -152,21 +146,13 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
           </div>
           <div className="help-pin">
             <div>
-              <h3>Pin it. Keep review one click away.</h3>
+              <h3>Pin Feedbacks</h3>
               <p>
-                Chrome’s puzzle icon → Feedbacks → <strong>Pin</strong>.
-              </p>
-              <p>
-                Keep the icon in your toolbar so you can start or resume a review anytime.
+                Chrome → Extensions → <strong>Pin</strong>.
               </p>
             </div>
             {React.createElement("feedbacks-demo", { step: "pin" })}
           </div>
-          <p>
-            Open the pinned Feedbacks icon on this page to detect your server, then choose{" "}
-            <strong>Connect to server</strong>. You can also send the address to the
-            extension or copy it below.
-          </p>
           <div className="help-server-copy">
             <input
               id="help-server-url"
@@ -204,13 +190,18 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
           </div>
           <ActionState action={extensionSetup} />
           <ActionState action={serverCopy} />
+          <details className="help-watch">
+            <summary>Connection help</summary>
+            <p>
+              Open Feedbacks on this page and choose <strong>Connect to server</strong>,
+              or use <strong>Set in extension</strong> above.
+            </p>
+            <p>
+              Review shortcut: Mac <kbd>⌘ Shift Y</kbd> · Windows <kbd>Ctrl Shift Y</kbd>.
+            </p>
+            <WatchStep step="connect" title="Show how to connect" />
+          </details>
           <LatestExtension />
-          <p className="help-review-shortcut">
-            <strong>Default review shortcut:</strong> Mac <kbd>⌘ Shift Y</kbd> · Windows{" "}
-            <kbd>Ctrl Shift Y</kbd>. Change it in extension{" "}
-            <strong>Settings → Keyboard shortcuts</strong>.
-          </p>
-          <WatchStep step="connect" title="Show how to connect" />
         </li>
         <li id="connect-agent">
           <ErrorNotice error={error} />

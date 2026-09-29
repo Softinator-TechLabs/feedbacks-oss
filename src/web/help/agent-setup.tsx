@@ -7,7 +7,6 @@ import {
 } from "../../shared/contracts.js";
 import { AgentSetupChoices, type AgentIssuance } from "../agent-setup.js";
 import { api, type Actor, type Project } from "../api.js";
-import { WatchStep } from "./watch-step.js";
 
 export function HelpAgentSetup({
   actor,
@@ -61,14 +60,12 @@ export function HelpAgentSetup({
   return (
     <section className="help-agent">
       <div>
-        <h2>Connect your coding agent</h2>
-        <p>Choose how to connect Codex, Claude Code or Antigravity.</p>
+        <h2>Connect your agent</h2>
         <p className="help-key-warning">
-          Private 90-day key.{" "}
+          90-day key ·{" "}
           {actor.owner
-            ? `Owner administration for current and future projects${actor.primaryOwner ? ", including private member notes" : ""}.`
-            : `Your existing access to ${projects.length ? "current projects and profile" : "your profile only"}.`}{" "}
-          Only share with your own agent.
+            ? `Owner access${actor.primaryOwner ? " (includes private notes)" : ""}`
+            : "Your project access"}
         </p>
       </div>
       <AgentSetupChoices
@@ -78,14 +75,13 @@ export function HelpAgentSetup({
         onIssued={setIssued}
         onClear={() => setIssued(undefined)}
       />
-      <a href="/account#agent-setup">Choose projects and permissions</a>
+      <a href="/account#agent-setup">Advanced permissions</a>
       {!instructions && (
         <p className="error" role="alert">
           Setup instructions are unavailable. Ask the owner to update this server before
           creating a key.
         </p>
       )}
-      <WatchStep step="agent" title="Show me where to paste" />
     </section>
   );
 }

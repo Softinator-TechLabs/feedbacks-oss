@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { buildTaskHandoff, readHandoffExtras } from "../../shared/task-handoff.js";
+import { buildTaskHandoff } from "../../shared/task-handoff.js";
 import { Icon } from "../icons.js";
 import { api, type Project, type Thread } from "../api.js";
 import { ErrorNotice, showToast, useAction } from "../ui.js";
@@ -25,23 +25,12 @@ export function ThreadTaskCopy({
           throw new Error(
             "This task moved to another project. Reload it before copying.",
           );
-        const { assignments, recordings } = await readHandoffExtras(api, {
-          threadId: fresh.id,
-          projectId: fresh.projectId,
-        });
-        const result = buildTaskHandoff({
-          thread: fresh,
-          project,
-          assignments,
-          recordings,
-          origin: location.origin,
-          copiedAt: new Date().toISOString(),
-        });
+        const result = buildTaskHandoff({ thread: fresh, origin: location.origin });
         try {
           await navigator.clipboard.writeText(result.text);
           showToast(
             result.truncated
-              ? "Task copied. Long sections have explicit MCP continuation instructions."
+              ? "Task preview copied. Your agent can read more when needed."
               : "Task copied. Paste it to authorize work and progress replies in this thread.",
           );
         } catch {

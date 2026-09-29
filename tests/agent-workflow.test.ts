@@ -536,3 +536,37 @@ test("body-only feedback does not count its legacy anchor as a numbered comment"
   assert.equal(result.counts.openPoints, 0);
   assert.equal(result.counts.legacyAnchor, true);
 });
+
+test("start keeps available recordings and diagnostics lazy even with unrestricted scopes", async () => {
+  const calls: string[] = [];
+  const result = await runAgentTool(
+    async (operation) => {
+      calls.push(operation);
+      if (operation === "auth.me") return { actor: { userId: "member" }, projects: [] };
+      if (operation === "threads.get")
+        return {
+          ...thread,
+          diagnosticEvidence: { count: 3, latest: [{ id: "diagnostic-summary" }] },
+          recordings: [{ id: "recording", events: ["RAW RECORDING"] }],
+        };
+      if (operation === "instructions.get") return { items: [], revision: 1 };
+      if (operation === "assignments.list" || operation === "assignments.delegations")
+        return { items: [], total: 0, nextOffset: null };
+      throw new Error(`Unneeded evidence read: ${operation}`);
+    },
+    "start",
+    { threadId },
+  );
+  assert.deepEqual(
+    calls.sort(),
+    [
+      "auth.me",
+      "threads.get",
+      "instructions.get",
+      "assignments.list",
+      "assignments.delegations",
+    ].sort(),
+  );
+  assert.equal(result.diagnosticEvidence.count, 3);
+  assert.ok(!JSON.stringify(result).includes("RAW RECORDING"));
+});

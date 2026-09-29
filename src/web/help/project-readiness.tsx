@@ -24,12 +24,10 @@ export function ProjectReadiness({ actor, project }: { actor: Actor; project: Pr
     <>
       {data && (
         <p className="help-readiness-title">
-          {data.colleagues && data.context ? "Project ready" : "Finish project setup"}
+          {data.colleagues && data.context ? "Project ready" : "Project setup"}
         </p>
       )}
-      {!data && !error && (
-        <p className="muted">Checking teammates and project context…</p>
-      )}
+      {!data && !error && <p className="muted">Checking project…</p>}
       {error && (
         <p className="muted">
           Couldn’t check setup. <a href={`/projects/${project.id}`}>Open project</a> to
@@ -41,7 +39,7 @@ export function ProjectReadiness({ actor, project }: { actor: Actor; project: Pr
           <span>
             {data.colleagues ? (
               <>
-                <Icon name="check" /> Teammates already have access.
+                <Icon name="check" /> Members ready
               </>
             ) : actor.owner ? (
               <a href={`/projects/${project.id}/members`}>Add teammates</a>
@@ -52,7 +50,7 @@ export function ProjectReadiness({ actor, project }: { actor: Actor; project: Pr
           <span>
             {data.context ? (
               <>
-                <Icon name="check" /> Project context is set.
+                <Icon name="check" /> Context ready
               </>
             ) : project.permissions.canMaintain ? (
               <a href={`/projects/${project.id}/instructions`}>Add project context</a>
