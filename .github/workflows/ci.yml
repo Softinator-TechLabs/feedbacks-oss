@@ -90,6 +90,7 @@ jobs:
       - run: npm run qa:recording-browser
       - run: npm run qa:extension-browser
       - run: npm run qa:walkthrough-browser
+      - run: npm run qa:agent-setup
 
   android-host:
     runs-on: ubuntu-24.04

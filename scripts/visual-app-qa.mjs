@@ -228,11 +228,14 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
             animations: "disabled",
           });
           await page
-            .getByRole("button", { name: "Create key & copy prompt", exact: true })
+            .getByRole("button", { name: "Create key & copy setup prompt", exact: true })
             .waitFor();
           assert.equal(
             await page
-              .getByRole("button", { name: "Create key & copy prompt", exact: true })
+              .getByRole("button", {
+                name: "Create key & copy setup prompt",
+                exact: true,
+              })
               .isVisible(),
             true,
           );

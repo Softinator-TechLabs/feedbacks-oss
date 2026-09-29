@@ -121,7 +121,8 @@ export const ownerTokenScopes = [
   ),
   "context.policy",
 ];
-// Human-selected optional reads on newly issued owner keys. Existing keys stay unchanged.
+// Evidence reads included by easy owner setup; advanced issuance remains explicit.
+// Existing keys retain their original scopes.
 export const ownerEvidenceReadScopes = [
   "recordings.list",
   "recordings.get",

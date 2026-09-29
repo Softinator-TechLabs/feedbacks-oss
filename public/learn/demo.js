@@ -107,11 +107,12 @@
       frames: [
         {
           image: "agent-1",
-          caption: "Developer: create your personal key and copy the prompt.",
+          caption: "Copy the setup prompt without a key into your coding agent.",
         },
         {
           image: "agent-2",
-          caption: "Paste privately into Codex, Claude Code or Antigravity.",
+          caption:
+            "After the agent prepares a local command, copy the key and run it locally.",
         },
         {
           kind: "handoff",
