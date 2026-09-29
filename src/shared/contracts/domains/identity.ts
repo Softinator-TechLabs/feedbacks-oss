@@ -152,6 +152,7 @@ export const identityOutputs = {
     items: z.array(
       z.object({
         id,
+        secretSuffix: z.string().nullable().optional(),
         expiresAt: z.string(),
         usedAt: z.string().nullable(),
         revokedAt: z.string().nullable(),

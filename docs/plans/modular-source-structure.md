@@ -53,11 +53,12 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Moved screenshot export rendering and PDF/raster assembly from the editor entrypoint into `extension/capture/editor-export.js`. Moved the point-view freeze helper from the content entrypoint into the already injected `frame-dom.js`. The ZIP still uses the same entrypoints and the packaged browser QA sequence passes.
 - 2026-09-29: Split the browser acceptance runner's popup/options, optional public capture, and recording-control workflows into `scripts/qa/extension/` modules. The complete packaged Chromium sequence passed after this split.
 - 2026-09-29: Rebasing onto recording PR #115 preserved frame annotation, timeline marks, superseded asset filtering, and the new image markup/upload contracts across moved modules. The recording and extension browser suites passed on the rebased branch.
+- 2026-09-29: Independent diff review found one omitted Account link `secretSuffix` output field. Restored it, added a parse-boundary assertion, and compared every input/output contract JSON schema and operation key order against merged `origin/main`: 0 differences.
 
 ## Completion receipt
 
-Source revision: `codex/modular-refactor` based on `0183066` (PR #115); final PR revision pending.
+Source revision: draft PR #117 on `codex/modular-refactor`, based on `0183066` (PR #115); final revision pending.
 Checks and results: Node 22 `npm run check` passed (328 pass, 22 skipped, 0 fail; builds, harness smoke, and release package checks included). `npm run qa:extension-browser`, `npm run qa:recording-browser` (22 pass), `npm run qa:app-filters`, and native `npm run test:postgres` (2 pass) passed on the rebased branch. Exact-revision CI is pending.
-Artifacts: draft source PR pending; no extension Store package or deployed service produced.
+Artifacts: draft source PR #117; no extension Store package or deployed service produced.
 Deployment and live verification: outside scope of this source refactor; no deployment performed.
 Remaining risks or follow-up: `extension/content.js` retains a large shared state closure; `scripts/extension-browser-qa.mjs` still contains coupled sequential scenarios. Extract these with explicit state boundaries and browser receipts in the next reviewable stage. External GitHub transaction behavior and native browser permission prompts need separate targeted evidence before deeper restructuring.
