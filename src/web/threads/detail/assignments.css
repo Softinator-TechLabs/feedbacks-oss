@@ -1,0 +1,301 @@
+.thread-assignments {
+  margin: 0 0 24px;
+  padding: 12px 0 16px;
+  border-block: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.assignment-heading,
+.assignment-record-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.assignment-heading h2,
+.assignment-record h3,
+.assignment-form h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.assignment-heading button,
+.thread-assignments button,
+.assignment-points .check {
+  min-height: 44px;
+}
+.assignment-summary {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+.assignment-summary li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  font-size: 0.9rem;
+}
+.assignment-summary li > strong {
+  color: var(--text);
+}
+.assignment-empty,
+.assignment-hint,
+.assignment-attribution,
+.assignment-workers {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.assignment-empty,
+.assignment-workers p {
+  margin: 6px 0;
+}
+.assignment-workers {
+  margin-top: 12px;
+}
+#assignment-management {
+  margin-top: 16px;
+}
+#assignment-management[hidden] {
+  display: none;
+}
+.assignment-form {
+  max-width: 760px;
+  padding: 20px 0;
+  margin: 16px 0;
+  border-block: 1px solid var(--border);
+}
+.assignment-form h3 {
+  margin-bottom: 20px;
+}
+.assignment-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.assignment-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.assignment-points {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0 0 16px;
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 0;
+}
+.assignment-points legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.assignment-points .check {
+  align-items: flex-start;
+  padding: 10px 0;
+}
+.assignment-points .check input {
+  margin-top: 3px;
+}
+.assignment-record {
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+  font-size: 0.9rem;
+}
+.assignment-record p {
+  margin: 8px 0;
+  max-width: 75ch;
+}
+.assignment-description {
+  white-space: pre-wrap;
+}
+.assignment-cancel,
+.assignment-history {
+  margin-top: 16px;
+  max-width: 760px;
+}
+.assignment-history ol {
+  padding-left: 24px;
+}
+.assignment-history li + li {
+  margin-top: 16px;
+}
+.assignment-pagination {
+  align-items: center;
+}
+@media (max-width: 600px) {
+  .assignment-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .assignment-summary li {
+    gap: 2px 12px;
+    padding-block: 4px;
+  }
+  .assignment-summary li > strong {
+    flex-basis: 100%;
+  }
+  .assignment-points {
+    max-height: 260px;
+  }
+}
+.project-assignments {
+  padding-top: 0;
+  margin-bottom: 20px;
+}
+.project-assignments > summary {
+  min-height: 44px;
+  align-content: center;
+}
+.project-assignments .field {
+  max-width: 360px;
+}
+.project-assignment-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+.project-assignment-list li {
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.project-assignment-list li > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 0.88rem;
+  margin-bottom: 4px;
+}
+.project-assignment-list li > a {
+  display: inline-block;
+  min-height: 44px;
+  align-content: center;
+}
+.project-assignment-list p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.assignment-conflict {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.assignment-conflict h4 {
+  margin: 0 0 8px;
+}
+.assignment-conflict p {
+  margin: 8px 0;
+}
+.assignment-conflict .check {
+  min-height: 44px;
+}
+
+.thread-assignee-slot {
+  min-width: 0;
+}
+.thread-assignee {
+  position: relative;
+  margin: 0;
+}
+.thread-assignee > select {
+  width: clamp(120px, 12vw, 145px);
+  max-width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 5px 9px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.thread-assignee-error {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 5;
+  width: 280px;
+  max-width: 85vw;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.thread-assignments[hidden] {
+  display: none;
+}
+.assignment-extra > summary {
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.thread-task-copy {
+  position: relative;
+  max-width: 100%;
+}
+.thread-task-copy .error {
+  max-width: 380px;
+}
+.task-copy-dialog {
+  width: min(720px, calc(100vw - 32px));
+}
+.task-copy-dialog textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* The inline point filter uses the same touch-sized field as the rest of the app. */
+.review-point-overview {
+  align-items: end;
+  margin-block: 16px;
+}
+.review-point-overview label {
+  display: grid;
+  gap: 6px;
+  min-width: 200px;
+  font-weight: 600;
+}
+.review-point-overview select {
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 400;
+}
+@media (max-width: 600px) {
+  .review-point-overview label {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.thread-move-dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  overflow: auto;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.thread-move-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+.thread-move-dialog h2 {
+  margin-top: 0;
+}
+
+.thread-move-dialog select {
+  width: 100%;
+}
+.thread-move-dialog .actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}

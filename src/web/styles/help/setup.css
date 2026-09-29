@@ -1,0 +1,223 @@
+.help-server-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+  margin-block: 8px;
+}
+.help-server-copy input {
+  flex: 1 1 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+.help-server-copy button {
+  flex-shrink: 0;
+}
+.help-simple > .help-agent {
+  margin-top: 24px;
+}
+@media (max-width: 600px) {
+  .help-server-copy {
+    flex-direction: column;
+  }
+}
+
+.help-quickstart {
+  max-width: 760px;
+}
+.help-quickstart .help-simple-heading {
+  margin-bottom: 8px;
+}
+.help-steps {
+  margin: 28px 0 0;
+  padding-left: 26px;
+}
+.help-steps > li {
+  padding: 0 0 24px 12px;
+  margin: 0 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+.help-steps > li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+.help-steps > li::marker {
+  font-weight: 650;
+  color: var(--muted);
+}
+.help-steps h2 {
+  font-size: 1.2rem;
+  margin: 0 0 8px;
+}
+.help-steps p {
+  margin: 0 0 12px;
+}
+.help-project-switcher {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+.help-project-picker {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.help-project-picker > span {
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+.help-project-picker select {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 36px 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.help-project-picker strong {
+  overflow-wrap: anywhere;
+}
+.help-open-project {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+}
+.help-readiness-title {
+  font-weight: 600;
+}
+.help-project-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  color: var(--muted);
+}
+.help-project-status > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.help-project-status svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.help-step-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+.help-step-heading h2 {
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .help-project-switcher {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .help-project-status {
+    flex-direction: column;
+  }
+}
+.help-quickstart .help-agent {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.help-quickstart .help-key-warning {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.help-quickstart .help-agent-actions {
+  gap: 8px;
+}
+.help-quickstart .help-prompt {
+  margin-top: 12px;
+}
+.help-footer {
+  margin: 28px 0 0 38px;
+}
+
+.help-watch {
+  margin-top: 12px;
+}
+.help-watch > summary {
+  cursor: pointer;
+  color: var(--accent);
+  width: fit-content;
+  min-height: 44px;
+  padding-block: 10px;
+  font-size: 0.9rem;
+}
+.help-watch feedbacks-demo {
+  max-width: 560px;
+}
+
+.help-latest-extension {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.help-latest-extension > p {
+  font-size: 0.9rem;
+  color: var(--muted);
+  max-width: 65ch;
+}
+.help-latest-extension .help-watch {
+  margin-top: 4px;
+}
+.help-latest-extension ol {
+  padding-left: 24px;
+  margin-block: 8px 12px;
+}
+.help-latest-extension li + li {
+  margin-top: 6px;
+}
+
+.help-pin {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 24px;
+  align-items: center;
+  margin: 16px 0 24px;
+}
+.help-pin h3 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+.help-pin p {
+  margin: 8px 0;
+  font-size: 0.9rem;
+}
+.help-pin feedbacks-demo {
+  min-width: 0;
+  margin: 0;
+}
+.help-review-shortcut {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 600px) {
+  .help-pin {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+}

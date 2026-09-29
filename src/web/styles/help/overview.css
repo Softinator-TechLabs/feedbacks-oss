@@ -1,0 +1,93 @@
+.help-start {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 18px;
+  align-items: stretch;
+}
+.help-docs {
+  min-width: 0;
+  padding: clamp(22px, 3vw, 30px);
+  border-radius: 16px;
+  background: var(--soft-surface);
+}
+.help-docs-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+.help-docs-heading h2 {
+  margin: 0 0 4px;
+}
+.help-docs-heading p {
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+.help-docs-heading > a {
+  flex: 0 0 auto;
+  font-weight: 650;
+}
+.help-docs-list {
+  display: grid;
+}
+.help-docs-list a {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.85fr) minmax(0, 1.15fr);
+  gap: 8px 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+}
+.help-docs-list a:last-child {
+  border-bottom: 0;
+}
+.help-docs-list a:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.help-docs-list span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+.help-connect {
+  margin-top: 26px;
+  padding: 24px 0 26px;
+  border-bottom: 1px solid var(--border);
+}
+.help-connect h2 {
+  font-size: 1.3rem;
+  margin: 0 0 4px;
+}
+.help-connect p {
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+.help-connect > .muted {
+  margin: 10px 0 0;
+  font-size: 0.84rem;
+}
+.help-mcp-command {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--soft-surface);
+}
+.help-mcp-command > code {
+  flex: 1 1 350px;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+.help-mcp-command button {
+  width: auto;
+}
+@media (max-width: 800px) {
+  .help-start {
+    grid-template-columns: 1fr;
+  }
+}
