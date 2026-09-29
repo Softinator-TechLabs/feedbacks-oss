@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { SavedReviewViews } from "../review-tools.js";
+import { SavedReviewViews } from "./saved-views.js";
 import { Field } from "../ui.js";
 import { readFilters } from "../review-filters.js";
 import { builtInCategories, type ProjectTaxonomy } from "../../shared/taxonomy.js";

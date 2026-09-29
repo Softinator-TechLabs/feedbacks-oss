@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api, type Thread } from "./api.js";
-import { MarkdownText } from "./markdown-text.js";
-import { ErrorNotice, Notice, useAction } from "./ui.js";
-import { HumanTime } from "./human-time.js";
-import { Icon } from "./icons.js";
-import { PointWorkPlan } from "./point-work-plan.js";
-import { pointProgress } from "./point-progress.js";
-import { planPriorities, timingLabel } from "./work-plan-model.js";
+import { api, type Thread } from "../../api.js";
+import { MarkdownText } from "../../markdown-text.js";
+import { ErrorNotice, Notice, useAction } from "../../ui.js";
+import { HumanTime } from "../../human-time.js";
+import { Icon } from "../../icons.js";
+import { PointWorkPlan } from "../../point-work-plan.js";
+import { pointProgress } from "../../point-progress.js";
+import { planPriorities, timingLabel } from "../../work-plan-model.js";
 
 type Asset = Thread["assets"][number];
 type Annotation = NonNullable<Thread["context"]["annotations"]>[number];

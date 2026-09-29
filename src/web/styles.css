@@ -1,5 +1,7 @@
 @import "./forms.css";
-@import "./review-tools.css";
+@import "./threads/review-controls.css";
+@import "./threads/taxonomy.css";
+@import "./threads/detail/comparison.css";
 @import "./surveys/surveys.css";
 @import "./styles/foundation.css";
 @import "./styles/projects/navigation.css";
