@@ -36,6 +36,6 @@ The extension adds Chrome's `offscreen` permission and moves local video storage
 
 Source revision: PR #120, final revision pending CI.
 Checks and results: `npm run check`, `npm run qa:recording-browser` (23/23), `npm run qa:extension-browser`, `npm run test:postgres` (2/2), `npm audit --audit-level=high` (0 vulnerabilities), and packaged delayed-listener QA pass locally. Exact-revision CI pending.
-Artifacts: extension 0.1.39 ZIP, SHA-256 `61c54c8e585a1df6c28e46c0a9e7586f235ae303ec269b7b6e162206cfde41e0`.
+Artifacts: extension 0.1.39 ZIP, SHA-256 `7ee1671e86b20f5275e12f2ec19549928c29d09ec89a4b56adc6f67d3d556c1f`.
 Deployment and live verification: pending.
 Remaining risks or follow-up: native toolbar/Store permission acceptance and live capture on the installed package remain separate gates.

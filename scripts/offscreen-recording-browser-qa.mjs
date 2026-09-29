@@ -91,10 +91,6 @@ await writeFile(
   window.addEventListener('unhandledrejection', (event) => void chrome.runtime.sendMessage({
     type: 'qaTrace', stage: 'rejection:' + String(event.reason)
   }));
-  void import('./offscreen-video.js').then(
-    () => chrome.runtime.sendMessage({ type: 'qaTrace', stage: 'moduleResolved' }),
-    (error) => chrome.runtime.sendMessage({ type: 'qaTrace', stage: 'importError:' + String(error) }),
-  );
 `,
 );
 // Expose the lost-message race: the worker can finish diagnostics before the

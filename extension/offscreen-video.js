@@ -1,5 +1,5 @@
-import { finalizeWebmMetadata } from "./video-metadata.js";
-import { VIDEO_MAX_BYTES, VIDEO_MAX_MS, recordingOptions } from "./video-media.js";
+import { finalizeWebmMetadata } from "./video/video-metadata.js";
+import { VIDEO_MAX_BYTES, VIDEO_MAX_MS, recordingOptions } from "./video/video-media.js";
 import { putVideoDraft } from "./video-draft-store.js";
 
 const port = chrome.runtime.connect({ name: "feedbacks-video-offscreen" });
