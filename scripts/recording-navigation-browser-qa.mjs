@@ -225,7 +225,7 @@ try {
   await page.getByRole("button", { name: "Stop session", exact: true }).waitFor();
   await page.getByLabel("Navigation input").fill("Session resumed input");
   await page.getByRole("button", { name: "Stop session", exact: true }).click();
-  await recorder.getByRole("heading", { name: "Recorded moments" }).waitFor();
+  await recorder.getByRole("region", { name: "Recorded moments" }).waitFor();
   await page.getByRole("button", { name: "Review session", exact: true }).waitFor();
   await page.getByRole("button", { name: "Review session", exact: true }).click();
   let state = await send({ type: "sessionStatus" });
@@ -346,7 +346,7 @@ try {
   await page.getByRole("button", { name: "Pause video", exact: true }).waitFor();
   await page.waitForTimeout(200);
   await page.getByRole("button", { name: "Stop video", exact: true }).click();
-  await video.getByRole("heading", { name: "Recorded moments" }).waitFor();
+  await video.getByRole("region", { name: "Recorded moments" }).waitFor();
   await video
     .getByRole("heading", { name: "Screenshot comments (1)", exact: true })
     .waitFor();

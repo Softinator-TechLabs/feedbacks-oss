@@ -550,6 +550,12 @@ test(
           type: "activity",
           data: { action: "click", label: "Buy", x: 20, y: 30 },
         },
+        {
+          seq: 44,
+          atMs: 2500,
+          type: "activity",
+          data: { action: "click", label: "Same moment secondary" },
+        },
       ],
     };
     const bundle = await build({
@@ -674,9 +680,16 @@ test(
         1,
       );
       const videoBox = (await page.locator(".recording-media video").boundingBox())!;
+      const controlsBox = (await page
+        .locator(".recording-playback-actions")
+        .boundingBox())!;
       const timelineBox = (await page.locator(".recording-timeline").boundingBox())!;
       const eventsBox = (await page.locator(".recording-diagnostics").boundingBox())!;
-      assert.ok(videoBox.y < timelineBox.y && timelineBox.y < eventsBox.y);
+      assert.ok(
+        controlsBox.y < videoBox.y &&
+          videoBox.y < timelineBox.y &&
+          timelineBox.y < eventsBox.y,
+      );
       assert.ok(eventsBox.y - (timelineBox.y + timelineBox.height) < 2);
       assert.ok(videoBox.width >= timelineBox.width * 0.8);
       await page.screenshot({
@@ -741,6 +754,26 @@ test(
         /0:02.5.*Clicked Buy/,
       );
       await buyMark.click();
+      const outerScrollAfterClick = await page.evaluate(() => window.scrollY);
+      await page.waitForTimeout(120);
+      assert.equal(
+        await page.evaluate(() => window.scrollY),
+        outerScrollAfterClick,
+        "revealing a selected event must scroll the inner feed, not the page",
+      );
+      assert.ok(
+        await page.locator(".recording-timeline-lane").evaluate((lane) => {
+          const mark = lane.querySelector(
+            '.recording-timeline-mark[aria-label*="Clicked Buy"]',
+          );
+          const line = lane.querySelector(".recording-timeline-playhead");
+          if (!mark || !line) return false;
+          const dot = mark.getBoundingClientRect();
+          const head = line.getBoundingClientRect();
+          return Math.abs(dot.left + dot.width / 2 - (head.left + head.width / 2)) <= 2;
+        }),
+        "the playhead line must pass through the selected event mark",
+      );
       assert.equal(
         await page
           .locator(".recording-tabs button", { hasText: "Activity" })
@@ -752,6 +785,10 @@ test(
           .locator('.recording-events button[aria-current="true"]')
           .textContent()) || "",
         /Clicked Buy/,
+      );
+      assert.equal(
+        await page.locator('.recording-events button[aria-current="true"]').isVisible(),
+        true,
       );
       await page.waitForFunction(
         () =>
@@ -781,6 +818,19 @@ test(
         typeof upload.idempotencyKey === "string" && upload.idempotencyKey.length >= 8,
       );
       await page.locator("#thread-recording-timeline").fill("0");
+      await page.locator(".recording-media video").click();
+      await page.waitForFunction(
+        () =>
+          document.querySelector<HTMLVideoElement>(".recording-media video")!
+            .currentTime > 0.1,
+      );
+      await page.locator(".recording-media video").click();
+      assert.equal(
+        await page
+          .locator(".recording-media video")
+          .evaluate((video: HTMLVideoElement) => video.paused),
+        true,
+      );
       await page.getByRole("button", { name: "Play video" }).click();
       await page.waitForFunction(
         () =>
@@ -801,11 +851,16 @@ test(
       await page.waitForFunction(() =>
         document
           .querySelector('.recording-events button[aria-current="true"]')
-          ?.textContent?.includes("Clicked Buy"),
+          ?.textContent?.includes("Clicked Same moment secondary"),
       );
-      assert.ok(
-        await page.locator(".recording-events").evaluate((list) => list.scrollTop > 0),
-      );
+      await page.waitForFunction(() => {
+        const list = document.querySelector(".recording-events");
+        const active = list?.querySelector('[aria-current="true"]');
+        if (!list || !active) return false;
+        const container = list.getBoundingClientRect();
+        const row = active.getBoundingClientRect();
+        return row.top >= container.top && row.bottom <= container.bottom;
+      });
       await page
         .locator(".recording-events")
         .getByRole("button", { name: /Clicked Removed/ })

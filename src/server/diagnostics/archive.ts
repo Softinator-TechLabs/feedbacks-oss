@@ -13,7 +13,7 @@ function octal(value: number, width: number): Buffer {
   return Buffer.from(value.toString(8).padStart(width - 1, "0") + "\0", "ascii");
 }
 
-function tarHeader(name: string, size: number): Buffer {
+export function tarHeader(name: string, size: number): Buffer {
   if (
     !/^[a-z0-9./-]+$/.test(name) ||
     name.includes("..") ||
@@ -37,7 +37,7 @@ function tarHeader(name: string, size: number): Buffer {
   return header;
 }
 
-function padding(size: number): Buffer | null {
+export function padding(size: number): Buffer | null {
   const length = (512 - (size % 512)) % 512;
   return length ? Buffer.alloc(length) : null;
 }
