@@ -97,6 +97,8 @@ The [public privacy page](https://feedbacks.softinator.ai/privacy.html) must des
 
 Upload four current synthetic, browser-rendered 1280 × 800 screenshots in order: review controls, point comment, saved draft and screenshot editor. Keep screenshots full bleed, with no private server addresses or credentials. Provide the 128 × 128 icon and 440 × 280 promo tile from the same verified package build. Google accepts one to five 1280 × 800 or 640 × 400 screenshots and requires a small promo tile ([image requirements](https://developer.chrome.com/docs/webstore/images)). Leave the optional marquee and promo video blank unless current assets exist.
 
+Build the assets and handoff bundle with `npm run build:extension`, `node scripts/capture-website-workflow.mjs --store`, then `node scripts/package-store-submission.mjs`. Upload only the versioned extension ZIP inside that bundle.
+
 ## Distribution and reviewer instructions
 
 This updates the existing item. Keep its current visibility and region settings unless the publisher intentionally changes them; an upgrade normally stays on the same channel ([update guide](https://developer.chrome.com/docs/webstore/update)). Do not switch to Private merely because an older worksheet described a tester-only submission.
