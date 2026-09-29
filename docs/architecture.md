@@ -35,7 +35,7 @@ The web application groups thread, project, member, account, document, survey, r
 
 The Help route, project readiness checks, personal agent setup, and Privacy page live under `src/web/help/`; the root web router imports those page components directly.
 
-The extension worker keeps its manifest entrypoint and Chrome listener registration in `background.js`. Screenshot diagnostic capture state, raw debugger leasing, DOM evidence assembly, and context-bound retirement live in `extension/diagnostics/worker-capture.js`; the entrypoint supplies the existing session and account dependencies.
+The extension worker keeps its manifest entrypoint and Chrome listener registration in `background.js`. Screenshot diagnostic capture state, raw debugger leasing, DOM evidence assembly, and context-bound retirement live in `extension/diagnostics/worker-capture.js`; the entrypoint supplies the existing session and account dependencies. The editor keeps draft persistence and submission in `editor.js`, while `extension/diagnostics/editor-panel.js` renders diagnostic evidence and owns its preview, download, selection, and masking controls.
 
 ## Deployment model
 
