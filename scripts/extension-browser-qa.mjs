@@ -15,6 +15,7 @@ import { verifyReviewDefaults } from "./qa/extension/review/review-defaults.mjs"
 import { verifyGithubToolbar } from "./qa/extension/github-toolbar.mjs";
 import { verifyRecordingControls } from "./qa/extension/recording-controls.mjs";
 import { verifyPublicCapture } from "./qa/extension/capture/public-capture.mjs";
+import { verifyLargeVisibleCapture } from "./qa/extension/capture/large-visible.mjs";
 import { verifyPopupOptions } from "./qa/extension/setup/popup-options.mjs";
 import {
   previewDimensions,
@@ -201,6 +202,18 @@ try {
     toFixture,
   });
   await verifyDiagnosticDom({ page, control, toFixture, tabId, send, draft });
+  await verifyLargeVisibleCapture({
+    context,
+    page,
+    toFixture,
+    tabId,
+    send,
+    draft,
+    extensionId,
+    post,
+    auth,
+    results,
+  });
   await page.bringToFront();
   const id = await tabId();
   const exposeReviewRoot = () =>
