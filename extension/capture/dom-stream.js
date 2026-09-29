@@ -51,6 +51,7 @@ export async function capturePreparedDom({
   store,
   chrome: browser = globalThis.chrome,
   remainingBytes = MAX_BYTES,
+  onChannelDone,
 }) {
   const channelCoverage = coverage();
   const files = [];
@@ -129,6 +130,7 @@ export async function capturePreparedDom({
               channelDone.add(message.channel);
               if (channelCoverage[message.channel].status === "unavailable")
                 mark(channelCoverage, message.channel, "complete");
+              await onChannelDone?.(message.channel);
             }
             return;
           }

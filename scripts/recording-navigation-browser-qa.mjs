@@ -39,8 +39,8 @@ const contentPath = path.join(extension, "content.js");
 await writeFile(
   contentPath,
   (await readFile(contentPath, "utf8")).replace(
-    'attachShadow({ mode: "closed" })',
-    'attachShadow({ mode: "open" })',
+    'root = host.attachShadow({ mode: "closed" })',
+    'root = host.attachShadow({ mode: "open" })',
   ),
 );
 const manifest = JSON.parse(

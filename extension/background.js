@@ -586,6 +586,8 @@ const capture = createCaptureWorkflow({
   set,
   captureUrl,
   captureVisibleTab,
+  captureProgress: (tabId, stage) =>
+    chrome.tabs.sendMessage(tabId, { type: "captureProgress", stage }).catch(() => {}),
   review,
   sessionFor,
   openDraft,

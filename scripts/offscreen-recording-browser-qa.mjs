@@ -46,8 +46,8 @@ const contentPath = path.join(extension, "content.js");
 await writeFile(
   contentPath,
   (await readFile(contentPath, "utf8")).replace(
-    'attachShadow({ mode: "closed" })',
-    'attachShadow({ mode: "open" })',
+    'root = host.attachShadow({ mode: "closed" })',
+    'root = host.attachShadow({ mode: "open" })',
   ),
 );
 // Headless activation bypasses the toolbar gesture that grants activeTab. Keep
