@@ -12,6 +12,41 @@ import {
 import { fail } from "../errors.js";
 import { human, issueNumber, requireApp } from "./operation-common.js";
 
+export async function githubStatusSyncState(
+  db: Database,
+  actor: Actor,
+  i: any,
+  config: Config,
+) {
+  return db.transaction(async (tx) => {
+    await accountLock(tx);
+    const a = await human(tx, actor);
+    const row = await threadRow(tx, a, i.threadId, "maintain");
+    const project = await access(tx, a, row.project_id, "maintain");
+    const sync = await tx.one("SELECT * FROM github_status_sync WHERE thread_id=$1", [
+      row.id,
+    ]);
+    return {
+      status:
+        sync?.status === "uncertain"
+          ? "uncertain"
+          : !project.githubConnected || !project.githubStatusSync
+            ? "disabled"
+            : !config.githubAppId || !config.githubAppPrivateKey || !config.githubAppSlug
+              ? "error"
+              : (sync?.status ?? "pending"),
+      issueUrl: sync?.issue_url ?? null,
+      feedbacksState: sync?.feedbacks_state ?? null,
+      githubState: sync?.github_state ?? null,
+      pendingTarget: sync?.pending_target ?? null,
+      errorCode:
+        !config.githubAppId || !config.githubAppPrivateKey || !config.githubAppSlug
+          ? "GITHUB_UNAVAILABLE"
+          : (sync?.error_code ?? null),
+    };
+  });
+}
+
 export async function githubStatusSyncOperation(
   db: Database,
   actor: Actor,

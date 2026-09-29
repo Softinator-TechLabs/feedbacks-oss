@@ -25,6 +25,7 @@ flowchart LR
 - `scheduled-qa.ts`: opt-in daily public-page checks, bounded private image comparison and reviewable run history.
 - `context.ts`, `export-limits.ts`: versioned instructions, stable bounded exports and change cursors.
 - `operations.ts`: transactional operation dispatch. `app.ts` and `mcp.ts` handle transport concerns.
+- `github-operations.ts`: stable GitHub operation dispatch. `src/server/github/` groups connection changes, Issue requests, and status sync while retaining each authorization check and transaction around the external GitHub call.
 - `src/shared/contracts.ts`: stable public import path for operation schemas and scopes. `src/shared/contracts/domains/` owns schemas by domain, and `src/shared/contracts/registry.ts` composes the typed input/output registries.
 - `sdk/ios`, `sdk/android`: optional native app clients using existing paired-device HTTP operations; neither owns authorization or embeds server credentials.
 
