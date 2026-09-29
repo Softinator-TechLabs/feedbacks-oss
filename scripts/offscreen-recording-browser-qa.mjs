@@ -60,11 +60,34 @@ const streamSource =
 assert.ok(backgroundSource.includes(streamSource), "packaged tab stream hook changed");
 await writeFile(
   backgroundPath,
-  backgroundSource.replace(
-    streamSource,
-    'const streamId = "qa-test-stream"; await chrome.storage.local.set({ qaBackgroundStream: true });',
-  ) +
+  backgroundSource
+    .replace(
+      streamSource,
+      'const streamId = "qa-test-stream"; await chrome.storage.local.set({ qaBackgroundStream: true });',
+    )
+    .replace(
+      "  const capture = await sessionCapture.start(\n    target,",
+      "  await chrome.storage.local.set({ qaBeforeSessionStart: true });\n  const capture = await sessionCapture.start(\n    target,",
+    )
+    .replace(
+      "  return {\n    sourceTabId: tab.id,\n    reviewId: session.reviewId,\n    streamId,",
+      "  await chrome.storage.local.set({ qaAfterSessionStart: true });\n  return {\n    sourceTabId: tab.id,\n    reviewId: session.reviewId,\n    streamId,",
+    ) +
     '\nchrome.runtime.onMessage.addListener((message) => { if (message?.type === "qaOffscreen") void chrome.storage.local.set({ qaOffscreen: message.stage }); });\n',
+);
+const coordinatorPath = path.join(extension, "session/session-coordinator.js");
+const coordinatorSource = await readFile(coordinatorPath, "utf8");
+const injectSource = "        try {\n          await inject(s);\n        } catch {";
+assert.ok(
+  coordinatorSource.includes(injectSource),
+  "packaged replay injection hook changed",
+);
+await writeFile(
+  coordinatorPath,
+  coordinatorSource.replace(
+    injectSource,
+    "        void chrome.storage.local.set({ qaBeforeInject: true });\n        try {\n          await inject(s);\n          void chrome.storage.local.set({ qaAfterInject: true });\n        } catch {",
+  ),
 );
 const offscreenPath = path.join(extension, "offscreen-video.html");
 const offscreenSource = await readFile(offscreenPath, "utf8");
@@ -182,6 +205,12 @@ try {
         qaOffscreen: (await chrome.storage.local.get("qaOffscreen")).qaOffscreen,
         qaBackgroundStream: (await chrome.storage.local.get("qaBackgroundStream"))
           .qaBackgroundStream,
+        qaBeforeSessionStart: (await chrome.storage.local.get("qaBeforeSessionStart"))
+          .qaBeforeSessionStart,
+        qaAfterSessionStart: (await chrome.storage.local.get("qaAfterSessionStart"))
+          .qaAfterSessionStart,
+        qaBeforeInject: (await chrome.storage.local.get("qaBeforeInject")).qaBeforeInject,
+        qaAfterInject: (await chrome.storage.local.get("qaAfterInject")).qaAfterInject,
       }));
       throw Error(
         `Video start failed: ${JSON.stringify({
