@@ -55,6 +55,13 @@ export function createRawDiagnosticCapture({
     ]),
   );
   const files = [];
+  const stats = {
+    consoleCount: 0,
+    errorCount: 0,
+    httpRequestCount: 0,
+    responseCount: 0,
+    responseBodyCount: 0,
+  };
   let active = false;
   let attachedHere = false;
   let unsubscribe = null;
@@ -72,6 +79,10 @@ export function createRawDiagnosticCapture({
       current.reasons = current.reasons.filter((item) => item !== "not_collected");
       current.reasons.push(reason);
     }
+  };
+  const stopTraceCoverage = (reason, status) => {
+    for (const channel of ["console", "network", "body"])
+      setCoverage(channel, status, reason);
   };
   const file = (kind, mimeType, separate = false) => {
     if (!separate) {
@@ -109,7 +120,7 @@ export function createRawDiagnosticCapture({
     if (!bytes?.byteLength) return;
     const remaining = MAX_BYTES - totalBytes;
     if (remaining <= 0) {
-      setCoverage(item.kind, "stopped", "quota_exhausted");
+      stopTraceCoverage("quota_exhausted", "stopped");
       active = false;
       return;
     }
@@ -129,7 +140,7 @@ export function createRawDiagnosticCapture({
       if (item.bufferedBytes === BYTES_PER_CHUNK) await flush(item);
     }
     if (selected.byteLength < bytes.byteLength) {
-      setCoverage(item.kind, "stopped", "quota_exhausted");
+      stopTraceCoverage("quota_exhausted", "stopped");
       active = false;
     }
   }
@@ -141,7 +152,7 @@ export function createRawDiagnosticCapture({
         JSON.stringify({ method, ingressAt, params: inertCopy(params), ...extra }) + "\n",
       ),
     );
-    coverage[kind].observedCount++;
+    if (active) coverage[kind].observedCount++;
   }
   async function body(requestId, phase, result, ingressAt, sessionId) {
     const item = file("body", "application/octet-stream", true);
@@ -156,6 +167,7 @@ export function createRawDiagnosticCapture({
       }
     } else await append(item, encoder.encode(String(result.body || "")));
     await flush(item);
+    if (!active) return false;
     coverage.body.observedCount++;
     await event(
       "network",
@@ -170,14 +182,14 @@ export function createRawDiagnosticCapture({
       ingressAt,
       sessionId ? { sessionId } : {},
     );
+    return active;
   }
   async function handle(method, params, ingressAt, sessionId) {
     if (!active) return;
     if (method === "Debugger.detached") {
       attachedHere = false;
       active = false;
-      setCoverage("console", "partial", "debugger_detached");
-      setCoverage("network", "partial", "debugger_detached");
+      stopTraceCoverage("debugger_detached", "partial");
       return;
     }
     if (method === "Page.frameNavigated" && !params?.frame?.parentId) {
@@ -187,8 +199,7 @@ export function createRawDiagnosticCapture({
       } catch {}
       if (origin !== sourceOrigin) {
         active = false;
-        setCoverage("console", "partial", "origin_changed");
-        setCoverage("network", "partial", "origin_changed");
+        stopTraceCoverage("origin_changed", "partial");
         return;
       }
     }
@@ -203,6 +214,26 @@ export function createRawDiagnosticCapture({
             : null;
     if (!kind) return;
     await event(kind, method, params, ingressAt, sessionId ? { sessionId } : {});
+    if (!active) return;
+    if (method === "Runtime.consoleAPICalled") {
+      stats.consoleCount++;
+      if (["error", "assert"].includes(params?.type)) stats.errorCount++;
+    } else if (method === "Runtime.exceptionThrown") {
+      stats.consoleCount++;
+      stats.errorCount++;
+    } else if (method === "Log.entryAdded") {
+      stats.consoleCount++;
+      if (["error", "fatal"].includes(params?.entry?.level)) stats.errorCount++;
+    } else if (
+      method === "Network.requestWillBeSent" &&
+      /^https?:\/\//i.test(params?.request?.url || "")
+    )
+      stats.httpRequestCount++;
+    else if (
+      method === "Network.responseReceived" &&
+      /^https?:\/\//i.test(params?.response?.url || "")
+    )
+      stats.responseCount++;
     if (method === "Target.attachedToTarget" && params?.sessionId) {
       for (const [command, channel] of [
         ["Network.enable", "network"],
@@ -223,6 +254,8 @@ export function createRawDiagnosticCapture({
           );
         } catch {
           setCoverage(channel, "partial", "worker_enable_failed");
+          if (channel === "network")
+            setCoverage("body", "partial", "worker_enable_failed");
         }
       }
     }
@@ -253,7 +286,8 @@ export function createRawDiagnosticCapture({
           { requestId: params.requestId },
           sessionId,
         );
-        await body(params.requestId, "response", result, ingressAt, sessionId);
+        if (await body(params.requestId, "response", result, ingressAt, sessionId))
+          stats.responseBodyCount++;
       } catch {
         setCoverage("body", "partial", "body_unavailable");
       }
@@ -283,6 +317,7 @@ export function createRawDiagnosticCapture({
     startedAt,
     endedAt,
     totalBytes,
+    stats: { ...stats },
     coverage: structuredClone(coverage),
     files: files.map(
       ({ pieces: _pieces, bufferedBytes: _bufferedBytes, hasher: _hasher, ...item }) => ({
@@ -332,8 +367,7 @@ export function createRawDiagnosticCapture({
       unsubscribe = debuggerSource.subscribeRawDebugger(tabId, receive);
       active = true;
       timeout = setTimeout(() => {
-        setCoverage("console", "stopped", "time_limit");
-        setCoverage("network", "stopped", "time_limit");
+        stopTraceCoverage("time_limit", "stopped");
         active = false;
         void stop();
       }, 300_000);

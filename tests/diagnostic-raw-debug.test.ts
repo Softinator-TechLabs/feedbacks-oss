@@ -193,6 +193,13 @@ test("raw CDP events retain credentials, ordering, binary body and a 2 MiB chunk
   assert.ok(
     bodies.some((item: any) => h.read(item).equals(Buffer.from([0xff, 0x00, 0x41]))),
   );
+  assert.deepEqual(result.stats, {
+    consoleCount: 1,
+    errorCount: 1,
+    httpRequestCount: 1,
+    responseCount: 1,
+    responseBodyCount: 1,
+  });
   assert.equal(h.detachCount, 1);
 });
 

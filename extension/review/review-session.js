@@ -1,5 +1,6 @@
 import { reviewDefaults } from "./review-preferences.js";
 import { diagnosticCollector } from "../diagnostics/diagnostics.js";
+import { accountFingerprint } from "../diagnostics/identity.js";
 // Website routing and opt-in, document-start review. No page is sent to the
 // service until the user opens Feedbacks or explicitly asks to add feedback.
 export function createReviewController({ get, set, authenticated, defaultServer }) {
@@ -53,11 +54,14 @@ export function createReviewController({ get, set, authenticated, defaultServer 
       )
         throw Error("The connection changed. Open Feedbacks again.");
       const old = latest.sessions?.[tabId];
+      const accountKey = await accountFingerprint(latest.accounts?.[server], {
+        tokenOnly: true,
+      });
       const reusable =
         old?.server === server &&
         old?.origin === origin &&
         old?.projectId === project.id &&
-        old?.accountId === latest.accounts?.[server]?.id;
+        old?.accountKey === accountKey;
       if (old && !reusable)
         await chrome.scripting
           .executeScript({
@@ -78,7 +82,7 @@ export function createReviewController({ get, set, authenticated, defaultServer 
             projectId: project.id,
             origin,
             reviewId,
-            accountId: latest.accounts?.[server]?.id,
+            accountKey,
           },
         },
       });

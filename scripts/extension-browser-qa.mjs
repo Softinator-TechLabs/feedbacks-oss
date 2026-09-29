@@ -201,6 +201,7 @@ try {
     toFixture,
   });
   await verifyDiagnosticDom({ page, control, toFixture, tabId, send, draft });
+  await page.bringToFront();
   const id = await tabId();
   const exposeReviewRoot = () =>
     worker.evaluate(async (tabId) => {

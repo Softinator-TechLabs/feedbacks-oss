@@ -177,6 +177,7 @@ async function captureScreenshotDiagnostics({
       startedAt,
       endedAt: new Date().toISOString(),
       coverage,
+      ...(rawStatus?.stats ? { stats: rawStatus.stats } : {}),
       files,
       totalBytes: files.reduce((total, file) => total + file.byteLength, 0),
     };
@@ -451,7 +452,9 @@ async function sessionFor(sender) {
     !session ||
     new URL(sender.url).origin !== session.origin ||
     session.server !== server ||
-    (session.accountId && session.accountId !== accounts[server]?.id) ||
+    (session.accountKey &&
+      session.accountKey !==
+        (await accountFingerprint(accounts[server], { tokenOnly: true }))) ||
     !accounts[server]?.token
   )
     throw Error("Open Feedbacks to reconnect this page.");
