@@ -42,7 +42,7 @@ export function createReviewController({ get, set, authenticated, defaultServer 
       // Persistent website access is requested separately, by a user gesture.
       await chrome.scripting.executeScript({
         target: { tabId },
-        files: ["utils.js", "frame-dom.js", "content.js"],
+        files: ["utils.js", "frame-dom.js", "review/anchor-evidence.js", "content.js"],
       });
       const current = await chrome.tabs.get(tabId);
       if (current.url !== tab.url) throw Error("The page changed. Open Feedbacks again.");
@@ -143,7 +143,7 @@ export function createReviewController({ get, set, authenticated, defaultServer 
     css ||= await (await fetch(chrome.runtime.getURL("content.css"))).text();
     await chrome.scripting.executeScript({
       target: { tabId },
-      files: ["utils.js", "frame-dom.js", "content.js"],
+      files: ["utils.js", "frame-dom.js", "review/anchor-evidence.js", "content.js"],
     });
     const current = await chrome.tabs.get(tabId);
     if (current.url !== tab.url)
