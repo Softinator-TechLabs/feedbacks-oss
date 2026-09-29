@@ -715,7 +715,7 @@ export async function githubOperation(
       checkRevision(row, i.revision);
       const thread = await fullThread(tx, a, row);
       const assets = await tx.query(
-        "SELECT id,object_key,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',data->>'filename',id",
+        "SELECT id,object_key,data FROM assets WHERE thread_id=$1 AND status='validated' AND NOT (data ? 'supersededBy') ORDER BY data->>'createdAt',data->>'filename',id",
         [row.id],
       );
       return { thread, repo, assets };

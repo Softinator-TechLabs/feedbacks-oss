@@ -65,6 +65,47 @@ test(
       await page.addStyleTag({ path: `extension/${name}` });
 
     await t.test(
+      "clicks, console and network failures have seekable video timeline marks",
+      async () => {
+        await page.evaluate(() =>
+          (window as any).mount(
+            {
+              durationMs: 3000,
+              events: [
+                {
+                  seq: 0,
+                  atMs: 300,
+                  type: "activity",
+                  data: { action: "click", label: "Submit" },
+                },
+                {
+                  seq: 1,
+                  atMs: 1100,
+                  type: "console",
+                  data: { level: "warn", message: "Late warning" },
+                },
+                {
+                  seq: 2,
+                  atMs: 2400,
+                  type: "network",
+                  data: { phase: "response", status: 500, url: "/api" },
+                },
+              ],
+            },
+            { offsetMs: 0 },
+          ),
+        );
+        const marks = page.locator(".review-timeline-mark");
+        assert.equal(await marks.count(), 3);
+        await page.getByRole("button", { name: /Console warning at 0:01.1/ }).click();
+        assert.equal(await page.getByRole("slider").inputValue(), "1100");
+        assert.equal(await page.evaluate(() => (window as any).media.currentTime), 1.1);
+        await page.getByRole("button", { name: /Network failure at 0:02.4/ }).click();
+        assert.equal(await page.getByRole("slider").inputValue(), "2400");
+      },
+    );
+
+    await t.test(
       "screenshot comments show literal authored text and seek their source moment",
       async () => {
         await page.evaluate(() =>
@@ -234,17 +275,30 @@ test(
         assert.equal(await page.locator(".review-event").count(), 2);
         assert.equal(await page.getByRole("button", { name: /\/future/ }).count(), 0);
         await page.getByRole("button", { name: /\/second/ }).click();
-        assert.deepEqual(JSON.parse(await page.locator(".review-detail").innerText()), {
-          phase: "timing",
-          url: "/second",
-          durationMs: 22,
-        });
+        assert.equal(
+          await page
+            .locator(".review-detail")
+            .evaluate((node: HTMLDetailsElement) => node.open),
+          false,
+        );
+        await page.locator(".review-detail summary").click();
+        assert.deepEqual(
+          JSON.parse(await page.locator(".review-detail pre").innerText()),
+          {
+            phase: "timing",
+            url: "/second",
+            durationMs: 22,
+          },
+        );
         await page.getByRole("button", { name: /\/first/ }).click();
-        assert.deepEqual(JSON.parse(await page.locator(".review-detail").innerText()), {
-          phase: "timing",
-          url: "/first",
-          durationMs: 11,
-        });
+        assert.deepEqual(
+          JSON.parse(await page.locator(".review-detail pre").innerText()),
+          {
+            phase: "timing",
+            url: "/first",
+            durationMs: 11,
+          },
+        );
       },
     );
   },

@@ -110,7 +110,7 @@ try {
   assert.ok(!serialized.includes("CANARY_INPUT"), "explicit input privacy");
   assert.ok(!serialized.includes("CANARY_START"));
   await recorder.waitForTimeout(1300);
-  await recorder.getByRole("heading", { name: "Review before sending" }).waitFor();
+  await recorder.getByRole("heading", { name: "Recorded moments" }).waitFor();
   await recorder.waitForFunction(
     () =>
       document
@@ -124,11 +124,17 @@ try {
     .filter({ hasText: "Click Change" })
     .first();
   await activity.click();
-  assert.match(await recorder.locator(".review-detail").innerText(), /"x"/);
+  assert.equal(
+    await recorder.locator(".review-detail").evaluate((details) => details.open),
+    false,
+  );
+  await recorder.locator(".review-detail summary").click();
+  assert.match(await recorder.locator(".review-detail pre").innerText(), /"x"/);
   await recorder.getByRole("tab", { name: /Console/ }).click();
   await recorder.locator(".review-mode input").check();
   await recorder.locator(".review-event").filter({ hasText: "error" }).first().click();
-  assert.match(await recorder.locator(".review-detail").innerText(), /42/);
+  await recorder.locator(".review-detail summary").click();
+  assert.match(await recorder.locator(".review-detail pre").innerText(), /42/);
   await recorder.locator('input[aria-label="Captured context timeline"]').fill("0");
   assert.equal(
     await recorder.locator(".review-detail").isVisible(),
@@ -152,6 +158,7 @@ try {
     .locator(".review-event")
     .filter({ hasText: "Visible synthetic typed value" })
     .waitFor();
+  await recorder.locator(".review-guide summary").click();
   assert.match(
     await recorder.locator("#capture-inspector").innerText(),
     /Ordinary typed values are included/,

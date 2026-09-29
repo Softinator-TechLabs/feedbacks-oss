@@ -154,15 +154,17 @@ export function createSessionReview(
   root.hidden = false;
   root.replaceChildren();
   root.classList.add("session-review");
-  root.append(make("h2", "Review before sending"));
-  root.append(
+  root.append(make("h2", "Recorded moments"));
+  const guide = make("details", null, "review-guide");
+  guide.append(make("summary", "About this capture"));
+  guide.append(
     make(
       "p",
       "Play or scrub the capture. Select an event to inspect its moment. Nothing is shared until you send.",
       "hint",
     ),
   );
-  root.append(
+  guide.append(
     make(
       "p",
       recording.privacy?.maskInputs
@@ -171,6 +173,7 @@ export function createSessionReview(
       "hint",
     ),
   );
+  root.append(guide);
   if (recording.coverage?.length) {
     const coverage = make("details", null, "review-coverage");
     const gaps = recording.coverage.filter((c) => c.status !== "complete");
@@ -206,9 +209,82 @@ export function createSessionReview(
   range.max = String(recording.durationMs);
   range.step = "10";
   range.value = "0";
-  range.setAttribute("aria-label", "Captured context timeline");
+  range.setAttribute(
+    "aria-label",
+    videoElement ? "Video and event timeline" : "Captured context timeline",
+  );
   toolbar.append(play, range, clock);
   root.append(toolbar);
+  if (videoElement) {
+    const strip = make("div", null, "review-timeline-events");
+    strip.setAttribute("aria-label", "Events on the video timeline");
+    const grouped = new Map();
+    for (const event of recording.events.filter((e) =>
+      ["activity", "console", "network"].includes(e.type),
+    )) {
+      const position = Math.min(
+        200,
+        Math.max(0, Math.round((event.atMs / Math.max(1, recording.durationMs)) * 200)),
+      );
+      const key = `${event.type}:${position}`;
+      const group = grouped.get(key);
+      if (group) {
+        group.count++;
+        if (event.data?.level === "error" || event.data?.status >= 400)
+          group.error = true;
+      } else
+        grouped.set(key, {
+          event,
+          position,
+          count: 1,
+          error: event.data?.level === "error" || event.data?.status >= 400,
+        });
+    }
+    for (const { event, position, count, error } of grouped.values()) {
+      const mark = make("button", null, "review-timeline-mark");
+      const kind =
+        event.type === "activity"
+          ? event.data?.action === "click"
+            ? "Click"
+            : event.data?.action === "input"
+              ? "Typing"
+              : "Activity"
+          : event.type === "console"
+            ? `Console ${event.data?.level === "warn" ? "warning" : event.data?.level || "log"}`
+            : error
+              ? "Network failure"
+              : "Network";
+      mark.type = "button";
+      mark.setAttribute(
+        "aria-label",
+        `${kind} at ${reviewTime(event.atMs)}${count > 1 ? `, ${count} events` : ""}`,
+      );
+      mark.title = `${kind} · ${reviewTime(event.atMs)}${count > 1 ? ` · ${count} events` : ""}`;
+      mark.dataset.channel = event.type;
+      mark.dataset.error = String(error);
+      mark.style.left = `${position / 2}%`;
+      mark.onclick = () => {
+        pause();
+        selected = event.type;
+        detailEvent = event;
+        seek(event.atMs);
+      };
+      strip.append(mark);
+    }
+    root.append(strip);
+    const legend = make("p", null, "review-timeline-legend");
+    legend.append("Timeline: ");
+    for (const [channel, label] of [
+      ["activity", "actions"],
+      ["console", "console"],
+      ["network", "network"],
+    ]) {
+      const item = make("span", label);
+      item.dataset.channel = channel;
+      legend.append(item);
+    }
+    root.append(legend);
+  }
   const gap = make("p", "", "hint");
   root.append(gap);
   if (annotations.length) {
@@ -266,6 +342,7 @@ export function createSessionReview(
       eventPage = 0;
       detailEvent = null;
       details.hidden = true;
+      details.open = false;
       render();
     };
     buttons[channel] = b;
@@ -284,13 +361,17 @@ export function createSessionReview(
     allEvents = mode.checked;
     eventPage = 0;
     details.hidden = true;
+    details.open = false;
     detailEvent = null;
     render();
   };
   const content = make("div", null, "review-events");
   content.setAttribute("aria-label", "Captured events");
   root.append(content);
-  const details = make("pre", null, "review-detail");
+  const details = make("details", null, "review-detail");
+  const detailSummary = make("summary", "Technical details");
+  const detailBody = make("pre");
+  details.append(detailSummary, detailBody);
   details.hidden = true;
   root.append(details);
   function replay(message) {
@@ -328,7 +409,9 @@ export function createSessionReview(
           "p",
           selected === "activity"
             ? "No activity captured."
-            : "No events at this time. Scrub forward to inspect later events.",
+            : selected === "console"
+              ? "No console messages captured. Recording starts when you press Start; earlier DevTools messages are not copied. Logs, warnings and errors are included when observed."
+              : "No events at this time. Scrub forward to inspect later events.",
           "hint",
         ),
       );
@@ -355,7 +438,7 @@ export function createSessionReview(
             ? detailEvent
             : null;
       details.hidden = !visible;
-      details.textContent = visible ? JSON.stringify(visible.data, null, 2) : "";
+      detailBody.textContent = visible ? JSON.stringify(visible.data, null, 2) : "";
     }
     if (rows.length > 200) {
       const pagination = make("div", null, "review-toolbar"),

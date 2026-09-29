@@ -1,4 +1,5 @@
 import { checkForUpdates, createReleaseSelectionGate, releaseLinks } from "./updates.js";
+import { prepareCaptureOrigins } from "./session-origins.js";
 
 const $ = (id) => document.getElementById(id);
 const send = async (message) => {
@@ -251,6 +252,14 @@ async function refresh() {
     $("instant-help").hidden = $("instant").hidden;
     void refreshRelease(state).catch(() => {});
     [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.url && /^https?:/.test(tab.url)) {
+      const { recordingRedirectOrigins = {} } = await chrome.storage.local.get(
+        "recordingRedirectOrigins",
+      );
+      $("record-redirect-origins").value = (
+        recordingRedirectOrigins[new URL(tab.url).origin] || []
+      ).join(", ");
+    }
     if (state.connected) await start();
     else $("routing").textContent = "";
     if (state.hasDraft)
@@ -399,6 +408,25 @@ action("record-video", async () => {
     throw Error("Open a website before recording a tab video.");
   await send({ type: "openRecorder", tabId: tab.id });
   window.close();
+});
+action("save-record-redirects", async () => {
+  if (!tab?.url || !/^https?:/.test(tab.url))
+    throw Error("Open the website to configure its redirects.");
+  const source = new URL(tab.url).origin;
+  const allowed = await prepareCaptureOrigins(
+    { url: tab.url, origin: source },
+    $("record-redirect-origins").value,
+  );
+  const { recordingRedirectOrigins = {} } = await chrome.storage.local.get(
+    "recordingRedirectOrigins",
+  );
+  await chrome.storage.local.set({
+    recordingRedirectOrigins: { ...recordingRedirectOrigins, [source]: allowed.slice(1) },
+  });
+  $("message").textContent =
+    allowed.length > 1
+      ? "Redirect sites saved for this website."
+      : "Redirect sites cleared for this website.";
 });
 action("disconnect", async () => {
   await send({ type: "disconnect" });

@@ -8,11 +8,26 @@ import { Operations } from "../src/server/operations.js";
 import sharp from "sharp";
 import { outputSchemas } from "../src/shared/contracts.js";
 import { recordingSchema, redactRecording } from "../src/shared/recordings.js";
+import { prepareRecording } from "../src/server/recordings.js";
 
 const context = {
   url: "https://example.test/page",
   viewport: { width: 1000, height: 800 },
 };
+test("recording objects use the same private project prefix as video assets", () => {
+  const projectId = randomUUID();
+  const threadId = randomUUID();
+  const prepared = prepareRecording({ threadId, recording: fixture() }, projectId, {
+    production: true,
+    organizationId: "company",
+  } as any);
+  assert.match(
+    prepared.objectKey,
+    new RegExp(
+      `^feedbacks/production/organizations/company/projects/${projectId}/feedback/${threadId}/recordings/[a-f0-9-]+\\.json$`,
+    ),
+  );
+});
 function fixture(id = randomUUID()) {
   return {
     schemaVersion: 1,
@@ -912,6 +927,168 @@ test("recording frames preserve authorized source time, reject rebinding and exp
     await assert.rejects(
       upload({ recordingId: linear.id, atMs: 1000, videoTimeMs: 500 }),
       { code: "VALIDATION" },
+    );
+  } finally {
+    await pg.close();
+  }
+});
+
+test("a teammate can turn a saved frame into a point and revise its marks without duplicate evidence", async () => {
+  const pg = new PGlite();
+  const db = new Database(pg as any);
+  const objects = new Map<string, Buffer>();
+  const store = {
+    put: async (key: string, bytes: Buffer) => void objects.set(key, bytes),
+    get: async (key: string) => objects.get(key)!,
+    remove: async (key: string) => void objects.delete(key),
+  };
+  try {
+    await migrate(db);
+    const ops = new Operations(
+      db,
+      store as any,
+      { organizationId: "synthetic", production: false } as any,
+    );
+    const owner = await ops.auth.bootstrap(
+      "markup@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const project = await ops.executeOperation(owner, "projects.create", {
+      name: "Markup",
+      origins: ["https://example.test"],
+    });
+    let thread = await ops.executeOperation(owner, "threads.create", {
+      projectId: project.id,
+      body: "Frame point",
+      context,
+      idempotencyKey: randomUUID(),
+    });
+    const recording = { ...fixture(), events: [], durationMs: 3000 };
+    thread = (
+      await ops.executeOperation(owner, "recordings.upload", {
+        threadId: thread.id,
+        revision: thread.revision,
+        recording,
+        idempotencyKey: randomUUID(),
+      })
+    ).thread;
+    const imageBase64 = (
+      await sharp({
+        create: { width: 320, height: 180, channels: 3, background: "blue" },
+      })
+        .png()
+        .toBuffer()
+    ).toString("base64");
+    const raw = await ops.executeOperation(owner, "assets.upload", {
+      threadId: thread.id,
+      revision: thread.revision,
+      imageBase64,
+      recordingFrame: { recordingId: recording.id, atMs: 1200 },
+      rendition: "screenshot",
+      idempotencyKey: randomUUID(),
+    });
+    thread = raw.thread;
+    const otherThread = await ops.executeOperation(owner, "threads.create", {
+      projectId: project.id,
+      body: "Another feedback thread",
+      context,
+      idempotencyKey: randomUUID(),
+    });
+    await assert.rejects(
+      ops.executeOperation(owner, "assets.upload", {
+        threadId: otherThread.id,
+        revision: otherThread.revision,
+        replacesAssetId: raw.asset.id,
+        imageBase64,
+        markup: [
+          {
+            tool: "pencil",
+            points: [
+              { x: 0.2, y: 0.2 },
+              { x: 0.8, y: 0.8 },
+            ],
+          },
+        ],
+        idempotencyKey: randomUUID(),
+      }),
+      { code: "VALIDATION" },
+    );
+    const pointId = randomUUID();
+    const annotatedInput = {
+      threadId: thread.id,
+      revision: thread.revision,
+      replacesAssetId: raw.asset.id,
+      imageBase64,
+      point: { id: pointId, body: "Make the target larger", x: 0.4, y: 0.6 },
+      markup: [
+        {
+          tool: "ellipse",
+          points: [
+            { x: 0.3, y: 0.4 },
+            { x: 0.7, y: 0.8 },
+          ],
+        },
+      ],
+      idempotencyKey: randomUUID(),
+    };
+    const annotated = await ops.executeOperation(owner, "assets.upload", annotatedInput);
+    thread = annotated.thread;
+    assert.deepEqual(
+      thread.context.annotations.map((point: any) => point.id),
+      [pointId],
+    );
+    assert.deepEqual(
+      thread.assets.map((asset: any) => asset.id),
+      [annotated.asset.id],
+    );
+    assert.equal(annotated.asset.baseAssetId, raw.asset.id);
+    assert.equal(annotated.asset.recordingFrame.annotationId, pointId);
+    assert.equal(annotated.asset.markings[0].annotationId, pointId);
+    assert.equal(
+      (await ops.executeOperation(owner, "assets.upload", annotatedInput)).asset.id,
+      annotated.asset.id,
+    );
+    await assert.rejects(
+      ops.executeOperation(owner, "assets.upload", {
+        ...annotatedInput,
+        revision: thread.revision,
+        idempotencyKey: randomUUID(),
+      }),
+      { code: "VALIDATION" },
+    );
+    const revised = await ops.executeOperation(owner, "assets.upload", {
+      threadId: thread.id,
+      revision: thread.revision,
+      replacesAssetId: annotated.asset.id,
+      imageBase64,
+      markup: [
+        {
+          tool: "pencil",
+          points: [
+            { x: 0.2, y: 0.2 },
+            { x: 0.8, y: 0.8 },
+          ],
+        },
+      ],
+      idempotencyKey: randomUUID(),
+    });
+    assert.equal(revised.asset.baseAssetId, raw.asset.id);
+    assert.equal(revised.thread.context.annotations.length, 1);
+    assert.deepEqual(
+      revised.thread.assets.map((asset: any) => asset.id),
+      [revised.asset.id],
+    );
+    const exported = await ops.executeOperation(owner, "recordings.export", {
+      recordingId: recording.id,
+    });
+    assert.deepEqual(
+      exported.thread.frames.map((frame: any) => frame.id),
+      [revised.asset.id],
+    );
+    assert.equal(
+      (await ops.executeOperation(owner, "assets.get", { assetId: raw.asset.id })).id,
+      raw.asset.id,
     );
   } finally {
     await pg.close();

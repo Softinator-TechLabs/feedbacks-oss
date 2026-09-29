@@ -302,7 +302,10 @@ test(
       const frame = await page.locator(".recording-stage iframe").elementHandle();
       assert.ok(frame);
       await page.getByRole("button", { name: "Play replay" }).click();
-      await page.getByRole("button", { name: "Console" }).click();
+      await page
+        .locator(".recording-tabs")
+        .getByRole("button", { name: "Console" })
+        .click();
       await page.waitForFunction(
         () =>
           Number(
@@ -340,7 +343,10 @@ test(
       );
       await page.locator("#thread-recording-timeline").fill("1000");
       assert.equal(await page.locator(".recording-stage").isVisible(), true);
-      await page.getByRole("button", { name: "Network" }).click();
+      await page
+        .locator(".recording-tabs")
+        .getByRole("button", { name: "Network" })
+        .click();
       await page.getByRole("button", { name: "All events" }).click();
       await page.getByRole("button", { name: /POST.*api\/check/ }).click();
       assert.match(
@@ -356,7 +362,10 @@ test(
         (await page.locator(".recording-network-detail").textContent()) ?? "",
         /future response/,
       );
-      await page.getByRole("button", { name: "Activity" }).click();
+      await page
+        .locator(".recording-tabs")
+        .getByRole("button", { name: "Activity" })
+        .click();
       await page.getByRole("button", { name: "At playhead" }).click();
       assert.match(
         (await page.locator(".recording-events").textContent()) ?? "",
@@ -500,7 +509,7 @@ test(
     };
     const bundle = await build({
       stdin: {
-        contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/thread-recordings.tsx"; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[{id:"video",url:"/video.webm",contentType:"video/webm",rendition:"original",durationMs:2000}]},canWrite:true}));`,
+        contents: `import "./src/web/styles.css"; import "./src/web/thread-detail.css"; import "./src/web/theme.css"; import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/thread-recordings.tsx"; window.frameToAnnotate=null; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[{id:"video",url:"/video.webm",contentType:"video/webm",rendition:"original",durationMs:2000},{id:"annotated",url:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1cAAAAASUVORK5CYII=",contentType:"image/webp",rendition:"annotated",recordingFrame:{recordingId:"recording",atMs:2500,videoTimeMs:1500,annotationId:"point-1"}}],context:{annotations:[{id:"point-1",body:"Make this larger"}]}},canWrite:true,onAnnotateFrame:(frame)=>{window.frameToAnnotate=frame}}));`,
         loader: "tsx",
         resolveDir: process.cwd(),
       },
@@ -606,18 +615,64 @@ test(
       const replayMode = page.getByRole("button", { name: "Replay", exact: true });
       assert.equal(await videoMode.getAttribute("aria-pressed"), "true");
       assert.equal(await page.locator(".recording-media video").isVisible(), true);
+      const videoBox = (await page.locator(".recording-media video").boundingBox())!;
+      const timelineBox = (await page.locator(".recording-timeline").boundingBox())!;
+      const eventsBox = (await page.locator(".recording-diagnostics").boundingBox())!;
+      assert.ok(videoBox.y < timelineBox.y && timelineBox.y < eventsBox.y);
+      assert.ok(videoBox.width >= timelineBox.width * 0.8);
+      await page.screenshot({
+        path: ".local/thread-video-layout-light.png",
+        fullPage: true,
+      });
+      await page.evaluate(() => {
+        document.documentElement.dataset.theme = "dark";
+      });
+      await page.screenshot({
+        path: ".local/thread-video-layout-dark.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({
+        path: ".local/thread-video-layout-mobile.png",
+        fullPage: true,
+      });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      const mobileVideo = (await page.locator(".recording-media video").boundingBox())!;
+      const mobileTimeline = (await page.locator(".recording-timeline").boundingBox())!;
+      const mobileEvents = (await page.locator(".recording-diagnostics").boundingBox())!;
+      assert.ok(mobileVideo.y < mobileTimeline.y && mobileTimeline.y < mobileEvents.y);
+      await page.setViewportSize({ width: 1280, height: 720 });
       await replayMode.click();
       await page.locator(".recording-stage iframe").waitFor();
       assert.equal(await replayMode.getAttribute("aria-pressed"), "true");
       await videoMode.click();
       await page.locator(".recording-media video").waitFor();
       await page.getByRole("button", { name: "All events" }).click();
-      await page.getByRole("button", { name: /Clicked Buy/ }).click();
+      const pointMark = page.locator('.recording-timeline-mark[data-channel="point"]');
+      assert.match((await pointMark.getAttribute("title")) || "", /Make this larger/);
+      assert.equal(
+        await page.getByRole("heading", { name: "Screenshot comments (1)" }).isVisible(),
+        true,
+      );
+      const buyMark = page.locator('.recording-timeline-mark[title*="Clicked Buy"]');
+      assert.match((await buyMark.getAttribute("title")) || "", /0:02.5/);
+      await buyMark.click();
       await page.waitForFunction(
         () =>
           ![...document.querySelectorAll<HTMLButtonElement>("button")].find(
             (button) => button.textContent === "Save frame",
           )?.disabled,
+      );
+      await page.getByRole("button", { name: "Annotate frame" }).click();
+      const selectedFrame = await page.evaluate(() => (window as any).frameToAnnotate);
+      assert.match(selectedFrame.imageBase64, /^data:image\/png;base64,/);
+      assert.equal(selectedFrame.recordingFrame.recordingId, "recording");
+      assert.ok(
+        selectedFrame.recordingFrame.atMs >= 2250 &&
+          selectedFrame.recordingFrame.atMs <= 2750,
       );
       await page.getByRole("button", { name: "Save frame" }).click();
       await page.getByRole("link", { name: /Saved frame at/ }).waitFor();
@@ -639,7 +694,10 @@ test(
           document.querySelector<HTMLVideoElement>(".recording-media video")!
             .currentTime > 0.15,
       );
-      await page.getByRole("button", { name: /Clicked Removed/ }).click();
+      await page
+        .locator(".recording-events")
+        .getByRole("button", { name: /Clicked Removed/ })
+        .click();
       await page.waitForTimeout(150);
       assert.equal(
         await page.locator("#thread-recording-timeline").inputValue(),

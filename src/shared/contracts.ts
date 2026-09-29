@@ -207,6 +207,14 @@ const normalizedPointSchema = z.object({
   x: z.number().finite().min(0).max(1),
   y: z.number().finite().min(0).max(1),
 });
+export const imageMarkupSchema = z
+  .array(
+    z.object({
+      tool: z.enum(["pencil", "ellipse"]),
+      points: z.array(normalizedPointSchema).min(2).max(2000),
+    }),
+  )
+  .max(200);
 export const screenshotMarkSchema = z.object({
   tool: z.enum([
     "point",
@@ -840,6 +848,16 @@ export const inputSchemas = {
     recordingFrame: recordingFrameSchema.optional(),
     captureSections: z.array(captureSectionSchema).min(1).optional(),
     markings: z.array(screenshotMarkSchema).max(2000).optional(),
+    markup: imageMarkupSchema.optional(),
+    replacesAssetId: id.optional(),
+    point: z
+      .object({
+        id,
+        body: z.string().trim().min(1).max(4000),
+        x: normalizedPointSchema.shape.x,
+        y: normalizedPointSchema.shape.y,
+      })
+      .optional(),
     idempotencyKey: z.string().min(8).max(200),
   }),
   "assets.uploadVideo": z.object({
@@ -914,6 +932,8 @@ const assetMetadataOutput = z.object({
   recordingFrame: recordingFrameSchema.optional(),
   captureSections: z.array(captureSectionSchema).optional(),
   markings: z.array(screenshotMarkSchema).optional(),
+  markup: imageMarkupSchema.optional(),
+  baseAssetId: id.optional(),
   projectId: id.optional(),
   threadId: id.optional(),
 });

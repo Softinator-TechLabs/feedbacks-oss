@@ -1,5 +1,5 @@
-// Recorder pages own the media stream. The worker only routes explicit controls
-// from the corresponding review tab; no page-world message bridge is exposed.
+// The recorder tab stays in the background until Stop opens its review.
+// It requests its one-use tab-bound stream ID only when its page is ready.
 export function createRecordingControls({ chrome, sessionFor }) {
   const sessions = new Map();
   const elapsed = (entry) =>
@@ -135,10 +135,11 @@ export function createRecordingControls({ chrome, sessionFor }) {
       retire(sender.tab.id);
       await chrome.tabs.create({
         url: chrome.runtime.getURL(
-          `video.html?sourceTabId=${sender.tab.id}&reviewId=${encodeURIComponent(session.reviewId)}`,
+          `video.html?sourceTabId=${sender.tab.id}&reviewId=${encodeURIComponent(session.reviewId)}&autoStart=1`,
         ),
+        active: false,
       });
-      return { state: "idle" };
+      return { state: "starting" };
     },
     async control(sender, action) {
       const session = await sessionFor(sender);

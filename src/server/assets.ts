@@ -223,6 +223,27 @@ async function checkRecordingFrame(db: Database, thread: any, input: any) {
     fail("VALIDATION", "Frame time must match a retained moment of the recording video");
 }
 
+async function replacementSource(db: Database, thread: any, input: any) {
+  if (!input.replacesAssetId) {
+    if (input.point) fail("VALIDATION", "Save a screenshot before adding a point to it");
+    return null;
+  }
+  const source = await db.one(
+    "SELECT id,data FROM assets WHERE id=$1 AND thread_id=$2 AND project_id=$3 AND status='validated'",
+    [input.replacesAssetId, thread.id, thread.project_id],
+  );
+  if (!source || source.data.contentType !== "image/webp" || source.data.supersededBy)
+    fail("VALIDATION", "Choose the latest screenshot on this feedback thread");
+  if (input.recordingFrame)
+    fail("VALIDATION", "Screenshot revisions keep their original recording moment");
+  if (input.point) {
+    const points = thread.data.context.annotations ?? [];
+    if (points.length >= 100 || points.some((point: any) => point.id === input.point.id))
+      fail("VALIDATION", "This point cannot be added to the feedback thread");
+  }
+  return source;
+}
+
 export async function assetUploadPreflight(db: Database, a: Actor, i: any) {
   const row = await threadRow(db, a, i.threadId, "write");
   const prior = await retry(
@@ -240,11 +261,19 @@ export async function assetUploadPreflight(db: Database, a: Actor, i: any) {
       },
     };
   checkRevision(row, i.revision);
-  await checkRecordingFrame(db, row, i);
-  return { projectId: row.project_id as string, prior: null };
+  const source = await replacementSource(db, row, i);
+  await checkRecordingFrame(db, row, {
+    recordingFrame: source?.data.recordingFrame ?? i.recordingFrame,
+  });
+  return { projectId: row.project_id as string, prior: null, source };
 }
 
-export async function prepareAssetUpload(i: any, config: Config, projectId: string) {
+export async function prepareAssetUpload(
+  i: any,
+  config: Config,
+  projectId: string,
+  source?: { id: string; data: any } | null,
+) {
   const raw = i.imageBase64.replace(/^data:image\/(?:png|jpeg|webp);base64,/, "");
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(raw))
     fail("VALIDATION", "Expected a base64 PNG, JPEG or WebP image");
@@ -274,15 +303,43 @@ export async function prepareAssetUpload(i: any, config: Config, projectId: stri
   }
   const id = randomUUID(),
     captureId = randomUUID();
-  const key = `feedbacks/${config.production ? "production" : "development"}/organizations/${config.organizationId}/projects/${projectId}/feedback/${i.threadId}/captures/${captureId}/${i.rendition}.webp`;
+  const rendition = i.point ? "annotated" : (source?.data.rendition ?? i.rendition);
+  const key = `feedbacks/${config.production ? "production" : "development"}/organizations/${config.organizationId}/projects/${projectId}/feedback/${i.threadId}/captures/${captureId}/${rendition}.webp`;
+  const recordingFrame = source?.data.recordingFrame ?? i.recordingFrame;
+  const pointMark = i.point
+    ? {
+        tool: "point" as const,
+        bounds: { x: i.point.x, y: i.point.y, width: 0, height: 0 },
+        endpoints: [{ x: i.point.x, y: i.point.y }],
+        annotationId: i.point.id,
+      }
+    : null;
+  const markings = [
+    ...(source?.data.markings ?? i.markings ?? []),
+    ...(pointMark ? [pointMark] : []),
+  ];
   const data = {
     captureId,
-    rendition: i.rendition,
-    ...(i.filename ? { filename: i.filename } : {}),
-    ...(i.captureRegion ? { captureRegion: i.captureRegion } : {}),
-    ...(i.recordingFrame ? { recordingFrame: i.recordingFrame } : {}),
-    ...(i.captureSections ? { captureSections: i.captureSections } : {}),
-    ...(i.markings?.length ? { markings: i.markings } : {}),
+    rendition,
+    ...(source?.data.filename || i.filename
+      ? { filename: source?.data.filename ?? i.filename }
+      : {}),
+    ...(source?.data.captureRegion || i.captureRegion
+      ? { captureRegion: source?.data.captureRegion ?? i.captureRegion }
+      : {}),
+    ...(recordingFrame
+      ? {
+          recordingFrame: i.point
+            ? { ...recordingFrame, annotationId: i.point.id }
+            : recordingFrame,
+        }
+      : {}),
+    ...(source?.data.captureSections || i.captureSections
+      ? { captureSections: source?.data.captureSections ?? i.captureSections }
+      : {}),
+    ...(markings.length ? { markings } : {}),
+    ...(i.markup?.length ? { markup: i.markup } : {}),
+    ...(source ? { baseAssetId: source.data.baseAssetId ?? source.id } : {}),
     width: metadata.width,
     height: metadata.height,
     bytes: output.length,
@@ -399,16 +456,51 @@ export async function commitAssetUpload(
   checkRevision(row, i.revision);
   if (row.project_id !== prepared.projectId)
     fail("CONFLICT", "Feedback changed; reload before retrying", 409);
-  await checkRecordingFrame(db, row, i);
+  const source = await replacementSource(db, row, i);
+  await checkRecordingFrame(db, row, {
+    recordingFrame: source?.data.recordingFrame ?? i.recordingFrame,
+  });
+  if (
+    source &&
+    (!("baseAssetId" in prepared.data) ||
+      prepared.data.baseAssetId !== (source.data.baseAssetId ?? source.id))
+  )
+    fail("CONFLICT", "Screenshot changed; reload before retrying", 409);
   await db.query(
     "INSERT INTO assets(id,project_id,thread_id,object_key,data,status) VALUES($1,$2,$3,$4,$5,'validated')",
     [prepared.id, row.project_id, row.id, prepared.key, JSON.stringify(prepared.data)],
   );
+  if (source)
+    await db.query(
+      "UPDATE assets SET data=jsonb_set(data,'{supersededBy}',to_jsonb($2::text),true) WHERE id=$1",
+      [source.id, prepared.id],
+    );
+  if (i.point) {
+    if (!("width" in prepared.data) || !("height" in prepared.data))
+      fail("VALIDATION", "Points require a screenshot");
+    row.data.context.annotations ??= [];
+    row.data.context.annotations.push({
+      id: i.point.id,
+      body: i.point.body,
+      anchor: {
+        confidence: "coordinate-only",
+        capturedAt: new Date().toISOString(),
+        viewport: { width: prepared.data.width, height: prepared.data.height },
+        screenshotPoint: {
+          x: Math.round(i.point.x * prepared.data.width),
+          y: Math.round(i.point.y * prepared.data.height),
+        },
+      },
+    });
+  }
   await remember(db, a, operation, i, prepared.id);
   await event(db, a, row.project_id, prepared.id, "asset.validated", {
     threadId: row.id,
   });
-  const saved = await saveThread(db, a, row, "thread.asset");
+  const saved = await saveThread(db, a, row, "thread.asset", {
+    ...(i.point ? { annotationId: i.point.id } : {}),
+    ...(source ? { replacesAssetId: source.id } : {}),
+  });
   return {
     committed: true,
     result: {

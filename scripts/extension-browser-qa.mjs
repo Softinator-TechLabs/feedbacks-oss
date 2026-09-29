@@ -35,6 +35,29 @@ const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 // is never packaged, and optional permission UX remains a separate gate.
 manifest.host_permissions = ["<all_urls>"];
 await writeFile(manifestPath, JSON.stringify(manifest));
+// Headless Chrome cannot grant a toolbar invocation to tabCapture. This test
+// copy swaps only the one-use ID and media source; the packaged ZIP is untouched.
+const backgroundPath = join(extension, "background.js");
+const backgroundSource = await readFile(backgroundPath, "utf8");
+const nativeStreamId = `streamId: await chrome.tabCapture.getMediaStreamId({
+          targetTabId: tab.id,
+          consumerTabId: sender.tab.id,
+        }),`;
+assert.ok(backgroundSource.includes(nativeStreamId));
+await writeFile(
+  backgroundPath,
+  backgroundSource.replace(nativeStreamId, 'streamId: "qa-tab-stream",'),
+);
+const videoHtmlPath = join(extension, "video.html");
+const videoHtml = await readFile(videoHtmlPath, "utf8");
+assert.ok(videoHtml.includes('id="debug-context" type="checkbox" checked'));
+await writeFile(
+  videoHtmlPath,
+  videoHtml.replace(
+    'id="debug-context" type="checkbox" checked',
+    'id="debug-context" type="checkbox"',
+  ),
+);
 
 const sandbox = spawn(process.execPath, ["scripts/dev-sandbox.mjs"], {
   cwd: root,
@@ -2825,14 +2848,16 @@ try {
   };
   await page.bringToFront();
   await send({ type: "activate", tabId: id });
-  // Real MediaRecorder, deterministic local canvas stream in place of Chrome's
-  // user-operated picker. Do not record a user's desktop in automated tests.
-  const recorderOpened = context.waitForEvent("page");
-  await sendFromReview({ type: "openRecorder" });
-  const recorderPage = await recorderOpened;
-  await recorderPage.waitForLoadState();
-  await recorderPage.locator("#start:enabled").waitFor();
-  await recorderPage.evaluate(() => {
+  // Real MediaRecorder with deterministic local canvas and tone instead of a
+  // toolbar-granted tab capture. The actual tabCapture permission is a manual gate.
+  await worker.evaluate(() =>
+    chrome.storage.local.set({
+      videoRecordingOptions: { tabAudio: true, microphone: true },
+    }),
+  );
+  await context.addInitScript(() => {
+    if (location.protocol !== "chrome-extension:" || location.pathname !== "/video.html")
+      return;
     window.qaPlaybackVideos = [];
     const play = HTMLMediaElement.prototype.play;
     HTMLMediaElement.prototype.play = function () {
@@ -2849,8 +2874,8 @@ try {
       track.addEventListener("ended", () => audio.close());
       return destination.stream;
     };
-    navigator.mediaDevices.getUserMedia = async () => tone();
-    navigator.mediaDevices.getDisplayMedia = async () => {
+    navigator.mediaDevices.getUserMedia = async (options) => {
+      if (!options?.video) return tone();
       const canvas = document.createElement("canvas");
       canvas.width = 320;
       canvas.height = 180;
@@ -2871,12 +2896,11 @@ try {
       return stream;
     };
   });
-  // This legacy media fixture is a synthetic canvas stream, not a native tab.
-  // Exercise video-only editing here; real session capture has a separate fixture.
-  await recorderPage.locator("#debug-context").uncheck();
-  await recorderPage.locator("#tab-audio").check();
-  await recorderPage.locator("#microphone").check();
-  await recorderPage.locator("#start").click();
+  const recorderOpened = context.waitForEvent("page");
+  await sendFromReview({ type: "openRecorder" });
+  const recorderPage = await recorderOpened;
+  await recorderPage.waitForLoadState();
+  await recorderPage.locator("#stop:visible").waitFor();
   await page.waitForTimeout(400);
   assert.match(
     await recorderPage.locator("#timer").textContent(),

@@ -308,7 +308,17 @@ export type Thread = {
     rendition: string;
     contentType: "image/webp" | "video/webm";
     durationMs?: number;
-    recordingFrame?: { recordingId: string; atMs: number; videoTimeMs: number };
+    recordingFrame?: {
+      recordingId: string;
+      atMs: number;
+      videoTimeMs?: number;
+      annotationId?: string;
+    };
+    baseAssetId?: string;
+    markup?: Array<{
+      tool: "pencil" | "ellipse";
+      points: Array<{ x: number; y: number }>;
+    }>;
     filename?: string;
     captureRegion?: { startY: number; endY: number; pageWidth: number };
     captureSections?: Array<{

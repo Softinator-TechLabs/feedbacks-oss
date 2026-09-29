@@ -34,6 +34,7 @@ for (const tabAudio of [false, true])
           {
             value: "",
             checked: false,
+            addEventListener() {},
             removeAttribute() {},
             replaceChildren() {},
           },
@@ -233,6 +234,6 @@ for (const tabAudio of [false, true])
         true,
         "all input and mixed tracks released",
       );
-      assert.equal(closed, Number(mic));
+      assert.equal(closed, Number(tabAudio || mic));
     });
   }

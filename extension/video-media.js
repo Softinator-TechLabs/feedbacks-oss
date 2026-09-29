@@ -101,27 +101,40 @@ export async function exportVideo({ url, start, end, crop, signal, onProgress })
       const chunks = [];
       let bytes = 0,
         error,
-        sourceEnded = false;
-      const finish = () => {
+        sourceEnded = false,
+        waitingForData = false,
+        finishTimer;
+      const stopRecorder = () => {
         if (recorder.state !== "inactive") recorder.stop();
+      };
+      const finish = () => {
+        if (waitingForData || recorder.state === "inactive") return;
+        if (chunks.length) return stopRecorder();
+        // Chromium may still be encoding the first short clip frame. Keep the
+        // canvas alive briefly and request buffered data before stopping.
+        waitingForData = true;
+        recorder.requestData();
+        finishTimer = setTimeout(stopRecorder, 1200);
       };
       const abort = () => {
         error = Error("Export cancelled. Original recording kept.");
-        finish();
+        stopRecorder();
       };
       signal.addEventListener("abort", abort, { once: true });
       recorder.ondataavailable = ({ data }) => {
         bytes += data.size;
         if (bytes > VIDEO_MAX_BYTES) {
           error = Error("Export exceeds 40 MiB. Trim a shorter clip.");
-          finish();
+          stopRecorder();
         } else if (data.size) chunks.push(data);
+        if (waitingForData && chunks.length) stopRecorder();
       };
       recorder.onerror = () => {
         error = Error("Video export failed. Original recording kept.");
-        finish();
+        stopRecorder();
       };
       recorder.onstop = () => {
+        clearTimeout(finishTimer);
         signal.removeEventListener("abort", abort);
         if (error || !chunks.length) reject(error || Error("No video was exported."));
         else resolve(new Blob(chunks, { type: "video/webm" }));
@@ -134,7 +147,7 @@ export async function exportVideo({ url, start, end, crop, signal, onProgress })
         if (Number.isFinite(video.duration) && end <= video.duration) sourceEnded = true;
         else finish();
       };
-      recorder.start(1000);
+      recorder.start(100);
       // The initial draw may have been consumed before MediaRecorder existed.
       // Publish it again after starting, including for a completely static clip.
       draw();
