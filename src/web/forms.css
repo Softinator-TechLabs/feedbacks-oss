@@ -1,12 +1,17 @@
 /* Every select shares the same readable control, including inline review tools. */
 select {
+  appearance: none;
   min-height: 44px;
   min-width: 0;
   max-width: 100%;
-  padding: 9px 12px;
+  padding: 9px 38px 9px 12px;
   border: 1px solid var(--control-border);
   border-radius: 8px;
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--select-chevron);
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
   color: inherit;
   font: inherit;
   font-weight: 400;
@@ -18,8 +23,14 @@ select:hover {
 }
 select:disabled {
   color: var(--muted);
-  background: var(--soft-surface);
+  background-color: var(--soft-surface);
   cursor: not-allowed;
+}
+@media (forced-colors: active) {
+  select {
+    appearance: auto;
+    background-image: none;
+  }
 }
 .form-grid {
   display: grid;
@@ -44,12 +55,18 @@ select:disabled {
 .field select {
   border: 1px solid var(--control-border);
   border-radius: 8px;
-  padding: 10px 12px;
   width: 100%;
   min-height: 44px;
-  background: #fff;
+  background-color: #fff;
   color: #202c37;
   font-weight: 400;
+}
+.field input,
+.field textarea {
+  padding: 10px 12px;
+}
+.field select {
+  padding: 10px 38px 10px 12px;
 }
 .field textarea {
   resize: vertical;

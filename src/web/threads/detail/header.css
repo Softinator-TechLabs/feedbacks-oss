@@ -136,6 +136,7 @@
 .thread-header-actions .status-controls select {
   width: clamp(110px, 11vw, 135px);
   max-width: 135px;
+  padding-right: 38px;
   border-color: var(--control-border);
   font-weight: 600;
 }

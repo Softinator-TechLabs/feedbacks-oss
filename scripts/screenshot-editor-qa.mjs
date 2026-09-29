@@ -501,14 +501,23 @@ try {
     true,
     "mobile page fits viewport",
   );
-  assert.equal(
-    await page.evaluate(() => {
-      const top = (selector) =>
-        document.querySelector(selector).getBoundingClientRect().top;
-      return top("#zoom") === top(".download-menu summary");
+  const mobileExports = await page.evaluate(() =>
+    [
+      ".export-tools",
+      ".zoom-control",
+      "#export-scope",
+      '[data-export="copy"]',
+      ".download-menu summary",
+    ].map((selector) => {
+      const rect = document.querySelector(selector).getBoundingClientRect();
+      return { selector, top: rect.top, width: rect.width, left: rect.left };
     }),
-    true,
-    "mobile zoom and export actions stay on one row",
+  );
+  assert.ok(
+    Math.abs(mobileExports[1].top - mobileExports[4].top) <= 2 &&
+      mobileExports[4].left + mobileExports[4].width <=
+        mobileExports[0].left + mobileExports[0].width,
+    `mobile zoom and export actions stay on one row: ${JSON.stringify(mobileExports)}`,
   );
   await page.screenshot({
     path: join(root, ".local/screenshot-editor-qa/mobile-dark.png"),

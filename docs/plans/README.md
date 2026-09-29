@@ -8,6 +8,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 - [Discussion comment edit and delete](discussion-comment-management.md)
 - [Compact extension review controls](compact-extension-review-controls.md)
+- [Consistent browser select arrows](select-chevron-spacing.md)
 - [Project administration tabs](project-administration-tabs.md)
 - [Compact Account navigation](account-mobile-navigation.md)
 - [Modular source structure](modular-source-structure.md)

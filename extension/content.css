@@ -1,6 +1,26 @@
 :host {
   all: initial;
   color-scheme: light;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 6 5 5 5-5' fill='none' stroke='%23596672' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+select {
+  appearance: none;
+  padding-right: 38px;
+  background-image: var(--select-chevron);
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :host {
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 6 5 5 5-5' fill='none' stroke='%23a9b8c6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+}
+@media (forced-colors: active) {
+  select {
+    appearance: auto;
+    background-image: none;
+  }
 }
 .pin.resolved {
   background: #53765f;
@@ -584,10 +604,10 @@ button:focus-visible {
   width: 100%;
   min-width: 0;
   min-height: 36px;
-  padding: 5px 7px;
+  padding: 5px 38px 5px 7px;
   border: 1px solid #adb8c1;
   border-radius: 6px;
-  background: #fff;
+  background-color: #fff;
   color: #202c37;
   font: inherit;
 }
@@ -596,7 +616,7 @@ button:focus-visible {
     color: #b0bec9;
   }
   .capture-marker-controls select {
-    background: #171e25;
+    background-color: #171e25;
     color: #e5ebf0;
     border-color: #52616d;
   }
@@ -716,11 +736,16 @@ button:focus-visible {
 .recording-options-panel input[type="text"] {
   width: 100%;
   min-height: 34px;
-  padding: 5px 7px;
   border: 1px solid #bdc5cc;
   border-radius: 5px;
-  background: #fff;
+  background-color: #fff;
   color: #202c37;
+}
+.recording-options-panel select {
+  padding: 5px 38px 5px 7px;
+}
+.recording-options-panel input[type="text"] {
+  padding: 5px 7px;
 }
 .recording-option-group {
   display: grid;
@@ -738,7 +763,7 @@ button:focus-visible {
   .recording-options > summary,
   .recording-options-panel select,
   .recording-options-panel input[type="text"] {
-    background: #171e25;
+    background-color: #171e25;
     color: #e5ebf0;
     border-color: #52616d;
   }

@@ -17,6 +17,7 @@
   --focus: #3875a9;
   --error: #a3262d;
   --success: #25543b;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 6 5 5 5-5' fill='none' stroke='%23596672' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   color: var(--text);
   background: var(--canvas);
   accent-color: var(--accent);
@@ -47,6 +48,14 @@ textarea {
   background: var(--canvas);
   color: var(--text);
 }
+select {
+  appearance: none;
+  padding-right: 38px;
+  background-image: var(--select-chevron);
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+}
 button {
   cursor: pointer;
   font-weight: 600;
@@ -74,7 +83,7 @@ button:disabled,
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background: var(--workbench);
+  background-color: var(--workbench);
   color: var(--muted);
   border-color: var(--line);
   cursor: not-allowed;
@@ -190,9 +199,14 @@ p {
     --focus: #96c6ed;
     --error: #ffb1b6;
     --success: #b4e3c7;
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 6 5 5 5-5' fill='none' stroke='%23a9b8c6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 }
 @media (forced-colors: active) {
+  select {
+    appearance: auto;
+    background-image: none;
+  }
   button[aria-pressed="true"],
   .primary {
     border: 2px solid Highlight;
