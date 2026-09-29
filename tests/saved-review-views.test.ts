@@ -11,7 +11,7 @@ test("saved-view controls open from one named icon disclosure", async () => {
     window: { addEventListener() {} },
     BroadcastChannel: undefined,
   });
-  const { SavedReviewViews } = await import("../src/web/review-tools.js");
+  const { SavedReviewViews } = await import("../src/web/threads/saved-views.js");
   const markup = renderToStaticMarkup(
     React.createElement(SavedReviewViews, {
       projectId: "example",

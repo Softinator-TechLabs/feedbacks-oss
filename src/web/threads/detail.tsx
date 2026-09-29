@@ -8,7 +8,7 @@ import { ThreadAssignments } from "../assignments/thread-assignments.js";
 import { ThreadReview } from "./review.js";
 import { DiscussionLike } from "../discussion-like.js";
 import { ContextPanel } from "./context.js";
-import { ReviewEvidence } from "../review-evidence.js";
+import { ReviewEvidence } from "./detail/evidence.js";
 import { ThreadRecordings } from "../recordings/thread-recordings.js";
 import { ScreenshotMarkup, type MarkupTarget } from "../screenshot-markup.js";
 import { ThreadAttachments } from "./attachments.js";
@@ -19,12 +19,10 @@ import {
 } from "./diagnostic-evidence.js";
 import { PointProgressRing } from "../point-progress-ring.js";
 import { navigate, useUnsavedChanges } from "../navigation.js";
-import {
-  ThreadNavigation,
-  ThreadOrganization,
-  ScreenshotComparison,
-  ThreadDiagnostics,
-} from "../review-tools.js";
+import { ThreadNavigation } from "./detail/navigation.js";
+import { ThreadOrganization } from "./detail/organization.js";
+import { ScreenshotComparison } from "./detail/comparison.js";
+import { ThreadDiagnostics } from "./detail/diagnostics.js";
 import { MentionInput } from "../mention-input.js";
 import { MarkdownText } from "../markdown-text.js";
 import {

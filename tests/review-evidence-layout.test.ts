@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ReviewEvidence } from "../src/web/review-evidence.js";
+import { ReviewEvidence } from "../src/web/threads/detail/evidence.js";
 import type { Thread } from "../src/web/api.js";
 
 function thread(withOverview = true): Thread {

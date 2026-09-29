@@ -1,0 +1,43 @@
+.comparison-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.comparison-side figure {
+  margin: 0;
+  min-width: 0;
+}
+.comparison-side img,
+.comparison-overlay img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.comparison-overlay {
+  position: relative;
+  overflow: hidden;
+}
+.comparison-front {
+  position: absolute;
+  inset: 0;
+}
+.comparison-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #fff;
+  box-shadow: 1px 0 2px #162c4680;
+  pointer-events: none;
+}
+.screenshot-comparison input[type="range"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+}
+@media (max-width: 560px) {
+  .comparison-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

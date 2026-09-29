@@ -117,7 +117,7 @@ Landing paper, secondary text and line colors provide the white canvas, supporti
 
 Oxford is the application's action color. Preserve the app's [theme overrides](src/web/theme.css) and the extension's [semantic variables](extension/appearance.css). Frontmatter colors record light-mode values, not replacements for dark-mode tokens.
 
-Project tags use a restrained seven-color palette: slate, blue, teal, mint, amber, rose and violet. The exact paired light/dark backgrounds, text and borders live in [review-tools.css](src/web/review-tools.css). A new tag's name selects its initial palette entry deterministically; a project maintainer may change it. Category badges stay neutral so tag colors do not imply work status or priority.
+Project tags use a restrained seven-color palette: slate, blue, teal, mint, amber, rose and violet. The exact paired light/dark backgrounds, text and borders live in [taxonomy.css](src/web/threads/taxonomy.css). A new tag's name selects its initial palette entry deterministically; a project maintainer may change it. Category badges stay neutral so tag colors do not imply work status or priority.
 
 Unsent review pins use rust `review-draft` with a dashed white border. Published pins remain Oxford. The distinction signals local versus shared state before a reviewer opens a tooltip.
 

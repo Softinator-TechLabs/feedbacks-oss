@@ -1,0 +1,164 @@
+/* Review tools share the app's existing control and surface vocabulary. */
+.review-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-block: 12px;
+}
+.review-controls .field {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.review-controls select {
+  width: 100%;
+}
+.thread-filter-panel {
+  position: relative;
+}
+.thread-filter-mobile-toggle {
+  display: none;
+}
+.thread-filter-panel > .thread-filters {
+  min-width: 0;
+}
+.thread-filter-panel > .saved-views {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+}
+.saved-view-manage {
+  position: relative;
+}
+.saved-view-manage > summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+}
+.saved-view-manage > summary::-webkit-details-marker {
+  display: none;
+}
+.saved-view-manage > summary:hover,
+.saved-view-manage[open] > summary {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.saved-view-manage > summary svg {
+  width: 20px;
+  height: 20px;
+}
+.saved-view-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  width: min(320px, calc(100vw - 64px));
+  max-height: min(65dvh, 440px);
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.saved-view-title {
+  display: block;
+  margin-bottom: 10px;
+}
+.saved-view-popover .field {
+  margin: 0 0 16px;
+}
+.saved-view-empty {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+.saved-view-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.saved-view-picker .field {
+  margin: 0;
+}
+.saved-view-picker button {
+  justify-self: start;
+}
+.saved-view-remove {
+  justify-content: flex-start;
+  width: 100%;
+  margin-top: 10px;
+}
+.saved-view-popover .notice,
+.saved-view-popover .error {
+  margin: 10px 0 0;
+}
+@media (max-width: 680px) {
+  .thread-filter-mobile-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 48px 0 0;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font-weight: 700;
+    text-align: left;
+  }
+  .thread-filter-mobile-toggle:enabled:hover {
+    border-color: transparent;
+    background: transparent;
+    color: var(--accent);
+  }
+  .thread-filter-active-count {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .thread-filter-chevron {
+    width: 7px;
+    height: 7px;
+    margin-left: auto;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+  }
+  .thread-filter-mobile-toggle[aria-expanded="true"] .thread-filter-chevron {
+    transform: translateY(2px) rotate(225deg);
+  }
+  .thread-filter-panel > .saved-views {
+    top: 14px;
+    right: 14px;
+  }
+  .thread-filter-panel:not(.is-expanded) > .thread-filters {
+    display: none;
+  }
+}
+.thread-navigation {
+  margin: 0 0 0 auto;
+}
+.thread-navigation .review-controls {
+  align-items: center;
+  margin: 0;
+  gap: 5px;
+}
+.thread-navigation button {
+  min-height: 36px;
+  padding: 5px 9px;
+  font-size: 0.85rem;
+}
+.thread-navigation .muted {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
