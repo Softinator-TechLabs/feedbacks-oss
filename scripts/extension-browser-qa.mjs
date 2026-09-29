@@ -1,3 +1,5 @@
+import { verifyOrderedCapture } from "./qa/extension/ordered-capture.mjs";
+import { verifyPageReview } from "./qa/extension/page-review.mjs";
 import { verifyThreadReview } from "./qa/extension/thread-review.mjs";
 import { verifyReviewDefaults } from "./qa/extension/review-defaults.mjs";
 import { verifyGithubToolbar } from "./qa/extension/github-toolbar.mjs";
@@ -1195,11 +1197,13 @@ try {
   }
   assert.ok(teammatePin?.visible, "A teammate should see the published point");
   await page.mouse.move(teammatePin.x, teammatePin.y);
-  assert.equal((await inspectPin(hoverComments[0])).resolve, false);
-  assert.equal(
-    (await inspectPin(hoverComments[0])).link,
-    `${access.url}/threads/${inlineThreadId}`,
-  );
+  for (let attempt = 0; attempt < 30; attempt++) {
+    teammatePin = await inspectPin(hoverComments[0]);
+    if (teammatePin?.link) break;
+    await page.waitForTimeout(100);
+  }
+  assert.equal(teammatePin?.resolve, false);
+  assert.equal(teammatePin?.link, `${access.url}/threads/${inlineThreadId}`);
   results.inlineReview.teammateCanRead = true;
   await page.setViewportSize({ width: 390, height: 650 });
   await page.waitForTimeout(200);
@@ -1502,6 +1506,7 @@ try {
       notice: captured?.captureNotice,
       scrollRestored: Math.abs((await page.evaluate(() => scrollY)) - before) < 2,
     };
+    assert.equal(result?.captured, true, JSON.stringify({ scope, error: result?.error }));
     if (
       ["long", "tall", "tooLong", "clipped"].includes(scope) &&
       captured?.capturePages?.length
@@ -1528,361 +1533,38 @@ try {
     await send({ type: "discard" });
   }
 
-  fixture.mode = "long";
-  await page.setViewportSize({ width: 900, height: 650 });
-  await toFixture();
-  await send({ type: "popupAction", tabId: id, action: "capture-full" });
-  const seriesDraft = await draft();
-  const seriesEditor = await context.newPage();
-  await seriesEditor.goto(`chrome-extension://${extensionId}/editor.html`);
-  await seriesEditor.locator("#page-select option").last().waitFor({ state: "attached" });
-  await seriesEditor.locator(".page-thumbnail img[src]").first().waitFor();
-  await seriesEditor.locator("#full-page-toggle:not([disabled])").waitFor();
-  await seriesEditor.getByRole("button", { name: "Full page preview" }).click();
-  const seriesDimensions = await previewDimensions(seriesEditor);
-  results.seriesReview = {
-    previewHeight: seriesDimensions.height,
-    previewWidth: seriesDimensions.width,
-  };
-  assert.ok(results.seriesReview.previewHeight > 650);
-  assert.ok(results.seriesReview.previewWidth > 0);
-  await seriesEditor.setViewportSize({ width: 1440, height: 900 });
-  await seriesEditor.screenshot({
-    path: join(root, ".local/remaining-todos-qa/full-page-preview-desktop.png"),
+  const { seriesThreadId, seriesThread } = await verifyOrderedCapture({
+    fixture,
+    page,
+    toFixture,
+    send,
+    id,
+    draft,
+    context,
+    extensionId,
+    previewDimensions,
+    results,
+    root,
+    worker,
+    access,
+    post,
+    auth,
   });
-  await seriesEditor.setViewportSize({ width: 390, height: 844 });
-  await seriesEditor.screenshot({
-    path: join(root, ".local/remaining-todos-qa/full-page-preview-mobile.png"),
+  await verifyPageReview({
+    fixture,
+    toFixture,
+    send,
+    id,
+    draft,
+    context,
+    extensionId,
+    results,
+    previewDimensions,
+    worker,
+    post,
+    auth,
+    access,
   });
-  await seriesEditor.getByRole("button", { name: "Back to sections" }).click();
-  await seriesEditor.setViewportSize({ width: 1440, height: 900 });
-  await seriesEditor.screenshot({
-    path: join(root, ".local/remaining-todos-qa/ordered-editor.png"),
-  });
-  await seriesEditor.setViewportSize({ width: 390, height: 844 });
-  await seriesEditor.screenshot({
-    path: join(root, ".local/remaining-todos-qa/ordered-editor-mobile.png"),
-    fullPage: true,
-  });
-  await seriesEditor.setViewportSize({ width: 1440, height: 900 });
-  results.seriesReview = {
-    ...results.seriesReview,
-    pageOptions: await seriesEditor.locator("#page-select option").count(),
-    firstLabel: await seriesEditor.locator("#page-select option").first().textContent(),
-  };
-  await seriesEditor.locator("#page-next").click();
-  await seriesEditor.waitForFunction(
-    () => document.querySelector("#page-select")?.value === "1",
-  );
-  results.seriesReview.secondSelected = await seriesEditor
-    .locator("#page-select")
-    .inputValue();
-  const beforeRedaction = await send({
-    type: "capturePage",
-    id: seriesDraft.id,
-    index: 1,
-  });
-  await seriesEditor.locator('[data-tool="redact"]').click();
-  const area = await seriesEditor.locator("#canvas").boundingBox();
-  if (!area) throw Error("The ordered screenshot is not visible in the editor");
-  await seriesEditor.mouse.move(area.x + 24, area.y + 24);
-  await seriesEditor.mouse.down();
-  await seriesEditor.mouse.move(area.x + 90, area.y + 65, { steps: 4 });
-  await seriesEditor.mouse.up();
-  await seriesEditor
-    .getByText("Redaction permanently saved.", { exact: false })
-    .waitFor();
-  const afterRedaction = await send({
-    type: "capturePage",
-    id: seriesDraft.id,
-    index: 1,
-  });
-  results.seriesReview.redactionPersisted =
-    beforeRedaction.image !== afterRedaction.image &&
-    (await draft()).imageRevision > seriesDraft.imageRevision;
-  await worker.evaluate(() => {
-    const original = globalThis.fetch;
-    let interrupt = true;
-    globalThis.fetch = async (...args) => {
-      if (
-        interrupt &&
-        String(args[0]).endsWith("/api/assets.upload") &&
-        JSON.parse(args[1]?.body || "{}").filename === "full-page-002-of-004.webp"
-      ) {
-        interrupt = false;
-        await new Promise((resolve) => setTimeout(resolve, 1800));
-        throw Error("Synthetic upload interruption");
-      }
-      return original(...args);
-    };
-  });
-  await seriesEditor.locator("#body").fill("Synthetic ordered capture acceptance.");
-  await seriesEditor.evaluate(() => {
-    window.qaUploadProgress = [];
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message?.type === "submitProgress" && Number.isInteger(message.completed))
-        window.qaUploadProgress.push({
-          completed: message.completed,
-          total: message.total,
-          fills: ["send", "send-header"].map((id) => ({
-            progress: document
-              .getElementById(id)
-              .style.getPropertyValue("--send-progress"),
-            busy: document.getElementById(id).getAttribute("aria-busy"),
-          })),
-          actionsLocked: ["send", "send-header"].every(
-            (id) => document.getElementById(id).disabled,
-          ),
-        });
-    });
-  });
-  await seriesEditor.locator("#send").click();
-  await seriesEditor.locator("#send-header:has-text('Sending 25%')").waitFor();
-  await mkdir(join(root, ".local/finalize-qa"), { recursive: true });
-  await seriesEditor.evaluate(() => scrollTo(0, 0));
-  await seriesEditor.screenshot({
-    path: join(root, ".local/finalize-qa/upload-fill.png"),
-  });
-  await seriesEditor.locator("#send:has-text('Retry Send')").waitFor();
-  assert.equal(
-    (await seriesEditor.locator("#send-header").textContent()).trim(),
-    "Retry Send",
-  );
-  assert.equal(await seriesEditor.locator("#send-header").isEnabled(), true);
-  const progressFills = await seriesEditor.evaluate(() => window.qaUploadProgress);
-  assert.ok(progressFills.length > 0);
-  for (const sample of progressFills)
-    for (const fill of sample.fills) {
-      assert.equal(
-        fill.progress,
-        `${Math.round((sample.completed / sample.total) * 100)}%`,
-      );
-      assert.equal(fill.busy, "true");
-    }
-  assert.equal(
-    await seriesEditor.locator("#send-header").getAttribute("aria-busy"),
-    "false",
-  );
-  const interrupted = await draft();
-  assert.ok(
-    interrupted?.thread?.id,
-    "The thread was published before image upload stopped",
-  );
-  assert.match(
-    await seriesEditor.locator("#status").textContent(),
-    /thread is already published/i,
-  );
-  assert.equal(
-    await seriesEditor.locator("#published-thread").getAttribute("href"),
-    `${access.url}/threads/${interrupted.thread.id}`,
-  );
-  results.seriesReview.resumeIndex = interrupted?.uploadIndex;
-  results.seriesReview.frozenAfterInterruption = interrupted?.frozen;
-  results.seriesReview.visibleProgress = await seriesEditor
-    .locator("#upload-label")
-    .textContent();
-  results.seriesReview.meter = await seriesEditor
-    .locator("#upload-meter")
-    .evaluate((meter) => meter.value);
-  await seriesEditor.locator("#send-header").click();
-  await seriesEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
-  results.seriesReview.uploadProgress = await seriesEditor.evaluate(
-    () => window.qaUploadProgress,
-  );
-  assert.ok(results.seriesReview.uploadProgress.every((entry) => entry.actionsLocked));
-  assert.equal(await seriesEditor.locator("#send-header").isVisible(), false);
-  const seriesThreadUrl = await seriesEditor.locator("#thread").getAttribute("href");
-  const seriesThreadId = seriesThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
-  if (!seriesThreadId) throw Error("Ordered screenshot submission lacks a thread link");
-  const seriesThread = (await post("threads.get", { threadId: seriesThreadId }, auth))
-    .data;
-  results.seriesReview.assetNames = seriesThread.assets.map((asset) => asset.filename);
-  results.seriesReview.draftCleared = !(await draft());
-  assert.equal(results.seriesReview.pageOptions, seriesDraft.capturePages.length);
-  assert.equal(results.seriesReview.secondSelected, "1");
-  assert.equal(results.seriesReview.redactionPersisted, true);
-  assert.equal(results.seriesReview.resumeIndex, 1);
-  assert.equal(results.seriesReview.frozenAfterInterruption, true);
-  assert.equal(results.seriesReview.visibleProgress, "1 of 4 images uploaded · 25%");
-  assert.equal(results.seriesReview.meter, 25);
-  assert.deepEqual(
-    results.seriesReview.assetNames,
-    seriesDraft.capturePages.map((item) => item.name),
-  );
-  assert.equal(results.seriesReview.draftCleared, true);
-  assert.ok(results.seriesReview.uploadProgress.some((entry) => entry.completed === 1));
-  assert.ok(
-    results.seriesReview.uploadProgress.some(
-      (entry) => entry.completed === seriesDraft.capturePages.length,
-    ),
-  );
-
-  fixture.mode = "long";
-  await toFixture();
-  await send({ type: "popupAction", tabId: id, action: "capture-full" });
-  const removableDraft = await draft();
-  const removableEditor = await context.newPage();
-  await removableEditor.goto(`chrome-extension://${extensionId}/editor.html`);
-  await removableEditor.locator(".page-thumbnail").last().waitFor();
-  await removableEditor.locator(".page-thumbnail img[src]").first().waitFor();
-  results.pageReview = {
-    previews: await removableEditor.locator(".page-thumbnail").count(),
-  };
-  await removableEditor.locator("#page-select").selectOption("1");
-  await removableEditor.locator("#remove-current").click();
-  await removableEditor.locator(".page-thumbnail").last().waitFor();
-  await removableEditor.waitForFunction(
-    () => document.querySelectorAll(".page-thumbnail").length === 3,
-  );
-  const pruned = await draft();
-  results.pageReview.remaining = pruned.capturePages.map((page) => page.name);
-  results.pageReview.secondImageMatches =
-    (await send({ type: "capturePage", id: pruned.id, index: 1 })).page.name ===
-    "full-page-003-of-004.webp";
-  await removableEditor.locator("#page-select").selectOption("0");
-  await removableEditor.locator('[data-tool="rectangle"]').click();
-  await removableEditor.waitForFunction(
-    () =>
-      document.querySelector("#status")?.textContent ===
-      "Reviewing full-page-001-of-004.webp.",
-  );
-  await removableEditor.locator("#canvas").scrollIntoViewIfNeeded();
-  const reviewArea = await removableEditor.locator("#canvas").evaluate((canvas) => {
-    const image = canvas.getBoundingClientRect();
-    const viewport = document.querySelector("#canvas-scroll").getBoundingClientRect();
-    return {
-      left: Math.max(image.left, viewport.left, 0) + 8,
-      top: Math.max(image.top, viewport.top, 0) + 8,
-      right: Math.min(image.right, viewport.right, innerWidth) - 8,
-      bottom: Math.min(image.bottom, viewport.bottom, innerHeight) - 8,
-    };
-  });
-  assert.ok(reviewArea.right - reviewArea.left > 40, JSON.stringify(reviewArea));
-  assert.ok(reviewArea.bottom - reviewArea.top > 40, JSON.stringify(reviewArea));
-  const drawingStart = { x: reviewArea.left + 8, y: reviewArea.top + 8 };
-  assert.equal(
-    await removableEditor.evaluate(
-      ({ x, y }) => document.elementFromPoint(x, y)?.id,
-      drawingStart,
-    ),
-    "canvas",
-  );
-  await removableEditor.mouse.move(drawingStart.x, drawingStart.y);
-  await removableEditor.mouse.down();
-  await removableEditor.mouse.move(reviewArea.right - 8, reviewArea.bottom - 8, {
-    steps: 4,
-  });
-  await removableEditor.mouse.up();
-  await removableEditor.getByRole("button", { name: "Full page preview" }).click();
-  await previewDimensions(removableEditor);
-  results.pageReview.previewMarkedPixels = await removableEditor
-    .locator("#preview-slot img")
-    .first()
-    .evaluate((image) => {
-      const canvas = document.createElement("canvas");
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      const context = canvas.getContext("2d");
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-      let marked = 0;
-      for (let index = 0; index < pixels.length; index += 4)
-        if (pixels[index] > 120 && pixels[index + 1] < 100 && pixels[index + 2] < 120)
-          marked++;
-      return marked;
-    });
-  assert.ok(results.pageReview.previewMarkedPixels > 12);
-  await removableEditor.getByRole("button", { name: "Back to sections" }).click();
-  await removableEditor.locator("#include-combined").check();
-  await removableEditor
-    .locator("#body")
-    .fill("Synthetic capture selection and combined image.");
-  await worker.evaluate(() => {
-    const original = globalThis.fetch;
-    let interrupt = true;
-    globalThis.fetch = async (...args) => {
-      if (
-        interrupt &&
-        String(args[0]).endsWith("/api/assets.upload") &&
-        JSON.parse(args[1]?.body || "{}").filename === "full-page-combined.webp"
-      ) {
-        interrupt = false;
-        throw Error("Synthetic combined upload interruption");
-      }
-      return original(...args);
-    };
-  });
-  await removableEditor.locator("#send").click();
-  await removableEditor.locator("#send:has-text('Retry Send')").waitFor();
-  const interruptedCombined = await draft();
-  assert.match(
-    await removableEditor.locator("#status").textContent(),
-    /thread is already published/i,
-  );
-  results.pageReview.resumeAtCombined =
-    interruptedCombined?.frozen &&
-    interruptedCombined.uploadIndex === interruptedCombined.capturePages.length;
-  await removableEditor.evaluate(async (draftId) => {
-    const { putPage } = await import(chrome.runtime.getURL("capture/page-store.js"));
-    const oversized = new OffscreenCanvas(1920, 15000);
-    const context = oversized.getContext("2d");
-    context.fillStyle = "#f6f7f8";
-    context.fillRect(0, 0, oversized.width, oversized.height);
-    const blob = await oversized.convertToBlob({ type: "image/webp", quality: 0.7 });
-    await putPage(draftId, 0, "combined", blob);
-  }, interruptedCombined.id);
-  await removableEditor.locator("#send").click();
-  await removableEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
-  const combinedThreadUrl = await removableEditor.locator("#thread").getAttribute("href");
-  const combinedThreadId = combinedThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
-  if (!combinedThreadId)
-    throw Error("Combined screenshot submission lacks a thread link");
-  const combinedThread = (await post("threads.get", { threadId: combinedThreadId }, auth))
-    .data;
-  results.pageReview.assetNames = combinedThread.assets.map((asset) => asset.filename);
-  assert.ok(
-    combinedThread.assets.at(-1).markings.some((mark) => mark.tool === "rectangle"),
-    "Combined image must expose its drawn rectangle to MCP clients",
-  );
-  assert.deepEqual(
-    combinedThread.assets
-      .at(-1)
-      .captureSections.map(({ startY, endY }) => [startY, endY]),
-    pruned.capturePages.map(({ startY, endY }) => [startY, endY]),
-  );
-  results.pageReview.combinedMarkings = combinedThread.assets
-    .at(-1)
-    .markings.map((mark) => mark.tool);
-  const combinedResponse = await fetch(
-    `${access.url}${combinedThread.assets.at(-1).url}`,
-    { headers: { Cookie: auth.cookie } },
-  );
-  assert.equal(combinedResponse.status, 200);
-  const composite = await sharp(Buffer.from(await combinedResponse.arrayBuffer()))
-    .extract({ left: 0, top: 0, width: 220, height: 250 })
-    .removeAlpha()
-    .raw()
-    .toBuffer();
-  let markedPixels = 0;
-  for (let pixel = 0; pixel < composite.length; pixel += 3)
-    if (
-      composite[pixel] > 120 &&
-      composite[pixel + 1] < 100 &&
-      composite[pixel + 2] < 120
-    )
-      markedPixels++;
-  results.pageReview.combinedMarkedPixels = markedPixels;
-  assert.ok(markedPixels > 12, "Combined image is missing the page annotation");
-  assert.equal(results.pageReview.previews, removableDraft.capturePages.length);
-  assert.equal(results.pageReview.secondImageMatches, true);
-  assert.equal(results.pageReview.resumeAtCombined, true);
-  assert.deepEqual(results.pageReview.assetNames, [
-    "full-page-001-of-004.webp",
-    "full-page-003-of-004.webp",
-    "full-page-004-of-004.webp",
-    "full-page-combined.webp",
-  ]);
-
   await page.setViewportSize({ width: 900, height: 650 });
   fixture.mode = "changing";
   await toFixture();
