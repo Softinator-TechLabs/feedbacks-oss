@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTaskHandoff } from "../src/shared/task-handoff.js";
+import { buildTaskHandoff, readHandoffExtras } from "../src/shared/task-handoff.js";
 const fixture = () => ({
   origin: "https://feedback.example.test",
   copiedAt: "2026-09-28T06:00:00.000Z",
@@ -209,8 +209,6 @@ test("copied task keeps each point's human plan beside its text", () => {
 
 test("copied task directs recorded issues to local evidence files with honest remote fallback", () => {
   const { text } = buildTaskHandoff(fixture());
-  assert.match(text, /feedbacks_describe\(\{"operation":"recordings\.list"\}\)/);
-  assert.match(text, /feedbacks_execute\(\{"operation":"recordings\.list"/);
   assert.match(text, /feedbacks_recording_materialize/);
   assert.match(text, /"includeVideo":true/);
   assert.match(text, /temporary directory/);
@@ -218,5 +216,56 @@ test("copied task directs recorded issues to local evidence files with honest re
   assert.match(text, /Remote HTTP MCP/);
   assert.match(text, /Activity.*Console.*Network.*Performance.*Environment/);
   assert.match(text, /points\/pins.*screenshots\/frames/);
-  assert.match(text, /discuss any unclear bug\/feature behavior/);
+  assert.match(text, /discuss any unclear bug\/feature behavior/i);
+});
+
+test("a report about another Feedbacks thread labels both and keeps empty-recording instructions short", () => {
+  const f = fixture();
+  const original = "a38e42a1-1bac-4ab7-aac0-51e75e0c233b";
+  f.thread.context.url = `${f.origin}/threads/${original}`;
+  f.recordings.items = [];
+  const { text } = buildTaskHandoff(f);
+  assert.match(text, /Task thread/);
+  assert.match(text, new RegExp(`Reviewed thread.*${original}`));
+  assert.match(text, /feedbacks_start/);
+  assert.match(text, /threads.get/);
+  assert.match(text, /progress.*replies/i);
+  assert.match(text, /numbered comments.*discussion replies/i);
+  assert.ok(!text.includes("feedbacks_recording_materialize"));
+  assert.ok(!text.includes("recordings.list("));
+  assert.ok(text.split("Everything below")[0].length < 3600);
+});
+
+test("unknown recording inventory is not represented as zero recordings", () => {
+  const f = fixture();
+  const { text } = buildTaskHandoff({ ...f, recordings: undefined });
+  assert.match(text, /Session recordings: not checked/);
+  assert.ok(!text.includes("Session recordings (0/0"));
+});
+
+test("optional handoff reads remain unknown on denied access and never swallow expired sessions", async () => {
+  const call = async (operation: string) => {
+    if (operation === "assignments.delegations")
+      throw Object.assign(new Error("denied"), { code: "FORBIDDEN" });
+    return { items: [] };
+  };
+  const extra = await readHandoffExtras(call, {
+    threadId: "thread",
+    projectId: "project",
+  });
+  assert.equal(extra.assignments, undefined);
+  assert.deepEqual(extra.recordings, { items: [] });
+  assert.match(
+    buildTaskHandoff({ ...fixture(), ...extra }).text,
+    /Assignments: not checked/,
+  );
+  await assert.rejects(
+    readHandoffExtras(
+      async () => {
+        throw Object.assign(new Error("expired"), { code: "UNAUTHENTICATED" });
+      },
+      { threadId: "thread", projectId: "project" },
+    ),
+    /expired/,
+  );
 });

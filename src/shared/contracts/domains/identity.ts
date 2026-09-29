@@ -115,7 +115,7 @@ export const identityInputs = {
   "tokens.create": z.object({
     name,
     projectIds: z.array(id).max(100).default([]),
-    scopes: z.array(z.string()).min(1).max(100),
+    scopes: z.array(z.string().max(100)).min(1).max(256),
     expiresInDays: z.number().int().min(1).max(90).default(30),
     canResolve: z.boolean().default(false),
     ownerAdmin: z.boolean().default(false),
@@ -180,6 +180,18 @@ export const identityOutputs = {
   "auth.acceptInvite": z.object({ accepted: z.boolean() }),
   "auth.me": z.object({
     actor: actorOutput,
+    member: z.object({ id, name: z.string() }).optional(),
+    serverOrigin: z.string().url().optional(),
+    credential: z
+      .object({
+        scopeMode: z.enum(["token", "session"]),
+        scopes: z.array(z.string()).nullable(),
+        operationScopes: z.array(z.string()),
+        projectIds: z.array(id).nullable(),
+        canResolve: z.boolean(),
+        note: z.string(),
+      })
+      .optional(),
     projects: z.array(projectOutput),
     csrf: z.string().optional(),
   }),

@@ -1,7 +1,11 @@
 import { randomBytes, randomUUID, createHash } from "node:crypto";
 import argon2 from "argon2";
 import type { Database } from "./db.js";
-import { ownerTokenScopes, type Actor } from "../shared/contracts.js";
+import {
+  ownerEvidenceReadScopes,
+  ownerTokenScopes,
+  type Actor,
+} from "../shared/contracts.js";
 import { DomainError, fail } from "./errors.js";
 export const secret = () => randomBytes(32).toString("base64url");
 export const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -311,7 +315,18 @@ export class Auth {
         kind,
         input.name,
         JSON.stringify(ownerAdmin ? [] : input.projectIds),
-        JSON.stringify(ownerAdmin ? ownerTokenScopes : input.scopes),
+        JSON.stringify(
+          ownerAdmin
+            ? [
+                ...new Set([
+                  ...ownerTokenScopes,
+                  ...input.scopes.filter((scope: string) =>
+                    (ownerEvidenceReadScopes as readonly string[]).includes(scope),
+                  ),
+                ]),
+              ]
+            : input.scopes,
+        ),
         ownerAdmin || (input.canResolve ?? false),
         expiresAt,
         ownerAdmin,

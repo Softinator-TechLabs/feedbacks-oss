@@ -330,7 +330,7 @@ test("execute validates selected schema, preserves scope errors and summarizes m
   await assert.rejects(runAgentTool(execute, "queue", { projectId, sort: "priority" }), {
     code: "FORBIDDEN",
   });
-  assert.equal(Object.keys(agentToolSchemas).length, 7);
+  assert.equal(Object.keys(agentToolSchemas).length, 8);
 });
 
 test("oversized point/discussion pages can be reconstructed without losing later corrections", async () => {
@@ -367,7 +367,7 @@ test("oversized point/discussion pages can be reconstructed without losing later
   assert.deepEqual(JSON.parse(reconstructed), source.replies);
 });
 
-test("legacy anchors remain counted and readable without invented point IDs", async () => {
+test("legacy anchors remain separately identified and readable without invented point IDs", async () => {
   const legacy = {
     ...thread,
     body: "Legacy point",
@@ -378,8 +378,9 @@ test("legacy anchors remain counted and readable without invented point IDs", as
     "queue",
     { projectId },
   );
-  assert.equal(queue.items[0].points, 1);
-  assert.equal(queue.items[0].openPoints, 1);
+  assert.equal(queue.items[0].points, 0);
+  assert.equal(queue.items[0].legacyAnchor, true);
+  assert.equal(queue.items[0].openPoints, 0);
   const points = await runAgentTool(async () => legacy, "thread", {
     threadId,
     section: "points",
@@ -445,4 +446,93 @@ test("section continuation detects reviewer updates and likes without a thread r
     }),
     { code: "CONFLICT" },
   );
+});
+
+test("start reads the selected task once, distinguishes its reviewed thread and skips known missing scopes", async () => {
+  const referenced = randomUUID();
+  const calls: string[] = [];
+  const selected = {
+    ...thread,
+    archived: false,
+    context: {
+      ...thread.context,
+      url: `https://feedback.example.test/threads/${referenced}`,
+    },
+  };
+  const execute = async (name: string) => {
+    calls.push(name);
+    if (name === "auth.me")
+      return {
+        actor: { id: "agent", userId: "member", name: "Shared client", kind: "agent" },
+        member: { id: "member", name: "Human" },
+        serverOrigin: "https://feedback.example.test",
+        credential: {
+          operationScopes: ["auth.me", "threads.get", "assets.get", "instructions.get"],
+        },
+        projects: [{ id: projectId, name: "App", permissions: { canWrite: true } }],
+      };
+    if (name === "threads.get") return selected;
+    if (name === "instructions.get")
+      return { trust: "approved_project_instructions", revision: 1, items: [] };
+    throw Error(`Unexpected call: ${name}`);
+  };
+  const result = await runAgentTool(execute, "start", {
+    threadId,
+    snapshotRevision: thread.revision,
+  });
+  assert.equal(result.task.id, threadId);
+  assert.equal(result.task.archived, false);
+  assert.equal(result.reviewedPage.threadId, referenced);
+  assert.equal(result.reviewedPage.relationship, "reviewed_thread");
+  assert.equal(result.snapshot.matches, true);
+  assert.equal(result.identity.member.name, "Human");
+  assert.equal(result.coordination.claims.status, "missing_scope");
+  assert.equal(result.coordination.verified, false);
+  assert.deepEqual(calls.sort(), ["auth.me", "instructions.get", "threads.get"].sort());
+  assert.ok(!JSON.stringify(result).includes(thread.body));
+});
+
+test("start never follows an external thread-looking URL or hides expired authentication", async () => {
+  const execute = async (name: string) => {
+    if (name === "auth.me")
+      return {
+        actor: {},
+        serverOrigin: "https://feedback.example.test",
+        credential: { operationScopes: ["threads.get"] },
+        projects: [],
+      };
+    if (name === "threads.get")
+      return {
+        ...thread,
+        context: { url: `https://other.example.test/threads/${randomUUID()}` },
+      };
+    throw Error(name);
+  };
+  const result = await runAgentTool(execute, "start", { threadId });
+  assert.equal(result.reviewedPage.relationship, "reviewed_page");
+  assert.equal(result.reviewedPage.threadId, undefined);
+  await assert.rejects(
+    runAgentTool(
+      async () => {
+        throw Object.assign(Error("expired"), { code: "UNAUTHENTICATED" });
+      },
+      "start",
+      { threadId },
+    ),
+    { code: "UNAUTHENTICATED" },
+  );
+});
+
+test("body-only feedback does not count its legacy anchor as a numbered comment", async () => {
+  const result = await runAgentTool(
+    async () => ({
+      ...thread,
+      context: { url: "https://example.test", anchor: { confidence: "coordinate-only" } },
+    }),
+    "thread",
+    { threadId },
+  );
+  assert.equal(result.counts.points, 0);
+  assert.equal(result.counts.openPoints, 0);
+  assert.equal(result.counts.legacyAnchor, true);
 });

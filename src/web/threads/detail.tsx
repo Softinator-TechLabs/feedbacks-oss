@@ -636,7 +636,7 @@ export function ThreadDetail({
               <div id="thread-discussion" hidden={panel !== "discussion"}>
                 <section className="replies">
                   <h2 id="thread-discussion-heading" tabIndex={-1}>
-                    Discussion <span className="muted">{t.replies?.length ?? 0}</span>
+                    Replies <span className="muted">{t.replies?.length ?? 0}</span>
                   </h2>
                   {t.replies?.length ? (
                     t.replies.map((r) => (
@@ -663,7 +663,10 @@ export function ThreadDetail({
                       />
                     ))
                   ) : (
-                    <p className="muted">No replies yet.</p>
+                    <p className="muted">
+                      No replies yet. The original feedback and numbered comments are
+                      shown with the evidence.
+                    </p>
                   )}
                   {project?.permissions.canWrite && (
                     <form

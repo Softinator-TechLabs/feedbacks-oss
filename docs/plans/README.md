@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Reliable agent task intake and completion](agent-task-flow.md)
+
 - [Discussion comment edit and delete](discussion-comment-management.md)
 - [Compact extension review controls](compact-extension-review-controls.md)
 - [Consistent browser select arrows](select-chevron-spacing.md)

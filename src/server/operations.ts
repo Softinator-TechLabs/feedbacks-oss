@@ -16,13 +16,17 @@ import {
   readDiagnosticPage,
   searchDiagnosticEvents,
 } from "./diagnostics/read.js";
+import { threadActivity } from "./thread-activity.js";
 import { moveThread } from "./thread-move.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
 import {
   inputSchemas,
   agentTokenScopes,
+  agentOperations,
+  missingOperationScopes,
   ownerTokenScopes,
+  ownerEvidenceReadScopes,
   selfAgentTokenScopes,
   selfAgentOptionalScopes,
   profileOnlyAgentScopes,
@@ -149,8 +153,23 @@ export class Operations {
         const auth = new Auth(db),
           a = await this.currentForOperation(db, actor, name),
           i: any = parsed.data;
-        if (name === "auth.me")
+        if (name === "auth.me") {
+          const member = await db.one("SELECT id,name FROM users WHERE id=$1", [
+            a.userId,
+          ]);
           return {
+            member: { id: member.id, name: member.name },
+            serverOrigin: this.config.appOrigin,
+            credential: {
+              scopeMode: a.scopes ? "token" : "session",
+              scopes: a.scopes ?? null,
+              operationScopes: agentOperations.filter(
+                (operation) => !missingOperationScopes(a.scopes, operation).length,
+              ),
+              projectIds: a.projects ?? null,
+              canResolve: a.kind !== "agent" || !!a.canResolve,
+              note: "Operation scopes and project permissions are separate. Domain checks still apply. Existing keys do not gain newly added scopes.",
+            },
             actor: {
               id: a.id,
               userId: a.userId,
@@ -165,6 +184,7 @@ export class Operations {
               ? []
               : (await projects(db, a, "projects.list", {})).items,
           };
+        }
         if (name === "auth.changePassword")
           return auth.changePassword(a, i.currentPassword, i.password);
         if (
@@ -206,6 +226,7 @@ export class Operations {
           ["threads.delete", "threads.deletions", "threads.retryDeletion"].includes(name)
         )
           return manageThreadDeletion(db, a, name, i);
+        if (name === "threads.activity") return threadActivity(db, a, i);
         if (name === "threads.move") return moveThread(db, a, i);
         if (name.startsWith("threads.")) return feedback(db, a, name, i, this.config);
         if (name.startsWith("recordings."))
@@ -259,7 +280,7 @@ export class Operations {
           if (i.ownerAdmin) ownerOnly(a);
           const allowed = new Set<string>(
             i.ownerAdmin
-              ? ownerTokenScopes
+              ? [...ownerTokenScopes, ...ownerEvidenceReadScopes]
               : a.owner
                 ? agentTokenScopes
                 : [...selfAgentTokenScopes, ...selfAgentOptionalScopes],
@@ -327,13 +348,15 @@ export class Operations {
 
   private async currentForOperation(db: Database, actor: Actor, name: string) {
     const a = await new Auth(db).current(actor);
-    // Existing paired extensions already hold the asset-upload grant.
-    const hasScope =
-      a.scopes?.includes(name) ||
-      (name === "assets.uploadVideo" && a.scopes?.includes("assets.upload"));
-    if (a.scopes && !hasScope) fail("FORBIDDEN", "Operation outside token scope", 403);
-    if (name === "recordings.export" && a.scopes && !a.scopes.includes("threads.get"))
-      fail("FORBIDDEN", "Thread read scope is required for recording export", 403);
+    const missing = missingOperationScopes(a.scopes, name);
+    if (missing.length)
+      fail("FORBIDDEN", `Missing token scope for ${name}: ${missing.join(", ")}`, 403, {
+        reason: "missing_operation_scope",
+        operation: name,
+        requiredScopes: missing,
+        recovery:
+          "A human can create a replacement key in Account with these scopes and reconnect the client. Project maintainer or owner access does not add token scopes. Continue independent permitted work; do not retry the denied operation unchanged.",
+      });
     if (
       a.mustChangePassword &&
       !["auth.me", "auth.changePassword", "auth.logout"].includes(name)

@@ -227,7 +227,7 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
         })
       ).json();
     const compactCatalog = await compactRpc("tools/list", {});
-    assert.equal(compactCatalog.result.tools.length, 7);
+    assert.equal(compactCatalog.result.tools.length, 8);
     const compactRead = await compactRpc("tools/call", {
       name: "feedbacks_thread",
       arguments: { threadId: created.data.id },
@@ -237,6 +237,15 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
       JSON.parse(compactRead.result.content[0].text),
       compactRead.result.structuredContent,
     );
+    const started = await compactRpc("tools/call", {
+      name: "feedbacks_start",
+      arguments: { threadId: created.data.id, snapshotRevision: created.data.revision },
+    });
+    assert.equal(started.result.isError, undefined);
+    assert.equal(started.result.structuredContent.task.id, created.data.id);
+    assert.equal(started.result.structuredContent.snapshot.matches, true);
+    assert.equal(started.result.structuredContent.coordination.verified, false);
+    assert.equal(started.result.structuredContent.media.inspected, false);
     const compactDenied = await compactRpc("tools/call", {
       name: "feedbacks_execute",
       arguments: {
@@ -322,7 +331,7 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
             }
             assert.ok(
               profile === "compact"
-                ? (await stdio.listTools()).tools.length === 8
+                ? (await stdio.listTools()).tools.length === 9
                 : (await stdio.listTools()).tools.length > 10,
             );
             const stdioRead = await stdio.callTool({

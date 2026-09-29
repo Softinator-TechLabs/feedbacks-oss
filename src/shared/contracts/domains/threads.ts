@@ -58,6 +58,14 @@ export const threadsInputs = {
   }),
   "reviewViews.delete": z.object({ projectId: id, viewId: id, revision }),
   "threads.get": z.object({ threadId: id }),
+  "threads.activity": z.object({
+    threadId: id,
+    before: z
+      .string()
+      .regex(/^\d{1,19}$/)
+      .optional(),
+    limit: z.number().int().min(1).max(50).default(20),
+  }),
   "threads.issueDraft": z.object({
     threadId: id,
     repositoryUrl: z.string().url().max(1000).optional(),
@@ -186,6 +194,21 @@ export const threadsOutputs = {
     }),
   }),
   "threads.get": threadOutput,
+  "threads.activity": z.object({
+    threadId: id,
+    revision: z.number(),
+    coverage: z.literal("recorded_events_only"),
+    limitation: z.string(),
+    items: z.array(
+      z.object({
+        cursor: z.string(),
+        kind: z.string(),
+        createdAt: z.string(),
+        revision: z.number().optional(),
+      }),
+    ),
+    nextBefore: z.string().nullable(),
+  }),
   "threads.issueDraft": z.object({
     projectId: id,
     threadId: id,

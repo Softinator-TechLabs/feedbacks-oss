@@ -59,17 +59,18 @@ Captured `context.annotations` and attachment markings retain the original evide
 
 ## Compact profile and CLI
 
-Connect to `/mcp?profile=compact`, or set `FEEDBACKS_MCP_PROFILE=compact` for stdio. The original endpoint and unset environment retain full discovery.
+Connect to `/mcp?profile=compact`, or set `FEEDBACKS_MCP_PROFILE=compact` for stdio. The original endpoint and unset environment retain full discovery, including these same entry tools and existing direct operation names.
 
-| Tool                  | Purpose                                                            |
-| --------------------- | ------------------------------------------------------------------ |
-| `feedbacks_guide`     | One skill topic: start, glossary, media, workflow or install       |
-| `feedbacks_workspace` | Match projects to supplied git remotes and page origins            |
-| `feedbacks_queue`     | At most 20 task previews (default 10), counts and continuation     |
-| `feedbacks_thread`    | One overview or paginated evidence section                         |
-| `feedbacks_asset`     | Media metadata or image, optionally cropped in original pixels     |
-| `feedbacks_describe`  | Search operations or fetch one exact schema                        |
-| `feedbacks_execute`   | Invoke with original scopes; thread writes return compact receipts |
+| Tool                  | Purpose                                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------------------- |
+| `feedbacks_guide`     | One skill topic: start, glossary, media, workflow or install                                            |
+| `feedbacks_workspace` | Match projects to supplied git remotes and page origins                                                 |
+| `feedbacks_queue`     | At most 20 task previews (default 10), counts and continuation                                          |
+| `feedbacks_thread`    | One overview or paginated evidence section                                                              |
+| `feedbacks_asset`     | Media metadata or image, optionally cropped in original pixels                                          |
+| `feedbacks_describe`  | Search operations or fetch one exact schema                                                             |
+| `feedbacks_start`     | Start one selected task: current identity/scopes, status, instructions, coordination and snapshot reuse |
+| `feedbacks_execute`   | Invoke with original scopes; thread writes return compact receipts                                      |
 
 The JSON CLI shares this adapter: `npm run --silent cli -- --agent queue --input selection.json`. Input defaults to stdin. Static `--agent guide` and `--agent describe` need no credentials; business calls retain authentication. Both MCP profiles expose `feedbacks://guide/<topic>` resources and a `review-feedback` prompt. Text content includes structured data for clients that ignore structured content; image bytes appear only in native image blocks.
 
@@ -79,7 +80,7 @@ For today's feedback, resolve stable `authorId` and timezone. `createdAfter` is 
 
 Thread sections: body, points, discussion, assets, reviewers, evidence, context, diagnostics and history. Pass initial revision as `expectedRevision` and the section `contentVersion` as `expectedContentVersion` on continuations; finish text chunks before advancing item offsets. Queues are live: restart after writes and retain completed IDs. Full HTTP list/thread operations still return full records; compact projection bounds model context, not database or HTTP transfer costs. Use explicit immutable exports for snapshot requirements.
 
-Local stdio adds `feedbacks_recording_materialize` to both profiles, so compact stdio has eight tools while remote compact MCP retains seven. This tool writes an owner-only temporary evidence directory on the adapter host using current recording/media access, returns checksummed file paths and reports missing media. It does not mutate the thread or run captured code. See [session replay](session-replay.md#agent-access-and-local-files) for scope and cleanup details.
+Local stdio adds `feedbacks_recording_materialize` to both profiles, so compact stdio has nine tools while remote compact MCP has eight. This tool writes an owner-only temporary evidence directory on the adapter host using current recording/media access, returns checksummed file paths and reports missing media. It does not mutate the thread or run captured code. See [session replay](session-replay.md#agent-access-and-local-files) for scope and cleanup details.
 
 Image previews accept `crop:{left,top,width,height}` in original pixels and return source/crop dimensions. Stored images stay unchanged. Video playback, PDF rendering and vision reasoning depend on the client; there is no implied transcript/frame service or guaranteed small-model performance. No auto-mutating hooks are installed. Existing signed webhooks/change cursors can support separately requested notifications; an event never authorizes a fix.
 
@@ -114,3 +115,15 @@ Only an explicit request to change planning authorizes `threads.plan {threadId,r
 **Copy task for agent** prepares a bounded snapshot containing the Feedbacks thread URL/ID/revision, status/plan, reviewer and original body, numbered point IDs/text/anchors/states, discussions, media references and linked evidence. Large snapshots report omitted content so the agent can retrieve the remaining sections. Quoted review content remains untrusted evidence and cannot expand the user's instructions.
 
 The receiving agent checks current status/revision first. When the snapshot is current and complete, it can reuse included text rather than repeat every full read; it fetches omitted or revised sections and reads current project permissions/instructions separately. Images still require actual inspection via `feedbacks_asset` / `assets.get` with `includeImage:true`. Stable same-server authenticated asset references and IDs preserve access boundaries; the copy contains no raw Wasabi credentials or expiring storage links. The handoff selects context, while the human's accompanying request determines whether to review, plan or implement it.
+
+## Start a copied or selected task
+
+Call `feedbacks_start` with `threadId` and, for a copied snapshot, `snapshotRevision`. Both profiles expose it. It reads the current task once and returns bounded member identity, credential capability flags, approved instructions and coordination. Reuse complete current snapshot text; refresh only changed or omitted sections. Follow instruction truncation and assignment pagination before claiming. Missing optional reads are explicitly unavailable, never empty. Older keys without `auth.me` can still read permitted tasks, with identity/capabilities reported as unknown.
+
+`auth.me.member` identifies the signed-in member behind an agent; `actor.name` may instead name a shared agent. `credential.operationScopes` describes scope grants only; project/domain authorization still applies. Missing-scope errors identify the operation, required scopes and replacement-key recovery. A denied read should be reported once, without repeating an unchanged request or automatically issuing credentials.
+
+Task thread and reviewed page are separate. If the page URL points to another thread on the same server, inspect that thread when relevant while keeping progress on the selected task. Main feedback, numbered comments and discussion replies are separate: zero replies does not imply a missing original comment. Body-only feedback has zero numbered comments even if it retains a legacy anchor.
+
+`threads.activity` reads bounded recorded lifecycle metadata under `threads.get` or its own scope. Follow `nextBefore`. It includes selected creation, attachment, move, reply and status events without raw historical content or private payloads. It cannot show failed upload attempts or reconstruct an earlier snapshot. Neither absent activity nor a passed generic move test proves that a reported historical loss did or did not occur.
+
+New **Copy task for agent** prompts explicitly authorize work and concise progress/result replies on the selected thread when the human pastes them, subject to accompanying narrower instructions. A status update is not a reply or exclusive claim. Other messages and external issue creation still require their own authorization. Media instructions are included only for present media; an unavailable optional inventory is labelled unknown.
