@@ -10,7 +10,7 @@ import { purgeExpiredPairings } from "./auth.js";
 import { deliverWebhooks } from "./webhooks.js";
 import { pollGithubStatusSync } from "./github-status-worker.js";
 import { runScheduledQa } from "./scheduled-qa.js";
-import { drainExpiredDiagnosticEvidence } from "./diagnostic-evidence.js";
+import { drainExpiredDiagnosticEvidence } from "./diagnostics/evidence.js";
 
 try {
   const config = configFromEnv();

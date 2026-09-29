@@ -22,6 +22,7 @@ flowchart LR
 - `auth.ts`, `accounts.ts`, `access.ts`: account lifecycle, credential boundaries and project access.
 - `projects.ts`, `feedback.ts`, `views.ts`, `discussion-likes.ts`: review workflow and optimistic concurrency.
 - `assets.ts`, `documents.ts`: image normalization, bounded WebM intake, private storage, project document review and authorized readback.
+- `src/server/diagnostics/`: private diagnostic upload and expiry in `evidence.ts`, authorized listing and readback in `read.ts`, archive streaming in `archive.ts`, bounded event indexing in `event-index.ts`, and the small public summary projection in `summary.ts`.
 - `scheduled-qa.ts`: opt-in daily public-page checks, bounded private image comparison and reviewable run history.
 - `context.ts`, `export-limits.ts`: versioned instructions, stable bounded exports and change cursors.
 - `operations.ts`: transactional operation dispatch. `app.ts` composes HTTP middleware and route order; `src/server/http/` owns operation dispatch and authorized asset downloads. `mcp.ts` handles the MCP transport.

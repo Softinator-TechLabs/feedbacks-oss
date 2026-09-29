@@ -3,11 +3,11 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 import type { Response } from "express";
-import type { AssetStore } from "./assets.js";
-import type { DiagnosticManifestV1 } from "../shared/screenshot-diagnostics.js";
-import { diagnosticArchiveName } from "../shared/screenshot-diagnostics.js";
-import { checkedDiagnosticBytes } from "./diagnostic-evidence.js";
-import { fail } from "./errors.js";
+import type { AssetStore } from "../assets.js";
+import type { DiagnosticManifestV1 } from "../../shared/screenshot-diagnostics.js";
+import { diagnosticArchiveName } from "../../shared/screenshot-diagnostics.js";
+import { checkedDiagnosticBytes } from "./read.js";
+import { fail } from "../errors.js";
 
 function octal(value: number, width: number): Buffer {
   return Buffer.from(value.toString(8).padStart(width - 1, "0") + "\0", "ascii");
