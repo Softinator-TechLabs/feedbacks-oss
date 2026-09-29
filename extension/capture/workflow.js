@@ -2,6 +2,7 @@ import { diagnosticCollector, cleanDiagnostics } from "../diagnostics/diagnostic
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 import { putPage, getPage, deletePage, deleteDraftPages } from "./page-store.js";
 import { pointShapes, attachPointEvidence } from "./markings.js";
+import { accountFingerprint } from "../diagnostics/identity.js";
 
 export function createCaptureWorkflow({
   get,
@@ -103,6 +104,12 @@ export function createCaptureWorkflow({
                   .catch(() => [])
               )[0]?.result,
             ),
+        includeDiagnostics: retryId
+          ? state.draft?.includeDiagnostics
+          : state.reviewDefaults?.includeDiagnostics !== false,
+        evidenceOwnerIdentity: retryId
+          ? state.draft?.evidenceOwnerIdentity
+          : await accountFingerprint(state.accounts?.[session.server]),
         image: null,
         approvedImage: null,
         capturePages: [],

@@ -349,7 +349,7 @@ export async function streamPreparedSnapshot({
     await output.write(text);
     await output.end();
   }
-  function inert(value, seen = new WeakSet(), depth = 0) {
+  function inert(value, blobs = [], seen = new WeakSet(), depth = 0) {
     if (value === null || typeof value === "string" || typeof value === "boolean")
       return value;
     if (typeof value === "number") return Number.isFinite(value) ? value : String(value);
@@ -357,11 +357,38 @@ export async function streamPreparedSnapshot({
     if (typeof value !== "object" || depth > 40) return "[unavailable]";
     if (seen.has(value)) return "[circular]";
     if (value instanceof Date) return { type: "Date", value: value.toISOString() };
+    if (value instanceof Blob) {
+      const blobId = crypto.randomUUID();
+      blobs.push({ blobId, value });
+      return {
+        type: "Blob",
+        blobId,
+        byteLength: Object.getOwnPropertyDescriptor(Blob.prototype, "size").get.call(
+          value,
+        ),
+        mimeType: Object.getOwnPropertyDescriptor(Blob.prototype, "type").get.call(value),
+      };
+    }
     if (value instanceof ArrayBuffer || ArrayBuffer.isView(value))
       return {
         type: value.constructor.name,
         base64: toBase64(
           new Uint8Array(value.buffer || value, value.byteOffset || 0, value.byteLength),
+        ),
+      };
+    if (value instanceof Map)
+      return {
+        type: "Map",
+        entries: Array.from(Map.prototype.entries.call(value), ([key, item]) => [
+          inert(key, blobs, seen, depth + 1),
+          inert(item, blobs, seen, depth + 1),
+        ]),
+      };
+    if (value instanceof Set)
+      return {
+        type: "Set",
+        values: Array.from(Set.prototype.values.call(value), (item) =>
+          inert(item, blobs, seen, depth + 1),
         ),
       };
     seen.add(value);
@@ -370,7 +397,7 @@ export async function streamPreparedSnapshot({
       Object.getOwnPropertyDescriptors(value),
     ))
       if (Object.hasOwn(descriptor, "value"))
-        output[key] = inert(descriptor.value, seen, depth + 1);
+        output[key] = inert(descriptor.value, blobs, seen, depth + 1);
     seen.delete(value);
     return output;
   }
@@ -482,22 +509,45 @@ export async function streamPreparedSnapshot({
                     atEnd = true;
                     return;
                   }
-                  const row =
+                  const blobs = [];
+                  const text =
                     JSON.stringify({
                       database: info.name,
                       store: storeName,
                       key: inert(item.key),
-                      value: inert(item.value),
+                      value: inert(item.value, blobs),
                     }) + "\n";
-                  rows.push(row);
-                  batchBytes += row.length;
+                  rows.push({ text, blobs });
+                  batchBytes += text.length;
                   nextKey = item.key;
                   if (rows.length < 100 && batchBytes < 1_048_576) item.continue();
                 };
                 transaction.oncomplete = () => resolve({ rows, nextKey, atEnd });
                 transaction.onerror = () => reject(transaction.error);
               });
-              for (const row of batch.rows) await output.write(row);
+              for (const row of batch.rows) {
+                await output.write(row.text);
+                for (const { blobId, value } of row.blobs) {
+                  try {
+                    const reader = Blob.prototype.stream.call(value).getReader();
+                    let sequence = 0;
+                    for (;;) {
+                      const { done, value: bytes } = await reader.read();
+                      if (done) break;
+                      await output.write(
+                        JSON.stringify({
+                          source: "indexeddb_blob",
+                          blobId,
+                          sequence: sequence++,
+                          dataBase64: toBase64(bytes),
+                        }) + "\n",
+                      );
+                    }
+                  } catch {
+                    gap("storage", "indexeddb_blob_unavailable");
+                  }
+                }
+              }
               if (batch.nextKey !== undefined) lastKey = batch.nextKey;
               finished = batch.atEnd || !batch.rows.length;
             }

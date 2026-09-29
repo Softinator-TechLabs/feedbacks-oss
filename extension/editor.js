@@ -7,8 +7,11 @@ import {
   shapeRectangle,
 } from "./capture/screenshot-render.js";
 import { buildExportBlob, screenshotSurface } from "./capture/editor-export.js";
+import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
+import { diagnosticPreview, downloadDraftDiagnostics } from "./diagnostics/archive.js";
 
 const $ = (id) => document.getElementById(id);
+const diagnosticStore = createDiagnosticEvidenceStore();
 const send = async (message) => {
   const r = await chrome.runtime.sendMessage(message);
   if (!r.ok) throw Object.assign(Error(r.error), { code: r.code });
@@ -1156,10 +1159,42 @@ addEventListener("beforeunload", (e) => {
   }
 });
 function renderDiagnostics() {
-  $("diagnostics-review").hidden = !draft?.diagnostics;
+  const artifact = draft?.diagnosticEvidence;
+  $("diagnostics-review").hidden = !artifact && !draft?.diagnostics;
   $("include-diagnostics").checked = !!draft?.includeDiagnostics;
   const entries = $("diagnostics-entries");
   entries.replaceChildren();
+  $("diagnostics-legacy-hint").hidden = !!artifact;
+  $("diagnostics-legacy-limit").hidden = !!artifact;
+  $("download-diagnostics").hidden = !artifact;
+  if (artifact) {
+    const id = artifact.evidenceId;
+    const summary = document.createElement("p");
+    summary.className = "hint";
+    summary.textContent = `Captured ${(artifact.totalBytes / 1048576).toFixed(1)} MiB of raw page diagnostics. The archive contains available DOM, console, network, bodies, storage and browser context. Missing channels are recorded in coverage.`;
+    entries.append(summary);
+    for (const [channel, value] of Object.entries(artifact.coverage || {})) {
+      const line = document.createElement("p");
+      line.className = "diagnostic-coverage";
+      line.textContent = `${channel}: ${value.status} · ${value.observedCount} items · ${value.capturedBytes} bytes${value.reasons?.length ? ` · ${value.reasons.join(", ")}` : ""}`;
+      entries.append(line);
+    }
+    const sample = document.createElement("pre");
+    sample.className = "diagnostic-sample";
+    sample.textContent = "Loading a small local preview…";
+    entries.append(sample);
+    void diagnosticPreview(diagnosticStore, id)
+      .then((value) => {
+        if (draft?.diagnosticEvidence?.evidenceId !== id) return;
+        sample.textContent = value?.samples.length
+          ? value.samples.map((item) => `${item.kind}\n${item.text}`).join("\n\n")
+          : "No text preview is available. Download the archive to inspect captured files.";
+      })
+      .catch(() => {
+        sample.textContent = "Local preview unavailable; retry from this browser.";
+      });
+    return;
+  }
   if (!draft?.diagnostics) return;
   for (const kind of ["console", "network"]) {
     const heading = document.createElement("h3");
@@ -1225,6 +1260,16 @@ function renderDiagnostics() {
     }
   }
 }
+$("download-diagnostics").onclick = async () => {
+  const id = draft?.diagnosticEvidence?.evidenceId;
+  if (!id) return;
+  try {
+    await downloadDraftDiagnostics(diagnosticStore, id);
+    status("Diagnostic archive downloaded.");
+  } catch (error) {
+    if (error.name !== "AbortError") status(error.message, "error");
+  }
+};
 let projectCategories = new Map();
 function loadProjectCategories(selected = "general") {
   const field = $("category");

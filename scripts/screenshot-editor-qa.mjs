@@ -30,7 +30,11 @@ const server = createServer(async (req, res) => {
   }
   try {
     const name = path.slice(1);
-    if (!/^extension\/(?:[a-z-]+\.(?:js|css|html)|capture\/[a-z-]+\.js)$/.test(name))
+    if (
+      !/^extension\/(?:[a-z-]+\.(?:js|css|html)|(?:capture|diagnostics)\/[a-z0-9-]+\.js)$/.test(
+        name,
+      )
+    )
       throw Error();
     res.setHeader(
       "Content-Type",

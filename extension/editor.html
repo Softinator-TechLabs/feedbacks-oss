@@ -290,18 +290,21 @@
           ><input id="tags" maxlength="394" placeholder="checkout, mobile" />
         </details>
         <details id="diagnostics-review" class="capture-details" hidden>
-          <summary>Review diagnostics</summary>
-          <p class="hint">
+          <summary>Screenshot diagnostics</summary>
+          <p id="diagnostics-legacy-hint" class="hint">
             Only checked entries will be shared. URLs are reduced to their origin. Check
             messages for private information. Select text in a console message and mask it
             before sharing. Redaction is best effort.
           </p>
           <div id="diagnostics-entries"></div>
           <label class="check"
-            ><input id="include-diagnostics" type="checkbox" />Share the selected
-            diagnostics with this project</label
+            ><input id="include-diagnostics" type="checkbox" />Include captured
+            diagnostics with this review</label
           >
-          <p class="hint">
+          <button id="download-diagnostics" type="button" hidden>
+            Download diagnostics
+          </button>
+          <p id="diagnostics-legacy-limit" class="hint">
             No cookies, headers, request bodies, console objects or storage values. Status
             may be unavailable for cross-origin requests.
           </p>

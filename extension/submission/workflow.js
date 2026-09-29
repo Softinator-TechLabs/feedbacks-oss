@@ -16,12 +16,15 @@ import {
   combinedMarkings,
   combinedSections,
 } from "../capture/markings.js";
+import { uploadDraftDiagnostics } from "../diagnostics/upload.js";
 
 export function createSubmissionWorkflow({
   get,
   set,
   requireImageRevision,
   authenticated,
+  diagnosticEvidenceStore,
+  accountIdentity,
 }) {
   let sending = false;
   async function combineApprovedPages(draft) {
@@ -162,15 +165,15 @@ export function createSubmissionWorkflow({
               ),
           approvedImage: draft.noImage ? null : message.image,
           approvedDiagnostics:
-            draft.includeDiagnostics && draft.diagnostics
+            draft.includeDiagnostics && !draft.diagnosticEvidence && draft.diagnostics
               ? {
                   ...draft.diagnostics,
                   approved: true,
                   console: draft.diagnostics.console.filter((_, index) =>
-                    draft.diagnosticsSelection.console.includes(index),
+                    draft.diagnosticsSelection?.console?.includes(index),
                   ),
                   network: draft.diagnostics.network.filter((_, index) =>
-                    draft.diagnosticsSelection.network.includes(index),
+                    draft.diagnosticsSelection?.network?.includes(index),
                   ),
                 }
               : undefined,
@@ -178,6 +181,13 @@ export function createSubmissionWorkflow({
           toolState: [],
         };
         await set({ draft });
+      }
+      if (draft.includeDiagnostics && draft.diagnosticEvidence?.evidenceId) {
+        const currentIdentity = await accountIdentity(draft.server);
+        if (!currentIdentity || currentIdentity !== draft.evidenceOwnerIdentity)
+          throw Error(
+            "Connect the account used for this capture before sending its diagnostics.",
+          );
       }
       if (!draft.thread) {
         draft.thread = await authenticated(
@@ -434,6 +444,21 @@ export function createSubmissionWorkflow({
           await set({ draft });
           submitProgress(draft, "All images uploaded.", totalImages, totalImages);
         }
+      }
+      if (draft.diagnosticUploaded && draft.diagnosticEvidence?.evidenceId)
+        await diagnosticEvidenceStore.deleteEvidence(draft.diagnosticEvidence.evidenceId);
+      if (draft.diagnosticEvidence?.evidenceId && !draft.diagnosticUploaded) {
+        submitProgress(draft, "Uploading screenshot diagnostics…", 0, 1);
+        await uploadDraftDiagnostics({
+          draft,
+          accountIdentity,
+          authenticated,
+          store: diagnosticEvidenceStore,
+          save: async (updated) => set({ draft: updated }),
+          progress: (completed, total) =>
+            submitProgress(draft, "Uploading screenshot diagnostics…", completed, total),
+        });
+        await set({ draft });
       }
       const url = `${draft.server}/threads/${draft.thread.id}`;
       if (draft.capturePages?.length) await deleteDraftPages(draft.id);

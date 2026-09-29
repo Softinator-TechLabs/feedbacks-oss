@@ -34,6 +34,14 @@ export async function verifyDiagnosticDom({
       transaction
         .objectStore("values")
         .put({ password: "fake-indexeddb-secret" }, "record");
+      transaction.objectStore("values").put(
+        {
+          blob: new Blob(["fake-indexeddb-blob"], { type: "text/plain" }),
+          map: new Map([["map-key", "map-value"]]),
+          set: new Set(["set-value"]),
+        },
+        "structured-record",
+      );
       transaction.oncomplete = resolve;
       transaction.onerror = () => reject(transaction.error);
     });
@@ -109,6 +117,15 @@ export async function verifyDiagnosticDom({
         hasForm: storage.some((value) => value.includes("fake-live-value")),
         hasLocalStorage: storage.some((value) => value.includes("fake-local-token")),
         hasIndexedDb: storage.some((value) => value.includes("fake-indexeddb-secret")),
+        hasIndexedDbBlob: storage.some((value) =>
+          value.split("\n").some((line) => {
+            if (!line.includes('"source":"indexeddb_blob"')) return false;
+            return atob(JSON.parse(line).dataBase64) === "fake-indexeddb-blob";
+          }),
+        ),
+        hasMapAndSet: storage.some(
+          (value) => value.includes("map-value") && value.includes("set-value"),
+        ),
         hasCache: storage.some((value) =>
           value.split("\n").some((line) => {
             if (!line.includes('"source":"cache_body"')) return false;
@@ -128,6 +145,8 @@ export async function verifyDiagnosticDom({
   assert.ok(saved.hasForm);
   assert.ok(saved.hasLocalStorage);
   assert.ok(saved.hasIndexedDb);
+  assert.ok(saved.hasIndexedDbBlob);
+  assert.ok(saved.hasMapAndSet);
   assert.ok(saved.hasCache);
   assert.ok(saved.hasShadow);
   assert.equal(saved.manifest.coverage.dom.status, "complete");

@@ -1,6 +1,7 @@
 import { reviewDefaults, updateReviewDefaults } from "./review/review-preferences.js";
 import { diagnosticCollector } from "./diagnostics/diagnostics.js";
 import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
+import { accountFingerprint } from "./diagnostics/identity.js";
 import { createRawDiagnosticCapture } from "./diagnostics/raw-debug.js";
 import { capturePreparedDom } from "./capture/dom-stream.js";
 import "./utils.js";
@@ -272,7 +273,11 @@ async function api(server, operation, input, token) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(input),
-    signal: AbortSignal.timeout(operation === "assets.uploadVideo" ? 180000 : 30000),
+    signal: AbortSignal.timeout(
+      operation === "assets.uploadVideo" || operation.startsWith("diagnostics.")
+        ? 180000
+        : 30000,
+    ),
   });
   let result;
   try {
@@ -634,7 +639,9 @@ async function saveDraft(message) {
           )
         : [],
     },
-    includeDiagnostics: message.includeDiagnostics === true && !!draft.diagnostics,
+    includeDiagnostics:
+      message.includeDiagnostics === true &&
+      !!(draft.diagnosticEvidence || draft.diagnostics),
     noImage: !(draft.image || draft.capturePages?.length) || !!message.noImage,
     includeCombined:
       message.includeCombined === true &&
@@ -888,6 +895,8 @@ const submission = createSubmissionWorkflow({
   set,
   requireImageRevision,
   authenticated,
+  diagnosticEvidenceStore,
+  accountIdentity: async (server) => accountFingerprint((await get()).accounts?.[server]),
 });
 const { submit } = submission;
 async function route(message, sender) {
@@ -1704,6 +1713,10 @@ async function route(message, sender) {
       if (submission.isSending()) throw Error("Wait for submission to finish.");
       return writeDraft(async () => {
         const { draft } = await get();
+        if (draft?.diagnosticEvidence?.evidenceId)
+          await diagnosticEvidenceStore.deleteEvidence(
+            draft.diagnosticEvidence.evidenceId,
+          );
         if (draft?.capturePages?.length) await deleteDraftPages(draft.id);
         if (draft?.sourceTabId) {
           await deleteDraftPages(`point-${draft.sourceTabId}`);
@@ -1736,7 +1749,10 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
 chrome.tabs.onRemoved.addListener(async (id) => {
   const raw = rawDiagnostics.get(id);
   rawDiagnostics.delete(id);
-  if (raw) await raw.stop().catch(() => {});
+  if (raw) {
+    await raw.stop().catch(() => {});
+    await diagnosticEvidenceStore.deleteEvidence(raw.status().evidenceId).catch(() => {});
+  }
   recordings.stop(id);
   await clearVideoCreateForTab(chrome.storage.session, id);
   await deleteDraftPages(`point-${id}`);
@@ -1801,6 +1817,11 @@ async function runDiagnostics(sender, action) {
   let raw = rawDiagnostics.get(tab.id);
   let rawStatus;
   if (action === "start" && !raw?.status().active) {
+    if (raw) {
+      await raw.stop().catch(() => {});
+      await diagnosticEvidenceStore.deleteEvidence(raw.status().evidenceId);
+      rawDiagnostics.delete(tab.id);
+    }
     raw = createRawDiagnosticCapture({
       tabId: tab.id,
       sourceOrigin: session.origin,
@@ -1811,6 +1832,8 @@ async function runDiagnostics(sender, action) {
     rawDiagnostics.set(tab.id, raw);
   } else if (action === "stop" && raw) {
     rawStatus = await raw.stop();
+    rawDiagnostics.delete(tab.id);
+    await diagnosticEvidenceStore.deleteEvidence(rawStatus.evidenceId);
   } else rawStatus = raw?.status();
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
