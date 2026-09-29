@@ -1,6 +1,12 @@
 import { diagnosticCollector, cleanDiagnostics } from "../diagnostics/diagnostics.js";
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
-import { putPage, getPage, deletePage, deleteDraftPages } from "./page-store.js";
+import {
+  putPage,
+  getPage,
+  deletePage,
+  deleteDraftPages,
+  pageDataUrl,
+} from "./page-store.js";
 import { pointShapes, attachPointEvidence } from "./markings.js";
 import { queueObsoleteEvidence, retireObsoleteEvidence } from "../diagnostics/cleanup.js";
 
@@ -226,6 +232,7 @@ export function createCaptureWorkflow({
       unattachedEvidenceId = null;
       await clearReplacedEvidence();
       let canvas,
+        visiblePng,
         sx,
         sy,
         expectedSignature = before.signature,
@@ -438,7 +445,8 @@ export function createCaptureWorkflow({
         )
           throw Error("The page changed during capture. Try again once it is still.");
         guard.assert();
-        const bitmap = await createImageBitmap(await (await fetch(pixels)).blob());
+        visiblePng = await (await fetch(pixels)).blob();
+        const bitmap = await createImageBitmap(visiblePng);
         canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
         canvas.getContext("2d").drawImage(bitmap, 0, 0);
         sx = bitmap.width / before.context.viewport.width;
@@ -451,26 +459,26 @@ export function createCaptureWorkflow({
         width: canvas.width,
         height: canvas.height,
       };
-      let bytes;
-      for (let attempt = 0; attempt < 4; attempt++) {
-        bytes = new Uint8Array(
-          await (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer(),
-        );
-        if (bytes.length <= 5 * 1024 * 1024) break;
+      const png = visiblePng;
+      const largeCapture = png.size > 5 * 1024 * 1024;
+      let pageBlob = png;
+      if (largeCapture) {
+        for (const quality of [0.95, 0.85, 0.7, 0.5]) {
+          pageBlob = await canvas.convertToBlob({ type: "image/webp", quality });
+          if (pageBlob.size <= 10 * 1024 * 1024) break;
+        }
+        if (pageBlob.size > 10 * 1024 * 1024)
+          throw Error(
+            "This visible screenshot exceeds the per-image size even after compression. Capture a smaller browser window.",
+          );
       }
-      if (bytes.length > 5 * 1024 * 1024)
-        throw Error(
-          "This capture is too large for a safe local draft. Reduce the browser window size and capture again.",
-        );
-      let binary = "";
-      for (let i = 0; i < bytes.length; i += 8192)
-        binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      const pageCapture = largeCapture || !!before.context.annotations?.length;
       const draft = {
         ...pending,
         server: session.server,
         projectId: pending.projectId,
         context: before.context,
-        image: "data:image/png;base64," + btoa(binary),
+        image: pageCapture ? null : await pageDataUrl(png),
         body: pending.body,
         toolState: before.context.annotations?.length
           ? (before.context.liveAnnotations || before.context.annotations).flatMap(
@@ -528,12 +536,12 @@ export function createCaptureWorkflow({
       if (still.signature !== expectedSignature || still.captureEpoch !== 0)
         throw Error("The page moved during capture. Try again once it is still.");
       guard.assert();
-      if (before.context.annotations?.length) {
-        await putPage(draft.id, 0, "source", await (await fetch(draft.image)).blob());
+      if (pageCapture) {
+        await putPage(draft.id, 0, "source", pageBlob);
         draft.capturePages = [
           {
             index: 0,
-            name: "page-visible.webp",
+            name: `page-visible.${pageBlob.type === "image/webp" ? "webp" : "png"}`,
             startY: before.context.scroll.y,
             endY: before.context.scroll.y + before.context.viewport.height,
             viewportWidth: before.context.viewport.width,
@@ -542,7 +550,6 @@ export function createCaptureWorkflow({
           },
         ];
         draft.pageToolStates = [draft.toolState];
-        draft.image = null;
         draft.toolState = [];
       }
       await attachPointEvidence(draft, retainedPointStates);
