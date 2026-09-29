@@ -127,7 +127,7 @@ for (const name of ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"])
 for (const { path, name } of packageFiles) {
   if (
     !["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"].includes(name) &&
-    !/^(?:[a-z][a-z0-9-]*\.(?:js|html|css|json)|(?:capture|session|recordings|video|review|connection|diagnostics)\/[a-z][a-z0-9-]*\.js|icons\/(?:16|32|48|128)\.png)$/.test(
+    !/^(?:[a-z][a-z0-9-]*\.(?:js|html|css|json)|(?:capture|submission|session|recordings|video|review|connection|diagnostics)\/[a-z][a-z0-9-]*\.js|icons\/(?:16|32|48|128)\.png)$/.test(
       name,
     )
   )

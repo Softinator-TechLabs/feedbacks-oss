@@ -47,6 +47,7 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Separated feedback thread read-model assembly from write operations. Kept `feedback.js` exports stable and moved no authorization or transaction decision. The full Node 22 check passes; other transport and GitHub transaction code remains a focused follow-up due its external side effects.
 - 2026-09-29: Extracted the extension browser setup scenario and mutable synthetic page fixture under `scripts/qa/extension/`. The full packaged Chromium QA sequence and Node 22 check pass. The remaining long sequential runner is a follow-up for smaller independent scenarios.
 - 2026-09-29: Moved the worker capture workflow and its in-progress guard into `extension/capture/workflow.js`. Kept the manifest worker entrypoint and Chrome calls in the same order. The Chromium capture acceptance and full Node 22 check pass.
+- 2026-09-29: Moved the worker submission, combined-image repair, progress, and busy guard into `extension/submission/workflow.js`. The worker fell from 2,587 to 1,651 lines across capture and submission extractions. The Chromium submit acceptance and full Node 22 check pass.
 
 ## Completion receipt
 
