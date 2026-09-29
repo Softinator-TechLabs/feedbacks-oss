@@ -13,6 +13,10 @@ import { ThreadRecordings } from "../recordings/thread-recordings.js";
 import { ScreenshotMarkup, type MarkupTarget } from "../screenshot-markup.js";
 import { ThreadAttachments, RecordingFrames } from "./attachments.js";
 import { ThreadLinks } from "./links.js";
+import {
+  DiagnosticEvidencePanel,
+  type DiagnosticEvidenceSummary,
+} from "./diagnostic-evidence.js";
 import { PointProgressRing } from "../point-progress-ring.js";
 import { navigate, useUnsavedChanges } from "../navigation.js";
 import {
@@ -218,6 +222,14 @@ export function ThreadDetail({
         )}
       </>
     );
+  const diagnosticEvidence = (
+    t as Thread & {
+      diagnosticEvidence?: {
+        count: number;
+        latest: DiagnosticEvidenceSummary[];
+      };
+    }
+  ).diagnosticEvidence;
   return (
     <>
       <div className="page-heading thread-page-heading">
@@ -800,6 +812,12 @@ export function ThreadDetail({
                 />
                 <ContextPanel context={t.context} />
                 {t.diagnostics && <ThreadDiagnostics diagnostics={t.diagnostics} />}
+                <DiagnosticEvidencePanel
+                  key={t.id}
+                  threadId={t.id}
+                  summaries={diagnosticEvidence?.latest ?? []}
+                  totalCount={diagnosticEvidence?.count ?? 0}
+                />
                 <details className="section compact-details">
                   <summary>View preferences</summary>
                   <p>
