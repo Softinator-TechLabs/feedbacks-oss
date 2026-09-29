@@ -51,12 +51,13 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Rebasing onto Account UX PR #114 kept the new tabs, mobile Menu CSS, and token suffix contract in their feature modules. The full Node 22 check and native PostgreSQL checks pass on the rebased branch.
 - 2026-09-29: Reconstructed the web stylesheet from its ordered feature imports and compared every nonblank CSS line with the merged `origin/main` stylesheet: 2,280 lines matched in the same order. The Account component body also matches the merged source exactly.
 - 2026-09-29: Moved screenshot export rendering and PDF/raster assembly from the editor entrypoint into `extension/capture/editor-export.js`. Moved the point-view freeze helper from the content entrypoint into the already injected `frame-dom.js`. The ZIP still uses the same entrypoints and the packaged browser QA sequence passes.
-- 2026-09-29: Split the browser acceptance runner's popup/options, optional public capture, and recording-control workflows into `scripts/qa/extension/` modules. Keep scenario order and the same disposable browser. The complete suite must pass again after this last split.
+- 2026-09-29: Split the browser acceptance runner's popup/options, optional public capture, and recording-control workflows into `scripts/qa/extension/` modules. The complete packaged Chromium sequence passed after this split.
+- 2026-09-29: Rebasing onto recording PR #115 preserved frame annotation, timeline marks, superseded asset filtering, and the new image markup/upload contracts across moved modules. The recording and extension browser suites passed on the rebased branch.
 
 ## Completion receipt
 
-Source revision: pending.
-Checks and results: baseline `npm run check` passed on `c7b1e22` with Node 22; refactor checks pending.
-Artifacts: pending.
+Source revision: `codex/modular-refactor` based on `0183066` (PR #115); final PR revision pending.
+Checks and results: Node 22 `npm run check` passed (328 pass, 22 skipped, 0 fail; builds, harness smoke, and release package checks included). `npm run qa:extension-browser`, `npm run qa:recording-browser` (22 pass), `npm run qa:app-filters`, and native `npm run test:postgres` (2 pass) passed on the rebased branch. Exact-revision CI is pending.
+Artifacts: draft source PR pending; no extension Store package or deployed service produced.
 Deployment and live verification: outside scope of this source refactor; no deployment performed.
-Remaining risks or follow-up: pending.
+Remaining risks or follow-up: `extension/content.js` retains a large shared state closure; `scripts/extension-browser-qa.mjs` still contains coupled sequential scenarios. Extract these with explicit state boundaries and browser receipts in the next reviewable stage. External GitHub transaction behavior and native browser permission prompts need separate targeted evidence before deeper restructuring.
