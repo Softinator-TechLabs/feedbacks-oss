@@ -1,6 +1,6 @@
 # Modular source structure
 
-Status: five reviewed stages merged; extension runtime follow-up pending. Owner: Feedbacks maintainers. Date: 2026-09-29.
+Status: five reviewed stages merged; HTTP route and extension runtime follow-ups in progress. Owner: Feedbacks maintainers. Date: 2026-09-29.
 
 ## Outcome and scope
 
@@ -90,6 +90,8 @@ Branch: `codex/modular-github-operations`, based on merged PR #119. The 827-line
 Branch: `codex/modular-web-features`, based on merged PR #121. Document and survey code now lives in feature folders. The previous 570-line account and member administration file is split by responsibility: `account/password-replacement.tsx` and member credential, Markdown, creation, and administration modules. The five extracted bodies match the prior code after formatting normalization, except the password alphabet literal is now composed from shorter strings with an identical 57-character result. Targeted document/survey tests passed (5), targeted account/member tests passed (6), and the production web CSS asset retained SHA-256 `f8f165fd1751a8db22692b1a719de04e605e7661dc5c34391e1b5df8d9d17309`. Full Node 22 `npm run check` passed on the final head (328 tests passed, 22 skipped, 0 failed; build, sandbox smoke, and release checks included). Synthetic app browser QA captured 56 route, viewport, and theme screenshots with zero blocked requests. Gitleaks found zero findings in the rewritten branch. Independent review found no issues, all six exact-head CI checks passed, and PR #122 merged at `0757a19`.
 
 ## Remaining runtime seams
+
+The HTTP route stage starts from merged PR #123 and places operation dispatch plus authorized asset and document downloads under `src/server/http/`. `app.ts` keeps middleware and registration order and falls from 628 to 271 lines. This is a source move with no intended HTTP, rate-limit, authorization, or range behavior change. Twelve focused HTTP, widget, survey, guest, login, mobile, preview, and video tests pass. The full Node 22 `npm run check` passes, including harness, tests, builds, smoke, and release checks; native PostgreSQL concurrency tests pass 2/2. Independent review and exact-head CI remain required.
 
 The next substantive extraction candidates are `extension/content.js` (2,645 lines of shared injected UI state), `extension/background.js` (1,713 lines with a large message dispatcher), `extension/editor.js` (1,358 lines), `extension/session/session-coordinator.js` (1,316 lines of capture lifecycle), `extension/video.js` (1,107 lines), and `src/web/recordings/thread-recordings.tsx` (947 lines). Recording PR #120 touches most of these paths, and separate screenshot diagnostics work also touches injected capture and diagnostics. Rebase those changes first, then split state and message boundaries with packaged Chrome QA and exact-head CI. Preserve manifest entrypoints, message contracts, permissions, transaction guards, and ZIP contents.
 
