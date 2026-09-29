@@ -872,30 +872,31 @@
         const note = document.createElement("p");
         note.className = "preview-note";
         note.textContent = item.body;
-        const hint = document.createElement("p");
-        hint.className = "meta";
-        hint.textContent =
-          "Choose Review & send to check saved images and share with your team.";
-        preview.append(state, note, hint);
-        button(
-          "Edit point",
-          () => {
-            hide();
-            pin.click();
-          },
-          preview,
-        );
+        const actions = document.createElement("div");
+        actions.className = "draft-preview-actions";
+        preview.append(state, note, actions);
         if (item.snapshot) {
           const thumb = document.createElement("img");
           thumb.className = "point-thumbnail";
           thumb.alt = `Original view for point ${index + 1}`;
-          preview.append(thumb);
+          actions.append(thumb);
           send({ type: "pointImage", key: item.snapshot.key })
             .then(({ image }) => {
               if (thumb.isConnected) thumb.src = image;
             })
             .catch(() => thumb.remove());
-          button("Original view", () => showPointImage(item, index), preview);
+        }
+        const edit = button(
+          "Edit",
+          () => {
+            hide();
+            pin.click();
+          },
+          actions,
+        );
+        edit.setAttribute("aria-label", `Edit point ${index + 1}`);
+        if (item.snapshot) {
+          button("Original view", () => showPointImage(item, index), actions);
         }
         draftPoints.append(preview);
         const rect = preview.getBoundingClientRect();

@@ -59,22 +59,44 @@ export async function verifyInlineSubmission({
   const desktopPoint = await pinLocation();
   await page.mouse.move(desktopPoint.x, desktopPoint.y);
   await page.waitForTimeout(200);
-  const hoverState = await worker.evaluate(async (tabId) => {
-    const [entry] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        const preview = globalThis.__feedbacksQaRoot.querySelector(".draft-preview");
-        return {
-          text: preview?.textContent,
-          visible: !!preview?.getBoundingClientRect().width,
-        };
-      },
-    });
-    return entry.result;
-  }, id);
+  const draftPopover = () =>
+    worker.evaluate(async (tabId) => {
+      const [entry] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const preview = globalThis.__feedbacksQaRoot.querySelector(".draft-preview");
+          const actions = preview?.querySelector(".draft-preview-actions");
+          const bounds = preview?.getBoundingClientRect();
+          const buttons = [...(actions?.querySelectorAll("button") ?? [])].map(
+            (button) => {
+              const rect = button.getBoundingClientRect();
+              return {
+                top: rect.top,
+                right: rect.right,
+                label: button.getAttribute("aria-label"),
+              };
+            },
+          );
+          return {
+            text: preview?.textContent,
+            visible: !!bounds?.width,
+            right: bounds?.right,
+            buttons,
+          };
+        },
+      });
+      return entry.result;
+    }, id);
+  const hoverState = await draftPopover();
   assert.equal(hoverState.visible, true);
   assert.match(hoverState.text, /Draft, not sent/);
-  assert.match(hoverState.text, /Edit point/);
+  assert.doesNotMatch(hoverState.text, /Choose Review & send/);
+  assert.equal(hoverState.buttons[0].label, "Edit point 1");
+  assert.equal(hoverState.buttons.length, 2);
+  assert.ok(
+    hoverState.buttons.every((button) => button.top === hoverState.buttons[0].top),
+  );
+  assert.ok(hoverState.buttons.every((button) => button.right <= hoverState.right - 8));
   await page.screenshot({
     path: join(root, ".local/remaining-todos-qa/draft-pin-popover.png"),
   });
@@ -86,6 +108,16 @@ export async function verifyInlineSubmission({
     "Point should follow the heading after responsive reflow",
   );
   assert.ok(mobilePoint.x < 390);
+  await page.mouse.move(mobilePoint.x, mobilePoint.y);
+  await page.waitForTimeout(200);
+  const mobilePopover = await draftPopover();
+  assert.equal(mobilePopover.visible, true);
+  assert.ok(
+    mobilePopover.buttons.every((button) => button.top === mobilePopover.buttons[0].top),
+  );
+  assert.ok(
+    mobilePopover.buttons.every((button) => button.right <= mobilePopover.right - 8),
+  );
   await page.setViewportSize({ width: 900, height: 650 });
   await page.waitForTimeout(200);
   // Bare T works away from fields; T inside a website input must not resize.

@@ -455,8 +455,25 @@ button:focus-visible {
 .draft-preview .preview-note {
   margin-top: 8px;
 }
-.draft-preview button {
-  margin: 6px 6px 0 0;
+.draft-preview-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-height: 40px;
+  margin-top: 10px;
+}
+.draft-preview-actions .point-thumbnail {
+  flex: none;
+  width: 60px;
+  height: 40px;
+}
+.draft-preview-actions button {
+  flex: none;
+  min-height: 34px;
+  margin: 0;
+  padding: 5px 8px;
+  white-space: nowrap;
 }
 .point-image-view {
   position: fixed;

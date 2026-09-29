@@ -203,7 +203,38 @@ try {
     });
   await inRoot("Save point");
   await page.waitForTimeout(400);
-  if (storeMode) await page.screenshot({ path: join(captureDir, "03-saved-draft.png") });
+  if (storeMode) {
+    const draftPreviewLayout = await worker.evaluate(async (tabId) => {
+      const [entry] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const preview = globalThis.__feedbacksQaRoot?.querySelector(".draft-preview");
+          const actions = preview?.querySelector(".draft-preview-actions");
+          if (!preview || !actions) return { visible: false };
+          const right = preview.getBoundingClientRect().right - 8;
+          const buttons = [...actions.querySelectorAll("button")].map((button) => ({
+            top: button.getBoundingClientRect().top,
+            right: button.getBoundingClientRect().right,
+          }));
+          return { visible: true, right, buttons };
+        },
+      });
+      return entry.result;
+    }, id);
+    await page.screenshot({ path: join(captureDir, "03-saved-draft.png") });
+    if (
+      !draftPreviewLayout.visible ||
+      draftPreviewLayout.buttons.length !== 2 ||
+      !draftPreviewLayout.buttons.every(
+        (button) =>
+          button.top === draftPreviewLayout.buttons[0].top &&
+          button.right <= draftPreviewLayout.right,
+      )
+    )
+      throw Error(
+        `Draft preview actions must fit on one row: ${JSON.stringify(draftPreviewLayout)}`,
+      );
+  }
   await inRoot("Review & send");
   await page.waitForTimeout(1800);
   const editor = context.pages().find((p) => p.url().includes("editor.html"));
