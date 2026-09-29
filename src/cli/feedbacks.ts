@@ -17,7 +17,7 @@ try {
   if (args.length === 0 || (args.length === 1 && args[0] === "--help")) {
     data = {
       usage:
-        "npm run --silent cli -- <operation> [--input file.json]; JSON input defaults to stdin (empty input means {}). --list; --describe <operation>; --agent guide|workspace|queue|thread|asset|describe|execute [--input file.json]",
+        "npm run --silent cli -- <operation> [--input file.json]; JSON input defaults to stdin (empty input means {}). --list; --describe <operation>; --agent start|guide|workspace|queue|thread|asset|describe|execute [--input file.json]",
       credentials:
         "FEEDBACKS_TOKEN environment or owned mode-0600 ~/.config/feedbacks/config.json with {url,token}; FEEDBACKS_URL and FEEDBACKS_CONFIG override defaults. Never put secrets in arguments.",
     };
@@ -103,7 +103,7 @@ try {
           500,
         );
   process.stdout.write(
-    `${JSON.stringify({ ok: false, error: { code: e.code, message: e.message } })}\n`,
+    `${JSON.stringify({ ok: false, error: { code: e.code, message: e.message, ...(e instanceof DomainError && e.details ? { details: e.details } : {}) } })}\n`,
   );
   process.exitCode = 1;
 }
