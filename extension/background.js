@@ -1,5 +1,15 @@
 import { reviewDefaults, updateReviewDefaults } from "./review/review-preferences.js";
 import { diagnosticCollector } from "./diagnostics/diagnostics.js";
+import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
+import { createDebuggerLease } from "./diagnostics/debugger-lease.js";
+import { retireObsoleteEvidence } from "./diagnostics/cleanup.js";
+import {
+  cleanupPrivateDiagnosticArchives,
+  PRIVATE_ARCHIVE_CLEANUP_ALARM,
+} from "./diagnostics/archive.js";
+import { accountFingerprint, sameDiagnosticBinding } from "./diagnostics/identity.js";
+import { createRawDiagnosticCapture } from "./diagnostics/raw-debug.js";
+import { capturePreparedDom } from "./capture/dom-stream.js";
 import "./utils.js";
 import { createReviewController } from "./review/review-session.js";
 import {
@@ -57,6 +67,7 @@ const serverSetup = createServerSetup({
   normalize: U.server,
   probe: (tabId) => probeFeedbacksServer(chrome, tabId),
 });
+const debuggerLease = createDebuggerLease(chrome);
 const recordings = createRecordingControls({
   chrome,
   sessionFor: recordingSessionFor,
@@ -68,7 +79,134 @@ const sessionCapture = createSessionCoordinator({
   authenticated,
   ready,
   annotationImage: getRecordingPointImage,
+  debuggerLease,
 });
+const diagnosticEvidenceStore = createDiagnosticEvidenceStore();
+void cleanupPrivateDiagnosticArchives().catch(() => {});
+const rawDiagnostics = new Map();
+async function retireRawDiagnostics(tabId) {
+  const raw = rawDiagnostics.get(tabId);
+  if (!raw) return;
+  await raw.stop().catch(() => {});
+  await diagnosticEvidenceStore.deleteEvidence(raw.status().evidenceId);
+  rawDiagnostics.delete(tabId);
+}
+const rawDebuggerSource = {
+  attach: (tabId) => debuggerLease.acquire(tabId, "screenshot-diagnostics"),
+  detach: (tabId) => debuggerLease.release(tabId, "screenshot-diagnostics"),
+  subscribeRawDebugger: (tabId, subscriber) =>
+    sessionCapture.subscribeRawDebugger(tabId, subscriber),
+  sendCommand: (tabId, method, params = {}, sessionId) =>
+    chrome.debugger.sendCommand(
+      { tabId, ...(sessionId ? { sessionId } : {}) },
+      method,
+      params,
+    ),
+};
+async function captureScreenshotDiagnostics({
+  tabId,
+  sourceUrl,
+  signature,
+  captureEpoch,
+  sourceOrigin,
+  server,
+  projectId,
+  reviewId,
+  ownerIdentity,
+  pointSnapshot = false,
+}) {
+  const raw = rawDiagnostics.get(tabId);
+  let rawStatus = raw?.status();
+  const binding = { server, projectId, reviewId, ownerIdentity };
+  const contextChanged =
+    !!rawStatus &&
+    (rawStatus.sourceOrigin !== sourceOrigin ||
+      !sameDiagnosticBinding(rawStatus.binding, binding));
+  if (raw) {
+    rawStatus = await raw.stop();
+    rawDiagnostics.delete(tabId);
+    if (contextChanged) {
+      await diagnosticEvidenceStore.deleteEvidence(rawStatus.evidenceId);
+      rawStatus = null;
+    }
+  }
+  const evidenceId = rawStatus?.evidenceId || crypto.randomUUID();
+  const startedAt = rawStatus?.startedAt || new Date().toISOString();
+  try {
+    const captured = await capturePreparedDom({
+      tabId,
+      evidenceId,
+      expectedUrl: sourceUrl,
+      expectedSignature: signature,
+      captureEpoch,
+      store: diagnosticEvidenceStore,
+      remainingBytes: 268_435_456 - (rawStatus?.totalBytes || 0),
+    });
+    const coverage =
+      rawStatus?.coverage ||
+      Object.fromEntries(
+        [
+          "dom",
+          "console",
+          "network",
+          "body",
+          "storage",
+          "environment",
+          "performance",
+          "coverage",
+        ].map((kind) => [
+          kind,
+          {
+            status: "unavailable",
+            observedCount: 0,
+            capturedBytes: 0,
+            reasons: [
+              kind === "console" || kind === "network" || kind === "body"
+                ? "prestart_history_unavailable"
+                : "not_collected",
+            ],
+          },
+        ]),
+      );
+    for (const [channel, state] of Object.entries(captured.coverage))
+      coverage[channel] = state;
+    if (rawStatus)
+      for (const kind of ["console", "network", "body"]) {
+        if (coverage[kind].status === "complete") coverage[kind].status = "partial";
+        const reason = pointSnapshot
+          ? "trace_ended_before_dom_snapshot"
+          : "trace_ended_before_pixels";
+        if (!coverage[kind].reasons.includes(reason)) coverage[kind].reasons.push(reason);
+      }
+    if (contextChanged)
+      for (const kind of ["console", "network", "body"]) {
+        if (!coverage[kind].reasons.includes("capture_context_changed"))
+          coverage[kind].reasons.push("capture_context_changed");
+      }
+    if (pointSnapshot) {
+      coverage.dom.status = "partial";
+      if (!coverage.dom.reasons.includes("point_snapshot_at_finalize"))
+        coverage.dom.reasons.push("point_snapshot_at_finalize");
+    }
+    const files = [...(rawStatus?.files || []), ...captured.files];
+    const manifest = {
+      schemaVersion: 1,
+      id: evidenceId,
+      sourceOrigin,
+      startedAt,
+      endedAt: new Date().toISOString(),
+      coverage,
+      ...(rawStatus?.stats ? { stats: rawStatus.stats } : {}),
+      files,
+      totalBytes: files.reduce((total, file) => total + file.byteLength, 0),
+    };
+    await diagnosticEvidenceStore.putEvidenceState(evidenceId, { manifest, sourceUrl });
+    return { evidenceId, totalBytes: manifest.totalBytes, coverage };
+  } catch (error) {
+    await diagnosticEvidenceStore.deleteEvidence(evidenceId).catch(() => {});
+    throw error;
+  }
+}
 async function startOffscreenVideo(sender, session) {
   const tab = await chrome.tabs.get(sender.tab.id);
   const target = {
@@ -237,7 +375,11 @@ async function api(server, operation, input, token) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(input),
-    signal: AbortSignal.timeout(operation === "assets.uploadVideo" ? 180000 : 30000),
+    signal: AbortSignal.timeout(
+      operation === "assets.uploadVideo" || operation.startsWith("diagnostics.")
+        ? 180000
+        : 30000,
+    ),
   });
   let result;
   try {
@@ -341,6 +483,7 @@ async function pollPair() {
             [pair.server]: {
               token: data.token,
               id: data.id,
+              userId: data.userId,
               expiresAt: data.expiresAt,
             },
           },
@@ -364,6 +507,8 @@ async function pollPair() {
 }
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === "pair") pollPair();
+  if (a.name === PRIVATE_ARCHIVE_CLEANUP_ALARM)
+    void cleanupPrivateDiagnosticArchives().catch(() => {});
 });
 setInterval(pollPair, 3000);
 async function sessionFor(sender) {
@@ -380,6 +525,9 @@ async function sessionFor(sender) {
     !session ||
     new URL(sender.url).origin !== session.origin ||
     session.server !== server ||
+    (session.accountKey &&
+      session.accountKey !==
+        (await accountFingerprint(accounts[server], { tokenOnly: true }))) ||
     !accounts[server]?.token
   )
     throw Error("Open Feedbacks to reconnect this page.");
@@ -557,7 +705,25 @@ const capture = createCaptureWorkflow({
   sessionFor,
   openDraft,
   watchCapture,
+  captureDiagnostics: captureScreenshotDiagnostics,
+  accountIdentity: diagnosticAccountIdentity,
+  deleteDiagnosticEvidence: (evidenceId) =>
+    diagnosticEvidenceStore.deleteEvidence(evidenceId),
 });
+async function diagnosticAccountIdentity(server, expected) {
+  const account = (await get()).accounts?.[server];
+  if (!account?.token) return null;
+  if (expected?.startsWith("token:"))
+    return accountFingerprint(account, { tokenOnly: true });
+  if (account.userId) return accountFingerprint(account);
+  let userId;
+  try {
+    userId = (await authenticated("auth.me", {}, server)).actor.userId;
+  } catch {
+    // The same key can finish a local capture after a temporary server outage.
+  }
+  return accountFingerprint(account, { userId });
+}
 async function saveDraft(message) {
   const { draft } = await get();
   if (!draft || draft.id !== message.id)
@@ -598,7 +764,9 @@ async function saveDraft(message) {
           )
         : [],
     },
-    includeDiagnostics: message.includeDiagnostics === true && !!draft.diagnostics,
+    includeDiagnostics:
+      message.includeDiagnostics === true &&
+      !!(draft.diagnosticEvidence || draft.diagnostics),
     noImage: !(draft.image || draft.capturePages?.length) || !!message.noImage,
     includeCombined:
       message.includeCombined === true &&
@@ -852,6 +1020,8 @@ const submission = createSubmissionWorkflow({
   set,
   requireImageRevision,
   authenticated,
+  diagnosticEvidenceStore,
+  accountIdentity: diagnosticAccountIdentity,
 });
 const { submit } = submission;
 async function route(message, sender) {
@@ -1143,6 +1313,7 @@ async function route(message, sender) {
     if (message.type === "stopReview") {
       recordings.stop(sender.tab.id);
       await sessionCapture.retire(sender.tab.id);
+      await retireRawDiagnostics(sender.tab.id);
       await chrome.tabs.sendMessage(sender.tab.id, { type: "deactivate" });
       return review.stop(sender.tab.id);
     }
@@ -1616,6 +1787,7 @@ async function route(message, sender) {
       for (const tabId of Object.keys(state.sessions || {})) {
         recordings.stop(Number(tabId));
         await sessionCapture.retire(Number(tabId));
+        await retireRawDiagnostics(Number(tabId));
         await chrome.tabs
           .sendMessage(Number(tabId), { type: "deactivate" })
           .catch(() => {});
@@ -1630,7 +1802,20 @@ async function route(message, sender) {
     case "activate": {
       const result = await review.activate(message.tabId, message.projectId);
       const { sessions = {} } = await chrome.storage.local.get("sessions");
-      const reviewId = sessions[message.tabId]?.reviewId;
+      const currentSession = sessions[message.tabId];
+      const reviewId = currentSession?.reviewId;
+      const raw = rawDiagnostics.get(message.tabId);
+      if (
+        raw &&
+        (raw.status().sourceOrigin !== currentSession?.origin ||
+          !sameDiagnosticBinding(raw.status().binding, {
+            server: currentSession?.server,
+            projectId: currentSession?.projectId,
+            reviewId,
+            ownerIdentity: await diagnosticAccountIdentity(currentSession?.server),
+          }))
+      )
+        await retireRawDiagnostics(message.tabId);
       if (!(await sessionCapture.restore(message.tabId, reviewId))) {
         // Validate the bound review before restoring the native recorder clock.
         const state = recordings.state(message.tabId, reviewId);
@@ -1694,6 +1879,7 @@ async function route(message, sender) {
       if (message.action === "stop") {
         recordings.stop(tab.id);
         await sessionCapture.retire(tab.id);
+        await retireRawDiagnostics(tab.id);
         await chrome.tabs.sendMessage(tab.id, { type: "deactivate" });
         return review.stop(tab.id);
       }
@@ -1765,6 +1951,16 @@ async function route(message, sender) {
       if (submission.isSending()) throw Error("Wait for submission to finish.");
       return writeDraft(async () => {
         const { draft } = await get();
+        if (draft?.diagnosticEvidence?.evidenceId)
+          await diagnosticEvidenceStore.deleteEvidence(
+            draft.diagnosticEvidence.evidenceId,
+          );
+        if (draft)
+          await retireObsoleteEvidence(
+            draft,
+            (id) => diagnosticEvidenceStore.deleteEvidence(id),
+            async () => set({ draft }),
+          );
         if (draft?.capturePages?.length) await deleteDraftPages(draft.id);
         if (draft?.sourceTabId) {
           await deleteDraftPages(`point-${draft.sourceTabId}`);
@@ -1795,6 +1991,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   return true;
 });
 chrome.tabs.onRemoved.addListener(async (id) => {
+  await retireRawDiagnostics(id).catch(() => {});
   recordings.stop(id);
   await clearVideoCreateForTab(chrome.storage.session, id);
   await deleteDraftPages(`point-${id}`);
@@ -1856,11 +2053,63 @@ async function runDiagnostics(sender, action) {
   if (!tab.active || !["start", "stop", "status"].includes(action))
     throw Error("Select the review page first.");
   const session = await sessionFor(sender);
+  const binding = {
+    server: session.server,
+    projectId: session.projectId,
+    reviewId: session.reviewId,
+    ownerIdentity: await diagnosticAccountIdentity(session.server),
+  };
+  let raw = rawDiagnostics.get(tab.id);
+  let rawStatus;
+  if (
+    raw &&
+    (raw.status().sourceOrigin !== session.origin ||
+      !sameDiagnosticBinding(raw.status().binding, binding))
+  ) {
+    const previousReviewId = raw.status().binding?.reviewId;
+    const old = await raw.stop();
+    rawDiagnostics.delete(tab.id);
+    await diagnosticEvidenceStore.deleteEvidence(old.evidenceId);
+    if (previousReviewId)
+      await chrome.scripting
+        .executeScript({
+          target: { tabId: tab.id },
+          world: "MAIN",
+          func: diagnosticCollector,
+          args: ["stop", previousReviewId],
+        })
+        .catch(() => {});
+    raw = null;
+  }
+  if (action === "start" && !raw?.status().active) {
+    if (raw) {
+      await raw.stop().catch(() => {});
+      await diagnosticEvidenceStore.deleteEvidence(raw.status().evidenceId);
+      rawDiagnostics.delete(tab.id);
+    }
+    raw = createRawDiagnosticCapture({
+      tabId: tab.id,
+      sourceOrigin: session.origin,
+      binding,
+      store: diagnosticEvidenceStore,
+      debuggerSource: rawDebuggerSource,
+    });
+    rawStatus = await raw.start();
+    rawDiagnostics.set(tab.id, raw);
+  } else if (action === "stop" && raw) {
+    rawStatus = await raw.stop();
+    rawDiagnostics.delete(tab.id);
+    await diagnosticEvidenceStore.deleteEvidence(rawStatus.evidenceId);
+  } else rawStatus = raw?.status();
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     world: "MAIN",
     func: diagnosticCollector,
     args: [action, session.reviewId],
   });
-  return { active: results[0]?.result?.active === true };
+  return {
+    active: results[0]?.result?.active === true,
+    evidenceId: rawStatus?.evidenceId,
+    coverage: rawStatus?.coverage,
+  };
 }

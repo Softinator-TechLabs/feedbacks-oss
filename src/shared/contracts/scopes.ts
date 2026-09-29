@@ -40,6 +40,13 @@ export const agentTokenScopes = [
   "recordings.get",
   "recordings.events",
   "recordings.export",
+  "diagnostics.begin",
+  "diagnostics.putChunk",
+  "diagnostics.finalize",
+  "diagnostics.list",
+  "diagnostics.describe",
+  "diagnostics.read",
+  "diagnostics.search",
   ...scopedAgentOperations,
   "threads.annotationStatus",
   "threads.annotationPlan",
@@ -106,7 +113,10 @@ export const agentOperations = businessOperations.filter(
 // Issue creation is available only through a separately issued scoped key.
 export const ownerTokenScopes = [
   ...agentOperations.filter(
-    (name) => name !== "github.issueCreate" && !name.startsWith("recordings."),
+    (name) =>
+      name !== "github.issueCreate" &&
+      !name.startsWith("recordings.") &&
+      !name.startsWith("diagnostics."),
   ),
   "context.policy",
 ];
@@ -152,6 +162,10 @@ const readOperations = new Set<string>([
   "recordings.get",
   "recordings.events",
   "recordings.export",
+  "diagnostics.list",
+  "diagnostics.describe",
+  "diagnostics.read",
+  "diagnostics.search",
   "instructions.get",
   "context.export",
   "context.changes",

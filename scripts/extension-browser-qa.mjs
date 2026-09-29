@@ -7,6 +7,7 @@ import { verifyReviewInteractions } from "./qa/extension/review/review-interacti
 import { verifyCaptureSafety } from "./qa/extension/capture/capture-safety.mjs";
 import { verifyChangingCapture } from "./qa/extension/capture/changing-capture.mjs";
 import { verifyDiagnostics } from "./qa/extension/review/diagnostics.mjs";
+import { verifyDiagnosticDom } from "./qa/extension/diagnostic-dom.mjs";
 import { verifyOrderedCapture } from "./qa/extension/capture/ordered-capture.mjs";
 import { verifyPageReview } from "./qa/extension/capture/page-review.mjs";
 import { verifyThreadReview } from "./qa/extension/review/thread-review.mjs";
@@ -199,6 +200,8 @@ try {
     root,
     toFixture,
   });
+  await verifyDiagnosticDom({ page, control, toFixture, tabId, send, draft });
+  await page.bringToFront();
   const id = await tabId();
   const exposeReviewRoot = () =>
     worker.evaluate(async (tabId) => {
@@ -498,8 +501,10 @@ try {
   assert.equal(results.changing.scrollRestored, true);
   assert.match(results.changing.error, /page (moved|changed) during full-page capture/);
   assert.deepEqual(results.diagnostics, {
-    persisted: true,
-    marker: true,
+    checked: true,
+    download: true,
+    boundedPreview: true,
+    localArchive: true,
     submitted: true,
     draftCleared: true,
   });

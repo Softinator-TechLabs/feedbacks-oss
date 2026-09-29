@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { diagnosticStatsSchema } from "../screenshot-diagnostics.js";
 import {
   id,
   name,
@@ -74,6 +75,23 @@ export const deletionOutput = z.object({
     failed: z.number().int(),
   }),
 });
+export const diagnosticEvidenceSummaryOutput = z.object({
+  id,
+  threadId: id,
+  projectId: id,
+  status: z.enum(["pending", "complete", "expired"]),
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime().optional(),
+  createdAt: z.string().datetime(),
+  totalBytes: z.number().int().nonnegative(),
+  domBytes: z.number().int().nonnegative().optional(),
+  stats: diagnosticStatsSchema.optional(),
+  fileCount: z.number().int().nonnegative(),
+  coverage: z.record(
+    z.string(),
+    z.enum(["complete", "partial", "unavailable", "stopped"]),
+  ),
+});
 export const threadOutput = z
   .object({
     id,
@@ -147,6 +165,13 @@ export const threadOutput = z
     updatedAt: z.string(),
     priorityScore: z.number().optional(),
     reviewerContext: reviewerContextOutput.optional(),
+    diagnosticEvidence: z
+      .object({
+        count: z.number().int().nonnegative(),
+        latest: z.array(diagnosticEvidenceSummaryOutput).max(3),
+        followUp: z.array(z.string()),
+      })
+      .optional(),
   })
   .passthrough();
 export const actorOutput = z.object({

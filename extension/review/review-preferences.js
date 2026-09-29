@@ -10,6 +10,7 @@ export const REVIEW_DEFAULTS = Object.freeze({
   recordingNavigationLocked: false,
   recordingHighlightEnabled: false,
   recordingClickIndicators: true,
+  includeDiagnostics: true,
 });
 export function reviewDefaults(value = {}) {
   return Object.fromEntries(

@@ -30,9 +30,23 @@ export async function verifyPageReview({
   await removableEditor.locator("#page-select").selectOption("1");
   await removableEditor.locator("#remove-current").click();
   await removableEditor.locator(".page-thumbnail").last().waitFor();
-  await removableEditor.waitForFunction(
-    () => document.querySelectorAll(".page-thumbnail").length === 3,
-  );
+  try {
+    await removableEditor.waitForFunction(
+      () => document.querySelectorAll(".page-thumbnail").length === 3,
+    );
+  } catch (error) {
+    const ui = await removableEditor.evaluate(() => ({
+      thumbnails: document.querySelectorAll(".page-thumbnail").length,
+      selectedPage: document.querySelector("#page-select")?.value,
+      removeDisabled: document.querySelector("#remove-current")?.disabled,
+      status: document.querySelector("#status")?.textContent,
+    }));
+    const current = await draft();
+    throw Error(
+      `Page removal did not finish: ${JSON.stringify({ ui, pages: current?.capturePages?.length, imageRevision: current?.imageRevision })}`,
+      { cause: error },
+    );
+  }
   const pruned = await draft();
   results.pageReview.remaining = pruned.capturePages.map((page) => page.name);
   results.pageReview.secondImageMatches =

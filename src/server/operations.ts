@@ -5,6 +5,15 @@ import {
   commitRecording,
   recordingRead,
 } from "./recordings.js";
+import {
+  beginDiagnosticEvidence,
+  putDiagnosticChunk,
+  finalizeDiagnosticEvidence,
+  listDiagnosticEvidence,
+  describeDiagnosticEvidence,
+  readDiagnosticPage,
+  searchDiagnosticEvents,
+} from "./diagnostic-evidence.js";
 import { moveThread } from "./thread-move.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
@@ -75,6 +84,40 @@ export class Operations {
       return this.uploadAsset(actor, parsed.data);
     if (name === "documents.upload") return this.uploadDocument(actor, parsed.data);
     if (name === "recordings.upload") return this.uploadRecording(actor, parsed.data);
+    if (name === "diagnostics.putChunk")
+      return putDiagnosticChunk(
+        this.db,
+        this.store,
+        this.config,
+        actor,
+        parsed.data,
+        async (db, original, operation) => {
+          await accountLock(db);
+          return this.currentForOperation(db, original, operation);
+        },
+      );
+    if (name === "diagnostics.finalize")
+      return finalizeDiagnosticEvidence(
+        this.db,
+        this.store,
+        actor,
+        parsed.data,
+        async (db, original, operation) => {
+          await accountLock(db);
+          return this.currentForOperation(db, original, operation);
+        },
+      );
+    if (name === "diagnostics.read")
+      return readDiagnosticPage(
+        this.db,
+        this.store,
+        actor,
+        parsed.data,
+        async (db, original, operation) => {
+          await accountLock(db);
+          return this.currentForOperation(db, original, operation);
+        },
+      );
     if (name === "qa.compare")
       return compareQaImages(this.db, actor, this.store, parsed.data as any);
     if (name.startsWith("github."))
@@ -165,6 +208,13 @@ export class Operations {
         if (name.startsWith("threads.")) return feedback(db, a, name, i, this.config);
         if (name.startsWith("recordings."))
           return recordingRead(db, a, this.store, name, i);
+        if (name === "diagnostics.begin") return beginDiagnosticEvidence(db, a, i);
+        if (name === "diagnostics.list") return listDiagnosticEvidence(db, a, i);
+        if (name === "diagnostics.describe") return describeDiagnosticEvidence(db, a, i);
+        if (name === "diagnostics.search") {
+          await this.currentForOperation(db, a, "diagnostics.read");
+          return searchDiagnosticEvents(db, a, i);
+        }
         if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
         if (name.startsWith("views.")) return views(db, a, name, i);
         if (name.startsWith("assets.")) {

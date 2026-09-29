@@ -260,6 +260,10 @@ try {
   await send({ type: "sessionDiscard" });
   await page.goto(origins[0] + "/video");
   await send({ type: "activate", tabId, projectId: target.projectId });
+  const videoReview = await worker.evaluate(
+    async (id) => (await chrome.storage.local.get("sessions")).sessions[id],
+    tabId,
+  );
   await page.evaluate(() => {
     const original = navigator.mediaDevices.setCaptureHandleConfig.bind(
       navigator.mediaDevices,
@@ -271,9 +275,17 @@ try {
   });
   const video = await browser.newPage();
   await video.goto(
-    `chrome-extension://${id}/video.html?sourceTabId=${tabId}&reviewId=${target.reviewId}`,
+    `chrome-extension://${id}/video.html?sourceTabId=${tabId}&reviewId=${videoReview.reviewId}`,
   );
-  await video.locator("#start:enabled").waitFor();
+  await video
+    .locator("#start:enabled")
+    .waitFor()
+    .catch(async (error) => {
+      throw Error(
+        `Video recorder did not become ready: ${await video.locator("#status").textContent()}`,
+        { cause: error },
+      );
+    });
   assert.equal(await video.locator("#debug-context").isChecked(), true);
   await page.waitForFunction(() => !!window.qaCaptureHandle);
   const handle = await page.evaluate(() => window.qaCaptureHandle);

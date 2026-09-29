@@ -2,6 +2,7 @@ import { diagnosticCollector, cleanDiagnostics } from "../diagnostics/diagnostic
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 import { putPage, getPage, deletePage, deleteDraftPages } from "./page-store.js";
 import { pointShapes, attachPointEvidence } from "./markings.js";
+import { queueObsoleteEvidence, retireObsoleteEvidence } from "../diagnostics/cleanup.js";
 
 export function createCaptureWorkflow({
   get,
@@ -12,6 +13,9 @@ export function createCaptureWorkflow({
   sessionFor,
   openDraft,
   watchCapture,
+  captureDiagnostics,
+  accountIdentity,
+  deleteDiagnosticEvidence,
 }) {
   let capturing = false;
   async function capture(
@@ -26,11 +30,20 @@ export function createCaptureWorkflow({
     const guard = watchCapture(sender.tab.id, sender.tab.windowId, sender.tab.url);
     const retainedPointStates = new Map();
     let retainedAnnotations;
+    let previousDiagnosticEvidence;
+    let replacedEvidenceId;
+    let unattachedEvidenceId;
+    async function clearReplacedEvidence() {
+      await retireObsoleteEvidence(pending, deleteDiagnosticEvidence, async () =>
+        set({ draft: pending }),
+      ).catch(() => {}); // The draft retains the cleanup ID for retry or discard.
+    }
     let pending,
       captured = false;
     try {
       const session = await sessionFor(sender),
         state = await get();
+      const ownerIdentity = await accountIdentity(session.server);
       if (retryId) {
         pointToken = state.draft?.pointToken || null;
         scope = state.draft?.captureScope === "fullPage" ? "fullPage" : "visible";
@@ -58,12 +71,17 @@ export function createCaptureWorkflow({
         (!state.draft ||
           state.draft.sourceTabId !== tab.id ||
           state.draft.context.url !== context.url ||
-          state.draft.server !== session.server)
+          state.draft.server !== session.server ||
+          state.draft.projectId !== session.projectId ||
+          (state.draft.evidenceOwnerIdentity &&
+            state.draft.evidenceOwnerIdentity !== ownerIdentity))
       )
         throw Error(
           "The original review page changed. Send this draft without an image, or discard it and capture the new page.",
         );
       if (retryId) {
+        previousDiagnosticEvidence = state.draft?.diagnosticEvidence;
+        replacedEvidenceId = state.draft?.diagnosticEvidence?.evidenceId;
         retainedAnnotations = state.draft.context.annotations;
         context.annotations = retainedAnnotations;
         // Return retained originals to the local point cache before replacing the
@@ -102,6 +120,12 @@ export function createCaptureWorkflow({
                   .catch(() => [])
               )[0]?.result,
             ),
+        includeDiagnostics: retryId
+          ? state.draft?.includeDiagnostics
+          : state.reviewDefaults?.includeDiagnostics !== false,
+        evidenceOwnerIdentity: retryId
+          ? state.draft?.evidenceOwnerIdentity
+          : ownerIdentity,
         image: null,
         approvedImage: null,
         capturePages: [],
@@ -121,9 +145,39 @@ export function createCaptureWorkflow({
       if (scope === "points") {
         // Finalizing consumes the originals captured with each point. It must never
         // invoke native capture: menus, viewports and scroll positions may have changed.
+        const before = await chrome.tabs.sendMessage(tab.id, {
+          type: "captureCheck",
+          pointToken,
+        });
+        if (before.error || before.captureEpoch !== 0)
+          throw Error(before.error || "The page moved before point diagnostics.");
+        guard.assert();
+        pending.diagnosticEvidence = await captureDiagnostics({
+          tabId: tab.id,
+          sourceUrl: tab.url,
+          sourceOrigin: session.origin,
+          server: session.server,
+          projectId: session.projectId,
+          reviewId: session.reviewId,
+          ownerIdentity,
+          signature: before.signature,
+          captureEpoch: before.captureEpoch,
+          pointSnapshot: true,
+        });
+        unattachedEvidenceId = pending.diagnosticEvidence.evidenceId;
+        const checked = await chrome.tabs.sendMessage(tab.id, {
+          type: "captureCheck",
+          pointToken,
+        });
+        if (checked.signature !== before.signature || checked.captureEpoch !== 0)
+          throw Error("The page moved while collecting point diagnostics.");
         pending.captureError = null;
         await attachPointEvidence(pending);
+        if (replacedEvidenceId && replacedEvidenceId !== unattachedEvidenceId)
+          queueObsoleteEvidence(pending, replacedEvidenceId);
         await set({ draft: pending });
+        unattachedEvidenceId = null;
+        await clearReplacedEvidence();
         captured = true;
         await chrome.tabs.create({
           url: chrome.runtime.getURL(`editor.html?draft=${pending.id}`),
@@ -143,6 +197,34 @@ export function createCaptureWorkflow({
           "The page moved while preparing capture. Try again once it is still.",
         );
       guard.assert();
+      const diagnosticEvidence = await captureDiagnostics({
+        tabId: tab.id,
+        sourceUrl: tab.url,
+        sourceOrigin: session.origin,
+        server: session.server,
+        projectId: session.projectId,
+        reviewId: session.reviewId,
+        ownerIdentity,
+        signature: before.signature,
+        captureEpoch: before.captureEpoch,
+      });
+      unattachedEvidenceId = diagnosticEvidence.evidenceId;
+      const afterDiagnostics = await chrome.tabs.sendMessage(tab.id, {
+        type: "captureCheck",
+        pointToken,
+      });
+      if (
+        afterDiagnostics.signature !== before.signature ||
+        afterDiagnostics.captureEpoch !== 0
+      )
+        throw Error("The page moved while collecting diagnostics. Retry capture.");
+      guard.assert();
+      pending.diagnosticEvidence = diagnosticEvidence;
+      if (replacedEvidenceId && replacedEvidenceId !== unattachedEvidenceId)
+        queueObsoleteEvidence(pending, replacedEvidenceId);
+      await set({ draft: pending });
+      unattachedEvidenceId = null;
+      await clearReplacedEvidence();
       let canvas,
         sx,
         sy,
@@ -478,6 +560,15 @@ export function createCaptureWorkflow({
       captured = true;
       return { captured: true };
     } catch (error) {
+      if (unattachedEvidenceId) {
+        try {
+          await deleteDiagnosticEvidence(unattachedEvidenceId);
+        } catch {
+          queueObsoleteEvidence(pending, unattachedEvidenceId);
+        }
+        if (pending?.diagnosticEvidence?.evidenceId === unattachedEvidenceId)
+          pending.diagnosticEvidence = previousDiagnosticEvidence || null;
+      }
       if (pending) {
         const partial =
           pending.captureScope === "fullPage" && pending.capturePages.length > 0;

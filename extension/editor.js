@@ -7,8 +7,17 @@ import {
   shapeRectangle,
 } from "./capture/screenshot-render.js";
 import { buildExportBlob, screenshotSurface } from "./capture/editor-export.js";
+import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
+import {
+  diagnosticPreview,
+  downloadDraftDiagnostics,
+  cleanupPrivateDiagnosticArchives,
+} from "./diagnostics/archive.js";
+import { summarizeLocalDiagnostics } from "./diagnostics/summary.js";
 
 const $ = (id) => document.getElementById(id);
+const diagnosticStore = createDiagnosticEvidenceStore();
+void cleanupPrivateDiagnosticArchives().catch(() => {});
 const send = async (message) => {
   const r = await chrome.runtime.sendMessage(message);
   if (!r.ok) throw Object.assign(Error(r.error), { code: r.code });
@@ -1156,10 +1165,100 @@ addEventListener("beforeunload", (e) => {
   }
 });
 function renderDiagnostics() {
-  $("diagnostics-review").hidden = !draft?.diagnostics;
+  const artifact = draft?.diagnosticEvidence;
+  $("diagnostics-review").hidden = !artifact && !draft?.diagnostics;
   $("include-diagnostics").checked = !!draft?.includeDiagnostics;
   const entries = $("diagnostics-entries");
   entries.replaceChildren();
+  $("diagnostics-legacy-hint").hidden = !!artifact;
+  $("diagnostics-legacy-limit").hidden = !!artifact;
+  $("download-diagnostics").hidden = !artifact;
+  if (artifact) {
+    const id = artifact.evidenceId;
+    const summary = document.createElement("p");
+    summary.className = "hint";
+    summary.textContent = `Captured ${(artifact.totalBytes / 1048576).toFixed(1)} MiB of raw page diagnostics. The archive contains available DOM, console, network, bodies, storage and browser context. Missing channels are recorded in coverage.`;
+    entries.append(summary);
+    const facts = document.createElement("dl");
+    facts.className = "diagnostic-facts";
+    facts.textContent = "Loading capture summary…";
+    entries.append(facts);
+    void diagnosticStore
+      .getEvidenceState(id)
+      .then((state) => {
+        if (draft?.diagnosticEvidence?.evidenceId !== id) return;
+        const manifest = state?.manifest;
+        const metrics = summarizeLocalDiagnostics(manifest);
+        const unavailable = "Unavailable for this capture";
+        const count = (value) => (value === null ? unavailable : value.toLocaleString());
+        const coverage = (channel) => {
+          const status = manifest?.coverage?.[channel]?.status;
+          return status && status !== "complete" ? ` · ${status} coverage` : "";
+        };
+        const add = (name, value) => {
+          const term = document.createElement("dt");
+          const detail = document.createElement("dd");
+          term.textContent = name;
+          detail.textContent = value;
+          facts.append(term, detail);
+        };
+        facts.replaceChildren();
+        add(
+          "Capture window",
+          metrics.startedAt
+            ? `${new Date(metrics.startedAt).toLocaleString()} → ${metrics.endedAt ? new Date(metrics.endedAt).toLocaleString() : "end unavailable"}`
+            : unavailable,
+        );
+        add(
+          "DOM snapshot",
+          metrics.domBytes === null
+            ? unavailable
+            : `${metrics.domBytes.toLocaleString()} bytes${coverage("dom")}`,
+        );
+        add(
+          "Console / errors",
+          metrics.consoleCount === null || metrics.errorCount === null
+            ? unavailable
+            : `${count(metrics.consoleCount)} messages · ${count(metrics.errorCount)} errors${coverage("console")}`,
+        );
+        add(
+          "HTTP requests",
+          metrics.httpRequestCount === null
+            ? unavailable
+            : `${count(metrics.httpRequestCount)} observed${coverage("network")}`,
+        );
+        add(
+          "Response bodies",
+          metrics.responseBodyCount === null || metrics.responseCount === null
+            ? unavailable
+            : `${count(metrics.responseBodyCount)} captured · ${count(metrics.responseCount)} HTTP responses observed${coverage("body")}`,
+        );
+      })
+      .catch(() => {
+        facts.textContent = "Capture summary is unavailable in this browser.";
+      });
+    for (const [channel, value] of Object.entries(artifact.coverage || {})) {
+      const line = document.createElement("p");
+      line.className = "diagnostic-coverage";
+      line.textContent = `${channel}: ${value.status} · ${value.observedCount} items · ${value.capturedBytes} bytes${value.reasons?.length ? ` · ${value.reasons.join(", ")}` : ""}`;
+      entries.append(line);
+    }
+    const sample = document.createElement("pre");
+    sample.className = "diagnostic-sample";
+    sample.textContent = "Loading a small local preview…";
+    entries.append(sample);
+    void diagnosticPreview(diagnosticStore, id)
+      .then((value) => {
+        if (draft?.diagnosticEvidence?.evidenceId !== id) return;
+        sample.textContent = value?.samples.length
+          ? value.samples.map((item) => `${item.kind}\n${item.text}`).join("\n\n")
+          : "No text preview is available. Download the archive to inspect captured files.";
+      })
+      .catch(() => {
+        sample.textContent = "Local preview unavailable; retry from this browser.";
+      });
+    return;
+  }
   if (!draft?.diagnostics) return;
   for (const kind of ["console", "network"]) {
     const heading = document.createElement("h3");
@@ -1225,6 +1324,16 @@ function renderDiagnostics() {
     }
   }
 }
+$("download-diagnostics").onclick = async () => {
+  const id = draft?.diagnosticEvidence?.evidenceId;
+  if (!id) return;
+  try {
+    await downloadDraftDiagnostics(diagnosticStore, id);
+    status("Diagnostic archive downloaded.");
+  } catch (error) {
+    if (error.name !== "AbortError") status(error.message, "error");
+  }
+};
 let projectCategories = new Map();
 function loadProjectCategories(selected = "general") {
   const field = $("category");

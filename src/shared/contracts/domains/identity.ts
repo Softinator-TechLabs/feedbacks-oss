@@ -253,6 +253,7 @@ export const identityOutputs = {
   "pairing.poll": z.object({
     status: z.enum(["pending", "approved"]),
     id: id.optional(),
+    userId: id.optional(),
     name: z.string().optional(),
     kind: z.string().optional(),
     token: z.string().optional(),

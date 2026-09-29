@@ -10,6 +10,7 @@ import { purgeExpiredPairings } from "./auth.js";
 import { deliverWebhooks } from "./webhooks.js";
 import { pollGithubStatusSync } from "./github-status-worker.js";
 import { runScheduledQa } from "./scheduled-qa.js";
+import { drainExpiredDiagnosticEvidence } from "./diagnostic-evidence.js";
 
 try {
   const config = configFromEnv();
@@ -42,6 +43,7 @@ try {
     void Promise.allSettled([
       purgeExpiredExports(db),
       purgeExpiredPairings(db),
+      drainExpiredDiagnosticEvidence(db, store),
       deliverWebhooks(db),
       pollGithubStatusSync(db, config),
       runScheduledQa(db),

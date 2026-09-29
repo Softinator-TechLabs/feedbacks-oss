@@ -61,8 +61,16 @@ export function createSessionCoordinator({
   ready,
   captureStorage = createSessionStorage(),
   annotationImage,
+  debuggerLease = null,
 }) {
   const store = createCaptureStore({ storage: captureStorage });
+  const rawSubscribers = new Map();
+  function notifyRaw(source, method, params, ingressAt) {
+    for (const subscriber of rawSubscribers.get(source.tabId) || [])
+      Promise.resolve()
+        .then(() => subscriber(method, params, ingressAt, source.sessionId))
+        .catch(() => {});
+  }
   let pendingNavigation = null;
   let queue = Promise.resolve();
   const serial = (fn) => {
@@ -81,6 +89,14 @@ export function createSessionCoordinator({
   };
   const command = (tabId, method, params = {}) =>
     chrome.debugger.sendCommand({ tabId }, method, params);
+  const attachDebugger = (tabId) =>
+    debuggerLease
+      ? debuggerLease.acquire(tabId, "recording")
+      : chrome.debugger.attach({ tabId }, "1.3");
+  const detachDebugger = (tabId) =>
+    debuggerLease
+      ? debuggerLease.release(tabId, "recording")
+      : chrome.debugger.detach({ tabId });
   async function cleanup(s) {
     pendingNavigation = null;
     if (!s) return;
@@ -102,8 +118,7 @@ export function createSessionCoordinator({
         },
       })
       .catch(() => {});
-    if (s.debuggerAttached)
-      await chrome.debugger.detach({ tabId: s.target.sourceTabId }).catch(() => {});
+    if (s.debuggerAttached) await detachDebugger(s.target.sourceTabId).catch(() => {});
     if (s.recording.mode !== "video")
       await chrome.tabs
         .sendMessage(s.target.sourceTabId, {
@@ -594,6 +609,7 @@ export function createSessionCoordinator({
   }
   chrome.debugger.onEvent.addListener((source, method, params) => {
     const ingressAt = Date.now();
+    notifyRaw(source, method, params, ingressAt);
     void serial(() => collectDebuggerEvent(source, method, params, ingressAt)).catch(
       async () => {
         await store
@@ -603,6 +619,7 @@ export function createSessionCoordinator({
     );
   });
   chrome.debugger.onDetach.addListener((source) => {
+    notifyRaw(source, "Debugger.detached", {}, Date.now());
     void serial(async () => {
       const s = await store.read();
       if (s?.active && s.target.sourceTabId === source.tabId) {
@@ -689,6 +706,23 @@ export function createSessionCoordinator({
     }).catch(() => {});
   });
   return {
+    subscribeRawDebugger(tabId, subscriber) {
+      const listeners = rawSubscribers.get(tabId) || new Set();
+      listeners.add(subscriber);
+      rawSubscribers.set(tabId, listeners);
+      return () => {
+        listeners.delete(subscriber);
+        if (!listeners.size) rawSubscribers.delete(tabId);
+      };
+    },
+    async isRecordingDebuggerAttached(tabId) {
+      const state = await store.read();
+      return !!(
+        state?.active &&
+        state.debuggerAttached &&
+        state.target.sourceTabId === tabId
+      );
+    },
     beginAnnotation: (details) =>
       serial(async () => {
         pendingNavigation = null;
@@ -1019,7 +1053,7 @@ export function createSessionCoordinator({
           when: s.started + 300000,
         });
         try {
-          await chrome.debugger.attach({ tabId: target.sourceTabId }, "1.3");
+          await attachDebugger(target.sourceTabId);
           s.debuggerAttached = true;
           await store.update((v) => {
             v.debuggerAttached = true;
@@ -1033,8 +1067,18 @@ export function createSessionCoordinator({
             enabled: true,
           });
           await command(target.sourceTabId, "Network.enable", {
-            maxTotalBufferSize: 1024 * 1024,
-            maxResourceBufferSize: 32768,
+            maxTotalBufferSize: debuggerLease?.hasOwner(
+              target.sourceTabId,
+              "screenshot-diagnostics",
+            )
+              ? 268_435_456
+              : 1024 * 1024,
+            maxResourceBufferSize: debuggerLease?.hasOwner(
+              target.sourceTabId,
+              "screenshot-diagnostics",
+            )
+              ? 67_108_864
+              : 32768,
             maxPostDataSize: 16384,
           });
           await command(target.sourceTabId, "Runtime.enable");
@@ -1051,7 +1095,7 @@ export function createSessionCoordinator({
           );
         } catch {
           if (s.debuggerAttached)
-            await chrome.debugger.detach({ tabId: target.sourceTabId }).catch(() => {});
+            await detachDebugger(target.sourceTabId).catch(() => {});
           s.debuggerAttached = false;
           await store.update((v) => {
             v.debuggerAttached = false;

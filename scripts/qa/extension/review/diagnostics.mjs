@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { gunzipSync } from "node:zlib";
 
 export async function verifyDiagnostics({
   page,
@@ -80,41 +82,40 @@ export async function verifyDiagnostics({
   );
   await send({ type: "popupAction", tabId: id, action: "capture" });
   const diagnosticDraft = await draft();
-  const diagnosticIndex = diagnosticDraft?.diagnostics?.console?.findIndex((entry) =>
-    entry.message.includes("PRIVATE-123"),
-  );
-  if (diagnosticIndex < 0) throw Error("Synthetic console message was not captured");
+  assert.ok(diagnosticDraft?.diagnosticEvidence?.evidenceId);
+  assert.equal(diagnosticDraft.includeDiagnostics, true);
   const editor = await context.newPage();
   await editor.goto(`chrome-extension://${extensionId}/editor.html`);
   await editor.locator("#diagnostics-review summary").click();
-  const messageField = editor.getByRole("textbox", {
-    name: `Console message ${diagnosticIndex + 1}`,
-  });
-  await messageField.waitFor();
-  await messageField.evaluate((element) => {
-    const start = element.value.indexOf("PRIVATE-123");
-    element.setSelectionRange(start, start + "PRIVATE-123".length);
-  });
-  await editor.locator("[data-diagnostic-mask]").nth(diagnosticIndex).click();
-  await editor.getByText("Selected text masked in the local draft.").waitFor();
-  await editor.reload();
-  const masked = await draft();
+  await editor.locator("#download-diagnostics").waitFor();
   results.diagnostics = {
-    persisted:
-      !masked.diagnostics.console[diagnosticIndex].message.includes("PRIVATE-123"),
-    marker: masked.diagnostics.console[diagnosticIndex].message.includes("[redacted]"),
+    checked: await editor.locator("#include-diagnostics").isChecked(),
+    download: await editor.locator("#download-diagnostics").isVisible(),
+    boundedPreview:
+      (await editor.locator(".diagnostic-sample").textContent()).length <= 3000,
   };
-  await editor.locator("#body").fill("Synthetic diagnostics masking browser check.");
-  await editor.locator("#diagnostics-review summary").click();
-  await editor.locator("#include-diagnostics").check();
+  await editor.evaluate(() => {
+    Object.defineProperty(window, "showSaveFilePicker", {
+      configurable: true,
+      value: undefined,
+    });
+  });
+  const localDownload = editor.waitForEvent("download");
+  await editor.locator("#download-diagnostics").click();
+  const localArchive = await localDownload;
+  assert.match(localArchive.suggestedFilename(), /\.tar\.gz$/);
+  const archiveBytes = gunzipSync(await readFile(await localArchive.path()));
+  results.diagnostics.localArchive =
+    archiveBytes.includes(Buffer.from("manifest.json")) &&
+    archiveBytes.includes(Buffer.from("PRIVATE-123"));
+  await editor.locator("#body").fill("Synthetic raw diagnostics browser check.");
   await editor.locator("#send").click();
   await editor.getByText("Feedback sent").waitFor();
   const threadUrl = await editor.locator("#thread").getAttribute("href");
   const threadId = threadUrl?.match(/[0-9a-f-]{36}/)?.[0];
   if (!threadId) throw Error("Submitted feedback lacks a thread link");
-  const saved = (await post("threads.get", { threadId }, auth)).data;
-  const serialized = JSON.stringify(saved);
+  const saved = (await post("diagnostics.list", { threadId }, auth)).data;
   results.diagnostics.submitted =
-    !serialized.includes("PRIVATE-123") && serialized.includes("masked");
+    saved.total === 1 && saved.items[0].status === "complete";
   results.diagnostics.draftCleared = !(await draft());
 }

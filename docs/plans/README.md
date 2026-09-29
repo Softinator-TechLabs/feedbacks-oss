@@ -10,6 +10,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 - [Compact Account navigation](account-mobile-navigation.md)
 - [Modular source structure](modular-source-structure.md)
 - [Session replay and agent debug bundles](session-replay.md)
+- [Screenshot diagnostic evidence](../superpowers/plans/2026-09-29-screenshot-diagnostic-evidence.md)
 - [Source-page recording controls and video upload progress](recording-source-controls.md)
 - [Detect the active Feedbacks server](extension-server-detection.md)
 

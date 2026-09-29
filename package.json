@@ -29,7 +29,7 @@
     "check": "npm run format:check && npm run check:harness && npm run typecheck && npm test && npm run build && npm run harness:smoke && npm run check:release",
     "check:release": "node scripts/check-release.mjs",
     "release:source": "node scripts/export-source.mjs",
-    "test:postgres": "FEEDBACKS_NATIVE_POSTGRES=1 node --import tsx --test tests/cursor-concurrency.test.ts tests/login-throttle-postgres.test.ts",
+    "test:postgres": "FEEDBACKS_NATIVE_POSTGRES=1 node --import tsx --test tests/cursor-concurrency.test.ts tests/diagnostic-evidence-postgres.test.ts tests/login-throttle-postgres.test.ts",
     "test:containers": "node scripts/smoke-containers.mjs",
     "qa:visual": "node --import tsx scripts/visual-qa.mjs",
     "qa:app-visual": "node --import tsx scripts/visual-app-qa.mjs",
