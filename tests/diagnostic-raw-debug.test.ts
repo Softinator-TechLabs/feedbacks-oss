@@ -10,6 +10,7 @@ function harness({
   attachFails = false,
   bodyFails = false,
   workerFails = false,
+  workerEnableFails = false,
 } = {}) {
   const saved = new Map<string, Uint8Array>();
   const commands: { method: string; params: any; sessionId?: string }[] = [];
@@ -43,6 +44,8 @@ function harness({
       commands.push({ method, params, sessionId });
       if (method === "Target.setAutoAttach" && workerFails)
         throw new Error("worker denied");
+      if (method === "Network.enable" && sessionId && workerEnableFails)
+        throw new Error("worker network denied");
       if (method === "Network.getRequestPostData")
         return { postData: '{"password":"fake-pass"}' };
       if (method === "Network.getResponseBody") {
@@ -236,6 +239,30 @@ test("attached worker events retain their session and retrieve bodies from that 
     .read(result.files.find((item: any) => item.kind === "network")!)
     .toString("utf8");
   assert.ok(network.includes('"sessionId":"worker-session-1"'));
+});
+
+test("attached workers enable their own protocol session and report failed domains", async () => {
+  const h = harness({ workerEnableFails: true });
+  const capture = createRawDiagnosticCapture({
+    tabId: 5,
+    evidenceId: "evidence-1",
+    sourceOrigin: "https://example.test",
+    store: h.store,
+    debuggerSource: h.source,
+  });
+  await capture.start();
+  await h.listener!(
+    "Target.attachedToTarget",
+    { sessionId: "worker-1", targetInfo: { type: "worker" } },
+    40,
+  );
+  const result = await capture.stop();
+  assert.deepEqual(
+    h.commands.filter((item) => item.sessionId === "worker-1").map((item) => item.method),
+    ["Network.enable", "Runtime.enable", "Log.enable"],
+  );
+  assert.equal(result.coverage.network.status, "partial");
+  assert.ok(result.coverage.network.reasons.includes("worker_enable_failed"));
 });
 
 test("attach failure and leaving the approved origin keep earlier bytes with explicit gaps", async () => {

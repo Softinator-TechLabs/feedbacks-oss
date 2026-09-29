@@ -39,6 +39,7 @@ export function createRawDiagnosticCapture({
   tabId,
   evidenceId = crypto.randomUUID(),
   sourceOrigin,
+  binding = null,
   store,
   debuggerSource,
 }) {
@@ -202,6 +203,29 @@ export function createRawDiagnosticCapture({
             : null;
     if (!kind) return;
     await event(kind, method, params, ingressAt, sessionId ? { sessionId } : {});
+    if (method === "Target.attachedToTarget" && params?.sessionId) {
+      for (const [command, channel] of [
+        ["Network.enable", "network"],
+        ["Runtime.enable", "console"],
+        ["Log.enable", "console"],
+      ]) {
+        try {
+          await debuggerSource.sendCommand(
+            tabId,
+            command,
+            command === "Network.enable"
+              ? {
+                  maxTotalBufferSize: MAX_BYTES,
+                  maxResourceBufferSize: BODY_RESOURCE_BYTES,
+                }
+              : {},
+            params.sessionId,
+          );
+        } catch {
+          setCoverage(channel, "partial", "worker_enable_failed");
+        }
+      }
+    }
     if (method === "Network.requestWillBeSent" && params?.request?.hasPostData) {
       try {
         const result = await debuggerSource.sendCommand(
@@ -254,6 +278,7 @@ export function createRawDiagnosticCapture({
   const view = () => ({
     evidenceId,
     sourceOrigin,
+    binding,
     active,
     startedAt,
     endedAt,

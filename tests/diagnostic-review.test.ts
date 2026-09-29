@@ -5,6 +5,10 @@ import {
   updateReviewDefaults,
 } from "../extension/review/review-preferences.js";
 import { uploadDraftDiagnostics } from "../extension/diagnostics/upload.js";
+import {
+  accountFingerprint,
+  sameDiagnosticBinding,
+} from "../extension/diagnostics/identity.js";
 import { diagnosticArchiveStream } from "../extension/diagnostics/archive.js";
 import { createHash, randomUUID } from "node:crypto";
 import { gunzipSync } from "node:zlib";
@@ -64,6 +68,39 @@ test("new screenshot reviews include diagnostics unless Settings disables them",
     updateReviewDefaults({}, { includeDiagnostics: false }).includeDiagnostics,
     false,
   );
+});
+
+test("account binding follows the user across a new pairing key", async () => {
+  const userId = randomUUID();
+  const oldKey = { id: randomUUID(), token: "first-token", userId };
+  const replacement = { id: randomUUID(), token: "second-token", userId };
+  assert.equal(await accountFingerprint(oldKey), await accountFingerprint(replacement));
+  assert.notEqual(
+    await accountFingerprint(replacement),
+    await accountFingerprint({ ...replacement, userId: randomUUID() }),
+  );
+  assert.notEqual(
+    await accountFingerprint(oldKey, { tokenOnly: true }),
+    await accountFingerprint(replacement, { tokenOnly: true }),
+  );
+});
+
+test("raw history belongs to the exact review context and user", () => {
+  const bound = {
+    server: "https://feedbacks.test",
+    projectId: "project-a",
+    reviewId: "review-a",
+    ownerIdentity: "user:one",
+  };
+  assert.equal(sameDiagnosticBinding(bound, { ...bound }), true);
+  for (const changed of [
+    { projectId: "project-b" },
+    { reviewId: "review-b" },
+    { ownerIdentity: "user:two" },
+    { server: "https://other.test" },
+  ])
+    assert.equal(sameDiagnosticBinding(bound, { ...bound, ...changed }), false);
+  assert.equal(sameDiagnosticBinding(null, bound), false);
 });
 
 test("unchecked review uploads no chunks and deletes local evidence", async () => {

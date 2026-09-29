@@ -407,7 +407,7 @@ export class Auth {
         "extension",
       );
       await tx.query("UPDATE pairing SET consumed_at=now() WHERE id=$1", [id]);
-      return { status: "approved", ...result };
+      return { status: "approved", ...result, userId: u.id };
     });
   }
 }

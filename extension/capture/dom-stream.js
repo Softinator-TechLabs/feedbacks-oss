@@ -55,6 +55,7 @@ export async function capturePreparedDom({
   const channelCoverage = coverage();
   const files = [];
   const open = new Map();
+  const channelDone = new Set();
   let totalBytes = 0;
   let port = null;
   let ended = false;
@@ -80,10 +81,18 @@ export async function capturePreparedDom({
     }
     if (reason)
       for (const channel of CHANNELS) {
-        if ([...open.values()].some((entry) => entry.kind === channel))
-          mark(channelCoverage, channel, "partial", reason);
-        else if (channelCoverage[channel].status === "unavailable")
-          mark(channelCoverage, channel, "unavailable", reason);
+        if (channelDone.has(channel)) continue;
+        const current = channelCoverage[channel];
+        mark(
+          channelCoverage,
+          channel,
+          current.status === "stopped"
+            ? "stopped"
+            : current.capturedBytes > 0 || current.status === "partial"
+              ? "partial"
+              : "unavailable",
+          reason,
+        );
       }
     resolveDone();
   };
@@ -96,7 +105,9 @@ export async function capturePreparedDom({
       return;
     port = connected;
     let queue = Promise.resolve();
-    connected.onDisconnect.addListener(() => finish("port_disconnected"));
+    connected.onDisconnect.addListener(() => {
+      void queue.finally(() => finish("port_disconnected"));
+    });
     connected.onMessage.addListener((message) => {
       queue = queue
         .then(async () => {
@@ -114,11 +125,11 @@ export async function capturePreparedDom({
             return;
           }
           if (message?.type === "channel_done") {
-            if (
-              CHANNELS.includes(message.channel) &&
-              channelCoverage[message.channel].status === "unavailable"
-            )
-              mark(channelCoverage, message.channel, "complete");
+            if (CHANNELS.includes(message.channel)) {
+              channelDone.add(message.channel);
+              if (channelCoverage[message.channel].status === "unavailable")
+                mark(channelCoverage, message.channel, "complete");
+            }
             return;
           }
           if (message?.type === "chunk") {
@@ -192,12 +203,13 @@ export async function capturePreparedDom({
               chunks: entry.chunks,
             });
             channelCoverage[entry.kind].observedCount++;
-            if (channelCoverage[entry.kind].status !== "partial")
-              mark(channelCoverage, entry.kind, "complete");
             connected.postMessage({ type: "file_ack", fileId: entry.fileId });
             return;
           }
-          if (message?.type === "done") finish();
+          if (message?.type === "done")
+            finish(
+              channelDone.size === CHANNELS.length ? undefined : "stream_incomplete",
+            );
         })
         .catch(() => {
           connected.postMessage({ type: "abort", reason: "port_store_failed" });
@@ -314,6 +326,7 @@ export async function streamPreparedSnapshot({
       sequence++;
     }
     return {
+      fileId,
       async write(value) {
         if (aborted || !stable()) throw Error("capture_epoch_changed");
         const bytes = typeof value === "string" ? encoder.encode(value) : value;
@@ -348,6 +361,7 @@ export async function streamPreparedSnapshot({
     const output = await writer(kind, mimeType);
     await output.write(text);
     await output.end();
+    return output.fileId;
   }
   function inert(value, blobs = [], seen = new WeakSet(), depth = 0) {
     if (value === null || typeof value === "string" || typeof value === "boolean")
@@ -411,28 +425,52 @@ export async function streamPreparedSnapshot({
       return;
     }
     try {
-      await sendText("dom", "text/html", document.documentElement.outerHTML);
-      for (const frame of document.querySelectorAll("iframe,frame")) {
-        try {
-          const frameDoc = frame.contentDocument;
+      const metadata = await writer("dom", "application/jsonl");
+      const visited = new WeakSet();
+      const describe = async (value) => metadata.write(JSON.stringify(value) + "\n");
+      const visitRoot = async (root, path) => {
+        let index = 0;
+        for (const element of root.querySelectorAll("*")) {
+          const elementPath = `${path}/element:${index++}`;
+          if (element.shadowRoot) {
+            const shadowPath = `${elementPath}/shadow`;
+            await describe({
+              type: "shadow_root",
+              path: shadowPath,
+              hostPath: elementPath,
+              hostTag: element.tagName,
+              html: element.shadowRoot.innerHTML,
+            });
+            await visitRoot(element.shadowRoot, shadowPath);
+          }
+          if (element.tagName !== "IFRAME" && element.tagName !== "FRAME") continue;
+          const framePath = `${elementPath}/frame`;
+          const src = element.getAttribute?.("src") ?? element.src ?? null;
+          let frameDoc;
+          try {
+            frameDoc = element.contentDocument;
+          } catch {}
           if (!frameDoc?.documentElement) {
             gap("dom", "frame_inaccessible");
+            await describe({ type: "frame_gap", path: framePath, src });
             continue;
           }
-          await sendText("dom", "text/html", frameDoc.documentElement.outerHTML);
-        } catch {
-          gap("dom", "frame_inaccessible");
+          await visitDocument(frameDoc, framePath);
         }
-      }
-      const shadow = await writer("dom", "application/jsonl");
-      for (const element of document.querySelectorAll("*")) {
-        if (!element.shadowRoot) continue;
-        await shadow.write(
-          JSON.stringify({ host: element.tagName, html: element.shadowRoot.innerHTML }) +
-            "\n",
-        );
-      }
-      await shadow.end();
+      };
+      const visitDocument = async (doc, path) => {
+        if (visited.has(doc)) {
+          gap("dom", "frame_cycle");
+          await describe({ type: "frame_gap", path, reason: "frame_cycle" });
+          return;
+        }
+        visited.add(doc);
+        const fileId = await sendText("dom", "text/html", doc.documentElement.outerHTML);
+        await describe({ type: "document", path, url: doc.URL || location.href, fileId });
+        await visitRoot(doc, path);
+      };
+      await visitDocument(document, "root");
+      await metadata.end();
     } catch {
       gap("dom", "dom_snapshot_failed");
     }

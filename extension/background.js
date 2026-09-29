@@ -1,7 +1,7 @@
 import { reviewDefaults, updateReviewDefaults } from "./review/review-preferences.js";
 import { diagnosticCollector } from "./diagnostics/diagnostics.js";
 import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
-import { accountFingerprint } from "./diagnostics/identity.js";
+import { accountFingerprint, sameDiagnosticBinding } from "./diagnostics/identity.js";
 import { createRawDiagnosticCapture } from "./diagnostics/raw-debug.js";
 import { capturePreparedDom } from "./capture/dom-stream.js";
 import "./utils.js";
@@ -90,72 +90,102 @@ async function captureScreenshotDiagnostics({
   signature,
   captureEpoch,
   sourceOrigin,
+  server,
+  projectId,
+  reviewId,
+  ownerIdentity,
   pointSnapshot = false,
 }) {
   const raw = rawDiagnostics.get(tabId);
   let rawStatus = raw?.status();
-  if (rawStatus?.sourceOrigin !== sourceOrigin) rawStatus = null;
-  else if (raw) {
+  const binding = { server, projectId, reviewId, ownerIdentity };
+  const contextChanged =
+    !!rawStatus &&
+    (rawStatus.sourceOrigin !== sourceOrigin ||
+      !sameDiagnosticBinding(rawStatus.binding, binding));
+  if (raw) {
     rawStatus = await raw.stop();
     rawDiagnostics.delete(tabId);
+    if (contextChanged) {
+      await diagnosticEvidenceStore.deleteEvidence(rawStatus.evidenceId);
+      rawStatus = null;
+    }
   }
   const evidenceId = rawStatus?.evidenceId || crypto.randomUUID();
   const startedAt = rawStatus?.startedAt || new Date().toISOString();
-  const captured = await capturePreparedDom({
-    tabId,
-    evidenceId,
-    expectedUrl: sourceUrl,
-    expectedSignature: signature,
-    captureEpoch,
-    store: diagnosticEvidenceStore,
-    remainingBytes: 268_435_456 - (rawStatus?.totalBytes || 0),
-  });
-  const coverage =
-    rawStatus?.coverage ||
-    Object.fromEntries(
-      [
-        "dom",
-        "console",
-        "network",
-        "body",
-        "storage",
-        "environment",
-        "performance",
-        "coverage",
-      ].map((kind) => [
-        kind,
-        {
-          status: "unavailable",
-          observedCount: 0,
-          capturedBytes: 0,
-          reasons: [
-            kind === "console" || kind === "network" || kind === "body"
-              ? "prestart_history_unavailable"
-              : "not_collected",
-          ],
-        },
-      ]),
-    );
-  for (const [channel, state] of Object.entries(captured.coverage))
-    coverage[channel] = state;
-  if (pointSnapshot) {
-    coverage.dom.status = "partial";
-    if (!coverage.dom.reasons.includes("point_snapshot_at_finalize"))
-      coverage.dom.reasons.push("point_snapshot_at_finalize");
+  try {
+    const captured = await capturePreparedDom({
+      tabId,
+      evidenceId,
+      expectedUrl: sourceUrl,
+      expectedSignature: signature,
+      captureEpoch,
+      store: diagnosticEvidenceStore,
+      remainingBytes: 268_435_456 - (rawStatus?.totalBytes || 0),
+    });
+    const coverage =
+      rawStatus?.coverage ||
+      Object.fromEntries(
+        [
+          "dom",
+          "console",
+          "network",
+          "body",
+          "storage",
+          "environment",
+          "performance",
+          "coverage",
+        ].map((kind) => [
+          kind,
+          {
+            status: "unavailable",
+            observedCount: 0,
+            capturedBytes: 0,
+            reasons: [
+              kind === "console" || kind === "network" || kind === "body"
+                ? "prestart_history_unavailable"
+                : "not_collected",
+            ],
+          },
+        ]),
+      );
+    for (const [channel, state] of Object.entries(captured.coverage))
+      coverage[channel] = state;
+    if (rawStatus)
+      for (const kind of ["console", "network", "body"]) {
+        if (coverage[kind].status === "complete") coverage[kind].status = "partial";
+        const reason = pointSnapshot
+          ? "trace_ended_before_dom_snapshot"
+          : "trace_ended_before_pixels";
+        if (!coverage[kind].reasons.includes(reason)) coverage[kind].reasons.push(reason);
+      }
+    if (contextChanged)
+      for (const kind of ["console", "network", "body"]) {
+        if (!coverage[kind].reasons.includes("capture_context_changed"))
+          coverage[kind].reasons.push("capture_context_changed");
+      }
+    if (pointSnapshot) {
+      coverage.dom.status = "partial";
+      if (!coverage.dom.reasons.includes("point_snapshot_at_finalize"))
+        coverage.dom.reasons.push("point_snapshot_at_finalize");
+    }
+    const files = [...(rawStatus?.files || []), ...captured.files];
+    const manifest = {
+      schemaVersion: 1,
+      id: evidenceId,
+      sourceOrigin,
+      startedAt,
+      endedAt: new Date().toISOString(),
+      coverage,
+      files,
+      totalBytes: files.reduce((total, file) => total + file.byteLength, 0),
+    };
+    await diagnosticEvidenceStore.putEvidenceState(evidenceId, { manifest, sourceUrl });
+    return { evidenceId, totalBytes: manifest.totalBytes, coverage };
+  } catch (error) {
+    await diagnosticEvidenceStore.deleteEvidence(evidenceId).catch(() => {});
+    throw error;
   }
-  const files = [...(rawStatus?.files || []), ...captured.files];
-  const manifest = {
-    schemaVersion: 1,
-    id: evidenceId,
-    sourceOrigin,
-    startedAt,
-    endedAt: new Date().toISOString(),
-    coverage,
-    files,
-    totalBytes: files.reduce((total, file) => total + file.byteLength, 0),
-  };
-  await diagnosticEvidenceStore.putEvidenceState(evidenceId, { manifest, sourceUrl });
-  return { evidenceId, totalBytes: manifest.totalBytes, coverage };
 }
 async function getRecordingPointImage(recordingId, annotationId) {
   return pageDataUrl(await getPage(`recording-${recordingId}`, annotationId));
@@ -381,6 +411,7 @@ async function pollPair() {
             [pair.server]: {
               token: data.token,
               id: data.id,
+              userId: data.userId,
               expiresAt: data.expiresAt,
             },
           },
@@ -420,6 +451,7 @@ async function sessionFor(sender) {
     !session ||
     new URL(sender.url).origin !== session.origin ||
     session.server !== server ||
+    (session.accountId && session.accountId !== accounts[server]?.id) ||
     !accounts[server]?.token
   )
     throw Error("Open Feedbacks to reconnect this page.");
@@ -598,7 +630,24 @@ const capture = createCaptureWorkflow({
   openDraft,
   watchCapture,
   captureDiagnostics: captureScreenshotDiagnostics,
+  accountIdentity: diagnosticAccountIdentity,
+  deleteDiagnosticEvidence: (evidenceId) =>
+    diagnosticEvidenceStore.deleteEvidence(evidenceId),
 });
+async function diagnosticAccountIdentity(server, expected) {
+  const account = (await get()).accounts?.[server];
+  if (!account?.token) return null;
+  if (expected?.startsWith("token:"))
+    return accountFingerprint(account, { tokenOnly: true });
+  if (account.userId) return accountFingerprint(account);
+  let userId;
+  try {
+    userId = (await authenticated("auth.me", {}, server)).actor.userId;
+  } catch {
+    // The same key can finish a local capture after a temporary server outage.
+  }
+  return accountFingerprint(account, { userId });
+}
 async function saveDraft(message) {
   const { draft } = await get();
   if (!draft || draft.id !== message.id)
@@ -896,7 +945,7 @@ const submission = createSubmissionWorkflow({
   requireImageRevision,
   authenticated,
   diagnosticEvidenceStore,
-  accountIdentity: async (server) => accountFingerprint((await get()).accounts?.[server]),
+  accountIdentity: diagnosticAccountIdentity,
 });
 const { submit } = submission;
 async function route(message, sender) {
@@ -1814,8 +1863,34 @@ async function runDiagnostics(sender, action) {
   if (!tab.active || !["start", "stop", "status"].includes(action))
     throw Error("Select the review page first.");
   const session = await sessionFor(sender);
+  const binding = {
+    server: session.server,
+    projectId: session.projectId,
+    reviewId: session.reviewId,
+    ownerIdentity: await diagnosticAccountIdentity(session.server),
+  };
   let raw = rawDiagnostics.get(tab.id);
   let rawStatus;
+  if (
+    raw &&
+    (raw.status().sourceOrigin !== session.origin ||
+      !sameDiagnosticBinding(raw.status().binding, binding))
+  ) {
+    const previousReviewId = raw.status().binding?.reviewId;
+    const old = await raw.stop();
+    rawDiagnostics.delete(tab.id);
+    await diagnosticEvidenceStore.deleteEvidence(old.evidenceId);
+    if (previousReviewId)
+      await chrome.scripting
+        .executeScript({
+          target: { tabId: tab.id },
+          world: "MAIN",
+          func: diagnosticCollector,
+          args: ["stop", previousReviewId],
+        })
+        .catch(() => {});
+    raw = null;
+  }
   if (action === "start" && !raw?.status().active) {
     if (raw) {
       await raw.stop().catch(() => {});
@@ -1825,6 +1900,7 @@ async function runDiagnostics(sender, action) {
     raw = createRawDiagnosticCapture({
       tabId: tab.id,
       sourceOrigin: session.origin,
+      binding,
       store: diagnosticEvidenceStore,
       debuggerSource: rawDebuggerSource,
     });

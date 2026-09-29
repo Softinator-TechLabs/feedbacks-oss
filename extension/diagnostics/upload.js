@@ -30,7 +30,10 @@ export async function uploadDraftDiagnostics({
     await store.deleteEvidence(localId);
     return;
   }
-  const currentIdentity = await accountIdentity(draft.server);
+  const currentIdentity = await accountIdentity(
+    draft.server,
+    draft.evidenceOwnerIdentity,
+  );
   if (!currentIdentity || draft.evidenceOwnerIdentity !== currentIdentity)
     throw Error(
       "Connect the account used for this capture before sending its diagnostics.",

@@ -54,7 +54,10 @@ export function createReviewController({ get, set, authenticated, defaultServer 
         throw Error("The connection changed. Open Feedbacks again.");
       const old = latest.sessions?.[tabId];
       const reusable =
-        old?.server === server && old?.origin === origin && old?.projectId === project.id;
+        old?.server === server &&
+        old?.origin === origin &&
+        old?.projectId === project.id &&
+        old?.accountId === latest.accounts?.[server]?.id;
       if (old && !reusable)
         await chrome.scripting
           .executeScript({
@@ -70,7 +73,13 @@ export function createReviewController({ get, set, authenticated, defaultServer 
         siteProjects: { ...latest.siteProjects, [`${server}|${origin}`]: project.id },
         sessions: {
           ...latest.sessions,
-          [tabId]: { server, projectId: project.id, origin, reviewId },
+          [tabId]: {
+            server,
+            projectId: project.id,
+            origin,
+            reviewId,
+            accountId: latest.accounts?.[server]?.id,
+          },
         },
       });
       css ||= await (await fetch(chrome.runtime.getURL("content.css"))).text();

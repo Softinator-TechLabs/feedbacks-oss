@@ -2,7 +2,6 @@ import { diagnosticCollector, cleanDiagnostics } from "../diagnostics/diagnostic
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 import { putPage, getPage, deletePage, deleteDraftPages } from "./page-store.js";
 import { pointShapes, attachPointEvidence } from "./markings.js";
-import { accountFingerprint } from "../diagnostics/identity.js";
 
 export function createCaptureWorkflow({
   get,
@@ -14,6 +13,8 @@ export function createCaptureWorkflow({
   openDraft,
   watchCapture,
   captureDiagnostics,
+  accountIdentity,
+  deleteDiagnosticEvidence,
 }) {
   let capturing = false;
   async function capture(
@@ -28,11 +29,26 @@ export function createCaptureWorkflow({
     const guard = watchCapture(sender.tab.id, sender.tab.windowId, sender.tab.url);
     const retainedPointStates = new Map();
     let retainedAnnotations;
+    let previousDiagnosticEvidence;
+    let replacedEvidenceId;
+    let replacedEvidenceDeleted = false;
+    let unattachedEvidenceId;
+    async function clearReplacedEvidence() {
+      if (
+        replacedEvidenceId &&
+        !replacedEvidenceDeleted &&
+        pending?.diagnosticEvidence?.evidenceId !== replacedEvidenceId
+      ) {
+        await deleteDiagnosticEvidence(replacedEvidenceId);
+        replacedEvidenceDeleted = true;
+      }
+    }
     let pending,
       captured = false;
     try {
       const session = await sessionFor(sender),
         state = await get();
+      const ownerIdentity = await accountIdentity(session.server);
       if (retryId) {
         pointToken = state.draft?.pointToken || null;
         scope = state.draft?.captureScope === "fullPage" ? "fullPage" : "visible";
@@ -60,12 +76,17 @@ export function createCaptureWorkflow({
         (!state.draft ||
           state.draft.sourceTabId !== tab.id ||
           state.draft.context.url !== context.url ||
-          state.draft.server !== session.server)
+          state.draft.server !== session.server ||
+          state.draft.projectId !== session.projectId ||
+          (state.draft.evidenceOwnerIdentity &&
+            state.draft.evidenceOwnerIdentity !== ownerIdentity))
       )
         throw Error(
           "The original review page changed. Send this draft without an image, or discard it and capture the new page.",
         );
       if (retryId) {
+        previousDiagnosticEvidence = state.draft?.diagnosticEvidence;
+        replacedEvidenceId = state.draft?.diagnosticEvidence?.evidenceId;
         retainedAnnotations = state.draft.context.annotations;
         context.annotations = retainedAnnotations;
         // Return retained originals to the local point cache before replacing the
@@ -109,7 +130,7 @@ export function createCaptureWorkflow({
           : state.reviewDefaults?.includeDiagnostics !== false,
         evidenceOwnerIdentity: retryId
           ? state.draft?.evidenceOwnerIdentity
-          : await accountFingerprint(state.accounts?.[session.server]),
+          : ownerIdentity,
         image: null,
         approvedImage: null,
         capturePages: [],
@@ -140,10 +161,15 @@ export function createCaptureWorkflow({
           tabId: tab.id,
           sourceUrl: tab.url,
           sourceOrigin: session.origin,
+          server: session.server,
+          projectId: session.projectId,
+          reviewId: session.reviewId,
+          ownerIdentity,
           signature: before.signature,
           captureEpoch: before.captureEpoch,
           pointSnapshot: true,
         });
+        unattachedEvidenceId = pending.diagnosticEvidence.evidenceId;
         const checked = await chrome.tabs.sendMessage(tab.id, {
           type: "captureCheck",
           pointToken,
@@ -153,6 +179,8 @@ export function createCaptureWorkflow({
         pending.captureError = null;
         await attachPointEvidence(pending);
         await set({ draft: pending });
+        unattachedEvidenceId = null;
+        await clearReplacedEvidence();
         captured = true;
         await chrome.tabs.create({
           url: chrome.runtime.getURL(`editor.html?draft=${pending.id}`),
@@ -176,9 +204,14 @@ export function createCaptureWorkflow({
         tabId: tab.id,
         sourceUrl: tab.url,
         sourceOrigin: session.origin,
+        server: session.server,
+        projectId: session.projectId,
+        reviewId: session.reviewId,
+        ownerIdentity,
         signature: before.signature,
         captureEpoch: before.captureEpoch,
       });
+      unattachedEvidenceId = diagnosticEvidence.evidenceId;
       const afterDiagnostics = await chrome.tabs.sendMessage(tab.id, {
         type: "captureCheck",
         pointToken,
@@ -191,6 +224,8 @@ export function createCaptureWorkflow({
       guard.assert();
       pending.diagnosticEvidence = diagnosticEvidence;
       await set({ draft: pending });
+      unattachedEvidenceId = null;
+      await clearReplacedEvidence();
       let canvas,
         sx,
         sy,
@@ -526,6 +561,11 @@ export function createCaptureWorkflow({
       captured = true;
       return { captured: true };
     } catch (error) {
+      if (unattachedEvidenceId) {
+        await deleteDiagnosticEvidence(unattachedEvidenceId).catch(() => {});
+        if (pending?.diagnosticEvidence?.evidenceId === unattachedEvidenceId)
+          pending.diagnosticEvidence = previousDiagnosticEvidence || null;
+      }
       if (pending) {
         const partial =
           pending.captureScope === "fullPage" && pending.capturePages.length > 0;

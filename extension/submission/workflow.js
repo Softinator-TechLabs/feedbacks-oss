@@ -183,7 +183,10 @@ export function createSubmissionWorkflow({
         await set({ draft });
       }
       if (draft.includeDiagnostics && draft.diagnosticEvidence?.evidenceId) {
-        const currentIdentity = await accountIdentity(draft.server);
+        const currentIdentity = await accountIdentity(
+          draft.server,
+          draft.evidenceOwnerIdentity,
+        );
         if (!currentIdentity || currentIdentity !== draft.evidenceOwnerIdentity)
           throw Error(
             "Connect the account used for this capture before sending its diagnostics.",
