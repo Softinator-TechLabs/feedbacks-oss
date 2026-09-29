@@ -81,7 +81,52 @@ export async function diagnosticArchiveStream(store, evidenceId) {
   return {
     filename: archiveName(state.manifest),
     stream: tar.pipeThrough(new CompressionStream("gzip")),
+    rawBytes: state.manifest.totalBytes,
   };
+}
+
+const SMALL_BLOB_LIMIT = 8 * 1024 * 1024;
+const PRIVATE_FILE_PREFIX = "feedbacks-diag-export-";
+const PRIVATE_FILE_LIFETIME = 24 * 60 * 60 * 1000;
+
+async function clearOldPrivateArchives(root) {
+  if (typeof root.entries !== "function") return;
+  try {
+    for await (const [name] of root.entries()) {
+      const match = /^feedbacks-diag-export-(\d{13})-[0-9a-f-]{36}\.tar\.gz$/.exec(name);
+      if (match && Date.now() - Number(match[1]) > PRIVATE_FILE_LIFETIME)
+        await root.removeEntry(name).catch(() => {});
+    }
+  } catch {
+    // Cleanup is best-effort; a storage enumeration error must not block export.
+  }
+}
+
+async function downloadFromPrivateFile(stream, filename, root) {
+  await clearOldPrivateArchives(root);
+  const temporaryName = `${PRIVATE_FILE_PREFIX}${Date.now()}-${crypto.randomUUID()}.tar.gz`;
+  const temporary = await root.getFileHandle(temporaryName, { create: true });
+  let url;
+  try {
+    await stream.pipeTo(await temporary.createWritable());
+    const file = await temporary.getFile();
+    url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    setTimeout(
+      () => {
+        URL.revokeObjectURL(url);
+        void root.removeEntry(temporaryName).catch(() => {});
+      },
+      60 * 60 * 1000,
+    );
+  } catch (error) {
+    if (url) URL.revokeObjectURL(url);
+    await root.removeEntry(temporaryName).catch(() => {});
+    throw error;
+  }
 }
 
 export async function downloadDraftDiagnostics(store, evidenceId) {
@@ -97,7 +142,7 @@ export async function downloadDraftDiagnostics(store, evidenceId) {
         ],
       })
     : null;
-  const { filename, stream } = await diagnosticArchiveStream(store, evidenceId);
+  const { filename, stream, rawBytes } = await diagnosticArchiveStream(store, evidenceId);
   if (handle) {
     const writable = await handle.createWritable();
     try {
@@ -107,6 +152,20 @@ export async function downloadDraftDiagnostics(store, evidenceId) {
       throw error;
     }
   } else {
+    let root;
+    try {
+      root = await globalThis.navigator?.storage?.getDirectory?.();
+    } catch {
+      // Small archives can still use the browser's ordinary Blob download.
+    }
+    if (root) {
+      await downloadFromPrivateFile(stream, filename, root);
+      return;
+    }
+    if (!Number.isSafeInteger(rawBytes) || rawBytes < 0 || rawBytes > SMALL_BLOB_LIMIT)
+      throw Error(
+        "This browser cannot stream a large diagnostic archive to disk. Use Chrome's file saving support and retry the download.",
+      );
     const blob = await new Response(stream).blob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
