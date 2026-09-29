@@ -32,6 +32,6 @@ Existing replies have no `editedAt` and display normally. Existing agent keys re
 
 Source revision: recorded on the associated pull request from `codex/discussion-edit-delete`.
 Checks and results: Node 24 `npm run check` passed; focused service tests passed; synthetic browser edit/delete, desktop/mobile layout, keyboard actions and reload readback passed. The first full-suite attempt had one diagnostic-evidence-upload test failure that passed in isolation and on the full rerun.
-Artifacts: ignored `output/playwright/discussion-edit-desktop.png` and `discussion-edit-mobile.png`.
+Artifacts: synthetic [desktop](../screenshots/discussion-comments/discussion-edit-desktop.png) and [mobile](../screenshots/discussion-comments/discussion-edit-mobile.png) screenshots.
 Deployment and live verification: pending.
 Remaining risks or follow-up: required PR CI and live rollout remain separate gates.
