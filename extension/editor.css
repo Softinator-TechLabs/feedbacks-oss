@@ -52,14 +52,15 @@ main {
 }
 #tools {
   display: flex;
-  gap: 6px;
-  flex-wrap: nowrap;
+  gap: 4px;
+  flex-wrap: wrap;
   min-width: 0;
   align-items: center;
   overflow: visible;
 }
 #tools button {
   font-size: 14px;
+  padding-inline: 8px;
   border-color: transparent;
   background: transparent;
 }

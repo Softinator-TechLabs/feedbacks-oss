@@ -607,6 +607,7 @@ try {
     [32, 44, 55],
     "export after move/resize remains masked",
   );
+  await page.locator(".more-tools summary").click();
   await page.locator("#reset").click();
   const resetPixels = await sharp(await download("png"))
     .raw()
