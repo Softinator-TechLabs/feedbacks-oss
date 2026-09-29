@@ -4,7 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
-import { memberLoginDetails, memberWelcomeMessage } from "../src/web/account-admin.js";
+import { memberLoginDetails, memberWelcomeMessage } from "../src/web/members/credentials.js";
 
 test("disabled people can be removed from the list and restored without losing their record", async () => {
   const pg = new PGlite();
