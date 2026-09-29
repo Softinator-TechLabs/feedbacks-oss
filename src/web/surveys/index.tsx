@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import type { z } from "zod";
-import type { surveyQuestionsSchema } from "../shared/contracts.js";
-import { api, type Project } from "./api.js";
-import { HumanTime } from "./human-time.js";
+import type { surveyQuestionsSchema } from "../../shared/contracts.js";
+import { api, type Project } from "../api.js";
+import { HumanTime } from "../human-time.js";
 import {
   ActionState,
   ConfirmButton,
@@ -12,7 +12,7 @@ import {
   Secret,
   useAction,
   useLoad,
-} from "./ui.js";
+} from "../ui.js";
 
 type Question = {
   id: string;

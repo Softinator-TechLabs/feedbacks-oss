@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CreateMember } from "../account-admin.js";
+import { CreateMember } from "./create.js";
 import { api, type Actor, type Project } from "../api.js";
 import {
   ActionState,

@@ -1,5 +1,5 @@
 import React from "react";
-import { MemberAdministration } from "../account-admin.js";
+import { MemberAdministration } from "./administration.js";
 import { api, type Actor, type Project } from "../api.js";
 import { ActionState, ConfirmButton, Field, useAction } from "../ui.js";
 import type { Member } from "./types.js";
