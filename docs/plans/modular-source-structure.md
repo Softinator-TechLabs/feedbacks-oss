@@ -1,6 +1,6 @@
 # Modular source structure
 
-Status: incremental reviewed stages merged; remaining runtime seams under review. Owner: Feedbacks maintainers. Date: 2026-09-29.
+Status: reviewed modular stages through PR #138 merged; remaining runtime and scale gaps documented. Owner: Feedbacks maintainers. Date: 2026-09-29.
 
 ## Outcome and scope
 
@@ -113,7 +113,7 @@ The Help stage starts from merged PR #135. It groups the authenticated Help rout
 
 The editor diagnostics stage starts from merged PR #136. It moves diagnostic coverage rendering, local preview/archive download, legacy selection, and message masking controls to `extension/diagnostics/editor-panel.js`. `editor.js` keeps its Chrome page entrypoint, draft state, persistence, and submission flow; it falls from 1,467 to 1,305 lines. The factory receives live draft accessors so asynchronous evidence callbacks and mask actions still check the current draft. Packaged screenshot editor and capture/review Chromium QA passed, including diagnostic archive preview/download/share and the large-visible capture. The full Node 22 `npm run check` passed (397 tests passed, 24 skipped, 0 failed; builds, smoke, and release package included). Independent review found no issues; all six exact-head CI checks passed, and PR #137 merged at `7b11803`.
 
-The server diagnostics stage starts from merged PR #137. It groups upload and expiry, authorized readback, event indexing, archive streaming, and summary projection under `src/server/diagnostics/`. The prior 623-line `diagnostic-evidence.ts` is split into 429-line write/expiry and 203-line read modules. Write and read function bodies match the merged source exactly; only the shared manifest matcher gains an export. Transport, operations, maintenance, and focused test imports point directly to their owning modules. Sixteen upload, read, archive, and event-index tests passed. The full Node 22 `npm run check` passed, including harness, build, sandbox smoke, and release checks; native PostgreSQL passed 3/3. Independent review found no issues. Exact-head CI remains required.
+The server diagnostics stage starts from merged PR #137. It groups upload and expiry, authorized readback, event indexing, archive streaming, and summary projection under `src/server/diagnostics/`. The prior 623-line `diagnostic-evidence.ts` is split into 429-line write/expiry and 203-line read modules. Write and read function bodies match the merged source exactly; only the shared manifest matcher gains an export. Transport, operations, maintenance, and focused test imports point directly to their owning modules. Sixteen upload, read, archive, and event-index tests passed. The full Node 22 `npm run check` passed, including harness, build, sandbox smoke, and release checks; native PostgreSQL passed 3/3. Independent review found no issues. All six exact-head CI checks passed, and PR #138 merged at `0a36306`.
 
 ## Current maintainability assessment
 

@@ -1,6 +1,6 @@
 # Quality and capability gaps
 
-Baseline reviewed 2026-09-26. This is an evidence inventory, not a certification, coverage percentage or uptime promise. Update the affected row when evidence changes.
+Baseline reviewed 2026-09-26; architecture and maintainability evidence refreshed 2026-09-29. This is an evidence inventory, not a certification, coverage percentage or uptime promise. Update the affected row when evidence changes.
 
 | Area                           | Executable evidence                                                                                                                                                                                                                                          | Remaining limitation                                                                                                      |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
