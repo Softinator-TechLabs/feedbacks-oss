@@ -1,3 +1,5 @@
+import { previewDimensions, installReviewFixture } from "./qa/extension/fixture.mjs";
+import { verifySetup } from "./qa/extension/setup.mjs";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -7,20 +9,6 @@ import { chromium } from "playwright";
 import sharp from "sharp";
 
 const root = process.cwd();
-async function previewDimensions(page) {
-  await page.locator("#preview-slot:not([hidden]) img").first().waitFor();
-  await page.waitForFunction(() => {
-    const images = [...document.querySelectorAll("#preview-slot img")];
-    return (
-      images.length > 0 &&
-      images.every((image) => image.complete && image.naturalWidth > 0)
-    );
-  });
-  return page.locator("#preview-slot img").evaluateAll((images) => ({
-    width: images[0].naturalWidth,
-    height: images.reduce((sum, image) => sum + image.naturalHeight, 0),
-  }));
-}
 const publicCaptureUrl = process.env.FEEDBACKS_QA_PUBLIC_URL;
 if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1" && !publicCaptureUrl)
   throw Error("Set FEEDBACKS_QA_PUBLIC_URL to the approved website for live capture QA.");
@@ -131,122 +119,7 @@ try {
     context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
   const extensionId = new URL(worker.url()).host;
 
-  {
-    // Exercise setup before pairing, using the real background route and page bridge.
-    // The temporary manifest above grants test access; native prompts are separate.
-    const setupPage = await context.newPage();
-    const setupLogin = await post("auth.login", {
-      email: access.email,
-      password: access.password,
-    });
-    const setupCookieSplit = setupLogin.cookie.indexOf("=");
-    await context.addCookies([
-      {
-        name: setupLogin.cookie.slice(0, setupCookieSplit),
-        value: setupLogin.cookie.slice(setupCookieSplit + 1),
-        url: access.url,
-      },
-    ]);
-    await setupPage.goto(`${access.url}/help`);
-    await setupPage
-      .getByRole("button", { name: "Set in extension", exact: true })
-      .click();
-    await setupPage
-      .getByText("Open the pinned Feedbacks icon on this page to detect the server.", {
-        exact: false,
-      })
-      .waitFor();
-    const [setupTab] = await worker.evaluate(
-      (url) => chrome.tabs.query({ url }),
-      `${access.url}/help`,
-    );
-    const setupOptions = await context.newPage();
-    await setupOptions.goto(`chrome-extension://${extensionId}/options.html`);
-    const detect = () =>
-      setupOptions.evaluate(
-        (tabId) => chrome.runtime.sendMessage({ type: "detectServer", tabId }),
-        setupTab.id,
-      );
-    assert.equal(
-      (await detect()).data.status,
-      "unavailable",
-      "HTTP needs explicit local opt-in",
-    );
-    // Model a previously saved local-server opt-in; fresh HTTP setup stays manual.
-    await worker.evaluate(() => chrome.storage.local.set({ allowLocal: true }));
-    assert.equal((await detect()).data.status, "set");
-    const initialSetup = await worker.evaluate(() => chrome.storage.local.get(null));
-    assert.equal(initialSetup.server, access.url);
-    assert.equal(initialSetup.serverDraft, access.url);
-    assert.equal(initialSetup.pair, undefined);
-    assert.equal(initialSetup.accounts, undefined);
-    await setupOptions.close();
-    await setupPage.bringToFront();
-    await setupPage
-      .getByRole("button", { name: "Set in extension", exact: true })
-      .click();
-    await setupPage
-      .getByText("Server set. Continue in extension Settings to connect.", {
-        exact: true,
-      })
-      .waitFor();
-    const openedOptions = context
-      .pages()
-      .find((page) =>
-        page.url().startsWith(`chrome-extension://${extensionId}/options.html`),
-      );
-    assert.ok(openedOptions, "setup handoff opens extension settings");
-    await openedOptions.waitForFunction(
-      (server) => document.getElementById("server").value === server,
-      access.url,
-    );
-    await openedOptions.close();
-    const setupOutput = join(root, "output/playwright/server-setup");
-    await mkdir(setupOutput, { recursive: true });
-    for (const [name, width, height] of [
-      ["desktop", 1440, 1000],
-      ["mobile", 390, 844],
-    ]) {
-      await setupPage.setViewportSize({ width, height });
-      const button = setupPage.getByRole("button", {
-        name: "Set in extension",
-        exact: true,
-      });
-      await button.focus();
-      await button.scrollIntoViewIfNeeded();
-      assert.equal(
-        await setupPage.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-        true,
-      );
-      await setupPage.screenshot({ path: join(setupOutput, `${name}.png`) });
-    }
-    await worker.evaluate(() =>
-      chrome.storage.local.set({
-        server: "https://saved.example.test",
-        serverDraft: "https://saved.example.test",
-      }),
-    );
-    await setupPage
-      .getByRole("button", { name: "Set in extension", exact: true })
-      .click();
-    await setupPage
-      .getByText("The extension already has a server or an address in progress.", {
-        exact: false,
-      })
-      .waitFor();
-    assert.equal(
-      (await worker.evaluate(() => chrome.storage.local.get("server"))).server,
-      "https://saved.example.test",
-    );
-    await setupPage.close();
-    await context.clearCookies();
-    await worker.evaluate(() => chrome.storage.local.clear());
-    console.log(
-      "Setup detection, local opt-in, page handoff, saved-server protection and responsive layout passed.",
-    );
-  }
+  await verifySetup({ context, worker, post, access, extensionId, root });
   await worker.evaluate(
     ({ server, token }) =>
       chrome.storage.local.set({
@@ -258,37 +131,7 @@ try {
     { server: access.url, token: paired.token },
   );
 
-  let mode = "long";
-  await context.route("https://example.com/**", (route) => {
-    const url = new URL(route.request().url());
-    if (url.pathname === "/missing")
-      return route.fulfill({ status: 404, body: "Missing" });
-    const height =
-      mode === "short"
-        ? 260
-        : mode === "tall"
-          ? 22000
-          : mode === "tooLong"
-            ? 35000
-            : 2100;
-    const change =
-      mode === "changing"
-        ? '<script>let size=2100; window.qaTimer=setInterval(()=>{ size=size===2100?2300:2100; document.querySelector("main").style.height=size+"px" },75)</script>'
-        : "";
-    const clipped =
-      mode === "clipped"
-        ? '<style>html{overflow-x:hidden;scroll-behavior:smooth}body{overflow-x:hidden;position:relative}.wide-carousel{position:absolute;top:100px;width:6000px}</style><div class="wide-carousel"><video></video></div><script>window.qaMotion=setInterval(()=>{document.querySelector("video").dispatchEvent(new Event("resize"));document.querySelector(".wide-carousel").dispatchEvent(new Event("scroll"))},100)</script>'
-        : "";
-    const hover =
-      mode === "hover"
-        ? '<style>#hover-menu{display:none;position:absolute;top:48px;left:20px;width:320px;padding:20px;background:#eef;border:2px solid #356}#hover-host:hover #hover-menu{display:block}</style><nav id="hover-host" style="position:absolute;top:160px;left:20px;width:420px;height:80px;background:#ddd">About<div id="hover-menu">Research ethics menu</div></nav>'
-        : "";
-    return route.fulfill({
-      status: 200,
-      contentType: "text/html",
-      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px;position:relative}#lower{position:absolute;top:${Math.max(160, height - 260)}px;left:30px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a>${hover}<button id="lower">Bottom action</button></main>${change}${clipped}`,
-    });
-  });
+  const fixture = await installReviewFixture(context);
   const page = context.pages()[0] ?? (await context.newPage());
   const control = await context.newPage();
   await control.goto(`chrome-extension://${extensionId}/popup.html`);
@@ -732,7 +575,7 @@ try {
   };
   await send({ type: "discard" });
 
-  mode = "hover";
+  fixture.mode = "hover";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
@@ -1043,7 +886,7 @@ try {
   await send({ type: "discard" });
   await page.bringToFront();
   await send({ type: "popupAction", tabId: id, action: "stop" });
-  mode = "hover";
+  fixture.mode = "hover";
   await toFixture();
   await exposeReviewRoot();
   // Canceled captures must never restore UI over a newer point's pixels.
@@ -1170,7 +1013,7 @@ try {
   );
   results.allSitePregrant = { autoStarted };
   await send({ type: "disableInstant" });
-  mode = "long";
+  fixture.mode = "long";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
@@ -1634,7 +1477,7 @@ try {
   );
   results.inlineReview.hoverComments = hoverComments;
 
-  mode = "long";
+  fixture.mode = "long";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
@@ -1888,7 +1731,7 @@ try {
   await page.setViewportSize({ width: 900, height: 650 });
 
   for (const scope of ["short", "long", "tall", "tooLong", "clipped"]) {
-    mode = scope;
+    fixture.mode = scope;
     if (["tall", "tooLong"].includes(scope))
       await page.setViewportSize({ width: 1200, height: 800 });
     await toFixture();
@@ -1941,7 +1784,7 @@ try {
     await send({ type: "discard" });
   }
 
-  mode = "long";
+  fixture.mode = "long";
   await page.setViewportSize({ width: 900, height: 650 });
   await toFixture();
   await send({ type: "popupAction", tabId: id, action: "capture-full" });
@@ -2130,7 +1973,7 @@ try {
     ),
   );
 
-  mode = "long";
+  fixture.mode = "long";
   await toFixture();
   await send({ type: "popupAction", tabId: id, action: "capture-full" });
   const removableDraft = await draft();
@@ -2297,7 +2140,7 @@ try {
   ]);
 
   await page.setViewportSize({ width: 900, height: 650 });
-  mode = "changing";
+  fixture.mode = "changing";
   await toFixture();
   await page.evaluate(() => clearInterval(window.qaTimer));
   await exposeReviewRoot();
@@ -2396,7 +2239,7 @@ try {
   results.changing.originalRetainedThroughRetry = true;
   await send({ type: "discard" });
 
-  mode = "short";
+  fixture.mode = "short";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });

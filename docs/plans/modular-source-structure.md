@@ -22,7 +22,8 @@ Use incremental feature folders and extraction. Keep browser and server entrypoi
 - [x] Split broad web CSS by ownership boundaries without changing cascade order.
 - [x] Divide shared operation schemas into domain modules under `src/shared/contracts/`, preserving the single typed operation registry and generated catalog.
 - [ ] Extract extension capture, editing, and session concerns into focused folders while keeping manifest entrypoints, Chrome message behavior, and ZIP contents compatible.
-- [ ] Split extension browser QA into a common fixture and independently identifiable workflow scenarios.
+- [x] Split extension browser QA setup and shared page fixture into focused modules.
+- [ ] Split the remaining sequential acceptance scenario runner into independent workflows.
 - [x] Reassess server transport and dispatch for focused extraction; preserve transaction and authorization boundaries.
 - [ ] Run focused checks after every stage, then the full check, extension browser acceptance, native PostgreSQL checks where server behavior changes, and exact-revision CI. Review the final diff and update architecture and quality guidance.
 
@@ -44,6 +45,7 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Extracted recording diagnostics rendering and event selection into a focused web component; the recording viewer fell from 1,104 to 813 lines. Three Chromium viewer scenarios, filter UI QA, and the full Node 22 check pass.
 - 2026-09-29: Extracted thread attachments and linked issue, Figma, and delivery forms into focused components. The detail view fell from 1,075 to 841 lines; the full Node 22 check passes.
 - 2026-09-29: Separated feedback thread read-model assembly from write operations. Kept `feedback.js` exports stable and moved no authorization or transaction decision. The full Node 22 check passes; other transport and GitHub transaction code remains a focused follow-up due its external side effects.
+- 2026-09-29: Extracted the extension browser setup scenario and mutable synthetic page fixture under `scripts/qa/extension/`. The full packaged Chromium QA sequence and Node 22 check pass. The remaining long sequential runner is a follow-up for smaller independent scenarios.
 
 ## Completion receipt
 
