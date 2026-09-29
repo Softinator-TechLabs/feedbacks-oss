@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Feedbacks: UI Context for AI Agents",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "description": "Capture UI feedback and screenshots for AI coding agents. Connect to your team\u2019s self-hosted Feedbacks server first.",
   "permissions": [
     "activeTab",

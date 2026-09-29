@@ -34,7 +34,7 @@ No migration or capture format change. Existing recordings and standalone screen
 
 ## Completion receipt
 
-Source revision: pending.
+Source revision: pending (extension 0.1.41).
 Checks and results: `npm run check` passed; 24 recording browser tests passed; portable archive content and authorization tests passed. Desktop light/dark and mobile synthetic review captures were inspected.
 Artifacts: pending.
 Deployment and live verification: pending.
