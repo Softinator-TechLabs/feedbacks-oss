@@ -10,7 +10,7 @@ test(
   { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
   async () => {
     const source = await readFile(
-      new URL("../extension/session-storage.js", import.meta.url),
+      new URL("../extension/session/session-storage.js", import.meta.url),
     );
     const server = createServer((req, res) => {
       res.setHeader(

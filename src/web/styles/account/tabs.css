@@ -1,0 +1,86 @@
+.account-tabs,
+.section-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 22px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  scrollbar-width: thin;
+}
+:root .account-tabs button,
+:root .section-tabs button {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 9px 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  white-space: nowrap;
+}
+:root .account-tabs button[aria-selected="true"],
+:root .section-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+.account-panel {
+  max-width: 960px;
+  padding-top: 24px;
+}
+.account-panel[hidden] {
+  display: none;
+}
+.section-panel {
+  padding-top: 24px;
+}
+.section-panel[hidden] {
+  display: none;
+}
+.section-panel > .section:first-child {
+  margin-top: 0;
+}
+.account-panel > .section:first-child {
+  margin-top: 0;
+}
+.account-group {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.account-group > summary {
+  padding: 12px 0;
+  color: var(--accent);
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-group[open] > summary {
+  margin-bottom: 0;
+}
+.account-group .token-row {
+  padding: 12px 0;
+}
+.account-group .token-row:last-child {
+  border-bottom: 0;
+}
+@media (max-width: 440px) {
+  .account-tabs,
+  .section-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 12px;
+    overflow: visible;
+  }
+  :root .account-tabs button,
+  :root .section-tabs button {
+    min-width: 0;
+    justify-content: flex-start;
+    text-align: left;
+  }
+  :root .section-tabs button {
+    white-space: normal;
+  }
+}

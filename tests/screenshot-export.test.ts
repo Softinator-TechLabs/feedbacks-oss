@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { exportDimensions, screenshotsPdf } from "../extension/screenshot-export.js";
+import {
+  exportDimensions,
+  screenshotsPdf,
+} from "../extension/capture/screenshot-export.js";
 import sharp from "sharp";
 
 test("local export retains narrow long screenshots and refuses format limits without shrinking", () => {

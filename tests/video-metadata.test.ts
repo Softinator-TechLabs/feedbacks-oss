@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { finalizeWebmMetadata } from "../extension/video-metadata.js";
-import { VIDEO_MAX_BYTES } from "../extension/video-media.js";
+import { finalizeWebmMetadata } from "../extension/video/video-metadata.js";
+import { VIDEO_MAX_BYTES } from "../extension/video/video-media.js";
 
 test("finalization uses measured milliseconds and returns the repaired WebM", async () => {
   const source = new Blob(["webm"], { type: "video/webm" });

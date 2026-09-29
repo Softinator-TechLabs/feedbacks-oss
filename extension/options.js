@@ -1,4 +1,4 @@
-import { checkForUpdates, releaseLinks } from "./updates.js";
+import { checkForUpdates, releaseLinks } from "./connection/updates.js";
 const $ = (id) => document.getElementById(id);
 const manifest = chrome.runtime.getManifest();
 const send = async (message) => {

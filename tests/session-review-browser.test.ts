@@ -25,12 +25,12 @@ test(
             async play() { this.paused = false; this.dispatchEvent(new Event("play")); },
           });
           window.media = media;
-          window.mount = (recording, video, annotations = []) => {
+          window.mount = (recording, video, annotations = [], timeline = {}) => {
             window.inspector?.dispose();
             window.savedFrames = [];
             media.currentTime = 0.3;
             window.inspector = createSessionReview(document.getElementById("root"), {
-              recording, video, annotations, videoElement: media,
+              recording, video, annotations, videoElement: media, ...timeline,
               onFrame: (atMs, videoTimeMs) => window.savedFrames.push({ atMs, videoTimeMs }),
             });
           };
@@ -323,6 +323,87 @@ test(
             url: "/first",
             durationMs: 11,
           },
+        );
+      },
+    );
+    await t.test(
+      "video review uses the editor seek bar and maps event marks to retained video time",
+      async () => {
+        await page.evaluate(() => {
+          document.body.insertAdjacentHTML(
+            "beforeend",
+            '<section id="editing"><div class="timeline"><input id="trim-seek" type="range" /><div class="timeline-playback"></div></div></section>',
+          );
+          (window as any).mount(
+            {
+              durationMs: 3000,
+              events: [
+                {
+                  seq: 1,
+                  atMs: 500,
+                  type: "activity",
+                  data: { action: "click", label: "First" },
+                },
+                {
+                  seq: 2,
+                  atMs: 2500,
+                  type: "activity",
+                  data: { action: "click", label: "Second" },
+                },
+                {
+                  seq: 3,
+                  atMs: 1500,
+                  type: "console",
+                  data: { level: "warn", args: ["Gap"] },
+                },
+              ],
+            },
+            {
+              segments: [
+                { sourceStartMs: 0, sourceEndMs: 1000, outputStartMs: 0 },
+                { sourceStartMs: 2000, sourceEndMs: 3000, outputStartMs: 1000 },
+              ],
+            },
+          );
+        });
+        assert.equal(await page.locator("#root .review-toolbar input").count(), 0);
+        assert.equal(await page.locator("#editing .review-timeline-mark").count(), 2);
+        assert.deepEqual(
+          await page
+            .locator("#editing .review-timeline-mark")
+            .evaluateAll((marks) =>
+              marks.map((mark) => (mark as HTMLElement).style.left),
+            ),
+          ["25%", "75%"],
+        );
+        await page.getByRole("button", { name: /Click at 0:02.5/ }).click();
+        assert.equal(await page.evaluate(() => (window as any).media.currentTime), 1.5);
+        await page.evaluate(() =>
+          (window as any).mount(
+            {
+              durationMs: 3000,
+              events: [
+                {
+                  seq: 4,
+                  atMs: 2500,
+                  type: "activity",
+                  data: { action: "click", label: "Trimmed" },
+                },
+              ],
+            },
+            {
+              segments: [{ sourceStartMs: 2000, sourceEndMs: 3000, outputStartMs: 0 }],
+            },
+            [],
+            { timelineStartMs: 1000, timelineDurationMs: 2000 },
+          ),
+        );
+        assert.equal(
+          await page
+            .locator("#editing .review-timeline-mark")
+            .evaluate((mark) => (mark as HTMLElement).style.left),
+          "75%",
+          "a trimmed clip keeps marks at their original editor-track positions",
         );
       },
     );

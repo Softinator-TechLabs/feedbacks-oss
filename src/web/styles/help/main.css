@@ -1,0 +1,201 @@
+.narrow {
+  max-width: 520px;
+}
+.reading {
+  max-width: 760px;
+  margin: auto;
+}
+.help-page {
+  max-width: 1040px;
+}
+.help-intro {
+  max-width: 700px;
+  margin: 24px 0 32px;
+}
+.help-intro h1 {
+  font-size: 2.1rem;
+  letter-spacing: -0.035em;
+}
+.help-intro p {
+  color: var(--muted);
+  font-size: 1.05rem;
+  margin: 0;
+}
+.help-install {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: clamp(22px, 3vw, 30px);
+  background: #17324d;
+  color: #fff;
+  border-radius: 16px;
+}
+.help-install h2,
+.help-agent h2 {
+  font-size: 1.35rem;
+  margin: 0 0 8px;
+}
+.help-agent p {
+  color: var(--muted);
+}
+.help-install p {
+  color: #d7e3ec;
+}
+.help-install .button {
+  margin-top: auto;
+  align-self: flex-start;
+}
+.help-install a.button.primary,
+:root[data-theme="dark"] .help-install a.button.primary {
+  background: #fff;
+  color: #17324d;
+  border-color: #fff;
+}
+.help-install a.button.primary:hover,
+:root[data-theme="dark"] .help-install a.button.primary:hover {
+  background: #e6f0f6;
+  color: #17324d;
+  border-color: #e6f0f6;
+}
+.help-install ol {
+  margin: 4px 0 26px;
+  padding-left: 23px;
+}
+.help-install li {
+  padding-left: 3px;
+  margin: 0 0 7px;
+  color: #e3edf4;
+}
+.help-install li:last-child {
+  margin-bottom: 0;
+}
+.help-install li::marker {
+  color: #a8d5f0;
+  font-weight: 750;
+}
+.help-install code {
+  overflow-wrap: anywhere;
+}
+.help-agent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 265px;
+  gap: 20px 40px;
+  margin: 38px 0 0;
+  padding: 30px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.help-owner-access {
+  margin-top: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.help-owner-access > summary {
+  min-height: 44px;
+  padding: 11px 0;
+  cursor: pointer;
+  font-weight: 650;
+}
+.help-owner-access .help-agent {
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 0;
+  border-bottom: 0;
+}
+.help-agent p {
+  margin: 0 0 14px;
+}
+.help-agent .help-key-warning {
+  color: inherit;
+  margin-bottom: 0;
+}
+.help-agent-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.help-agent-actions > a {
+  font-size: 0.86rem;
+}
+.help-agent-actions .notice,
+.help-agent-actions .error {
+  margin: 0;
+}
+.help-prompt {
+  grid-column: 1 / -1;
+}
+.help-prompt textarea {
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  padding: 12px;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  resize: vertical;
+}
+.help-page > #more-help {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+.help-page > #more-help > div {
+  max-width: 760px;
+}
+.help-website-link {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin: 22px 0 0;
+}
+.reading h1 {
+  margin-bottom: 18px;
+}
+.reading h2 {
+  margin-top: 36px;
+}
+.help-page .help-install h2,
+.help-page .help-agent h2 {
+  margin-top: 0;
+}
+.reading p,
+.reading li {
+  max-width: 72ch;
+}
+.reading li {
+  margin-bottom: 10px;
+}
+.reading pre {
+  font-size: 0.85rem;
+  overflow-x: auto;
+  padding: 18px;
+  background: #e9edf1;
+  border-radius: 6px;
+}
+.reading code {
+  overflow-wrap: anywhere;
+}
+.instruction .meta {
+  justify-content: space-between;
+}
+.instruction .meta h2 {
+  margin: 0;
+}
+.instruction .message {
+  margin-top: 20px;
+}
+.actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 20px;
+  background: #fff;
+  padding: 12px;
+  z-index: 10;
+}
+.skip-link:focus {
+  top: 12px;
+}

@@ -112,7 +112,15 @@ export function reviewTime(ms) {
 }
 export function createSessionReview(
   root,
-  { recording, videoElement, video, onFrame, annotations = [] } = {},
+  {
+    recording,
+    videoElement,
+    video,
+    onFrame,
+    annotations = [],
+    timelineStartMs = 0,
+    timelineDurationMs,
+  } = {},
 ) {
   let at = 0,
     playing = false,
@@ -217,7 +225,7 @@ export function createSessionReview(
       );
     root.append(coverage);
   }
-  let frame;
+  let frame, timelineStrip;
   const replayStatus = make("p", "", "hint");
   if (!videoElement) {
     frame = make("iframe");
@@ -231,6 +239,7 @@ export function createSessionReview(
     play = make("button", "Play"),
     range = make("input"),
     clock = make("output");
+  const editTimeline = videoElement ? document.querySelector("#editing .timeline") : null;
   play.type = "button";
   range.type = "range";
   range.min = "0";
@@ -242,15 +251,35 @@ export function createSessionReview(
     videoElement ? "Video and event timeline" : "Captured context timeline",
   );
   toolbar.append(play, range, clock);
-  root.append(toolbar);
+  if (!editTimeline) root.append(toolbar);
   if (videoElement) {
     const strip = make("div", null, "review-timeline-events");
+    timelineStrip = strip;
     strip.setAttribute("aria-label", "Events on the video timeline");
+    const videoDurationMs =
+      timelineDurationMs ||
+      (video?.segments?.length
+        ? Math.max(
+            ...video.segments.map(
+              (segment) =>
+                segment.outputStartMs + segment.sourceEndMs - segment.sourceStartMs,
+            ),
+          )
+        : Number.isFinite(videoElement.duration)
+          ? videoElement.duration * 1000
+          : recording.durationMs);
     const grouped = new Map();
     for (const event of allCaptureEvents) {
+      const videoAtMs = sourceToVideo(event.atMs, video);
+      if (videoAtMs === null) continue;
       const position = Math.min(
         200,
-        Math.max(0, Math.round((event.atMs / Math.max(1, recording.durationMs)) * 200)),
+        Math.max(
+          0,
+          Math.round(
+            ((videoAtMs + timelineStartMs) / Math.max(1, videoDurationMs)) * 200,
+          ),
+        ),
       );
       const key = `${event.type}:${position}`;
       const group = grouped.get(key);
@@ -302,20 +331,9 @@ export function createSessionReview(
       };
       strip.append(mark);
     }
-    root.append(strip);
-    const legend = make("p", null, "review-timeline-legend");
-    legend.append("Timeline: ");
-    for (const [channel, label] of [
-      ["activity", "actions"],
-      ["console", "console"],
-      ["network", "network"],
-      ["performance", "performance"],
-    ]) {
-      const item = make("span", label);
-      item.dataset.channel = channel;
-      legend.append(item);
-    }
-    root.append(legend);
+    if (editTimeline)
+      editTimeline.insertBefore(strip, editTimeline.querySelector(".timeline-playback"));
+    else root.append(strip);
   }
   const gap = make("p", "", "hint");
   root.append(gap);
@@ -360,7 +378,7 @@ export function createSessionReview(
       }
       onFrame(source, videoElement.currentTime * 1000);
     };
-    toolbar.append(save);
+    root.append(save);
   }
   const tabs = make("div", null, "review-tabs");
   tabs.setAttribute("role", "tablist");
@@ -645,6 +663,7 @@ export function createSessionReview(
     seek,
     dispose() {
       disposed = true;
+      timelineStrip?.remove();
       annotationDialog?.close();
       annotationDialog?.remove();
       annotationDialog = null;

@@ -8,6 +8,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 - [Project administration tabs](project-administration-tabs.md)
 - [Compact Account navigation](account-mobile-navigation.md)
+- [Modular source structure](modular-source-structure.md)
 - [Session replay and agent debug bundles](session-replay.md)
 - [Source-page recording controls and video upload progress](recording-source-controls.md)
 - [Detect the active Feedbacks server](extension-server-detection.md)

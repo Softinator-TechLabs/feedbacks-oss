@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRecordingControls } from "../extension/recording-controls.js";
+import { createRecordingControls } from "../extension/recordings/recording-controls.js";
 
 test("one-click video starts hidden capture and opens review only after Stop", async () => {
   let connect: any, receive: any;

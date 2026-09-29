@@ -10,7 +10,7 @@ import {
   captureNodeCount,
   CAPTURE_SNAPSHOT_NODES,
   CAPTURE_DIAGNOSTIC_NODES,
-} from "./session-capture.js";
+} from "./session/session-capture.js";
 // Bundled with rrweb by package-extension.mjs; no remote executable dependency.
 export function installSessionRecorder(record, config) {
   globalThis.__feedbacksSessionPageStop?.();

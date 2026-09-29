@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error Extension modules ship as native JavaScript.
-import { formatPageQa } from "../extension/page-qa.js";
+import { formatPageQa } from "../extension/capture/page-qa.js";
 
 test("page QA draft includes only bounded same-origin findings", () => {
   const page = "https://review.example.test/article?private=1";

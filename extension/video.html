@@ -85,13 +85,7 @@
       </details>
       <div class="review-workspace">
         <div class="review-primary">
-          <video
-            id="preview"
-            controls
-            playsinline
-            hidden
-            aria-label="Recording preview"
-          ></video>
+          <video id="preview" playsinline hidden aria-label="Recording preview"></video>
           <section id="editing" hidden aria-label="Video editor">
             <div class="timeline-heading">
               <strong>Trim video</strong><span id="trim-duration"></span>
@@ -143,6 +137,8 @@
                     <path d="M8 5v14M16 5v14" />
                   </svg>
                 </button>
+                <button id="trim-mute" type="button" aria-pressed="false">Mute</button>
+                <button id="trim-fullscreen" type="button">Full screen</button>
                 <output
                   ><span id="trim-current">0:00.0</span> /
                   <span id="trim-total">0:00.0</span></output

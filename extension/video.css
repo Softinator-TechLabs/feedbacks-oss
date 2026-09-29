@@ -263,6 +263,16 @@ video {
   justify-content: flex-start;
   font-size: 13px;
 }
+.timeline-playback #trim-mute,
+.timeline-playback #trim-fullscreen {
+  min-height: 40px;
+  padding: 6px 10px;
+}
+.review-primary:fullscreen {
+  overflow: auto;
+  padding: 20px;
+  background: var(--canvas);
+}
 .trim-bounds {
   margin-left: auto;
 }

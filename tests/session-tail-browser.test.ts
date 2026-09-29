@@ -50,7 +50,7 @@ test(
   async () => {
     const bundle = await build({
       stdin: {
-        contents: `import {installSessionRecorder} from './extension/session-page.js';import {installSessionBridge} from './extension/session-bridge.js';window.sent=[];window.chrome={runtime:{sendMessage:async message=>{window.sent.push(message);return {ok:true};}}};installSessionBridge('test-token');installSessionRecorder(()=>()=>{},{token:'test-token',debugger:true,remainingMs:300000,startedAt:Date.now(),privacy:{maskInputs:false,maskText:false}});`,
+        contents: `import {installSessionRecorder} from './extension/session-page.js';import {installSessionBridge} from './extension/session/session-bridge.js';window.sent=[];window.chrome={runtime:{sendMessage:async message=>{window.sent.push(message);return {ok:true};}}};installSessionBridge('test-token');installSessionRecorder(()=>()=>{},{token:'test-token',debugger:true,remainingMs:300000,startedAt:Date.now(),privacy:{maskInputs:false,maskText:false}});`,
         resolveDir: process.cwd(),
       },
       bundle: true,

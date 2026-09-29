@@ -1,0 +1,47 @@
+.project-list {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.project-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  transition: background 0.16s ease-out;
+}
+.project-row:last-child {
+  border-bottom: 0;
+}
+.project-row:hover {
+  background: #f0f4f7;
+}
+.project-row h2 {
+  margin-bottom: 5px;
+}
+.project-row p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.project-row > span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.section {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  margin-top: 28px;
+  margin-bottom: 28px;
+}
+.qa-history {
+  margin-top: 24px;
+}
+.qa-history details {
+  margin-top: 12px;
+}

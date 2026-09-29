@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fullPagePlan, verifyFullPageStep } from "../extension/full-page.js";
+import { fullPagePlan, verifyFullPageStep } from "../extension/capture/full-page.js";
 
 const page = {
   url: "https://example.test/review",

@@ -1,0 +1,128 @@
+.project-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+.project-nav > a {
+  text-decoration: none;
+}
+.project-nav nav {
+  margin-left: auto;
+  display: flex;
+  gap: 24px;
+}
+.project-nav nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.project-nav nav a[aria-current="page"] {
+  color: var(--accent);
+  font-weight: 700;
+}
+.github-project-page {
+  max-width: 980px;
+  display: grid;
+  gap: 20px;
+}
+.github-project-page .page-heading {
+  margin-bottom: 0;
+}
+.github-connection-card {
+  padding: clamp(20px, 3vw, 30px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--soft-surface);
+  box-shadow: 0 14px 42px rgb(0 0 0 / 5%);
+}
+.github-connection-card h2 {
+  margin: 0 0 6px;
+}
+.github-connection-heading,
+.github-connection-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.github-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 18px 0;
+  padding: 0;
+  list-style: none;
+}
+.github-steps li {
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.github-steps li.done {
+  color: var(--accent);
+  font-weight: 650;
+}
+.github-steps li.done::before {
+  content: "✓ ";
+}
+@media (max-width: 560px) {
+  .github-steps {
+    grid-template-columns: 1fr;
+    gap: 3px;
+    margin: 14px 0;
+  }
+  .github-steps li {
+    padding: 4px 0;
+    background: transparent;
+  }
+}
+.github-repository-form {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.github-repository-form .field {
+  flex: 1 1 340px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.github-repository-form button,
+.github-connection-actions button {
+  width: auto;
+  flex: 0 0 auto;
+}
+.github-repository-list {
+  margin: 20px 0;
+}
+.github-repository-list h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+.github-repository-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.github-repository-item > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.github-connection-actions {
+  justify-content: flex-start;
+  margin-top: 14px;
+}

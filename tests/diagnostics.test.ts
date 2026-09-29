@@ -7,7 +7,7 @@ import { diagnosticsSchema } from "../src/shared/diagnostics.js";
 import {
   maskDraftDiagnostic,
   redactDiagnosticSelection,
-} from "../extension/diagnostic-redaction.js";
+} from "../extension/diagnostics/diagnostic-redaction.js";
 
 test("console diagnostics can mask selected text without adding new content", () => {
   const original = "failed for customer reference 12345";
@@ -138,7 +138,10 @@ test("page recorder stays off until asked, preserves console behavior, caps capt
   });
   vm.runInContext(
     (
-      await readFile(new URL("../extension/diagnostics.js", import.meta.url), "utf8")
+      await readFile(
+        new URL("../extension/diagnostics/diagnostics.js", import.meta.url),
+        "utf8",
+      )
     ).replace(/^export /gm, ""),
     c,
   );

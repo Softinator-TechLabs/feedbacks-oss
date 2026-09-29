@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error The extension ships bundled native JavaScript.
-import { createPairingCoordinator } from "../extension/pairing.js";
+import { createPairingCoordinator } from "../extension/connection/pairing.js";
 function fixture(granted = false) {
   let state: any = {},
     permitted = granted,

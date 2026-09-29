@@ -4,6 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
+import { outputSchemas } from "../src/shared/contracts.js";
 
 test("owner sign-in links retain a safe ending and older links remain unlabeled", async () => {
   const pg = new PGlite();
@@ -39,11 +40,19 @@ test("owner sign-in links retain a safe ending and older links remain unlabeled"
       suffix,
     );
     assert.notEqual(listed.items[0]?.secretSuffix, link.loginPath);
+    assert.equal(
+      outputSchemas["account.links.list"].parse(listed).items[0]?.secretSuffix,
+      suffix,
+    );
 
     await db.query("UPDATE account_links SET secret_suffix=NULL WHERE id=$1", [link.id]);
     const older = await ops.executeOperation(owner, "account.links.list", {});
     assert.equal(
       older.items.find((item: { id: string }) => item.id === link.id)?.secretSuffix,
+      null,
+    );
+    assert.equal(
+      outputSchemas["account.links.list"].parse(older).items[0]?.secretSuffix,
       null,
     );
   } finally {

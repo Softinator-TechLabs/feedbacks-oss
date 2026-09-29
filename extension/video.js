@@ -1,4 +1,4 @@
-import { prepareCaptureOrigins } from "./session-origins.js";
+import { prepareCaptureOrigins } from "./session/session-origins.js";
 import {
   createSessionReview,
   reviewTime,
@@ -12,9 +12,9 @@ import {
   clipRecording,
   canKeepReplayPrefix,
   captureOrigins,
-} from "./session-capture.js";
-import { createVideoTimeline } from "./video-timeline.js";
-import { finalizeWebmMetadata } from "./video-metadata.js";
+} from "./session/session-capture.js";
+import { createVideoTimeline } from "./video/video-timeline.js";
+import { finalizeWebmMetadata } from "./video/video-metadata.js";
 import { uploadVideoWithProgress } from "./video-upload.js";
 import { getVideoDraft, deleteVideoDraft } from "./video-draft-store.js";
 import {
@@ -22,7 +22,7 @@ import {
   VIDEO_MAX_MS,
   recordingOptions,
   exportVideo,
-} from "./video-media.js";
+} from "./video/video-media.js";
 const $ = (id) => document.getElementById(id);
 const recorderUrl = new URL(location.href);
 const sourceTabId = Number(recorderUrl.searchParams.get("sourceTabId"));
@@ -181,6 +181,8 @@ async function refreshDebugReview() {
     recording,
     videoElement: $("preview"),
     video,
+    timelineStartMs: appliedTrim?.start || 0,
+    timelineDurationMs: originalDuration,
     onFrame: saveReviewFrame,
     annotations: annotationFrames,
   });

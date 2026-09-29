@@ -15,8 +15,8 @@ test(
       stdin: {
         contents: `
 import { Replayer } from "@rrweb/replay";
-import { prepareReplayEvents } from "./src/web/recording-model.ts";
-import { installReplayResourcePolicy } from "./src/web/replay-policy.ts";
+import { prepareReplayEvents } from "./src/web/recordings/model.ts";
+import { installReplayResourcePolicy } from "./src/web/recordings/replay-policy.ts";
 const suffix = location.search.includes("protected") ? "protected" : "control";
 const ts = Date.now();
 const snapshot = (id, probe) => ({

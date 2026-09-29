@@ -1,4 +1,4 @@
-import { prepareCaptureOrigins } from "./session-origins.js";
+import { prepareCaptureOrigins } from "./session/session-origins.js";
 import { createSessionReview } from "./session-review.js";
 let inspector,
   inspectedRecording,

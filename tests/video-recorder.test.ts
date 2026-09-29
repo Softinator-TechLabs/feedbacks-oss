@@ -7,7 +7,7 @@ import {
   VIDEO_MAX_MS,
   recordingOptions,
   exportVideo,
-} from "../extension/video-media.js";
+} from "../extension/video/video-media.js";
 
 test("lost create acknowledgement retries the original comment and review target", async () => {
   const html = await readFile(
@@ -87,7 +87,7 @@ test("lost create acknowledgement retries the original comment and review target
   });
   vm.runInContext(
     (await readFile(new URL("../extension/video.js", import.meta.url), "utf8")).replace(
-      /^import[\s\S]*?from "\.\/video-media.js";\n/,
+      /^import[\s\S]*?from "\.\/video\/video-media.js";\n/,
       "",
     ),
     context,
@@ -187,7 +187,7 @@ test("ending review while the native picker is open stops its eventual stream", 
   });
   vm.runInContext(
     (await readFile(new URL("../extension/video.js", import.meta.url), "utf8")).replace(
-      /^import[\s\S]*?from "\.\/video-media.js";\n/,
+      /^import[\s\S]*?from "\.\/video\/video-media.js";\n/,
       "",
     ),
     context,

@@ -18,7 +18,7 @@ test(
         contents: `
           import React from "react";
           import { createRoot } from "react-dom/client";
-          import { ThreadRecordings } from "./src/web/thread-recordings.tsx";
+          import { ThreadRecordings } from "./src/web/recordings/thread-recordings.tsx";
           const screenshot = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1cAAAAASUVORK5CYII=";
           createRoot(document.getElementById("root")).render(
             <main>
@@ -244,7 +244,7 @@ test(
     };
     const result = await build({
       stdin: {
-        contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/thread-recordings.tsx"; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[]}}));`,
+        contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/recordings/thread-recordings.tsx"; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[]}}));`,
         loader: "tsx",
         resolveDir: process.cwd(),
       },
@@ -554,7 +554,7 @@ test(
     };
     const bundle = await build({
       stdin: {
-        contents: `import "./src/web/styles.css"; import "./src/web/thread-detail.css"; import "./src/web/theme.css"; import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/thread-recordings.tsx"; window.frameToAnnotate=null; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[{id:"video",url:"/video.webm",contentType:"video/webm",rendition:"original",durationMs:2000},{id:"annotated",url:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1cAAAAASUVORK5CYII=",contentType:"image/webp",rendition:"annotated",recordingFrame:{recordingId:"recording",atMs:2500,videoTimeMs:1500,annotationId:"point-1"}}],context:{annotations:[{id:"point-1",body:"Make this larger"}]}},canWrite:true,onAnnotateFrame:(frame)=>{window.frameToAnnotate=frame}}));`,
+        contents: `import "./src/web/styles.css"; import "./src/web/threads/detail.css"; import "./src/web/theme.css"; import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/recordings/thread-recordings.tsx"; window.frameToAnnotate=null; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[{id:"video",url:"/video.webm",contentType:"video/webm",rendition:"original",durationMs:2000},{id:"annotated",url:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1cAAAAASUVORK5CYII=",contentType:"image/webp",rendition:"annotated",recordingFrame:{recordingId:"recording",atMs:2500,videoTimeMs:1500,annotationId:"point-1"}}],context:{annotations:[{id:"point-1",body:"Make this larger"}]}},canWrite:true,onAnnotateFrame:(frame)=>{window.frameToAnnotate=frame}}));`,
         loader: "tsx",
         resolveDir: process.cwd(),
       },
@@ -662,6 +662,17 @@ test(
       assert.equal(await page.locator("#thread-recording-select").count(), 0);
       assert.equal(await page.locator(".recording-media video").count(), 1);
       assert.equal(await page.locator(".recording-media video").isVisible(), true);
+      assert.equal(
+        await page.locator(".recording-media video").evaluate((video) => video.controls),
+        false,
+        "video and session must expose one seek bar",
+      );
+      assert.equal(await page.locator("#thread-recording-timeline").count(), 1);
+      assert.equal(await page.getByRole("button", { name: "Mute video" }).count(), 1);
+      assert.equal(
+        await page.getByRole("button", { name: "Full screen video" }).count(),
+        1,
+      );
       const videoBox = (await page.locator(".recording-media video").boundingBox())!;
       const timelineBox = (await page.locator(".recording-timeline").boundingBox())!;
       const eventsBox = (await page.locator(".recording-diagnostics").boundingBox())!;
@@ -776,6 +787,17 @@ test(
           document.querySelector<HTMLVideoElement>(".recording-media video")!
             .currentTime > 1.55,
       );
+      await page.waitForFunction(() => {
+        const video = document.querySelector<HTMLVideoElement>(".recording-media video");
+        const timeline = document.querySelector<HTMLInputElement>(
+          "#thread-recording-timeline",
+        );
+        return (
+          !!video &&
+          !!timeline &&
+          Math.abs(Number(timeline.value) - (video.currentTime * 1000 + 1000)) < 350
+        );
+      });
       await page.waitForFunction(() =>
         document
           .querySelector('.recording-events button[aria-current="true"]')
