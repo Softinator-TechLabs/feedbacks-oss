@@ -10,10 +10,6 @@
   border-top: 1px solid var(--border);
   padding-top: 22px;
 }
-.first-comment > .message {
-  font-size: 1.12rem;
-  margin-top: 14px;
-}
 .message {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

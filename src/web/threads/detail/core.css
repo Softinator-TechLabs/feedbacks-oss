@@ -26,19 +26,26 @@
   border: 0;
   padding: 0;
 }
-.first-comment > .message {
-  margin: 0 0 12px;
+.feedback-content-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.feedback-body {
+  flex: 1;
+  min-width: 0;
+}
+.feedback-body > .message {
+  margin: 0;
   font-size: 1.13rem;
 }
-.feedback-reactions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+.feedback-body > .thread-taxonomy {
+  justify-content: flex-end;
+  margin: 8px 0 0;
 }
-.feedback-reactions > span {
+.feedback-archived {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
 }
 .attachments {
   margin: 14px 0 0;
@@ -138,12 +145,17 @@
   background: transparent;
   color: var(--muted);
 }
+.feedback-content-row .discussion-like button,
 .reply-content-row .discussion-like button,
 .reply-controls > .reply-icon-button {
   min-width: 32px;
   height: 32px;
   min-height: 32px;
   padding: 0 4px;
+}
+.feedback-content-row .discussion-like svg,
+.reply-content-row .discussion-like svg {
+  transform: translateY(-3px);
 }
 .discussion-like button:enabled:hover,
 .reply-controls > .reply-icon-button:enabled:hover {

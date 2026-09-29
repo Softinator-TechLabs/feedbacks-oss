@@ -52,9 +52,6 @@
   .thread-content .first-comment {
     order: 2;
   }
-  .thread-content .feedback-reactions {
-    order: 3;
-  }
   .thread-content .evidence-pane > details {
     order: 4;
   }

@@ -478,24 +478,42 @@ export function ThreadDetail({
         <div className={`detail-grid ${panel === "details" ? "showing-details" : ""}`}>
           <div className="evidence-pane">
             <article className="first-comment">
-              <div className="thread-taxonomy">
-                <span className="category-badge">
-                  {categoryName(taxonomy?.categories ?? builtInCategories, t.category)}
-                </span>
-                {(t.tags ?? []).map((tag) => (
-                  <TagBadge key={tag} name={tag} tags={taxonomy?.tags ?? []} />
-                ))}
-                {project?.permissions.canWrite && (
-                  <button
-                    type="button"
-                    className="thread-taxonomy-edit"
-                    onClick={() => openDetail("thread-organize")}
-                  >
-                    Edit category &amp; tags
-                  </button>
-                )}
+              <div className="feedback-content-row">
+                <DiscussionLike
+                  key={t.id}
+                  threadId={t.id}
+                  target="original feedback"
+                  likes={t.likes}
+                  canWrite={!!project?.permissions.canWrite}
+                  onSaved={(likes) =>
+                    setThread((current) => current && { ...current, likes })
+                  }
+                />
+                <div className="feedback-body">
+                  <MarkdownText body={t.body} className="message" />
+                  <div className="thread-taxonomy">
+                    {t.archived && <span className="feedback-archived">Archived</span>}
+                    <span className="category-badge">
+                      {categoryName(
+                        taxonomy?.categories ?? builtInCategories,
+                        t.category,
+                      )}
+                    </span>
+                    {(t.tags ?? []).map((tag) => (
+                      <TagBadge key={tag} name={tag} tags={taxonomy?.tags ?? []} />
+                    ))}
+                    {project?.permissions.canWrite && (
+                      <button
+                        type="button"
+                        className="thread-taxonomy-edit"
+                        onClick={() => openDetail("thread-organize")}
+                      >
+                        Edit category &amp; tags
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <MarkdownText body={t.body} className="message" />
             </article>
             <ThreadRecordings
               key={t.id}
@@ -539,19 +557,6 @@ export function ThreadDetail({
                 onClose={() => setMarkupTarget(null)}
               />
             )}
-            <div className="feedback-reactions">
-              <DiscussionLike
-                key={t.id}
-                threadId={t.id}
-                target="original feedback"
-                likes={t.likes}
-                canWrite={!!project?.permissions.canWrite}
-                onSaved={(likes) =>
-                  setThread((current) => current && { ...current, likes })
-                }
-              />
-              {t.archived && <span>Archived</span>}
-            </div>
             {t.assets?.filter((asset) => asset.contentType !== "video/webm").length >
               0 && (
               <ScreenshotComparison
