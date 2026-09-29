@@ -62,6 +62,13 @@ export function createSessionCoordinator({
   annotationImage,
 }) {
   const store = createCaptureStore({ storage: captureStorage });
+  const rawSubscribers = new Map();
+  function notifyRaw(source, method, params, ingressAt) {
+    for (const subscriber of rawSubscribers.get(source.tabId) || [])
+      Promise.resolve()
+        .then(() => subscriber(method, params, ingressAt, source.sessionId))
+        .catch(() => {});
+  }
   let pendingNavigation = null;
   let queue = Promise.resolve();
   const serial = (fn) => {
@@ -593,6 +600,7 @@ export function createSessionCoordinator({
   }
   chrome.debugger.onEvent.addListener((source, method, params) => {
     const ingressAt = Date.now();
+    notifyRaw(source, method, params, ingressAt);
     void serial(() => collectDebuggerEvent(source, method, params, ingressAt)).catch(
       async () => {
         await store
@@ -602,6 +610,7 @@ export function createSessionCoordinator({
     );
   });
   chrome.debugger.onDetach.addListener((source) => {
+    notifyRaw(source, "Debugger.detached", {}, Date.now());
     void serial(async () => {
       const s = await store.read();
       if (s?.active && s.target.sourceTabId === source.tabId) {
@@ -688,6 +697,23 @@ export function createSessionCoordinator({
     }).catch(() => {});
   });
   return {
+    subscribeRawDebugger(tabId, subscriber) {
+      const listeners = rawSubscribers.get(tabId) || new Set();
+      listeners.add(subscriber);
+      rawSubscribers.set(tabId, listeners);
+      return () => {
+        listeners.delete(subscriber);
+        if (!listeners.size) rawSubscribers.delete(tabId);
+      };
+    },
+    async isRecordingDebuggerAttached(tabId) {
+      const state = await store.read();
+      return !!(
+        state?.active &&
+        state.debuggerAttached &&
+        state.target.sourceTabId === tabId
+      );
+    },
     beginAnnotation: (details) =>
       serial(async () => {
         pendingNavigation = null;

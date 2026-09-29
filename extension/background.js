@@ -1,5 +1,7 @@
 import { reviewDefaults, updateReviewDefaults } from "./review/review-preferences.js";
 import { diagnosticCollector } from "./diagnostics/diagnostics.js";
+import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
+import { createRawDiagnosticCapture } from "./diagnostics/raw-debug.js";
 import "./utils.js";
 import { createReviewController } from "./review/review-session.js";
 import {
@@ -65,6 +67,21 @@ const sessionCapture = createSessionCoordinator({
   ready,
   annotationImage: getRecordingPointImage,
 });
+const diagnosticEvidenceStore = createDiagnosticEvidenceStore();
+const rawDiagnostics = new Map();
+const rawDebuggerSource = {
+  isAttached: (tabId) => sessionCapture.isRecordingDebuggerAttached(tabId),
+  attach: (tabId) => chrome.debugger.attach({ tabId }, "1.3"),
+  detach: (tabId) => chrome.debugger.detach({ tabId }),
+  subscribeRawDebugger: (tabId, subscriber) =>
+    sessionCapture.subscribeRawDebugger(tabId, subscriber),
+  sendCommand: (tabId, method, params = {}, sessionId) =>
+    chrome.debugger.sendCommand(
+      { tabId, ...(sessionId ? { sessionId } : {}) },
+      method,
+      params,
+    ),
+};
 async function getRecordingPointImage(recordingId, annotationId) {
   return pageDataUrl(await getPage(`recording-${recordingId}`, annotationId));
 }
@@ -1642,6 +1659,9 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   return true;
 });
 chrome.tabs.onRemoved.addListener(async (id) => {
+  const raw = rawDiagnostics.get(id);
+  rawDiagnostics.delete(id);
+  if (raw) await raw.stop().catch(() => {});
   recordings.stop(id);
   await clearVideoCreateForTab(chrome.storage.session, id);
   await deleteDraftPages(`point-${id}`);
@@ -1703,11 +1723,30 @@ async function runDiagnostics(sender, action) {
   if (!tab.active || !["start", "stop", "status"].includes(action))
     throw Error("Select the review page first.");
   const session = await sessionFor(sender);
+  let raw = rawDiagnostics.get(tab.id);
+  let rawStatus;
+  if (action === "start" && !raw?.status().active) {
+    raw = createRawDiagnosticCapture({
+      tabId: tab.id,
+      sourceOrigin: session.origin,
+      store: diagnosticEvidenceStore,
+      debuggerSource: rawDebuggerSource,
+    });
+    rawStatus = await raw.start();
+    rawDiagnostics.set(tab.id, raw);
+  } else if (action === "stop" && raw) {
+    rawStatus = await raw.stop();
+    rawDiagnostics.delete(tab.id);
+  } else rawStatus = raw?.status();
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     world: "MAIN",
     func: diagnosticCollector,
     args: [action, session.reviewId],
   });
-  return { active: results[0]?.result?.active === true };
+  return {
+    active: results[0]?.result?.active === true,
+    evidenceId: rawStatus?.evidenceId,
+    coverage: rawStatus?.coverage,
+  };
 }

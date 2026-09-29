@@ -654,7 +654,10 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       }),
     );
     app.get("/{*path}", (_req, res) =>
-      res.set("Cache-Control", "no-store").sendFile(path.join(web, "index.html")),
+      res.set("Cache-Control", "no-store").sendFile(path.join(web, "index.html"), {
+        // Managed worktrees may live under .codex; this is a fixed, built file.
+        dotfiles: "allow",
+      }),
     );
   }
   app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
