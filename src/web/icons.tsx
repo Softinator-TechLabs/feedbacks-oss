@@ -12,6 +12,8 @@ const paths = {
   external:
     "M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5",
   check: "M20 6 9 17l-5-5",
+  like: "M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 0 4-8a2 2 0 0 1 2 2v4h6a2 2 0 0 1 2 2l-1 9a2 2 0 0 1-2 2H7",
+  edit: "M4 20h4L20 8a2.8 2.8 0 0 0-4-4L4 16v4ZM14 6l4 4",
   trash: "M4 7h16M10 11v7M14 11v7M6 7l1 14h10l1-14M9 7V4h6v3",
   archive: "M4 4h16v4H4zM5 8v12h14V8M10 12h4",
   priority:

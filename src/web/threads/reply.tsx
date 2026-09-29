@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { api, date, uid, type Actor, type Thread } from "../api.js";
 import { DiscussionLike } from "../discussion-like.js";
+import { Icon } from "../icons.js";
 import { HumanTime } from "../human-time.js";
 import { MarkdownText } from "../markdown-text.js";
 import { MentionInput } from "../mention-input.js";
@@ -138,13 +139,7 @@ export function DiscussionReply({
     <article className="reply">
       <div className="meta">
         <strong>{reply.author.name}</strong>
-        <span>{reply.author.kind === "agent" ? "Agent" : "Team member"}</span>
-        <span>
-          {(reply.intent ?? (reply.author.kind === "agent" ? "response" : "request")) ===
-          "request"
-            ? "Requests follow-up"
-            : "Response"}
-        </span>
+        {reply.author.kind === "agent" && <span>Agent</span>}
         <HumanTime at={reply.createdAt} />
         {reply.editedAt && (
           <span className="reply-edited">
@@ -192,39 +187,42 @@ export function DiscussionReply({
           </div>
         </form>
       ) : (
-        <MarkdownText body={reply.body} className="message" />
+        <div className="reply-content-row">
+          <DiscussionLike
+            threadId={threadId}
+            replyId={reply.id}
+            target={`reply by ${reply.author.name} from ${date(reply.createdAt)}`}
+            likes={reply.likes}
+            canWrite={canWrite}
+            onSaved={onLikesSaved}
+          />
+          <MarkdownText body={reply.body} className="message" />
+          {canManage && (
+            <div className="reply-controls">
+              <button
+                type="button"
+                className="reply-icon-button"
+                aria-label={`Edit comment by ${reply.author.name} from ${date(reply.createdAt)}`}
+                title="Edit comment"
+                disabled={action.busy}
+                onClick={beginEdit}
+              >
+                <Icon name="edit" />
+              </button>
+              <button
+                type="button"
+                className="reply-icon-button danger"
+                aria-label={`Delete comment by ${reply.author.name} from ${date(reply.createdAt)}`}
+                title="Delete comment"
+                disabled={action.busy}
+                onClick={() => void deleteReply()}
+              >
+                <Icon name="trash" />
+              </button>
+            </div>
+          )}
+        </div>
       )}
-      <div className="reply-controls">
-        <DiscussionLike
-          threadId={threadId}
-          replyId={reply.id}
-          target={`reply by ${reply.author.name} from ${date(reply.createdAt)}`}
-          likes={reply.likes}
-          canWrite={canWrite}
-          onSaved={onLikesSaved}
-        />
-        {canManage && !editing && (
-          <>
-            <button
-              type="button"
-              aria-label={`Edit comment by ${reply.author.name} from ${date(reply.createdAt)}`}
-              disabled={action.busy}
-              onClick={beginEdit}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="danger"
-              aria-label={`Delete comment by ${reply.author.name} from ${date(reply.createdAt)}`}
-              disabled={action.busy}
-              onClick={() => void deleteReply()}
-            >
-              Delete
-            </button>
-          </>
-        )}
-      </div>
       <ActionState action={action} />
     </article>
   );

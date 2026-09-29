@@ -637,13 +637,6 @@ export function ThreadDetail({
                 <section className="replies">
                   <h2 id="thread-discussion-heading" tabIndex={-1}>
                     Discussion <span className="muted">{t.replies?.length ?? 0}</span>
-                    {(t.response.state !== "unanswered" || !!t.replies?.length) && (
-                      <span className="response-state">
-                        {t.response.state === "unanswered"
-                          ? "Needs reply"
-                          : labels[t.response.state]}
-                      </span>
-                    )}
                   </h2>
                   {t.replies?.length ? (
                     t.replies.map((r) => (

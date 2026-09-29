@@ -6,6 +6,8 @@ Status: local verification passed; CI and deployment pending. Owner: Feedbacks c
 
 Signed-in project members can edit or delete their own earlier discussion replies in a thread. Editing keeps the original posting time and shows an **Edited on** timestamp. Deleting removes the reply and its likes from current reads. The original feedback body, guest replies and agent replies are outside this change.
 
+The Like icon sits to the left of reply text, with compact Edit and Delete icons on the right in the same row. The discussion displays the author, posting time and edit time without request/response status labels.
+
 ## Evidence and approach
 
 `threads.reply` currently inserts into `replies`; `fullThread` only reads them, and `ThreadDetail` renders replies without management actions. Add two shared operations with server-side project and author checks. Keep reply bodies in the existing JSON column, so no migration is needed. Recalculate the thread's response summary after deletion and advance its revision/event cursor for both mutations. Use direct inline controls in the existing discussion layout.
@@ -27,6 +29,7 @@ Existing replies have no `editedAt` and display normally. Existing agent keys re
 - Keep management author-only for signed-in human accounts. An extension reply attributed to that account is eligible; guest and agent replies are not.
 - Confirm deletion in the browser because it is irreversible.
 - Keep original `createdAt`; set `editedAt` only after a successful edit.
+- Keep reply actions beside the text in a single row and remove discussion status badges that obscure the comment itself.
 
 ## Completion receipt
 

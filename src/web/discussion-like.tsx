@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { api, errorText } from "./api.js";
+import { Icon } from "./icons.js";
 import { ErrorNotice } from "./ui.js";
 
 type Likes = { uniqueLikes: number; liked: boolean };
@@ -50,11 +51,12 @@ export function DiscussionLike({
         type="button"
         aria-pressed={likes.liked}
         aria-label={`${likes.liked ? "Unlike" : "Like"} ${target}; ${likes.uniqueLikes} ${likes.uniqueLikes === 1 ? "like" : "likes"}`}
+        title={error ? "Retry like" : likes.liked ? "Unlike" : "Like"}
         disabled={!canWrite || busy}
         onClick={() => void save()}
       >
-        {busy ? "Saving…" : error ? "Retry like" : likes.liked ? "Liked" : "Like"}
-        {likes.uniqueLikes > 0 && ` ${likes.uniqueLikes}`}
+        <Icon name="like" />
+        {likes.uniqueLikes > 0 && <span>{likes.uniqueLikes}</span>}
       </button>
       <ErrorNotice error={error} />
     </div>
