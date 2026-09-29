@@ -83,6 +83,7 @@ await writeFile(
     context.fillStyle = '#17324d'; context.fillRect(0, 0, 640, 360);
     context.fillStyle = '#fff'; context.fillText(String(Date.now()), 20, 40);
   }, 40);
+  void chrome.runtime.sendMessage({ type: 'qaTrace', stage: 'prelude' });
   navigator.mediaDevices.getUserMedia = async () => canvas.captureStream(24);
 `,
 );
@@ -96,7 +97,7 @@ await writeFile(
   recorderPath,
   recorderSource.replace(
     listenerSource,
-    `await new Promise((resolve) => setTimeout(resolve, 2500));\n${listenerSource}`,
+    `void chrome.runtime.sendMessage({ type: 'qaTrace', stage: 'module' });\nawait new Promise((resolve) => setTimeout(resolve, 2500));\nvoid chrome.runtime.sendMessage({ type: 'qaTrace', stage: 'listener' });\n${listenerSource}`,
   ),
 );
 const manifestPath = path.join(extension, "manifest.json");
@@ -114,10 +115,21 @@ const browser = await chromium.launchPersistentContext(path.join(temp, "profile"
     "--autoplay-policy=no-user-gesture-required",
   ],
 });
+const browserErrors = [];
+browser.on("console", (message) => {
+  if (message.type() === "error") browserErrors.push(message.text());
+});
+browser.on("weberror", (error) => browserErrors.push(error.error()?.message || String(error)));
 browser.setDefaultTimeout(15000);
 try {
   const worker =
     browser.serviceWorkers()[0] || (await browser.waitForEvent("serviceworker"));
+  await worker.evaluate(() => {
+    globalThis.__qaTraces = [];
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message?.type === "qaTrace") globalThis.__qaTraces.push(message.stage);
+    });
+  });
   const id = new URL(worker.url()).host;
   const page = await browser.newPage();
   await page.goto(origin);
@@ -171,6 +183,7 @@ try {
           type: context.contextType,
           url: context.documentUrl,
         })),
+        qa: globalThis.__qaTraces,
       }));
       throw Error(
         `Video start failed: ${JSON.stringify({
@@ -181,6 +194,7 @@ try {
             mode: state?.data?.recording?.mode,
             events: state?.data?.recording?.events?.length,
           },
+          browserErrors,
         })}`,
         {
           cause: error,
