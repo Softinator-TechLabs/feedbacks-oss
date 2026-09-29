@@ -250,6 +250,8 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
               .waitFor({ state: "attached" });
             if (route === "members")
               await page.getByPlaceholder("Search name, email or expertise").waitFor();
+            if (route === "instructions")
+              await page.getByText("No project context yet", { exact: true }).waitFor();
             assert.equal(
               await page.evaluate(
                 () => document.documentElement.scrollWidth <= innerWidth,
