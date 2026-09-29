@@ -155,7 +155,7 @@
 
 ## Execution order
 
-Tasks 1-3 establish the shared contract and authorized storage/read path. Tasks 4-6 add browser capture and review while sharing the recording debugger. Tasks 7-8 consume the committed manifest independently; Task 9 is the exact-revision integration gate. The implementation was merged forward through PRs #117-#126 and #128 before final integration checks.
+Tasks 1-3 establish the shared contract and authorized storage/read path. Tasks 4-6 add browser capture and review while sharing the recording debugger. Tasks 7-8 consume the committed manifest independently; Task 9 is the exact-revision integration gate. The implementation was merged forward through PRs #117-#126 and #128-#129 before final integration checks.
 
 ## Implementation record · 2026-09-29
 
@@ -172,6 +172,7 @@ Tasks 1-9 are implemented on `codex/screenshot-diagnostics`, based on merged mod
 - Local Node 25.2.1 `npm run qa:recording-browser` passed 23 of 23 Chromium regressions; native `npm run test:postgres` passed 3 of 3 migration and concurrency tests on the merged source.
 - Post-merge visual QA captured and compared 56 desktop, medium, tablet and mobile views in light/dark themes. The maximum image difference was 0.10% under the 0.5% threshold, with zero blocked external requests. An initial run exposed an asynchronous loading state in the Instructions view; the QA script now waits for that view to load before capture. This checks repeatability on the merged branch, not parity with a prior release.
 - After #126, local Node 25.2.1 `npm run check` passed again (421 tests, 397 passed, 24 expected skips, zero failures). Supported Node 24.19.0 `npm run check` passed on rerun: 421 tests, 397 passed, 24 expected skips, zero failures; build, smoke and release checks passed. Its packaged browser capture/review run passed, including the 5,408,239-byte DOM. An earlier local Node 24 run hit a native V8 crash in an unrelated work-claims test, which passed in isolation; the full rerun passed. The earlier PR head passed Node 22/24 and extension-browser CI, but final-head CI is still required.
+- After #129, supported Node 24 typecheck, web build and active Chromium recording-viewer tests (3/3) passed. The #129 change only affects recording playback presentation.
 - After #126 the built extension package is version 0.1.39 at `dist/web/downloads/feedbacks-extension.zip`, Node 24 build SHA-256 `b82d563c5e5f784a15b904c7304b8da99e8d52bb9aefbba351e79d54d0005d5c`.
 
 Final-head CI, a Store-installed extension, deployment and live-server behavior remain separate gates. They are not established by the local checks above.
