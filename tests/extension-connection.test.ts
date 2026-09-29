@@ -160,8 +160,8 @@ async function popup({
   const source = (
     await readFile(new URL("../extension/popup.js", import.meta.url), "utf8")
   )
-    .replace(/^import[\s\S]*?from "\.\/updates\.js";\s*/, "")
-    .replace(/^import[\s\S]*?from "\.\/session-origins\.js";\s*/, "");
+    .replace(/^import[\s\S]*?from "\.\/connection\/updates\.js";\s*/, "")
+    .replace(/^import[\s\S]*?from "\.\/session\/session-origins\.js";\s*/, "");
   vm.runInContext(source, context);
   await new Promise((resolve) => setImmediate(resolve));
   return {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRecordingControls } from "../extension/recording-controls.js";
+import { createRecordingControls } from "../extension/recordings/recording-controls.js";
 
 test("recording controls stay with their source tab and stop on disconnect", async () => {
   let connect: any;

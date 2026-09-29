@@ -1,0 +1,319 @@
+@media (max-width: 950px) {
+  .topbar {
+    gap: 24px;
+    padding: 14px 24px;
+    flex-wrap: wrap;
+  }
+  .topbar nav {
+    gap: 18px;
+  }
+  .account-nav {
+    gap: 12px;
+  }
+  .thread-row {
+    grid-template-columns: 36px minmax(0, 1fr) 145px;
+  }
+  .thread-stats {
+    grid-column: 1/-1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .detail-grid {
+    gap: 28px;
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+  .project-nav nav {
+    margin-left: 0;
+    flex-basis: 100%;
+    gap: 24px;
+  }
+  .filters .field {
+    flex-basis: 27%;
+  }
+}
+@media (max-width: 680px) {
+  .thread-shell .project-nav {
+    display: none;
+  }
+  .thread-shell main {
+    padding-top: 12px;
+  }
+  .field input,
+  .field textarea,
+  .field select,
+  .mention-composer textarea {
+    font-size: 16px;
+  }
+  :root {
+    font-size: 15px;
+  }
+  .topbar {
+    padding: 14px 18px;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+  .topbar > .brand {
+    flex: 1;
+  }
+  .topbar > nav {
+    display: none;
+  }
+  .mobile-site-menu {
+    display: block;
+    position: relative;
+    flex: 0 0 60px;
+  }
+  .mobile-site-menu > summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 5px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--accent);
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+  .mobile-site-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+  .mobile-site-menu[open] > summary {
+    margin-bottom: 0;
+  }
+  .topbar .mobile-site-menu nav {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    width: 180px;
+    padding: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 20px #10283e1a;
+  }
+  .topbar .mobile-site-menu nav a,
+  .topbar .mobile-site-menu nav button {
+    display: flex;
+    justify-content: flex-start;
+    min-height: 40px;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 4px;
+    color: var(--accent);
+    background: transparent;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .topbar .mobile-site-menu nav a:hover,
+  .topbar .mobile-site-menu nav button:hover {
+    background: var(--soft-surface);
+  }
+  .account-nav {
+    margin-left: 0;
+    gap: 10px;
+  }
+  .account-nav > a,
+  .account-nav > .sign-out-button {
+    display: none;
+  }
+  .account-nav button {
+    padding: 6px 10px;
+    min-height: 36px;
+  }
+  .shell {
+    padding: 0 18px;
+  }
+  .shell main {
+    padding-top: 22px;
+  }
+  .page-heading {
+    margin-bottom: 22px;
+    gap: 12px;
+  }
+  .page-heading h1 {
+    font-size: 1.5rem;
+  }
+  .page-heading p {
+    font-size: 0.85rem;
+  }
+  .thread-list-heading {
+    flex-wrap: wrap;
+  }
+  .thread-list-heading .thread-list-quick-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .page-heading > button,
+  .thread-list-quick-actions button {
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  .project-nav {
+    gap: 10px;
+  }
+  .project-nav strong {
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  .project-nav nav {
+    justify-content: flex-start;
+    gap: 12px;
+    font-size: 0.83rem;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .project-nav nav a {
+    flex-shrink: 0;
+  }
+  .project-row {
+    padding: 20px 10px;
+    gap: 14px;
+  }
+  .project-row > span:nth-child(2) {
+    display: none;
+  }
+  .project-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .project-row h2 {
+    font-size: 1.1rem;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .filters {
+    padding: 14px;
+    gap: 12px;
+  }
+  .thread-filters {
+    padding: 12px 0 0;
+    gap: 10px;
+  }
+  .thread-filter-panel {
+    padding: 14px;
+  }
+  .filters .field,
+  .filters .field:first-child {
+    flex-basis: calc(50% - 12px);
+    min-width: 110px;
+  }
+  .filters .field:nth-child(2) {
+    flex-basis: 100%;
+    order: 1;
+  }
+  .filters > button {
+    order: 2;
+  }
+  .filters .check {
+    order: 3;
+  }
+  .thread-filters > .field,
+  .thread-filters > .field:first-child,
+  .thread-filters > .field:nth-child(2),
+  .thread-filters > button,
+  .thread-filters > .advanced-filters {
+    order: 0;
+  }
+  .thread-filters > .field:first-child {
+    flex: 1 0 100%;
+  }
+  .thread-filters > .field:nth-child(2),
+  .thread-filters > .field:nth-child(3),
+  .thread-filters > .field:nth-child(4),
+  .thread-filters > .field:nth-child(5),
+  .thread-filters > .field:nth-child(6) {
+    flex: 1 1 calc(50% - 12px);
+    min-width: 0;
+  }
+  .thread-filters > .advanced-filters {
+    flex-basis: 100%;
+  }
+  .thread-row {
+    padding: 12px;
+    gap: 8px;
+  }
+  .thread-stats {
+    font-size: 0.77rem;
+  }
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .context-panel {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+  }
+  .context-panel > section {
+    padding-top: 20px;
+  }
+  .context-panel dl {
+    grid-template-columns: 1fr 2fr;
+  }
+  .policy-grid,
+  .scope-grid {
+    grid-template-columns: 1fr;
+  }
+  .token-row {
+    gap: 12px;
+  }
+  .pagination {
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.8rem;
+  }
+  .pagination button {
+    font-size: 0.8rem;
+    padding: 8px 10px;
+  }
+  .auth {
+    margin: 2vh auto;
+    padding: 30px 24px;
+  }
+  .auth > .brand {
+    margin-bottom: 42px;
+  }
+  .reading pre {
+    font-size: 0.75rem;
+  }
+  .reading ol {
+    padding-left: 24px;
+  }
+  .help-intro {
+    margin: 8px 0 24px;
+  }
+  .help-intro h1 {
+    font-size: 1.8rem;
+  }
+  .help-start,
+  .help-agent {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .help-docs-list a {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+  .help-install .button {
+    align-self: stretch;
+  }
+  .help-agent-actions {
+    align-items: stretch;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

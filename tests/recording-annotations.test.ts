@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRecordingAnnotations } from "../extension/recording-annotations.js";
-import { createCaptureStore, captureElapsed } from "../extension/session-capture.js";
+import { createRecordingAnnotations } from "../extension/recordings/recording-annotations.js";
+import {
+  createCaptureStore,
+  captureElapsed,
+} from "../extension/session/session-capture.js";
 
 function fixture(mode = "video", initiallyPaused = false) {
   const calls: string[] = [];
@@ -152,9 +155,9 @@ test("session clock excludes annotation editing and resumed DOM timestamps share
 
 test("session point upload survives an ambiguous response and retries identical image input", async () => {
   const { createSessionCoordinator } = await import(
-    "../extension/session-coordinator.js"
+    "../extension/session/session-coordinator.js"
   );
-  const { videoFingerprint } = await import("../extension/video-target.js");
+  const { videoFingerprint } = await import("../extension/video/video-target.js");
   let data: any = {};
   const storage = {
     get: async (keys: any) =>

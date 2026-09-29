@@ -1,3 +1,9 @@
+import { verifyGithubToolbar } from "./qa/extension/github-toolbar.mjs";
+import { verifyRecordingControls } from "./qa/extension/recording-controls.mjs";
+import { verifyPublicCapture } from "./qa/extension/public-capture.mjs";
+import { verifyPopupOptions } from "./qa/extension/popup-options.mjs";
+import { previewDimensions, installReviewFixture } from "./qa/extension/fixture.mjs";
+import { verifySetup } from "./qa/extension/setup.mjs";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -7,20 +13,6 @@ import { chromium } from "playwright";
 import sharp from "sharp";
 
 const root = process.cwd();
-async function previewDimensions(page) {
-  await page.locator("#preview-slot:not([hidden]) img").first().waitFor();
-  await page.waitForFunction(() => {
-    const images = [...document.querySelectorAll("#preview-slot img")];
-    return (
-      images.length > 0 &&
-      images.every((image) => image.complete && image.naturalWidth > 0)
-    );
-  });
-  return page.locator("#preview-slot img").evaluateAll((images) => ({
-    width: images[0].naturalWidth,
-    height: images.reduce((sum, image) => sum + image.naturalHeight, 0),
-  }));
-}
 const publicCaptureUrl = process.env.FEEDBACKS_QA_PUBLIC_URL;
 if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1" && !publicCaptureUrl)
   throw Error("Set FEEDBACKS_QA_PUBLIC_URL to the approved website for live capture QA.");
@@ -131,122 +123,7 @@ try {
     context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
   const extensionId = new URL(worker.url()).host;
 
-  {
-    // Exercise setup before pairing, using the real background route and page bridge.
-    // The temporary manifest above grants test access; native prompts are separate.
-    const setupPage = await context.newPage();
-    const setupLogin = await post("auth.login", {
-      email: access.email,
-      password: access.password,
-    });
-    const setupCookieSplit = setupLogin.cookie.indexOf("=");
-    await context.addCookies([
-      {
-        name: setupLogin.cookie.slice(0, setupCookieSplit),
-        value: setupLogin.cookie.slice(setupCookieSplit + 1),
-        url: access.url,
-      },
-    ]);
-    await setupPage.goto(`${access.url}/help`);
-    await setupPage
-      .getByRole("button", { name: "Set in extension", exact: true })
-      .click();
-    await setupPage
-      .getByText("Open the pinned Feedbacks icon on this page to detect the server.", {
-        exact: false,
-      })
-      .waitFor();
-    const [setupTab] = await worker.evaluate(
-      (url) => chrome.tabs.query({ url }),
-      `${access.url}/help`,
-    );
-    const setupOptions = await context.newPage();
-    await setupOptions.goto(`chrome-extension://${extensionId}/options.html`);
-    const detect = () =>
-      setupOptions.evaluate(
-        (tabId) => chrome.runtime.sendMessage({ type: "detectServer", tabId }),
-        setupTab.id,
-      );
-    assert.equal(
-      (await detect()).data.status,
-      "unavailable",
-      "HTTP needs explicit local opt-in",
-    );
-    // Model a previously saved local-server opt-in; fresh HTTP setup stays manual.
-    await worker.evaluate(() => chrome.storage.local.set({ allowLocal: true }));
-    assert.equal((await detect()).data.status, "set");
-    const initialSetup = await worker.evaluate(() => chrome.storage.local.get(null));
-    assert.equal(initialSetup.server, access.url);
-    assert.equal(initialSetup.serverDraft, access.url);
-    assert.equal(initialSetup.pair, undefined);
-    assert.equal(initialSetup.accounts, undefined);
-    await setupOptions.close();
-    await setupPage.bringToFront();
-    await setupPage
-      .getByRole("button", { name: "Set in extension", exact: true })
-      .click();
-    await setupPage
-      .getByText("Server set. Continue in extension Settings to connect.", {
-        exact: true,
-      })
-      .waitFor();
-    const openedOptions = context
-      .pages()
-      .find((page) =>
-        page.url().startsWith(`chrome-extension://${extensionId}/options.html`),
-      );
-    assert.ok(openedOptions, "setup handoff opens extension settings");
-    await openedOptions.waitForFunction(
-      (server) => document.getElementById("server").value === server,
-      access.url,
-    );
-    await openedOptions.close();
-    const setupOutput = join(root, "output/playwright/server-setup");
-    await mkdir(setupOutput, { recursive: true });
-    for (const [name, width, height] of [
-      ["desktop", 1440, 1000],
-      ["mobile", 390, 844],
-    ]) {
-      await setupPage.setViewportSize({ width, height });
-      const button = setupPage.getByRole("button", {
-        name: "Set in extension",
-        exact: true,
-      });
-      await button.focus();
-      await button.scrollIntoViewIfNeeded();
-      assert.equal(
-        await setupPage.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-        true,
-      );
-      await setupPage.screenshot({ path: join(setupOutput, `${name}.png`) });
-    }
-    await worker.evaluate(() =>
-      chrome.storage.local.set({
-        server: "https://saved.example.test",
-        serverDraft: "https://saved.example.test",
-      }),
-    );
-    await setupPage
-      .getByRole("button", { name: "Set in extension", exact: true })
-      .click();
-    await setupPage
-      .getByText("The extension already has a server or an address in progress.", {
-        exact: false,
-      })
-      .waitFor();
-    assert.equal(
-      (await worker.evaluate(() => chrome.storage.local.get("server"))).server,
-      "https://saved.example.test",
-    );
-    await setupPage.close();
-    await context.clearCookies();
-    await worker.evaluate(() => chrome.storage.local.clear());
-    console.log(
-      "Setup detection, local opt-in, page handoff, saved-server protection and responsive layout passed.",
-    );
-  }
+  await verifySetup({ context, worker, post, access, extensionId, root });
   await worker.evaluate(
     ({ server, token }) =>
       chrome.storage.local.set({
@@ -258,37 +135,7 @@ try {
     { server: access.url, token: paired.token },
   );
 
-  let mode = "long";
-  await context.route("https://example.com/**", (route) => {
-    const url = new URL(route.request().url());
-    if (url.pathname === "/missing")
-      return route.fulfill({ status: 404, body: "Missing" });
-    const height =
-      mode === "short"
-        ? 260
-        : mode === "tall"
-          ? 22000
-          : mode === "tooLong"
-            ? 35000
-            : 2100;
-    const change =
-      mode === "changing"
-        ? '<script>let size=2100; window.qaTimer=setInterval(()=>{ size=size===2100?2300:2100; document.querySelector("main").style.height=size+"px" },75)</script>'
-        : "";
-    const clipped =
-      mode === "clipped"
-        ? '<style>html{overflow-x:hidden;scroll-behavior:smooth}body{overflow-x:hidden;position:relative}.wide-carousel{position:absolute;top:100px;width:6000px}</style><div class="wide-carousel"><video></video></div><script>window.qaMotion=setInterval(()=>{document.querySelector("video").dispatchEvent(new Event("resize"));document.querySelector(".wide-carousel").dispatchEvent(new Event("scroll"))},100)</script>'
-        : "";
-    const hover =
-      mode === "hover"
-        ? '<style>#hover-menu{display:none;position:absolute;top:48px;left:20px;width:320px;padding:20px;background:#eef;border:2px solid #356}#hover-host:hover #hover-menu{display:block}</style><nav id="hover-host" style="position:absolute;top:160px;left:20px;width:420px;height:80px;background:#ddd">About<div id="hover-menu">Research ethics menu</div></nav>'
-        : "";
-    return route.fulfill({
-      status: 200,
-      contentType: "text/html",
-      body: `<!doctype html><title>Feedback fixture</title><style>body{margin:0;font:16px sans-serif}header{position:sticky;top:0;background:#eee;padding:16px}main{height:${height}px;padding:16px;position:relative}#lower{position:absolute;top:${Math.max(160, height - 260)}px;left:30px}</style><header>Sticky header</header><main><h1>Controlled page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs" /><a href="/missing">Broken same-origin link</a>${hover}<button id="lower">Bottom action</button></main>${change}${clipped}`,
-    });
-  });
+  const fixture = await installReviewFixture(context);
   const page = context.pages()[0] ?? (await context.newPage());
   const control = await context.newPage();
   await control.goto(`chrome-extension://${extensionId}/popup.html`);
@@ -312,321 +159,31 @@ try {
   };
   const results = {};
 
-  if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1") {
-    await page.setViewportSize({ width: 1920, height: 1064 });
-    await page.bringToFront();
-    await page.goto(publicCaptureUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
-    await page.waitForTimeout(2500);
-    const publicTab = await tabId();
-    const full = await send({
-      type: "popupAction",
-      tabId: publicTab,
-      action: "capture-full",
-    });
-    const captured = await draft();
-    results.publicSite = {
-      url: publicCaptureUrl,
-      fullCaptured: full.captured,
-      fullPages: captured?.capturePages?.length || 0,
-      fullError: captured?.captureError,
-    };
-    assert.equal(
-      results.publicSite.fullCaptured,
-      true,
-      JSON.stringify(results.publicSite),
-    );
-    assert.ok(results.publicSite.fullPages > 1);
-    if (process.env.FEEDBACKS_QA_PUBLIC_SEND === "1") {
-      const review = await context.newPage();
-      await review.goto(`chrome-extension://${extensionId}/editor.html`);
-      await review.locator("#page-select option").last().waitFor({ state: "attached" });
-      await review.locator("#full-page-toggle:not([disabled])").waitFor();
-      await review.getByRole("button", { name: "Full page preview" }).click();
-      results.publicSite.previewHeight = (await previewDimensions(review)).height;
-      assert.ok(results.publicSite.previewHeight > 1064);
-      await review.getByRole("button", { name: "Back to sections" }).click();
-      await review.locator("#include-combined").check();
-      await review.locator("#body").fill("Synthetic local full-page upload QA.");
-      await review.locator("#send").click();
-      await review
-        .locator("#completion:not([hidden]), #send:has-text('Retry Send')")
-        .first()
-        .waitFor({ timeout: 180000 });
-      results.publicSite.sendStatus = await review.locator("#status").textContent();
-      results.publicSite.uploadIndex = (await draft())?.uploadIndex;
-      results.publicSite.frozen = (await draft())?.frozen;
-      results.publicSite.sent = await review.locator("#completion").isVisible();
-      if (results.publicSite.sent) {
-        const threadUrl = await review.locator("#thread").getAttribute("href");
-        const threadId = threadUrl?.match(/[0-9a-f-]{36}/)?.[0];
-        if (!threadId) throw Error("Public capture QA lacks a thread link");
-        const thread = (await post("threads.get", { threadId }, auth)).data;
-        results.publicSite.assets = thread.assets.map(({ filename, width, height }) => ({
-          filename,
-          width,
-          height,
-        }));
-      }
-      console.log(JSON.stringify({ publicSite: results.publicSite }));
-      assert.equal(results.publicSite.sent, true, results.publicSite.sendStatus);
-      assert.equal(results.publicSite.assets.length, captured.capturePages.length + 1);
-      const combined = results.publicSite.assets.at(-1);
-      assert.equal(combined.filename, "full-page-combined.webp");
-      assert.ok(combined.width * combined.height <= 40000000);
-      assert.ok(combined.height <= 12000);
-      await review.close();
-    }
-    await send({ type: "discard" });
-    await page.bringToFront();
-    const visible = await send({
-      type: "popupAction",
-      tabId: publicTab,
-      action: "capture",
-    });
-    const visibleDraft = await draft();
-    results.publicSite.visibleCaptured = visible.captured;
-    results.publicSite.visibleImage = !!visibleDraft?.image;
-    assert.equal(results.publicSite.visibleCaptured, true);
-    assert.equal(results.publicSite.visibleImage, true);
-    await send({ type: "discard" });
-    await page.setViewportSize({ width: 900, height: 650 });
-  }
+  await verifyPublicCapture({
+    context,
+    page,
+    publicCaptureUrl,
+    tabId,
+    send,
+    draft,
+    extensionId,
+    post,
+    auth,
+    results,
+  });
 
-  await toFixture();
-  await mkdir(join(root, ".local/remaining-todos-qa"), { recursive: true });
-  await control.reload();
-  await control.locator("#review-controls:visible").waitFor();
-  const fullCaptureButton = await control.locator("#capture").boundingBox();
-  assert.ok(
-    fullCaptureButton && fullCaptureButton.y + fullCaptureButton.height < 600,
-    "Primary capture actions should fit without scrolling in a compact popup",
-  );
-  assert.equal(await control.locator(".access-status").getAttribute("open"), null);
-  await control.screenshot({
-    path: join(root, ".local/remaining-todos-qa/access-status.png"),
+  await verifyPopupOptions({
+    context,
+    control,
+    extensionId,
+    access,
+    worker,
+    send,
+    page,
+    tabId,
+    root,
+    toFixture,
   });
-  assert.equal(
-    await control.locator("#capture-full").isVisible(),
-    true,
-    "Full page remains directly available beside video",
-  );
-  assert.equal(await control.locator("#record-video").isVisible(), true);
-  const diagnosticsSummary = await control
-    .locator(".diagnostic-controls summary")
-    .boundingBox();
-  assert.ok(
-    diagnosticsSummary.y + diagnosticsSummary.height < 600,
-    "Connected popup's collapsed controls should fit Chrome's popup height",
-  );
-  const optionsOpened = context.waitForEvent("page");
-  await control.locator("#settings").click();
-  const options = await optionsOpened;
-  await options.waitForURL(`chrome-extension://${extensionId}/options.html`);
-  await options.locator("#connection-status").filter({ hasText: "Connected" }).waitFor();
-  assert.equal(await options.locator("#server").inputValue(), access.url);
-  assert.equal(await options.locator("#capture-marker-style").inputValue(), "ring");
-  await options.locator("#capture-marker-style").selectOption("none");
-  await options.waitForFunction(
-    async () =>
-      (await chrome.storage.local.get("reviewDefaults")).reviewDefaults
-        ?.captureMarkerStyle === "none",
-  );
-  assert.equal(
-    (await send({ type: "settings" })).reviewDefaults.captureMarkerStyle,
-    "none",
-  );
-  await options.locator("#capture-marker-size").selectOption("large");
-  await options.waitForFunction(
-    async () =>
-      (await chrome.storage.local.get("reviewDefaults")).reviewDefaults
-        ?.captureMarkerSize === "large",
-  );
-  await options.locator("#capture-marker-style").selectOption("ring");
-  await options.locator("#capture-marker-size").selectOption("small");
-  const assignedShortcut = await worker.evaluate(
-    async () =>
-      (await chrome.commands.getAll()).find(
-        (command) => command.name === "_execute_action",
-      )?.shortcut,
-  );
-  await options
-    .locator("#opening-shortcut")
-    .filter({
-      hasText: assignedShortcut
-        ? `Start / resume review: ${assignedShortcut}`
-        : "No shortcut assigned",
-    })
-    .waitFor();
-  assert.equal(
-    await options.locator("#customize-shortcuts").innerText(),
-    "Change shortcut",
-  );
-
-  await options.locator("#review-shortcuts").uncheck();
-  await options.waitForFunction(
-    async () =>
-      (await chrome.storage.local.get("reviewShortcuts")).reviewShortcuts === false,
-  );
-  assert.equal((await send({ type: "settings" })).reviewShortcuts, false);
-  await options.locator("#review-shortcuts").check();
-  await options.waitForFunction(
-    async () =>
-      (await chrome.storage.local.get("reviewShortcuts")).reviewShortcuts === true,
-  );
-  await page.bringToFront();
-  const defaultsTabId = await tabId();
-  const navigationDefault = options.locator('[data-review-default="navigationLocked"]');
-  await navigationDefault.focus();
-  await navigationDefault.press("Space");
-  await options.locator("#message").filter({ hasText: "Defaults saved" }).waitFor();
-  await options.waitForFunction(
-    () =>
-      document.activeElement ===
-      document.querySelector('[data-review-default="navigationLocked"]'),
-  );
-  assert.equal((await send({ type: "settings" })).reviewDefaults.navigationLocked, false);
-  await page.bringToFront();
-  // A new default must not silently change a review already in progress.
-  assert.equal(
-    (await send({ type: "popupAction", tabId: defaultsTabId, action: "state" }))
-      .navigationLocked,
-    true,
-  );
-  await page.bringToFront();
-  await send({ type: "popupAction", tabId: defaultsTabId, action: "stop" });
-  await send({ type: "activate", tabId: defaultsTabId });
-  assert.equal(
-    (await send({ type: "popupAction", tabId: defaultsTabId, action: "state" }))
-      .navigationLocked,
-    false,
-  );
-  await navigationDefault.check();
-  await options.locator("#message").filter({ hasText: "Defaults saved" }).waitFor();
-  await options.waitForFunction(
-    () => !document.querySelector('[data-review-default="navigationLocked"]').disabled,
-  );
-  await Promise.all([
-    send({ type: "saveReviewPreferences", reviewDefaults: { showPins: false } }),
-    send({ type: "saveReviewPreferences", reviewDefaults: { showResolved: true } }),
-  ]);
-  const savedDefaults = (await send({ type: "settings" })).reviewDefaults;
-  assert.equal(savedDefaults.showPins, false);
-  assert.equal(savedDefaults.showResolved, true);
-  await send({
-    type: "saveReviewPreferences",
-    reviewDefaults: { showPins: true, showResolved: false },
-  });
-  await page.bringToFront();
-  await send({ type: "popupAction", tabId: defaultsTabId, action: "stop" });
-  await send({ type: "activate", tabId: defaultsTabId });
-  assert.equal(
-    (await send({ type: "popupAction", tabId: defaultsTabId, action: "state" }))
-      .navigationLocked,
-    true,
-  );
-
-  await send({
-    type: "saveReviewPreferences",
-    reviewDefaults: {
-      navigationLocked: false,
-      highlightEnabled: false,
-      clickIndicators: false,
-      recordingNavigationLocked: true,
-      recordingHighlightEnabled: true,
-      recordingClickIndicators: true,
-    },
-  });
-  await page.bringToFront();
-  await send({ type: "popupAction", tabId: defaultsTabId, action: "stop" });
-  await send({ type: "activate", tabId: defaultsTabId });
-  const recordingPreferenceState = async (state) => {
-    await worker.evaluate(
-      ({ tabId, state }) =>
-        chrome.tabs.sendMessage(tabId, { type: "recordingState", state }),
-      { tabId: defaultsTabId, state },
-    );
-    return send({ type: "popupAction", tabId: defaultsTabId, action: "state" });
-  };
-  // Opening the popup again must retain this review's recording defaults too.
-  await send({
-    type: "saveReviewPreferences",
-    reviewDefaults: {
-      recordingNavigationLocked: false,
-      recordingHighlightEnabled: false,
-    },
-  });
-  await send({ type: "activate", tabId: defaultsTabId });
-  for (const state of ["recording", "paused"]) {
-    const controls = await recordingPreferenceState(state);
-    assert.equal(controls.navigationLocked, true);
-    assert.equal(
-      controls.highlightEnabled,
-      false,
-      "recording suppresses element hover highlights",
-    );
-    assert.equal(controls.clickIndicators, true);
-  }
-  const restoredPreferences = await recordingPreferenceState("idle");
-  assert.equal(restoredPreferences.navigationLocked, false);
-  assert.equal(restoredPreferences.highlightEnabled, false);
-  assert.equal(restoredPreferences.clickIndicators, false);
-  await send({
-    type: "saveReviewPreferences",
-    reviewDefaults: {
-      navigationLocked: true,
-      highlightEnabled: true,
-      clickIndicators: true,
-      recordingNavigationLocked: false,
-      recordingHighlightEnabled: false,
-      recordingClickIndicators: true,
-    },
-  });
-  await send({ type: "popupAction", tabId: defaultsTabId, action: "stop" });
-  await send({ type: "activate", tabId: defaultsTabId });
-  await options.reload();
-  await options.locator("#connection-status").filter({ hasText: "Connected" }).waitFor();
-  assert.equal(
-    await options.locator('[data-review-default="navigationLocked"]').isChecked(),
-    true,
-  );
-  await options.locator("#defaults").scrollIntoViewIfNeeded();
-  await options.screenshot({
-    path: join(root, ".local/remaining-todos-qa/review-defaults-desktop.png"),
-  });
-  await options.evaluate(() => scrollTo(0, 0));
-  await options.screenshot({
-    path: join(root, ".local/remaining-todos-qa/settings.png"),
-    fullPage: true,
-  });
-  const shortcutsOpened = context.waitForEvent("page");
-  await options.locator("#customize-shortcuts").click();
-  const shortcuts = await shortcutsOpened;
-  await shortcuts.waitForURL("chrome://extensions/shortcuts");
-  await shortcuts.close();
-  const accessOpened = context.waitForEvent("page");
-  await options.locator("#manage-access").click();
-  const permissions = await accessOpened;
-  await permissions.waitForURL(`chrome://extensions/?id=${extensionId}`);
-  await permissions.close();
-  await options.setViewportSize({ width: 390, height: 844 });
-  await options.evaluate(() => scrollTo(0, 0));
-  assert.equal(
-    await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-    true,
-  );
-  await options.screenshot({
-    path: join(root, ".local/remaining-todos-qa/settings-mobile.png"),
-    fullPage: true,
-  });
-  await options.locator("#defaults").scrollIntoViewIfNeeded();
-  await options.screenshot({
-    path: join(root, ".local/remaining-todos-qa/review-defaults-mobile.png"),
-  });
-  await options.close();
-  await page.bringToFront();
   const id = await tabId();
   const exposeReviewRoot = () =>
     worker.evaluate(async (tabId) => {
@@ -732,7 +289,7 @@ try {
   };
   await send({ type: "discard" });
 
-  mode = "hover";
+  fixture.mode = "hover";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
@@ -1043,7 +600,7 @@ try {
   await send({ type: "discard" });
   await page.bringToFront();
   await send({ type: "popupAction", tabId: id, action: "stop" });
-  mode = "hover";
+  fixture.mode = "hover";
   await toFixture();
   await exposeReviewRoot();
   // Canceled captures must never restore UI over a newer point's pixels.
@@ -1170,7 +727,7 @@ try {
   );
   results.allSitePregrant = { autoStarted };
   await send({ type: "disableInstant" });
-  mode = "long";
+  fixture.mode = "long";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
@@ -1634,7 +1191,7 @@ try {
   );
   results.inlineReview.hoverComments = hoverComments;
 
-  mode = "long";
+  fixture.mode = "long";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
@@ -1888,7 +1445,7 @@ try {
   await page.setViewportSize({ width: 900, height: 650 });
 
   for (const scope of ["short", "long", "tall", "tooLong", "clipped"]) {
-    mode = scope;
+    fixture.mode = scope;
     if (["tall", "tooLong"].includes(scope))
       await page.setViewportSize({ width: 1200, height: 800 });
     await toFixture();
@@ -1941,7 +1498,7 @@ try {
     await send({ type: "discard" });
   }
 
-  mode = "long";
+  fixture.mode = "long";
   await page.setViewportSize({ width: 900, height: 650 });
   await toFixture();
   await send({ type: "popupAction", tabId: id, action: "capture-full" });
@@ -2130,7 +1687,7 @@ try {
     ),
   );
 
-  mode = "long";
+  fixture.mode = "long";
   await toFixture();
   await send({ type: "popupAction", tabId: id, action: "capture-full" });
   const removableDraft = await draft();
@@ -2236,7 +1793,7 @@ try {
     interruptedCombined?.frozen &&
     interruptedCombined.uploadIndex === interruptedCombined.capturePages.length;
   await removableEditor.evaluate(async (draftId) => {
-    const { putPage } = await import(chrome.runtime.getURL("page-store.js"));
+    const { putPage } = await import(chrome.runtime.getURL("capture/page-store.js"));
     const oversized = new OffscreenCanvas(1920, 15000);
     const context = oversized.getContext("2d");
     context.fillStyle = "#f6f7f8";
@@ -2297,7 +1854,7 @@ try {
   ]);
 
   await page.setViewportSize({ width: 900, height: 650 });
-  mode = "changing";
+  fixture.mode = "changing";
   await toFixture();
   await page.evaluate(() => clearInterval(window.qaTimer));
   await exposeReviewRoot();
@@ -2396,7 +1953,7 @@ try {
   results.changing.originalRetainedThroughRetry = true;
   await send({ type: "discard" });
 
-  mode = "short";
+  fixture.mode = "short";
   await toFixture();
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
@@ -2737,325 +2294,25 @@ try {
     path: join(root, ".local/remaining-todos-qa/thread-gallery.png"),
   });
   assert.equal(results.seriesReview.galleryImages, 4);
-  // GitHub toolbar states use local API fixtures; no GitHub writes are made.
-  const githubPage = await context.newPage();
-  let githubConfigured = true,
-    githubMultiple = false,
-    githubLinked = false,
-    githubPending = false;
-  const githubCreates = [];
-  const repositories = ["https://github.com/demo/web", "https://github.com/demo/api"];
-  await githubPage.route(`${access.url}/api/**`, async (route) => {
-    const operation = route.request().url().split("/").at(-1);
-    let data;
-    if (operation === "github.connection")
-      data = {
-        configured: githubConfigured,
-        installation: githubConfigured ? "installed" : "not_configured",
-        repositories: (githubMultiple ? repositories : repositories.slice(0, 1)).map(
-          (repositoryUrl) => ({
-            repositoryUrl,
-            connected: true,
-            installation: "installed",
-          }),
-        ),
-      };
-    else if (operation === "github.issueState")
-      data = {
-        status: githubPending ? "pending" : githubLinked ? "linked" : "none",
-        issueUrl: githubLinked ? `${repositories[0]}/issues/1` : null,
-        canAbandon: false,
-      };
-    else if (operation === "github.issueCreateQuick") {
-      githubCreates.push(route.request().postDataJSON());
-      githubLinked = true;
-      data = seriesThread;
-    } else if (operation === "projects.get") {
-      const response = await route.fetch();
-      const body = await response.json();
-      body.data.githubConnected = true;
-      return route.fulfill({ json: body });
-    } else return route.continue();
-    await route.fulfill({ json: { ok: true, data } });
+  await verifyGithubToolbar({
+    context,
+    access,
+    seriesThreadId,
+    seriesThread,
+    root,
+    results,
   });
-  await githubPage.goto(`${access.url}/threads/${seriesThreadId}`);
-  await githubPage
-    .getByRole("button", { name: "Create GitHub issue", exact: true })
-    .waitFor();
-  assert.equal(await githubPage.locator(".github-issue-control").isVisible(), false);
-  await githubPage.screenshot({
-    path: join(root, ".local/finalize-qa/github-toolbar.png"),
+  await verifyRecordingControls({
+    page,
+    send,
+    id,
+    sendFromReview,
+    context,
+    root,
+    results,
+    worker,
   });
-  await githubPage
-    .getByRole("button", { name: "Create GitHub issue", exact: true })
-    .click();
-  await githubPage
-    .getByRole("button", { name: "View GitHub issue", exact: true })
-    .waitFor();
-  assert.equal(githubCreates.length, 1);
-  assert.equal(githubCreates[0].repositoryUrl, repositories[0]);
-  await githubPage
-    .getByRole("button", { name: "View GitHub issue", exact: true })
-    .click();
-  await githubPage.getByRole("dialog", { name: "GitHub issue", exact: true }).waitFor();
-  await githubPage.keyboard.press("Escape");
-  githubConfigured = false;
-  githubLinked = false;
-  await githubPage.reload();
-  await githubPage
-    .getByRole("button", { name: "View or link issues", exact: true })
-    .click();
-  await githubPage.locator("#thread-issues[open]").waitFor();
-  assert.equal(githubCreates.length, 1);
-  githubConfigured = true;
-  githubMultiple = true;
-  await githubPage.reload();
-  await githubPage
-    .getByRole("button", { name: "Create GitHub issue", exact: true })
-    .click();
-  await githubPage
-    .getByRole("combobox", { name: /Create Issue in/ })
-    .selectOption(repositories[1]);
-  assert.equal(githubCreates.length, 1);
-  await githubPage.getByRole("button", { name: "Create Issue", exact: true }).click();
-  await githubPage.getByRole("link", { name: "Open GitHub Issue" }).waitFor();
-  assert.equal(githubCreates.length, 2);
-  assert.equal(githubCreates[1].repositoryUrl, repositories[1]);
-  githubPending = true;
-  githubLinked = false;
-  await githubPage.reload();
-  await githubPage
-    .getByText("The last Issue request may have succeeded.", { exact: false })
-    .waitFor();
-  assert.equal(githubCreates.length, 2, "Uncertain requests must never create again");
-  await githubPage.setViewportSize({ width: 320, height: 720 });
-  assert.equal(
-    await githubPage
-      .locator("dialog[open]")
-      .evaluate((el) => el.getBoundingClientRect().right <= innerWidth),
-    true,
-  );
-  await githubPage.screenshot({
-    path: join(root, ".local/finalize-qa/github-pending-mobile.png"),
-  });
-  await githubPage.close();
-  results.githubToolbar = {
-    singleRepositoryQuickCreate: true,
-    noPersistentBanner: true,
-    manualFallback: true,
-    multipleRepositories: true,
-    pendingRecovery: true,
-  };
-  await page.bringToFront();
-  await send({ type: "activate", tabId: id });
-  // Real MediaRecorder with deterministic local canvas and tone instead of a
-  // toolbar-granted tab capture. The actual tabCapture permission is a manual gate.
-  await worker.evaluate(() =>
-    chrome.storage.local.set({
-      videoRecordingOptions: { tabAudio: true, microphone: true },
-    }),
-  );
-  await context.addInitScript(() => {
-    if (location.protocol !== "chrome-extension:" || location.pathname !== "/video.html")
-      return;
-    window.qaPlaybackVideos = [];
-    const play = HTMLMediaElement.prototype.play;
-    HTMLMediaElement.prototype.play = function () {
-      window.qaPlaybackVideos.push(this);
-      return play.call(this);
-    };
-    const tone = () => {
-      const audio = new AudioContext();
-      const oscillator = audio.createOscillator();
-      const destination = audio.createMediaStreamDestination();
-      oscillator.connect(destination);
-      oscillator.start();
-      const track = destination.stream.getAudioTracks()[0];
-      track.addEventListener("ended", () => audio.close());
-      return destination.stream;
-    };
-    navigator.mediaDevices.getUserMedia = async (options) => {
-      if (!options?.video) return tone();
-      const canvas = document.createElement("canvas");
-      canvas.width = 320;
-      canvas.height = 180;
-      const ctx = canvas.getContext("2d");
-      const draw = () => {
-        ctx.fillStyle = "#17324d";
-        ctx.fillRect(0, 0, 320, 180);
-        ctx.fillStyle = "white";
-        ctx.fillText(String(Date.now()), 20, 50);
-      };
-      draw();
-      const stream = canvas.captureStream(10);
-      stream.addTrack(tone().getAudioTracks()[0]);
-      const timer = setInterval(draw, 100);
-      const track = stream.getVideoTracks()[0];
-      track.getSettings = () => ({ displaySurface: "browser" });
-      track.addEventListener("ended", () => clearInterval(timer));
-      return stream;
-    };
-  });
-  const recorderOpened = context.waitForEvent("page");
-  await sendFromReview({ type: "openRecorder" });
-  const recorderPage = await recorderOpened;
-  await recorderPage.waitForLoadState();
-  await recorderPage.locator("#stop:visible").waitFor();
-  await page.waitForTimeout(400);
-  assert.match(
-    await recorderPage.locator("#timer").textContent(),
-    /(300|29[0-9]) seconds remaining/,
-  );
-  // Cross MV3's idle timeout while the recorder is in the background.
-  await page.waitForTimeout(32000);
-  await page.reload();
-  await page.waitForTimeout(1500);
-  assert.equal(
-    (await sendFromReview({ type: "recordingControl", action: "pause" })).ok,
-    true,
-  );
-  await sendFromReview({ type: "recordingControl", action: "resume" });
-  assert.equal(
-    (await sendFromReview({ type: "recordingControl", action: "pause" })).ok,
-    true,
-  );
-  await recorderPage.locator("#pause").filter({ hasText: "Resume" }).waitFor();
-  await recorderPage.locator("#timer").filter({ hasText: "Paused" }).waitFor();
-  const pausedText = await recorderPage.locator("#timer").textContent();
-  await page.waitForTimeout(1100);
-  assert.equal(await recorderPage.locator("#timer").textContent(), pausedText);
-  await sendFromReview({ type: "recordingControl", action: "resume" });
-  await recorderPage.locator("#pause").filter({ hasText: "Pause" }).waitFor();
-  await page.waitForTimeout(400);
-  await sendFromReview({ type: "recordingControl", action: "stop" });
-  await recorderPage.locator("#review:visible").waitFor();
-  assert.ok(
-    (await recorderPage.locator("#preview").getAttribute("src")).startsWith("blob:"),
-  );
-  // Trim with both drag handles, seek, and play only the selected interval.
-  await recorderPage.locator("#trim-start-handle").waitFor();
-  await recorderPage.locator("#trim-track").scrollIntoViewIfNeeded();
-  const trimTrack = await recorderPage.locator("#trim-track").boundingBox();
-  assert.ok(trimTrack);
-  const dragHandle = async (id, fraction) => {
-    const handle = await recorderPage.locator(id).boundingBox();
-    await recorderPage.mouse.move(
-      handle.x + handle.width / 2,
-      handle.y + handle.height / 2,
-    );
-    await recorderPage.mouse.down();
-    await recorderPage.mouse.move(
-      trimTrack.x + trimTrack.width * fraction,
-      trimTrack.y + 30,
-      { steps: 6 },
-    );
-    await recorderPage.mouse.up();
-  };
-  await dragHandle("#trim-start-handle", 0.2);
-  await dragHandle("#trim-end-handle", 0.3);
-  const trimStart = Number(await recorderPage.locator("#trim-start").inputValue());
-  const trimEnd = Number(await recorderPage.locator("#trim-end").inputValue());
-  assert.ok(trimStart > 5 && trimEnd > trimStart);
-  assert.equal(await recorderPage.locator("#send").isEnabled(), false);
-  await recorderPage.locator("#trim-play").click();
-  await recorderPage.locator("#trim-pause-icon:visible").waitFor();
-  await recorderPage.waitForFunction(() => document.querySelector("#preview").paused, {
-    timeout: 10000,
-  });
-  assert.ok(
-    Math.abs(
-      (await recorderPage.locator("#preview").evaluate((v) => v.currentTime)) - trimEnd,
-    ) < 0.15,
-  );
-  await recorderPage.locator("#trim-start-handle").focus();
-  await recorderPage.keyboard.press("ArrowRight");
-  assert.ok(Number(await recorderPage.locator("#trim-start").inputValue()) > trimStart);
-  await recorderPage.locator("#precise-trim summary").click();
-  await recorderPage.locator("#trim-end").fill("");
-  await recorderPage.locator("#trim-end").pressSequentially("30");
-  assert.equal(await recorderPage.locator("#trim-end").inputValue(), "30");
-  await recorderPage.locator("#trim-start").fill("0.1");
-  await recorderPage.locator("#trim-end").fill("0.5");
-  await recorderPage.locator("#crop-editing summary").click();
-  await recorderPage.locator("#crop-width").fill("50");
-  await recorderPage.locator("#apply-edit").click();
-  await recorderPage
-    .locator("#status")
-    .filter({ hasText: "Edits applied" })
-    .waitFor({ timeout: 20000 })
-    .catch(async (error) => {
-      throw Error(
-        `${error.message}: ${await recorderPage.locator("#status").textContent()} ${JSON.stringify(await recorderPage.evaluate(() => window.qaPlaybackVideos.map((video) => ({ currentTime: video.currentTime, paused: video.paused, ended: video.ended, readyState: video.readyState, duration: video.duration, error: video.error?.message }))))}`,
-      );
-    });
-  await recorderPage.locator("#preview").evaluate(
-    (video) =>
-      new Promise((resolve) => {
-        if (video.readyState >= 1) resolve();
-        else video.onloadedmetadata = resolve;
-      }),
-  );
-  assert.equal(
-    await recorderPage.locator("#preview").evaluate((video) => video.videoWidth),
-    160,
-  );
-  // Crop again while the crop panel stays open: coordinates must remain original-based.
-  await recorderPage.locator("#crop-preview").scrollIntoViewIfNeeded();
-  const cropBoxVisible = await recorderPage.locator("#crop-preview").boundingBox();
-  await recorderPage.mouse.move(
-    cropBoxVisible.x + cropBoxVisible.width * 0.5,
-    cropBoxVisible.y + 10,
-  );
-  await recorderPage.mouse.down();
-  await recorderPage.mouse.move(
-    cropBoxVisible.x + cropBoxVisible.width * 0.75,
-    cropBoxVisible.y + cropBoxVisible.height - 10,
-    { steps: 4 },
-  );
-  await recorderPage.mouse.up();
-  assert.ok(Number(await recorderPage.locator("#crop-left").inputValue()) >= 49);
-  assert.ok(Number(await recorderPage.locator("#crop-width").inputValue()) <= 26);
-  await recorderPage.waitForFunction(
-    () => document.querySelector("#preview").videoWidth === 320,
-  );
-  await recorderPage.locator("#reset-edit").click();
-  await recorderPage.locator("#preview").evaluate(
-    (video) =>
-      new Promise((resolve) => {
-        if (video.readyState >= 1) resolve();
-        else video.onloadedmetadata = resolve;
-      }),
-  );
-  assert.equal(
-    await recorderPage.locator("#preview").evaluate((video) => video.videoWidth),
-    320,
-  );
-  await recorderPage.evaluate(() => {
-    document.getElementById("precise-trim").open = false;
-    document.getElementById("crop-editing").open = false;
-    window.scrollTo(0, 0);
-  });
-  await recorderPage.setViewportSize({ width: 1440, height: 1200 });
-  await recorderPage.screenshot({
-    path: join(root, ".local/remaining-todos-qa/video-desktop.png"),
-  });
-  await recorderPage.setViewportSize({ width: 390, height: 844 });
-  assert.equal(
-    await recorderPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-    true,
-  );
-  await recorderPage.screenshot({
-    path: join(root, ".local/remaining-todos-qa/video-mobile.png"),
-  });
-  await recorderPage.close();
-  await page.bringToFront();
-  results.recordingControls = {
-    pauseResumeStop: true,
-    preview: true,
-    navigation: true,
-    cropExport: true,
-    originalRestored: true,
-  };
+
   // A recorder retiring after a project switch cannot restore the prior review's state.
   await page.bringToFront();
   const switchTabId = await tabId();

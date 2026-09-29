@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error Native extension module has no generated declaration.
-import { pageOverviewTarget } from "../extension/page-overview.js";
+import { pageOverviewTarget } from "../extension/capture/page-overview.js";
 import { readFilters } from "../src/web/review-filters.js";
 
 test("popup scope links preserve the configured server and exact page, website and size filters", () => {

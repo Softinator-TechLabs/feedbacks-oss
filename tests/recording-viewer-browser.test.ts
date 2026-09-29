@@ -18,7 +18,7 @@ test(
         contents: `
           import React from "react";
           import { createRoot } from "react-dom/client";
-          import { ThreadRecordings } from "./src/web/thread-recordings.tsx";
+          import { ThreadRecordings } from "./src/web/recordings/thread-recordings.tsx";
           const screenshot = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1cAAAAASUVORK5CYII=";
           createRoot(document.getElementById("root")).render(
             <main>
@@ -238,7 +238,7 @@ test(
     };
     const result = await build({
       stdin: {
-        contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/thread-recordings.tsx"; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[]}}));`,
+        contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/recordings/thread-recordings.tsx"; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[]}}));`,
         loader: "tsx",
         resolveDir: process.cwd(),
       },
@@ -509,7 +509,7 @@ test(
     };
     const bundle = await build({
       stdin: {
-        contents: `import "./src/web/styles.css"; import "./src/web/thread-detail.css"; import "./src/web/theme.css"; import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/thread-recordings.tsx"; window.frameToAnnotate=null; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[{id:"video",url:"/video.webm",contentType:"video/webm",rendition:"original",durationMs:2000},{id:"annotated",url:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1cAAAAASUVORK5CYII=",contentType:"image/webp",rendition:"annotated",recordingFrame:{recordingId:"recording",atMs:2500,videoTimeMs:1500,annotationId:"point-1"}}],context:{annotations:[{id:"point-1",body:"Make this larger"}]}},canWrite:true,onAnnotateFrame:(frame)=>{window.frameToAnnotate=frame}}));`,
+        contents: `import "./src/web/styles.css"; import "./src/web/threads/detail.css"; import "./src/web/theme.css"; import React from "react"; import { createRoot } from "react-dom/client"; import { ThreadRecordings } from "./src/web/recordings/thread-recordings.tsx"; window.frameToAnnotate=null; createRoot(document.getElementById("root")).render(React.createElement(ThreadRecordings,{thread:{id:"thread",assets:[{id:"video",url:"/video.webm",contentType:"video/webm",rendition:"original",durationMs:2000},{id:"annotated",url:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1cAAAAASUVORK5CYII=",contentType:"image/webp",rendition:"annotated",recordingFrame:{recordingId:"recording",atMs:2500,videoTimeMs:1500,annotationId:"point-1"}}],context:{annotations:[{id:"point-1",body:"Make this larger"}]}},canWrite:true,onAnnotateFrame:(frame)=>{window.frameToAnnotate=frame}}));`,
         loader: "tsx",
         resolveDir: process.cwd(),
       },

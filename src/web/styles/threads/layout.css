@@ -1,0 +1,121 @@
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 48px;
+}
+.discussion {
+  min-width: 0;
+}
+.first-comment {
+  border-top: 1px solid var(--border);
+  padding-top: 22px;
+}
+.first-comment > .message {
+  font-size: 1.12rem;
+  margin-top: 14px;
+}
+.message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 75ch;
+}
+.state-line {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 24px 0;
+}
+.attachments {
+  margin: 30px 0;
+}
+.attachments figure {
+  margin: 0 0 24px;
+}
+.attachments img,
+.attachments video,
+.upload-preview {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #fff;
+}
+.attachments figcaption {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.upload-preview {
+  margin: 16px 0;
+  max-height: 500px;
+  object-fit: contain;
+}
+.replies {
+  margin-top: 36px;
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}
+.reply {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.reply .message {
+  margin: 12px 0 0;
+}
+.replies form {
+  margin-top: 24px;
+}
+.context-panel {
+  min-width: 0;
+  font-size: 0.9rem;
+}
+.context-panel > section {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-bottom: 28px;
+}
+.context-panel a {
+  overflow-wrap: anywhere;
+}
+.context-panel h2 {
+  font-size: 1rem;
+}
+.context-panel dl {
+  margin: 18px 0;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 8px 14px;
+  font-size: 0.82rem;
+}
+.context-panel dt {
+  color: var(--muted);
+}
+.context-panel dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.context-panel small {
+  margin-top: 5px;
+}
+.context-data {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+  max-width: 100%;
+}
+summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 0;
+}
+details[open] > summary {
+  margin-bottom: 18px;
+}
+details form {
+  margin-top: 16px;
+}

@@ -1,0 +1,15 @@
+.token-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 22px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--border);
+}
+.token-row p {
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.token-row details {
+  max-width: 70ch;
+}

@@ -5,7 +5,7 @@ import {
   videoCreateInput,
   replayableVideoCreate,
   clearVideoCreateForTab,
-} from "../extension/video-target.js";
+} from "../extension/video/video-target.js";
 
 const tab = {
   id: 10,

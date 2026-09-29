@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { reviewDefaults, updateReviewDefaults } from "../extension/review-preferences.js";
+import {
+  reviewDefaults,
+  updateReviewDefaults,
+} from "../extension/review/review-preferences.js";
 
 test("review and recording defaults remain distinct and ignore unknown stored values", () => {
   const defaults = reviewDefaults();
