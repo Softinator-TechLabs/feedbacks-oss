@@ -63,6 +63,45 @@ test(
     await page.goto(`http://127.0.0.1:${address.port}`);
     for (const name of ["appearance.css", "video.css", "session-review.css"])
       await page.addStyleTag({ path: `extension/${name}` });
+    await page.addScriptTag({ path: "extension/instant-tooltip.js" });
+    await page.evaluate(() => (window as any).FeedbacksTooltips.install(document));
+
+    await t.test(
+      "narrow review has no horizontal scroll or duplicate dot tooltip",
+      async () => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.evaluate(() =>
+          (window as any).mount(
+            {
+              durationMs: 1000,
+              events: [
+                {
+                  seq: 0,
+                  atMs: 1000,
+                  type: "network",
+                  data: {
+                    phase: "response",
+                    status: 204,
+                    url: "https://example.test/very/long/network/request",
+                  },
+                },
+              ],
+            },
+            { offsetMs: 0 },
+          ),
+        );
+        const dimensions = await page.evaluate(() => ({
+          page: document.documentElement.scrollWidth - innerWidth,
+          tabs:
+            document.querySelector(".review-tabs")!.scrollWidth -
+            document.querySelector(".review-tabs")!.clientWidth,
+        }));
+        assert.deepEqual(dimensions, { page: 0, tabs: 0 });
+        await page.locator(".review-timeline-mark").hover();
+        assert.equal(await page.locator('[role="tooltip"]:visible').count(), 1);
+        await page.setViewportSize({ width: 1280, height: 720 });
+      },
+    );
 
     await t.test(
       "clicks, console and network failures have seekable video timeline marks",
@@ -116,9 +155,7 @@ test(
         );
         await page.locator('.review-timeline-mark[data-channel="performance"]').hover();
         assert.match(
-          (await page
-            .locator('.review-timeline-mark[data-channel="performance"] [role="tooltip"]')
-            .textContent()) ?? "",
+          (await page.locator('[role="tooltip"]:visible').textContent()) ?? "",
           /Largest contentful paint/,
         );
         await page.getByRole("button", { name: /Console warning at 0:01.1/ }).click();

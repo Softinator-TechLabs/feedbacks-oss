@@ -112,30 +112,6 @@
 .review-timeline-mark[data-error="true"] {
   background: #da6d64;
 }
-.review-mark-tooltip {
-  position: absolute;
-  z-index: 10;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  width: max-content;
-  max-width: min(280px, 78vw);
-  padding: 7px 9px;
-  transform: translateX(-50%);
-  border-radius: 5px;
-  background: var(--ink, #17232d);
-  color: var(--paper, #fff);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.35;
-  white-space: normal;
-  text-align: left;
-  opacity: 0;
-  pointer-events: none;
-}
-.review-timeline-mark:hover .review-mark-tooltip,
-.review-timeline-mark:focus-visible .review-mark-tooltip {
-  opacity: 1;
-}
 .review-timeline-legend {
   display: flex;
   gap: 10px;
@@ -164,13 +140,13 @@
 }
 .review-tabs {
   display: flex;
-  gap: 5px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  gap: 4px 5px;
   border-bottom: 1px solid var(--line);
-  scrollbar-color: var(--line) transparent;
 }
 .review-tabs button {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: 100%;
   margin-inline: 2px;
   padding: 8px 12px;
   border: 0;

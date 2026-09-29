@@ -231,10 +231,7 @@ export function createSessionReview(
         "aria-label",
         `${kind} at ${reviewTime(event.atMs)}${count > 1 ? `, ${count} events` : ""}`,
       );
-      mark.title = `${kind} · ${reviewTime(event.atMs)} · ${eventLabel(event)}${count > 1 ? ` · ${count} events` : ""}`;
-      const tooltip = make("span", mark.title, "review-mark-tooltip");
-      tooltip.setAttribute("role", "tooltip");
-      mark.append(tooltip);
+      mark.dataset.tooltip = `${kind} · ${reviewTime(event.atMs)} · ${eventLabel(event)}${count > 1 ? ` · ${count} events` : ""}`;
       mark.dataset.channel = event.type;
       mark.dataset.error = String(error);
       mark.style.left = `${position / 2}%`;
