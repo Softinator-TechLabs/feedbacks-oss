@@ -1,3 +1,5 @@
+import { verifyChangingCapture } from "./qa/extension/changing-capture.mjs";
+import { verifyDiagnostics } from "./qa/extension/diagnostics.mjs";
 import { verifyOrderedCapture } from "./qa/extension/ordered-capture.mjs";
 import { verifyPageReview } from "./qa/extension/page-review.mjs";
 import { verifyThreadReview } from "./qa/extension/thread-review.mjs";
@@ -1565,205 +1567,37 @@ try {
     auth,
     access,
   });
-  await page.setViewportSize({ width: 900, height: 650 });
-  fixture.mode = "changing";
-  await toFixture();
-  await page.evaluate(() => clearInterval(window.qaTimer));
-  await exposeReviewRoot();
-  await send({ type: "activate", tabId: id });
-  await saveInlinePoint(
-    page.getByRole("heading", { name: "Controlled page" }),
-    "Keep this original through retry",
-  );
-  // Move the viewport once after the first full-page step is measured. A height
-  // timer can return to the same height (or grow forever, which capture supports).
-  await worker.evaluate(() => {
-    const send = chrome.tabs.sendMessage.bind(chrome.tabs);
-    chrome.tabs.sendMessage = async (tabId, message, ...rest) => {
-      const response = await send(tabId, message, ...rest);
-      if (message.type === "fullPageScroll") {
-        chrome.tabs.sendMessage = send;
-        await chrome.scripting.executeScript({
-          target: { tabId },
-          func: () => scrollBy(0, 8),
-        });
-      }
-      return response;
-    };
+  await verifyChangingCapture({
+    page,
+    fixture,
+    toFixture,
+    exposeReviewRoot,
+    send,
+    id,
+    saveInlinePoint,
+    worker,
+    draft,
+    context,
+    extensionId,
+    results,
   });
-  const beforeChanging = await page.evaluate(() => scrollY);
-  const changed = await send({ type: "popupAction", tabId: id, action: "capture-full" });
-  const changingDraft = await draft();
-  const beforeOriginalIndex = changingDraft.capturePages.findIndex(
-    (item) => item.annotationId,
-  );
-  assert.ok(beforeOriginalIndex >= 0);
-  const beforeOriginal = await send({
-    type: "capturePage",
-    id: changingDraft.id,
-    index: beforeOriginalIndex,
+  await verifyDiagnostics({
+    page,
+    fixture,
+    toFixture,
+    exposeReviewRoot,
+    send,
+    id,
+    root,
+    worker,
+    context,
+    extensionId,
+    draft,
+    post,
+    auth,
+    results,
+    access,
   });
-  results.changing = {
-    captured: changed?.captured,
-    hasImage: Boolean(changingDraft?.image),
-    scrollRestored: Math.abs((await page.evaluate(() => scrollY)) - beforeChanging) < 2,
-    error: changed?.error,
-  };
-  await page.evaluate(() => clearInterval(window.qaTimer));
-  // Headless Chromium's native capture uses a 563px content area after
-  // switching from an extension editor. Match that viewport for this test.
-  await page.setViewportSize({ width: 900, height: 563 });
-  const retainedArrow = {
-    tool: "arrow",
-    points: [
-      { x: 40, y: 60 },
-      { x: 140, y: 160 },
-    ],
-  };
-  const editedNote = "Edited original note before retry";
-  await send({
-    type: "saveDraft",
-    id: changingDraft.id,
-    imageRevision: changingDraft.imageRevision,
-    projectId: changingDraft.projectId,
-    body: "Keep editor changes through page retry",
-    pageIndex: beforeOriginalIndex,
-    toolState: [...changingDraft.pageToolStates[beforeOriginalIndex], retainedArrow],
-    annotations: changingDraft.context.annotations.map((item) => ({
-      id: item.id,
-      body: editedNote,
-    })),
-  });
-  const retryEditor = await context.newPage();
-  await retryEditor.goto(`chrome-extension://${extensionId}/editor.html`);
-  await retryEditor.getByRole("button", { name: "Retry full-page capture" }).waitFor();
-  await retryEditor.getByRole("button", { name: "Retry full-page capture" }).click();
-  await retryEditor
-    .getByText("Capture ready.", { exact: false })
-    .waitFor({ timeout: 120000 });
-  results.changing.retryPages = (await draft())?.capturePages?.length;
-  assert.ok(results.changing.retryPages > 1);
-  const retried = await draft();
-  const afterOriginalIndex = retried.capturePages.findIndex((item) => item.annotationId);
-  assert.ok(afterOriginalIndex >= 0);
-  assert.equal(retried.context.annotations[0].body, editedNote);
-  assert.deepEqual(
-    retried.pageToolStates[afterOriginalIndex].find((shape) => shape.tool === "arrow"),
-    retainedArrow,
-  );
-  const afterOriginal = await send({
-    type: "capturePage",
-    id: retried.id,
-    index: afterOriginalIndex,
-  });
-  assert.equal(
-    afterOriginal.image,
-    beforeOriginal.image,
-    "Retry keeps the exact original point pixels",
-  );
-  assert.equal(retried.capturePages.filter((item) => item.annotationId).length, 1);
-  results.changing.originalRetainedThroughRetry = true;
-  await send({ type: "discard" });
-
-  fixture.mode = "short";
-  await toFixture();
-  await exposeReviewRoot();
-  await send({ type: "activate", tabId: id });
-  await send({ type: "popupAction", tabId: id, action: "show-controls" });
-  await page.screenshot({
-    path: join(root, ".local/remaining-todos-qa/page-controls-desktop.png"),
-  });
-  await page.setViewportSize({ width: 390, height: 650 });
-  await page.screenshot({
-    path: join(root, ".local/remaining-todos-qa/page-controls-mobile.png"),
-  });
-  await page.setViewportSize({ width: 900, height: 650 });
-  const clickPageControl = async (label) =>
-    worker.evaluate(
-      async ({ tabId, label }) => {
-        const [entry] = await chrome.scripting.executeScript({
-          target: { tabId },
-          args: [label],
-          func: (label) => {
-            const root = globalThis.__feedbacksQaRoot;
-            const button = [...root.querySelectorAll("button")].find(
-              (node) => node.textContent === label,
-            );
-            if (!button || button.disabled) return false;
-            button.click();
-            return true;
-          },
-        });
-        return entry.result;
-      },
-      { tabId: id, label },
-    );
-  for (let attempt = 0; attempt < 30; attempt++) {
-    if (await clickPageControl("Start diagnostics")) break;
-    await page.waitForTimeout(100);
-  }
-  for (let attempt = 0; attempt < 30; attempt++) {
-    if ((await send({ type: "diagnostics", tabId: id, action: "status" })).active) break;
-    await page.waitForTimeout(100);
-  }
-  assert.equal(
-    (await send({ type: "diagnostics", tabId: id, action: "status" })).active,
-    true,
-  );
-  const commentsOpened = context.waitForEvent("page");
-  assert.equal(await clickPageControl("Page comments"), true);
-  const commentsTab = await commentsOpened;
-  await commentsTab.waitForURL(
-    (url) => url.pathname.startsWith("/projects/") && url.searchParams.has("url"),
-  );
-  assert.equal(
-    new URL(commentsTab.url()).searchParams.get("url"),
-    new URL(page.url()).origin + new URL(page.url()).pathname,
-  );
-  await commentsTab.close();
-  await page.bringToFront();
-  await page.evaluate(() =>
-    console.warn("Synthetic card token PRIVATE-123 should be masked"),
-  );
-  await send({ type: "popupAction", tabId: id, action: "capture" });
-  const diagnosticDraft = await draft();
-  const diagnosticIndex = diagnosticDraft?.diagnostics?.console?.findIndex((entry) =>
-    entry.message.includes("PRIVATE-123"),
-  );
-  if (diagnosticIndex < 0) throw Error("Synthetic console message was not captured");
-  const editor = await context.newPage();
-  await editor.goto(`chrome-extension://${extensionId}/editor.html`);
-  await editor.locator("#diagnostics-review summary").click();
-  const messageField = editor.getByRole("textbox", {
-    name: `Console message ${diagnosticIndex + 1}`,
-  });
-  await messageField.waitFor();
-  await messageField.evaluate((element) => {
-    const start = element.value.indexOf("PRIVATE-123");
-    element.setSelectionRange(start, start + "PRIVATE-123".length);
-  });
-  await editor.locator("[data-diagnostic-mask]").nth(diagnosticIndex).click();
-  await editor.getByText("Selected text masked in the local draft.").waitFor();
-  await editor.reload();
-  const masked = await draft();
-  results.diagnostics = {
-    persisted:
-      !masked.diagnostics.console[diagnosticIndex].message.includes("PRIVATE-123"),
-    marker: masked.diagnostics.console[diagnosticIndex].message.includes("[redacted]"),
-  };
-  await editor.locator("#body").fill("Synthetic diagnostics masking browser check.");
-  await editor.locator("#diagnostics-review summary").click();
-  await editor.locator("#include-diagnostics").check();
-  await editor.locator("#send").click();
-  await editor.getByText("Feedback sent").waitFor();
-  const threadUrl = await editor.locator("#thread").getAttribute("href");
-  const threadId = threadUrl?.match(/[0-9a-f-]{36}/)?.[0];
-  if (!threadId) throw Error("Submitted feedback lacks a thread link");
-  const saved = (await post("threads.get", { threadId }, auth)).data;
-  const serialized = JSON.stringify(saved);
-  results.diagnostics.submitted =
-    !serialized.includes("PRIVATE-123") && serialized.includes("masked");
-  results.diagnostics.draftCleared = !(await draft());
   assert.equal(results.qa.captured, true, JSON.stringify(results.qa));
   assert.deepEqual(results.qaDraft, {
     hasAltFinding: true,
