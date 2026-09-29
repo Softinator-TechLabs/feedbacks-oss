@@ -223,6 +223,24 @@ export function ThreadDetail({
       };
     }
   ).diagnosticEvidence;
+  const likeBesideScreenshot =
+    !t.context.annotations?.length &&
+    t.assets.some(
+      (asset) =>
+        !asset.recordingFrame &&
+        asset.contentType.startsWith("image/") &&
+        !/^full-page-\d+-of-\d+\.webp$/.test(asset.filename || ""),
+    );
+  const originalLike = (
+    <DiscussionLike
+      key={t.id}
+      threadId={t.id}
+      target="original feedback"
+      likes={t.likes}
+      canWrite={!!project?.permissions.canWrite}
+      onSaved={(likes) => setThread((current) => current && { ...current, likes })}
+    />
+  );
   return (
     <>
       <div className="page-heading thread-page-heading">
@@ -479,16 +497,7 @@ export function ThreadDetail({
           <div className="evidence-pane">
             <article className="first-comment">
               <div className="feedback-content-row">
-                <DiscussionLike
-                  key={t.id}
-                  threadId={t.id}
-                  target="original feedback"
-                  likes={t.likes}
-                  canWrite={!!project?.permissions.canWrite}
-                  onSaved={(likes) =>
-                    setThread((current) => current && { ...current, likes })
-                  }
-                />
+                {!likeBesideScreenshot && originalLike}
                 <div className="feedback-body">
                   <MarkdownText body={t.body} className="message" />
                   <div className="thread-taxonomy">
@@ -538,6 +547,7 @@ export function ThreadDetail({
             )}
             <ThreadAttachments
               thread={t}
+              like={likeBesideScreenshot ? originalLike : undefined}
               onAnnotate={
                 project?.permissions.canWrite
                   ? (asset) => setMarkupTarget({ kind: "asset", asset })

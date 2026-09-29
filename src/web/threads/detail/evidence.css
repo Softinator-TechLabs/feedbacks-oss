@@ -292,8 +292,12 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 4px 10px;
+  padding-right: 8px;
 }
 .review-image-caption > a {
+  margin-left: auto;
+}
+.review-image-caption > button:last-child {
   margin-left: auto;
 }
 .review-pin-toggle {

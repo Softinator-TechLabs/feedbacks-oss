@@ -53,6 +53,22 @@
 .attachments h2 {
   font-size: 0.95rem;
 }
+.attachment-caption {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding-inline: 4px 8px;
+}
+.attachment-caption > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.attachment-caption > button {
+  max-width: 100%;
+  margin-left: auto;
+}
 .attachments figure:last-child {
   margin-bottom: 0;
 }
