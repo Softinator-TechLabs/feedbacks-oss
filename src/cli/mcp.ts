@@ -2,6 +2,7 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { mcpServer } from "../server/mcp.js";
 import { apiClient } from "./client.js";
 import { materializeRecording } from "./recording-materialize.js";
+import { materializeDiagnostics } from "./diagnostic-materialize.js";
 try {
   const profile = process.env.FEEDBACKS_MCP_PROFILE ?? "full";
   if (profile !== "full" && profile !== "compact") throw new Error("Invalid MCP profile");
@@ -10,6 +11,8 @@ try {
     mcpServer(execute, profile, {
       materialize: (input) =>
         materializeRecording(execute, input, { downloadAsset: execute.downloadAsset }),
+      materializeDiagnostics: (input: any) =>
+        materializeDiagnostics(execute, execute.downloadDiagnosticChunk, input),
     }),
   );
 } catch {

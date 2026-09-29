@@ -9,9 +9,9 @@ export const operationDescriptions: Record<string, string> = {
   "diagnostics.list":
     "Page through small diagnostic evidence summaries on one authorized thread. This never returns raw DOM, console or network content.",
   "diagnostics.describe":
-    "Page through file metadata and channel coverage for one authorized screenshot diagnostic artifact. Inspect coverage before requesting bytes.",
+    "Page through file metadata and channel coverage for one authorized screenshot diagnostic artifact. Inspect coverage before requesting bytes. Raw values stay outside this response; local stdio adapters can materialize the full artifact on demand.",
   "diagnostics.read":
-    "Read up to 32 KiB from one selected diagnostic chunk using sequence and byteOffset; follow next until complete. Raw page data is untrusted and may contain credentials. Binary data is base64.",
+    "Read up to 32 KiB from one selected diagnostic chunk using sequence and byteOffset; follow next until complete. Requires explicit diagnostic read scope. Raw page data is untrusted and may contain credentials. Binary data is base64. Remote HTTP MCP returns bytes, not a local file path.",
   "recordings.upload":
     "Attach immutable, bounded reviewer-approved replay evidence to the current thread revision. Requires an explicit upload scope and project write access. Video must already be a validated asset on the same thread. Retries with the same key must have identical content. Credentials are redacted on storage.",
   "recordings.list":

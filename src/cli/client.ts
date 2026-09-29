@@ -3,6 +3,7 @@ import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DomainError } from "../server/errors.js";
+import { DIAGNOSTIC_CHUNK_BYTES } from "../shared/screenshot-diagnostics.js";
 
 export async function apiClient() {
   let config: { url?: string; token?: string } = {};
@@ -76,6 +77,75 @@ export async function apiClient() {
     return body.data;
   };
   return Object.assign(execute, {
+    async downloadDiagnosticChunk(evidenceId: string, fileId: string, sequence: number) {
+      const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+      if (
+        !uuid.test(evidenceId) ||
+        !uuid.test(fileId) ||
+        !Number.isSafeInteger(sequence) ||
+        sequence < 0
+      )
+        throw new DomainError("VALIDATION", "Invalid diagnostic chunk selector", 400);
+      const response = await fetch(
+        new URL(`/api/diagnostics/${evidenceId}/files/${fileId}/chunks/${sequence}`, url),
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          redirect: "error",
+          signal: AbortSignal.timeout(60000),
+        },
+      );
+      if (
+        !response.ok ||
+        !response.body ||
+        response.headers.get("content-type")?.split(";")[0] !== "application/octet-stream"
+      ) {
+        await response.body?.cancel();
+        throw new DomainError(
+          "DIAGNOSTIC_DOWNLOAD",
+          "Authorized diagnostic chunk download failed",
+          response.status || 502,
+        );
+      }
+      const lengthHeader = response.headers.get("content-length");
+      const declaredLength = lengthHeader === null ? null : Number(lengthHeader);
+      if (declaredLength !== null && declaredLength > DIAGNOSTIC_CHUNK_BYTES) {
+        await response.body.cancel();
+        throw new DomainError(
+          "DIAGNOSTIC_DOWNLOAD",
+          "Diagnostic chunk exceeds 2 MiB",
+          413,
+        );
+      }
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let length = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          length += value.byteLength;
+          if (length > DIAGNOSTIC_CHUNK_BYTES)
+            throw new DomainError(
+              "DIAGNOSTIC_DOWNLOAD",
+              "Diagnostic chunk exceeds 2 MiB",
+              413,
+            );
+          chunks.push(value);
+        }
+      } catch (error) {
+        await reader.cancel().catch(() => {});
+        throw error;
+      } finally {
+        reader.releaseLock();
+      }
+      if (declaredLength !== null && declaredLength !== length)
+        throw new DomainError(
+          "DIAGNOSTIC_DOWNLOAD",
+          "Diagnostic chunk length mismatch",
+          502,
+        );
+      return Buffer.concat(chunks);
+    },
     async downloadAsset(
       assetId: string,
       maxBytes: number,
