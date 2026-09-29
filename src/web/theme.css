@@ -113,6 +113,24 @@
   background: #252e38;
   border-color: #414f5e;
 }
+:root[data-theme="dark"]
+  :is(.discussion-like button, .reply-controls > .reply-icon-button) {
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+}
+:root[data-theme="dark"]
+  :is(.discussion-like button, .reply-controls > .reply-icon-button):enabled:hover {
+  color: var(--accent);
+  background: var(--soft-surface);
+  border-color: transparent;
+}
+:root[data-theme="dark"] .discussion-like button[aria-pressed="true"] {
+  color: var(--accent);
+}
+:root[data-theme="dark"] .reply-controls > .reply-icon-button.danger {
+  color: var(--danger);
+}
 :root[data-theme="dark"] .danger {
   color: var(--danger);
 }

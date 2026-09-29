@@ -298,7 +298,9 @@ export type Thread = {
     id: string;
     body: string;
     author: Actor;
+    mentions?: string[];
     createdAt: string;
+    editedAt?: string;
   }>;
   assets: Array<{
     id: string;

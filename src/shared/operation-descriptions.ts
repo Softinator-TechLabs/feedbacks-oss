@@ -92,6 +92,10 @@ export const operationDescriptions: Record<string, string> = {
     "List full feedback records with pagination. Prefer feedbacks_queue for bounded summaries. Filter assignedTo for active delegated open work (whole thread or still-open existing selected points), authorId, createdAfter (inclusive), createdBefore (exclusive), activityAfter, workState, topPriority, page URL or search (body/replies/points). Sort workPlan with explicit local planningDate puts due/today/unscheduled first, future next, Later last, then human priority and stable date order (omitted planningDate uses UTC today). Sort priority needs policy access; topPriority sorts explicit flags without policy weights. Today requires timezone-derived midnight bounds; includeSummary counts threads/points independently of pagination.",
   "threads.neighbors":
     "Find previous and next thread in the same filtered and sorted inbox, across pagination. Returns null neighbors if the thread is outside current filters. This is a live view, not an immutable queue.",
+  "threads.editReply":
+    "Edit only your own human or extension-authored discussion reply with a signed-in human session and current project write access. Requires current thread revision and stable idempotencyKey. Keeps original creation time and records editedAt; cannot change author or intent.",
+  "threads.deleteReply":
+    "Permanently remove only your own human or extension-authored discussion reply and its likes with a signed-in human session and current project write access. Requires current thread revision and stable idempotencyKey. Rebuilds response state from remaining discussion. Existing immutable export snapshots retain their captured content until expiry.",
   "threads.organize":
     "Replace optional category and tags using the current revision. Read existing tags first to preserve relevant labels. Does not change workflow status.",
   "threads.move":

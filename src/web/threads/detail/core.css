@@ -40,11 +40,6 @@
   color: var(--muted);
   font-size: 0.85rem;
 }
-.feedback-reactions .discussion-like button {
-  min-height: 34px;
-  padding: 4px 10px;
-  font-size: 0.85rem;
-}
 .attachments {
   margin: 14px 0 0;
 }
@@ -102,12 +97,6 @@
   margin: 0 0 14px;
   font-size: 1rem;
 }
-.response-state {
-  margin-left: auto;
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--muted);
-}
 .replies form {
   margin-top: 16px;
 }
@@ -120,6 +109,71 @@
 }
 .reply-actions button {
   flex-shrink: 0;
+}
+.reply-content-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 8px;
+}
+.reply-content-row > .message {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.reply-controls {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+.discussion-like button,
+.reply-controls > .reply-icon-button {
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 6px;
+  gap: 3px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.reply-content-row .discussion-like button,
+.reply-controls > .reply-icon-button {
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 4px;
+}
+.discussion-like button:enabled:hover,
+.reply-controls > .reply-icon-button:enabled:hover {
+  border-color: transparent;
+  background: var(--soft-surface);
+  color: var(--accent);
+}
+.discussion-like button[aria-pressed="true"] {
+  color: var(--accent);
+}
+.discussion-like button:disabled,
+.reply-controls > .reply-icon-button:disabled {
+  border-color: transparent;
+  background: transparent;
+}
+.reply-controls > .reply-icon-button.danger {
+  color: var(--danger);
+}
+.discussion-like button span {
+  font-size: 0.78rem;
+}
+.reply-edit-form {
+  margin-top: 12px;
+}
+.reply-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 .context-back {
   margin-bottom: 12px;
