@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { previewDimensions } from "./fixture.mjs";
+import { previewDimensions } from "../setup/fixture.mjs";
 
 export async function verifyPublicCapture({
   context,

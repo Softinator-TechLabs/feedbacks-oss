@@ -30,7 +30,7 @@ flowchart LR
 
 Client state is not authoritative. Database revisions detect stale writes; idempotency keys protect retries. Credentials are checked against current account state. Agents cannot become humans by selecting an input field.
 
-The web application groups thread, project, member, and account views under `src/web/threads/`, `src/web/projects/`, `src/web/members/`, and `src/web/account/`. `src/web/styles.css` imports ordered feature styles so the cascade stays explicit. The extension keeps `background.js`, `content.js`, and `editor.js` as stable Chrome entrypoints; internal capture, submission, session, recording, video, review, connection, and diagnostics code lives in corresponding `extension/` folders. The ZIP allowlist and isolated Chromium checks cover these internal paths. `scripts/qa/extension/` holds shared fixtures and acceptance workflows, while `scripts/extension-browser-qa.mjs` owns the disposable browser and final sequence.
+The web application groups thread, project, member, and account views under `src/web/threads/`, `src/web/projects/`, `src/web/members/`, and `src/web/account/`. `src/web/styles.css` imports ordered feature styles so the cascade stays explicit. The extension keeps `background.js`, `content.js`, and `editor.js` as stable Chrome entrypoints; internal capture, submission, session, recording, video, review, connection, and diagnostics code lives in corresponding `extension/` folders. The ZIP allowlist and isolated Chromium checks cover these internal paths. `scripts/qa/extension/setup/`, `capture/`, and `review/` group browser fixtures and acceptance workflows; `scripts/extension-browser-qa.mjs` owns the disposable browser and final sequence.
 
 ## Deployment model
 
