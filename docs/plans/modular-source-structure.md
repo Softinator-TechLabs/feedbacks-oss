@@ -46,6 +46,7 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Extracted thread attachments and linked issue, Figma, and delivery forms into focused components. The detail view fell from 1,075 to 841 lines; the full Node 22 check passes.
 - 2026-09-29: Separated feedback thread read-model assembly from write operations. Kept `feedback.js` exports stable and moved no authorization or transaction decision. The full Node 22 check passes; other transport and GitHub transaction code remains a focused follow-up due its external side effects.
 - 2026-09-29: Extracted the extension browser setup scenario and mutable synthetic page fixture under `scripts/qa/extension/`. The full packaged Chromium QA sequence and Node 22 check pass. The remaining long sequential runner is a follow-up for smaller independent scenarios.
+- 2026-09-29: Moved the worker capture workflow and its in-progress guard into `extension/capture/workflow.js`. Kept the manifest worker entrypoint and Chrome calls in the same order. The Chromium capture acceptance and full Node 22 check pass.
 
 ## Completion receipt
 
