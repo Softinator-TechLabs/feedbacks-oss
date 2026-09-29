@@ -51,18 +51,15 @@ export async function verifySetup({ context, worker, post, access, extensionId, 
   assert.equal(initialSetup.accounts, undefined);
   await setupOptions.close();
   await setupPage.bringToFront();
+  const openedOptionsPromise = context.waitForEvent("page");
   await setupPage.getByRole("button", { name: "Set in extension", exact: true }).click();
   await setupPage
     .getByText("Server set. Continue in extension Settings to connect.", {
       exact: true,
     })
     .waitFor();
-  const openedOptions = context
-    .pages()
-    .find((page) =>
-      page.url().startsWith(`chrome-extension://${extensionId}/options.html`),
-    );
-  assert.ok(openedOptions, "setup handoff opens extension settings");
+  const openedOptions = await openedOptionsPromise;
+  await openedOptions.waitForURL(`chrome-extension://${extensionId}/options.html`);
   await openedOptions.waitForFunction(
     (server) => document.getElementById("server").value === server,
     access.url,
