@@ -52,9 +52,6 @@
   .thread-content .first-comment {
     order: 2;
   }
-  .thread-content .feedback-reactions {
-    order: 3;
-  }
   .thread-content .evidence-pane > details {
     order: 4;
   }
@@ -295,8 +292,12 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 4px 10px;
+  padding-right: 8px;
 }
 .review-image-caption > a {
+  margin-left: auto;
+}
+.review-image-caption > button:last-child {
   margin-left: auto;
 }
 .review-pin-toggle {

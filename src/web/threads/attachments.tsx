@@ -4,9 +4,11 @@ import type { Thread } from "../api.js";
 export function ThreadAttachments({
   thread,
   onAnnotate,
+  like,
 }: {
   thread: Thread;
   onAnnotate?: (asset: Thread["assets"][number]) => void;
+  like?: React.ReactNode;
 }) {
   const capturePages = thread.assets.filter((asset) =>
     /^full-page-\d+-of-\d+\.webp$/.test(asset.filename || ""),
@@ -17,6 +19,9 @@ export function ThreadAttachments({
       !capturePages.includes(asset) &&
       !recordingFrames.includes(asset) &&
       !asset.contentType.startsWith("video/"),
+  );
+  const firstImageIndex = otherAssets.findIndex((asset) =>
+    asset.contentType.startsWith("image/"),
   );
   return (
     <>
@@ -44,13 +49,16 @@ export function ThreadAttachments({
                     />
                   </a>
                 )}
-                <figcaption>
-                  {asset.contentType === "video/webm"
-                    ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
-                    : `${asset.filename ? `${asset.filename} · ` : ""}${asset.width} × ${asset.height} · Open full image`}
+                <figcaption className="attachment-caption">
+                  {index === firstImageIndex && like}
+                  <span>
+                    {asset.contentType === "video/webm"
+                      ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
+                      : `${asset.filename ? `${asset.filename} · ` : ""}${asset.width} × ${asset.height} · Open full image`}
+                  </span>
                   {asset.contentType.startsWith("image/") && onAnnotate && (
                     <button type="button" onClick={() => onAnnotate(asset)}>
-                      Add or revise marks
+                      Add annotations
                     </button>
                   )}
                 </figcaption>
@@ -79,12 +87,14 @@ export function ThreadAttachments({
                           loading="lazy"
                         />
                       </a>
-                      <figcaption>{asset.filename}</figcaption>
-                      {onAnnotate && (
-                        <button type="button" onClick={() => onAnnotate(asset)}>
-                          Add or revise marks
-                        </button>
-                      )}
+                      <figcaption className="attachment-caption">
+                        <span>{asset.filename}</span>
+                        {onAnnotate && (
+                          <button type="button" onClick={() => onAnnotate(asset)}>
+                            Add annotations
+                          </button>
+                        )}
+                      </figcaption>
                     </figure>
                   ))}
                 </div>
@@ -119,14 +129,16 @@ export function RecordingFrames({
                     loading="lazy"
                   />
                 </a>
-                <figcaption>
-                  {(asset.recordingFrame!.atMs / 1000).toFixed(1)}s in recording
+                <figcaption className="attachment-caption">
+                  <span>
+                    {(asset.recordingFrame!.atMs / 1000).toFixed(1)}s in recording
+                  </span>
+                  {onAnnotate && (
+                    <button type="button" onClick={() => onAnnotate(asset)}>
+                      Add annotations
+                    </button>
+                  )}
                 </figcaption>
-                {onAnnotate && (
-                  <button type="button" onClick={() => onAnnotate(asset)}>
-                    Add or revise marks
-                  </button>
-                )}
               </figure>
             ))}
           </div>

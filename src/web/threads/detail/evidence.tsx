@@ -73,7 +73,7 @@ function EvidenceScreenshot({
         </a>
         {onAnnotate && (
           <button type="button" onClick={() => onAnnotate(asset)}>
-            Add or revise marks
+            Add annotations
           </button>
         )}
       </figcaption>
