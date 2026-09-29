@@ -301,7 +301,7 @@ try {
   await page.locator("#page-navigation").evaluate((nav) => (nav.hidden = false));
   assert.equal(await page.locator("#export-scope").isVisible(), true);
   assert.deepEqual(await page.locator("#export-scope option").allTextContents(), [
-    "This screenshot",
+    "This section",
     "Full page",
   ]);
   assert.equal(
@@ -510,29 +510,79 @@ try {
     true,
     "mobile page fits viewport",
   );
+  assert.equal(await page.locator("#preview-guide").isVisible(), true);
+  assert.ok(
+    (await page.locator("#preview-guide").boundingBox()).width > 100,
+    "preview explanation is readable, not visually clipped",
+  );
+  assert.equal(await page.locator("#full-page-toggle").textContent(), "Edit section");
+  assert.equal(await page.locator("#tools").isVisible(), false);
+  assert.equal(await page.locator("#export-scope").isVisible(), false);
+  assert.equal(await page.locator("#page-prev").isVisible(), false);
+  assert.equal(await page.locator("#page-next").isVisible(), false);
+  assert.equal(
+    await page.locator('[data-export="copy"]').getAttribute("aria-label"),
+    "Copy full page",
+  );
+  const zoomFits = await page.locator("#zoom").evaluate((select) => {
+    const style = getComputedStyle(select);
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    context.font = style.font;
+    const textWidth = context.measureText(select.selectedOptions[0].text).width;
+    return (
+      textWidth + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) <=
+      select.getBoundingClientRect().width
+    );
+  });
+  assert.equal(zoomFits, true, "mobile zoom label is not clipped");
   const mobileExports = await page.evaluate(() =>
     [
       ".export-tools",
       ".zoom-control",
       ".export-actions",
-      "#export-scope",
       '[data-export="copy"]',
       ".download-menu summary",
+      "#page-select",
+      "#full-page-toggle",
     ].map((selector) => {
       const rect = document.querySelector(selector).getBoundingClientRect();
       return { selector, top: rect.top, width: rect.width, left: rect.left };
     }),
   );
   assert.ok(
-    Math.abs(mobileExports[3].top - mobileExports[5].top) <= 2 &&
-      mobileExports[5].left + mobileExports[5].width <=
+    Math.abs(mobileExports[1].top - mobileExports[4].top) <= 2 &&
+      Math.abs(mobileExports[5].top - mobileExports[6].top) <= 2 &&
+      mobileExports[4].left + mobileExports[4].width <=
         mobileExports[0].left + mobileExports[0].width,
-    `mobile copy and download actions stay with export scope: ${JSON.stringify(mobileExports)}`,
+    `mobile preview controls stay aligned: ${JSON.stringify(mobileExports)}`,
   );
   await page.screenshot({
     path: join(root, ".local/screenshot-editor-qa/mobile-dark.png"),
   });
   await page.locator("#full-page-toggle").click();
+  assert.equal(await page.locator("#preview-guide").isVisible(), false);
+  assert.equal(await page.locator("#tools").isVisible(), true);
+  assert.equal(await page.locator("#export-scope").isVisible(), true);
+  const scopeFits = await page.locator("#export-scope").evaluate((select) => {
+    const style = getComputedStyle(select);
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    context.font = style.font;
+    return (
+      context.measureText(select.selectedOptions[0].text).width +
+        parseFloat(style.paddingLeft) +
+        parseFloat(style.paddingRight) <=
+      select.getBoundingClientRect().width
+    );
+  });
+  assert.equal(scopeFits, true, "mobile export scope label is not clipped");
+  assert.equal(await page.locator("#page-prev").isVisible(), true);
+  assert.equal(await page.locator("#page-next").isVisible(), true);
+  assert.equal(
+    await page.locator('[data-export="copy"]').getAttribute("aria-label"),
+    "Copy image",
+  );
   await page.screenshot({
     path: join(root, ".local/screenshot-editor-qa/mobile-tools.png"),
   });

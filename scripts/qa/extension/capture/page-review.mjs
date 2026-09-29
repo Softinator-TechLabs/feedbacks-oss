@@ -105,7 +105,7 @@ export async function verifyPageReview({
       return marked;
     });
   assert.ok(results.pageReview.previewMarkedPixels > 12);
-  await removableEditor.getByRole("button", { name: "Back to sections" }).click();
+  await removableEditor.getByRole("button", { name: "Edit section" }).click();
   await removableEditor.locator("#include-combined").check();
   await removableEditor
     .locator("#body")

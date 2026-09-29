@@ -30,6 +30,7 @@ Feedbacks connects a Chrome review to your team's Feedbacks server. Clients and 
 
 CAPTURE AND REVIEW
 • Right-click a point on a page to comment, or open the compact popup to capture the current view.
+• See the current capture stage on the page while screenshots and page context are prepared; the status stays out of saved images.
 • Keep several points in a local draft, then review the screenshots before sending.
 • Mark screenshots with pencil, shapes, arrows and text; redact visible private information before sharing.
 • Capture a full page when one view is not enough. Open page comments and resolved points when you need the team's history.

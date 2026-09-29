@@ -224,3 +224,25 @@
   background: #3b617e;
   color: white;
 }
+
+.instant-tooltip {
+  position: fixed;
+  z-index: 2147483647;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: var(--tooltip-surface);
+  color: var(--tooltip-ink);
+  box-shadow: 0 3px 12px #0003;
+  font:
+    500 0.78rem/1.35 system-ui,
+    sans-serif;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.instant-tooltip[hidden] {
+  display: none;
+}
+.instant-tooltip-active[data-tooltip]::after {
+  display: none !important;
+}

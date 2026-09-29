@@ -120,7 +120,7 @@
               <div class="export-actions" role="group" aria-label="Copy or download">
                 <label for="export-scope" class="visually-hidden">Copy or download</label
                 ><select id="export-scope" title="Choose what to copy or download" hidden>
-                  <option value="current">This screenshot</option>
+                  <option value="current">This section</option>
                   <option value="full">Full page</option>
                 </select>
                 <button
@@ -237,8 +237,7 @@
           full-page image.
         </p>
         <p id="preview-guide" class="series-guide" hidden>
-          Original-resolution sections, joined without shrinking. Use 100% to inspect
-          pixels; choose a section to edit.
+          Full page preview · Edit a section to use markup tools.
         </p>
         <div id="image-review" class="image-review">
           <div
@@ -362,6 +361,7 @@
         >
       </aside>
     </main>
+    <script src="instant-tooltip.js"></script>
     <script type="module" src="editor.js"></script>
   </body>
 </html>
