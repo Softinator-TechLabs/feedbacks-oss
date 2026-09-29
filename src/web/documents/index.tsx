@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { api, uid, type Project, type ReviewDocument, type Thread } from "./api.js";
-import { HumanTime } from "./human-time.js";
-import { pointFromClient, percentPoint } from "./document-coordinates.js";
+import { api, uid, type Project, type ReviewDocument, type Thread } from "../api.js";
+import { HumanTime } from "../human-time.js";
+import { pointFromClient, percentPoint } from "./coordinates.js";
 import {
   ActionState,
   Empty,
@@ -12,7 +12,7 @@ import {
   Loading,
   useAction,
   useLoad,
-} from "./ui.js";
+} from "../ui.js";
 import "./documents.css";
 
 type Marker = {
