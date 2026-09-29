@@ -48,7 +48,7 @@ export async function verifyPublicCapture({
       await review.getByRole("button", { name: "Full page preview" }).click();
       results.publicSite.previewHeight = (await previewDimensions(review)).height;
       assert.ok(results.publicSite.previewHeight > 1064);
-      await review.getByRole("button", { name: "Back to sections" }).click();
+      await review.getByRole("button", { name: "Edit section" }).click();
       await review.locator("#include-combined").check();
       await review.locator("#body").fill("Synthetic local full-page upload QA.");
       await review.locator("#send").click();

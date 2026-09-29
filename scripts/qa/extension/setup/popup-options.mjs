@@ -18,6 +18,34 @@ export async function verifyPopupOptions({
   await mkdir(join(root, ".local/remaining-todos-qa"), { recursive: true });
   await control.reload();
   await control.locator("#review-controls:visible").waitFor();
+  await control.locator("#settings").hover();
+  assert.equal(
+    await control.getByRole("tooltip").isVisible(),
+    true,
+    "Packaged popup icon help appears without a hover delay",
+  );
+  assert.equal(await control.getByRole("tooltip").textContent(), "Settings");
+  await control.screenshot({
+    path: join(root, ".local/remaining-todos-qa/instant-popup-tooltip.png"),
+  });
+  await control.locator("#capture").hover();
+  assert.equal(await control.getByRole("tooltip").isVisible(), false);
+  const appPage = await context.newPage();
+  try {
+    await appPage.goto(new URL("/privacy", access.url).href);
+    await appPage.locator(".theme-switch").hover();
+    assert.equal(
+      await appPage.getByRole("tooltip").isVisible(),
+      true,
+      "Built app icon help appears without a hover delay",
+    );
+    assert.match(await appPage.getByRole("tooltip").textContent(), /Switch to .* mode/);
+    await appPage.screenshot({
+      path: join(root, ".local/remaining-todos-qa/instant-app-tooltip.png"),
+    });
+  } finally {
+    await appPage.close();
+  }
   const fullCaptureButton = await control.locator("#capture").boundingBox();
   assert.ok(
     fullCaptureButton && fullCaptureButton.y + fullCaptureButton.height < 600,

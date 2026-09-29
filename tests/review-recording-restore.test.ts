@@ -122,7 +122,13 @@ test("recording navigation restores its original project on an explicitly approv
   assert.deepEqual(f.injections, [
     {
       target: { tabId: 7 },
-      files: ["utils.js", "frame-dom.js", "review/anchor-evidence.js", "content.js"],
+      files: [
+        "utils.js",
+        "frame-dom.js",
+        "review/anchor-evidence.js",
+        "instant-tooltip.js",
+        "content.js",
+      ],
     },
   ]);
   assert.equal(f.messages.length, 1);

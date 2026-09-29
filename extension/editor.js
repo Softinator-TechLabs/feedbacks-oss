@@ -51,6 +51,19 @@ function hideFullPagePreview() {
   $("preview-slot").replaceChildren();
   $("preview-slot").hidden = true;
   $("export-scope").value = "current";
+  $("export-scope").hidden =
+    (draft?.capturePages?.filter((page) => !page.annotationId).length || 0) < 2;
+  $("page-navigation").removeAttribute("data-preview");
+  $("page-prev").hidden = false;
+  $("page-next").hidden = false;
+  for (const [selector, label] of [
+    ['[data-export="copy"]', "Copy image"],
+    [".download-menu summary", "Download image"],
+  ]) {
+    const control = document.querySelector(selector);
+    control.setAttribute("aria-label", label);
+    control.title = label;
+  }
   $("preview-guide").hidden = true;
   $("tools").hidden = false;
   document.querySelector(".text-label").hidden = tool !== "text";
@@ -218,6 +231,18 @@ async function showFullPagePreview() {
     }
     $("preview-slot").replaceChildren(fragment);
     $("export-scope").value = "full";
+    $("export-scope").hidden = true;
+    $("page-navigation").dataset.preview = "true";
+    $("page-prev").hidden = true;
+    $("page-next").hidden = true;
+    for (const [selector, label] of [
+      ['[data-export="copy"]', "Copy full page"],
+      [".download-menu summary", "Download full page"],
+    ]) {
+      const control = document.querySelector(selector);
+      control.setAttribute("aria-label", label);
+      control.title = label;
+    }
     $("zoom").onchange();
     $("preview-slot").hidden = false;
     $("canvas").hidden = true;
@@ -228,7 +253,7 @@ async function showFullPagePreview() {
     $("series-guide").hidden = true;
     $("preview-guide").hidden = false;
     $("remove-current").hidden = true;
-    toggle.textContent = "Back to sections";
+    toggle.textContent = "Edit section";
     toggle.setAttribute("aria-pressed", "true");
     status(
       `Full page preview ready · ${pageIndices.length} sections at original resolution.`,

@@ -839,6 +839,7 @@
       const { x, y, element } = location;
       const pin = document.createElement("button");
       pin.className = "pin saved-draft-pin";
+      pin.dataset.noTooltip = "true"; // Its richer point preview opens on hover and focus.
       pin.type = "button";
       pin.textContent = String(index + 1);
       pin.style.left = `${x}px`;
@@ -847,7 +848,6 @@
         "aria-label",
         `Draft point ${index + 1}, not sent: ${item.body}. Click to edit.`,
       );
-      pin.title = `Draft · not sent. ${item.body} Click to edit. Take a screenshot, review it, then Send feedback to share.`;
       pin.onclick = () => {
         revealDrawer();
         editButton.click();
@@ -1330,6 +1330,7 @@
     host.style.cssText =
       "all:initial!important;position:fixed!important;z-index:2147483647!important;pointer-events:none!important;inset:0!important";
     root = host.attachShadow({ mode: "closed" });
+    globalThis.FeedbacksTooltips?.install(root);
     for (const name of [
       "click",
       "dblclick",

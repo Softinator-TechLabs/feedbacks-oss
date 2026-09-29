@@ -45,7 +45,7 @@ export async function verifyOrderedCapture({
   await seriesEditor.screenshot({
     path: join(root, ".local/remaining-todos-qa/full-page-preview-mobile.png"),
   });
-  await seriesEditor.getByRole("button", { name: "Back to sections" }).click();
+  await seriesEditor.getByRole("button", { name: "Edit section" }).click();
   await seriesEditor.setViewportSize({ width: 1440, height: 900 });
   await seriesEditor.screenshot({
     path: join(root, ".local/remaining-todos-qa/ordered-editor.png"),

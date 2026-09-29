@@ -800,8 +800,11 @@ aside .hint {
   .export-tools {
     gap: 4px;
   }
+  .export-actions {
+    margin-left: 0;
+  }
   #zoom {
-    width: 128px;
+    width: 156px;
   }
   #export-scope {
     width: 150px;
@@ -817,14 +820,35 @@ aside .hint {
 }
 
 /* Context guidance stays available to assistive tech without adding a third toolbar row. */
-#series-guide,
-#preview-guide {
+#series-guide {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+#preview-guide {
+  margin: 2px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+@media (max-width: 480px) {
+  #page-navigation[data-preview="true"] {
+    width: 100%;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+  #page-navigation[data-preview="true"] select {
+    order: 0;
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+  }
+  #page-navigation[data-preview="true"] #full-page-toggle {
+    white-space: nowrap;
+  }
 }
 @media (max-width: 1680px) {
   .control-row {

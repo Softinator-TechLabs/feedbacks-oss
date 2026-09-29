@@ -27,6 +27,7 @@ import { usePageLocation } from "./navigation.js";
 import { officialWebsiteUrl } from "../shared/product-links.js";
 import { GuestReview } from "./guest-review.js";
 import { GuestProjectReview } from "./guest-project-review.js";
+import { installInstantTooltips } from "./instant-tooltip.js";
 import { Documents, DocumentViewer } from "./documents/index.js";
 import { Surveys, SurveyPublic } from "./surveys/index.js";
 function App() {
@@ -421,6 +422,7 @@ class ErrorBoundary extends React.Component<
     );
   }
 }
+installInstantTooltips();
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
     <App />
