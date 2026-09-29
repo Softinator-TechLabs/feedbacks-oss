@@ -38,6 +38,7 @@ test(
           "saved-frames",
         ])
           document.getElementById(id)!.hidden = false;
+        document.querySelector<HTMLElement>(".timeline-playback")!.hidden = false;
         document.getElementById("capture-inspector")!.innerHTML =
           '<div class="review-tabs"><button aria-selected="true">Everything (3)</button><button>Activity</button><button>Console</button><button>Network</button></div><button class="review-follow" aria-pressed="true">Following playback</button><div class="review-events"><button class="review-event"><time>0:01.2</time><span class="review-event-tag">Activity</span>Clicked Submit</button><button class="review-event"><time>0:02.1</time><span class="review-event-tag">Console</span>Warning in form</button><button class="review-event"><time>0:02.4</time><span class="review-event-tag">Network</span>POST /submit · 500</button></div>';
         document.getElementById("capture-inspector")!.classList.add("session-review");
@@ -49,11 +50,20 @@ test(
           );
       });
       const video = (await page.locator("#preview").boundingBox())!;
+      const controls = (await page.locator(".timeline-playback").boundingBox())!;
       const inspector = (await page.locator("#capture-inspector").boundingBox())!;
       const editor = (await page.locator("#editing").boundingBox())!;
       const tools = (await page.locator("#video-edit-tools").boundingBox())!;
       const review = (await page.locator("#review").boundingBox())!;
       assert.ok(video.width >= 1050 && inspector.width >= 1050);
+      assert.ok(controls.y < video.y);
+      assert.equal(
+        await page
+          .locator("#trim-seek")
+          .evaluate((seek) => seek.getBoundingClientRect().width),
+        1,
+        "the keyboard seek input must not draw a second visible ruler",
+      );
       assert.ok(
         video.y < editor.y &&
           editor.y < inspector.y &&

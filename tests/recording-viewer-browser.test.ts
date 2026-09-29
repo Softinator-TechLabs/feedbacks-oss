@@ -680,9 +680,16 @@ test(
         1,
       );
       const videoBox = (await page.locator(".recording-media video").boundingBox())!;
+      const controlsBox = (await page
+        .locator(".recording-playback-actions")
+        .boundingBox())!;
       const timelineBox = (await page.locator(".recording-timeline").boundingBox())!;
       const eventsBox = (await page.locator(".recording-diagnostics").boundingBox())!;
-      assert.ok(videoBox.y < timelineBox.y && timelineBox.y < eventsBox.y);
+      assert.ok(
+        controlsBox.y < videoBox.y &&
+          videoBox.y < timelineBox.y &&
+          timelineBox.y < eventsBox.y,
+      );
       assert.ok(eventsBox.y - (timelineBox.y + timelineBox.height) < 2);
       assert.ok(videoBox.width >= timelineBox.width * 0.8);
       await page.screenshot({

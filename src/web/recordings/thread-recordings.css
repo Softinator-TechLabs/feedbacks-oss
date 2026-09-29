@@ -98,16 +98,12 @@
   line-height: 1.4;
 }
 .recording-timeline {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px 10px;
-  align-items: center;
   margin: 0;
-  padding: 8px 12px 6px;
+  padding: 5px 12px 2px;
   border: 1px solid var(--border);
   border-radius: 9px 9px 0 0;
   background: var(--soft-surface);
-  order: 2;
+  order: 3;
 }
 .recording-timeline button {
   min-height: 40px;
@@ -117,6 +113,8 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
+  padding: 0 0 8px;
+  order: 1;
 }
 .recording-icon-button {
   display: grid;
@@ -136,7 +134,8 @@
   white-space: nowrap;
   border: 0;
 }
-.recording-timeline output {
+.recording-playback-actions output {
+  margin-left: auto;
   color: var(--muted);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
@@ -144,7 +143,6 @@
 }
 .recording-timeline-lane {
   position: relative;
-  grid-column: 1 / -1;
   height: 76px;
   margin-inline: 8px;
 }
@@ -312,10 +310,10 @@
   order: 0;
 }
 .recording-media-content {
-  order: 1;
+  order: 2;
 }
 .recording-diagnostics {
-  order: 3;
+  order: 4;
   margin-top: -1px;
   padding: 0 12px 10px;
   border: 1px solid var(--border);
@@ -376,7 +374,7 @@
 .recording-media-content > .recording-frame-error,
 .recording-media-content > .recording-saved-frame,
 .recording-media-content > .recording-footnote {
-  order: 4;
+  order: 5;
 }
 .recording-scope {
   display: flex;

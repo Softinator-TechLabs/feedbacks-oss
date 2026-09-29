@@ -85,6 +85,25 @@
       </details>
       <div class="review-workspace">
         <div class="review-primary">
+          <div id="trim-playback" class="timeline-playback" hidden>
+            <button id="trim-play" aria-label="Play selection" title="Play selection">
+              <svg id="trim-play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 5 11 7-11 7Z" />
+              </svg>
+              <svg id="trim-pause-icon" viewBox="0 0 24 24" aria-hidden="true" hidden>
+                <path d="M8 5v14M16 5v14" />
+              </svg>
+            </button>
+            <button id="trim-mute" type="button" aria-pressed="false">Mute</button>
+            <button id="trim-fullscreen" type="button">Full screen</button>
+            <output
+              ><span id="trim-current">0:00.0</span> /
+              <span id="trim-total">0:00.0</span></output
+            >
+            <span class="trim-bounds"
+              ><span id="trim-start-label"></span> — <span id="trim-end-label"></span
+            ></span>
+          </div>
           <video id="preview" playsinline hidden aria-label="Recording preview"></video>
           <section id="editing" hidden aria-label="Video editor">
             <span id="trim-duration" class="sr-only"></span>
@@ -124,25 +143,6 @@
                   value="0"
                   aria-label="Seek preview"
                 />
-              </div>
-              <div class="timeline-playback">
-                <button id="trim-play" aria-label="Play selection" title="Play selection">
-                  <svg id="trim-play-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="m8 5 11 7-11 7Z" />
-                  </svg>
-                  <svg id="trim-pause-icon" viewBox="0 0 24 24" aria-hidden="true" hidden>
-                    <path d="M8 5v14M16 5v14" />
-                  </svg>
-                </button>
-                <button id="trim-mute" type="button" aria-pressed="false">Mute</button>
-                <button id="trim-fullscreen" type="button">Full screen</button>
-                <output
-                  ><span id="trim-current">0:00.0</span> /
-                  <span id="trim-total">0:00.0</span></output
-                >
-                <span class="trim-bounds"
-                  ><span id="trim-start-label"></span> — <span id="trim-end-label"></span
-                ></span>
               </div>
             </div>
           </section>

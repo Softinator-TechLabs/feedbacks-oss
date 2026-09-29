@@ -232,6 +232,7 @@ async function showReview() {
   $("preview").hidden = false;
   $("review").hidden = false;
   $("editing").hidden = false;
+  $("trim-playback").hidden = false;
   $("video-edit-tools").hidden = false;
   document.body?.classList.add("has-recording");
   $("start").hidden = !!draftId;
@@ -451,6 +452,7 @@ function clearPreview() {
   cropControls.resetFrame();
   timeline.clear();
   $("editing").hidden = true;
+  $("trim-playback").hidden = true;
   $("video-edit-tools").hidden = true;
   document.body?.classList.remove("has-recording");
   $("start").textContent = "Start recording";
@@ -796,6 +798,7 @@ $("send").onclick = async () => {
         );
     }
     $("editing").hidden = true;
+    $("trim-playback").hidden = true;
     $("video-edit-tools").hidden = true;
     $("start").hidden = true;
     $("discard").hidden = true;
@@ -903,6 +906,11 @@ $("send").onclick = async () => {
     publishState("sent");
     videoSendProgress("complete", 100);
   } catch (error) {
+    if (blob) {
+      $("editing").hidden = false;
+      $("trim-playback").hidden = false;
+      $("video-edit-tools").hidden = false;
+    }
     if (error.code === "CONFLICT" && thread && !submittedCapture) {
       try {
         thread = await send({

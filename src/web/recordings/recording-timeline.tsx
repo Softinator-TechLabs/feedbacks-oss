@@ -103,8 +103,8 @@ export function RecordingTimeline({
   selectMark: (mark: TimelineMark) => void;
 }) {
   return (
-    <div className="recording-timeline">
-      <div className="recording-playback-actions">
+    <>
+      <div className="recording-playback-actions" aria-label="Player controls">
         <button
           type="button"
           disabled={mediaMode === "replay" ? !replayReady : !videoAvailable || videoGap}
@@ -134,64 +134,66 @@ export function RecordingTimeline({
             </button>
           </>
         )}
+        <output htmlFor="thread-recording-timeline" title="Recorded session time">
+          {formatRecordingTime(cursorMs)} / {formatRecordingTime(recording.durationMs)}
+        </output>
       </div>
-      <output htmlFor="thread-recording-timeline" title="Recorded session time">
-        {formatRecordingTime(cursorMs)} / {formatRecordingTime(recording.durationMs)}
-      </output>
-      <div className="recording-timeline-lane">
-        <div className="recording-timeline-rail" aria-hidden="true" />
-        <label htmlFor="thread-recording-timeline" className="sr-only">
-          Session position
-        </label>
-        <input
-          id="thread-recording-timeline"
-          type="range"
-          min="0"
-          max={Math.max(recording.durationMs, 1)}
-          step="100"
-          value={cursorMs}
-          onChange={(event) => seek(Number(event.target.value))}
-          aria-valuetext={`${formatRecordingTime(cursorMs)} of ${formatRecordingTime(recording.durationMs)} in the recorded session`}
-        />
-        <div
-          className="recording-timeline-marks"
-          aria-label="Events on recording timeline"
-        >
-          {marks.map((mark, index) => (
-            <button
-              key={`${mark.type}-${mark.position}-${index}`}
-              type="button"
-              className="recording-timeline-mark"
-              data-channel={mark.type}
-              data-error={mark.error}
-              data-align={
-                mark.position < 35 ? "start" : mark.position > 165 ? "end" : "center"
-              }
-              style={{ left: `${mark.position / 2}%` }}
-              aria-label={`${mark.type} at ${formatRecordingTime(mark.atMs)}: ${mark.label}`}
-              onClick={() => selectMark(mark)}
-            >
-              <span className="recording-mark-tooltip" role="tooltip">
-                <strong>
-                  {formatRecordingTime(mark.atMs)} ·{" "}
-                  {mark.type === "point"
-                    ? "Comment"
-                    : mark.type.charAt(0).toUpperCase() + mark.type.slice(1)}
-                </strong>
-                <span>
-                  {mark.label}
-                  {mark.count > 1 ? ` · ${mark.count} events` : ""}
+      <div className="recording-timeline">
+        <div className="recording-timeline-lane">
+          <div className="recording-timeline-rail" aria-hidden="true" />
+          <label htmlFor="thread-recording-timeline" className="sr-only">
+            Session position
+          </label>
+          <input
+            id="thread-recording-timeline"
+            type="range"
+            min="0"
+            max={Math.max(recording.durationMs, 1)}
+            step="100"
+            value={cursorMs}
+            onChange={(event) => seek(Number(event.target.value))}
+            aria-valuetext={`${formatRecordingTime(cursorMs)} of ${formatRecordingTime(recording.durationMs)} in the recorded session`}
+          />
+          <div
+            className="recording-timeline-marks"
+            aria-label="Events on recording timeline"
+          >
+            {marks.map((mark, index) => (
+              <button
+                key={`${mark.type}-${mark.position}-${index}`}
+                type="button"
+                className="recording-timeline-mark"
+                data-channel={mark.type}
+                data-error={mark.error}
+                data-align={
+                  mark.position < 35 ? "start" : mark.position > 165 ? "end" : "center"
+                }
+                style={{ left: `${mark.position / 2}%` }}
+                aria-label={`${mark.type} at ${formatRecordingTime(mark.atMs)}: ${mark.label}`}
+                onClick={() => selectMark(mark)}
+              >
+                <span className="recording-mark-tooltip" role="tooltip">
+                  <strong>
+                    {formatRecordingTime(mark.atMs)} ·{" "}
+                    {mark.type === "point"
+                      ? "Comment"
+                      : mark.type.charAt(0).toUpperCase() + mark.type.slice(1)}
+                  </strong>
+                  <span>
+                    {mark.label}
+                    {mark.count > 1 ? ` · ${mark.count} events` : ""}
+                  </span>
                 </span>
-              </span>
-            </button>
-          ))}
+              </button>
+            ))}
+          </div>
+          <span
+            className="recording-timeline-playhead"
+            style={{ left: `${(cursorMs / Math.max(1, recording.durationMs)) * 100}%` }}
+            aria-hidden="true"
+          />
         </div>
-        <span
-          className="recording-timeline-playhead"
-          style={{ left: `${(cursorMs / Math.max(1, recording.durationMs)) * 100}%` }}
-          aria-hidden="true"
-        />
       </div>
-    </div>
+    </>
   );
 }

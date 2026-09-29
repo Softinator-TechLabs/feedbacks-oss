@@ -13,8 +13,8 @@ import type { Database } from "./db.js";
 import type { AssetStore } from "./assets.js";
 import type { Operations } from "./operations.js";
 import { fail } from "./errors.js";
-import { prepareDiagnosticArchive } from "./diagnostic-evidence.js";
-import { diagnosticTarEntries, padding, tarHeader } from "./diagnostic-archive.js";
+import { prepareDiagnosticArchive } from "./diagnostics/read.js";
+import { diagnosticTarEntries, padding, tarHeader } from "./diagnostics/archive.js";
 
 type ArchiveFile = { path: string; size: number; sha256: string };
 const MAX_ARCHIVE_BYTES = 512 * 1024 * 1024;

@@ -189,6 +189,9 @@ video {
   justify-content: space-between;
   gap: 12px;
 }
+.timeline-playback[hidden] {
+  display: none;
+}
 .timeline-heading span,
 .trim-bounds {
   color: var(--muted);
@@ -202,23 +205,35 @@ video {
 }
 .timeline-rail {
   position: relative;
-  margin: 0 20px;
+  height: 64px;
+  margin: 0 8px;
 }
 #trim-track {
   position: relative;
-  height: 72px;
+  height: 64px;
   margin: 0;
-  background: var(--workbench);
+  background: transparent;
   touch-action: none;
   cursor: pointer;
 }
+#trim-track::before {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--control-line);
+  content: "";
+}
 #trim-thumbnails {
-  display: block;
+  display: none;
   width: 100%;
   height: 100%;
   opacity: 0.55;
 }
 #trim-selection {
+  display: none;
   position: absolute;
   top: 0;
   height: 100%;
@@ -228,14 +243,15 @@ video {
 }
 #trim-playhead {
   position: absolute;
-  top: -6px;
-  bottom: -6px;
+  top: 0;
+  bottom: 0;
   width: 2px;
   background: var(--text);
   box-shadow: 0 1px 3px var(--canvas);
   pointer-events: none;
 }
 .trim-handle {
+  display: none;
   position: absolute;
   top: -4px;
   width: 40px;
@@ -267,16 +283,32 @@ video {
   background: white;
 }
 #trim-seek {
-  display: block;
-  width: 100%;
-  margin: 0;
+  position: absolute;
+  width: 1px;
+  min-width: 0;
+  max-width: 1px;
+  height: 1px;
   padding: 0;
   border: 0;
-  cursor: pointer;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.timeline-rail:has(#trim-seek:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.review-workspace:has(#video-edit-tools[open]) #trim-thumbnails,
+.review-workspace:has(#video-edit-tools[open]) #trim-selection,
+.review-workspace:has(#video-edit-tools[open]) .trim-handle {
+  display: block;
+}
+.review-workspace:has(#video-edit-tools[open]) #trim-track::before {
+  display: none;
 }
 .timeline-playback {
   justify-content: flex-start;
   font-size: 13px;
+  margin-bottom: 8px;
 }
 .timeline-playback #trim-mute,
 .timeline-playback #trim-fullscreen {
@@ -296,6 +328,9 @@ video {
   place-items: center;
   padding: 10px;
   width: 44px;
+}
+body:has(.review-timeline-playhead) #trim-playhead {
+  display: none;
 }
 #trim-play svg {
   width: 20px;

@@ -30,13 +30,19 @@
   border-bottom: 1px solid var(--line);
 }
 .timeline .review-timeline-events {
-  margin: 4px 0 4px;
+  position: absolute;
+  top: 20px;
+  right: 0;
+  left: 0;
+  height: 40px;
+  margin: 0;
+  pointer-events: none;
 }
 .review-timeline-playhead {
   position: absolute;
   z-index: 2;
-  top: 72px;
-  bottom: 4px;
+  top: 0;
+  bottom: 0;
   width: 1px;
   transform: translateX(-50%);
   background: var(--text);
@@ -54,6 +60,7 @@
   border: 0;
   border-radius: 3px;
   background: #5481a0;
+  pointer-events: auto;
 }
 .review-timeline-mark[data-channel="activity"] {
   top: 0;

@@ -4,7 +4,7 @@ Status: in progress. Owner: Feedbacks contributors. Date: 2026-09-29.
 
 ## Outcome and scope
 
-The pre-send video review and thread viewer place one aligned playhead through the seek rail and event marks. Selecting a mark reveals its exact event inside the diagnostics list without moving the outer page; playback follows the list smoothly by default. The video preview itself toggles play and pause. Editing and capture explanation remain available after the diagnostics, leaving the event feed next to the player.
+The pre-send video review and thread viewer put play, mute and fullscreen controls above the player, then place one aligned playhead through a single seek rail and event marks directly below it. Selecting a mark reveals its exact event inside the diagnostics list without moving the outer page; playback follows the list smoothly by default. The video preview itself toggles play and pause. Trimming and capture explanation remain available after the diagnostics, leaving the event feed next to the player.
 
 A download action beside **Copy task for agent** produces a self-contained, authorized thread archive with readable metadata, discussion, points, assets, recording clocks/events and media. A developer can inspect it without Feedbacks or MCP. Existing MCP materialization remains available.
 
@@ -28,6 +28,7 @@ No migration or capture format change. Existing recordings and standalone screen
 ## Decision log
 
 - Use one shared event clock per recording. The extension's editable video rail retains its trim handles, but its event markers and playhead share that rail's horizontal geometry.
+- Keep trim thumbnails and handles hidden until Edit video is opened, and keep the keyboard seek input accessible without drawing a second ruler.
 - Keep secondary editing controls behind a disclosure below the evidence list.
 - Keep the human download independent of MCP setup; the MCP materializer remains the agent-oriented private temporary-directory path.
 
