@@ -279,6 +279,13 @@ export function ReviewEvidence({
     return () => removeEventListener("hashchange", openLinkedAsset);
   }, [thread.id, assetIds]);
   const locationFor = (item: Annotation) =>
+    images.find(
+      (asset) =>
+        /^point-\d+-original\.webp$/.test(asset.filename || "") &&
+        asset.markings?.some(
+          (mark) => mark.tool === "point" && mark.annotationId === item.id,
+        ),
+    ) ||
     images.find((asset) =>
       asset.markings?.some(
         (mark) => mark.tool === "point" && mark.annotationId === item.id,
