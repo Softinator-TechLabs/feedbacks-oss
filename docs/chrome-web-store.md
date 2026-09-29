@@ -12,7 +12,7 @@ This worksheet replaces the prepared 0.1.47 handoff. The public Store page showe
 | **Store listing → Title and short description**                               | Replace the older public values with the values below; both match the new package manifest.                               |
 | **Store listing → Detailed description**                                      | Replace the full field with the block below. It now describes the aligned video/session review and focused agent handoff. |
 | **Store listing → Screenshots**                                               | Replace the four ordered screenshots with the current images supplied in this bundle.                                     |
-| **Store listing → Icon and small promo tile**                                 | Compare with the existing listing; the current files are supplied under `artwork/` if replacement is needed.              |
+| **Store listing → Icon and small promo tile**                                 | Upload the supplied `artwork/` files. Their bytes match the prepared 0.1.47 bundle.                                       |
 | **Store listing → Category, language and URLs**                               | Keep the values below unless the existing dashboard differs; verify each link.                                            |
 | **Privacy practices → Single purpose, permissions, remote code and data use** | Recheck every answer against the declarations below and the new package. The permission set did not change since 0.1.47.  |
 | **Distribution**                                                              | Keep the item's current visibility, regions and rollout choices.                                                          |
