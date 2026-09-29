@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import { editRegion } from "../extension/video/video-media.js";
+import { installVideoPageModules } from "./support/video-page-vm.js";
 
 test("crop rejects off-frame and invalid regions", () => {
   assert.deepEqual(editRegion([25, 10, 50, 80], 1600, 900), {
@@ -183,6 +184,7 @@ for (const tabAudio of [false, true])
         ).replaceAll("export ", ""),
         context,
       );
+      await installVideoPageModules(context);
       vm.runInContext(
         (
           await readFile(new URL("../extension/video.js", import.meta.url), "utf8")

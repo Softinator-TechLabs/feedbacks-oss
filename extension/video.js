@@ -14,6 +14,8 @@ import {
   captureOrigins,
 } from "./session/session-capture.js";
 import { createVideoTimeline } from "./video/video-timeline.js";
+import { createCaptureHealth } from "./video/capture-health.js";
+import { createCropControls } from "./video/crop-controls.js";
 import { finalizeWebmMetadata } from "./video/video-metadata.js";
 import { uploadVideoWithProgress } from "./video-upload.js";
 import { getVideoDraft, deleteVideoDraft } from "./video-draft-store.js";
@@ -206,7 +208,6 @@ function closeMediaInterval() {
 }
 let microphone,
   audioContext,
-  originalFrame,
   originalBlob,
   originalDuration,
   originalUrl,
@@ -297,10 +298,7 @@ let thread,
   createKey = crypto.randomUUID();
 const port = chrome.runtime.connect({ name: "feedbacks-video" });
 let connected = true,
-  nativeState = "idle",
-  healthTimer,
-  healthGeneration = 0,
-  healthBusy = false;
+  nativeState = "idle";
 const recordingElapsed = () =>
   Number.isFinite(startedAt)
     ? Math.max(
@@ -333,54 +331,11 @@ function publishState(state = nativeState, heartbeat = false) {
 // The elapsed snapshot restores an accurate dock after source-page navigation.
 // Port traffic also keeps the MV3 binding alive while recording and reviewing.
 const heartbeat = setInterval(() => publishState(nativeState, true), 10000);
-function stopHealthUpdates() {
-  clearInterval(healthTimer);
-  healthGeneration++;
-  healthBusy = false;
-}
-async function refreshCaptureHealth() {
-  if (healthBusy || !debugSession || !["recording", "paused"].includes(nativeState))
-    return;
-  const generation = healthGeneration;
-  healthBusy = true;
-  try {
-    const health = await send({ type: "sessionHealth" });
-    if (generation !== healthGeneration) return;
-    const counts = health.counts || {};
-    $("capture-health-counts").textContent =
-      `${counts.activity || 0} actions · ${counts.console || 0} console · ${counts.network || 0} network · ${counts.replay || 0} replay events`;
-    const warnings = (health.coverage || [])
-      .filter((item) =>
-        ["partial", "unavailable", "failed", "error", "stopped"].includes(item.status),
-      )
-      .map((item) => item.detail || `${item.channel}: ${item.status}`);
-    if (Number.isFinite(health.replayStoppedAtMs))
-      warnings.push(
-        `DOM replay ends at ${reviewTime(health.replayStoppedAtMs)}. Video and available diagnostics continue.`,
-      );
-    if (!health.active)
-      warnings.push("Debug capture has stopped. Video is still recording.");
-    $("capture-health-warning").textContent = [...new Set(warnings)].join(" ");
-  } catch (error) {
-    if (generation !== healthGeneration) return;
-    $("capture-health-counts").textContent = "Capture counts unavailable";
-    $("capture-health-warning").textContent =
-      `Debug capture status unavailable: ${error.message} Video is still recording.`;
-  } finally {
-    if (generation === healthGeneration) healthBusy = false;
-  }
-}
-function startHealthUpdates() {
-  stopHealthUpdates();
-  $("capture-health").hidden = false;
-  $("capture-health-counts").textContent = debugSession
-    ? "Checking debug capture…"
-    : "Video only · debug context is off";
-  $("capture-health-warning").textContent = "";
-  if (!debugSession) return;
-  void refreshCaptureHealth();
-  healthTimer = setInterval(() => void refreshCaptureHealth(), 2000);
-}
+const captureHealth = createCaptureHealth({
+  $,
+  send,
+  getState: () => ({ debugSession, nativeState }),
+});
 function pauseOrResume() {
   if (recorder?.state === "recording") {
     pausedAt = performance.now();
@@ -492,7 +447,7 @@ function clearPreview() {
   if (originalUrl) URL.revokeObjectURL(originalUrl);
   originalUrl = null;
   originalBlob = null;
-  originalFrame = null;
+  cropControls.resetFrame();
   timeline.clear();
   $("editing").hidden = true;
   document.body?.classList.remove("has-recording");
@@ -503,7 +458,7 @@ function stop() {
     stoppedAt ||= pausedAt || performance.now();
     publishState("stopping");
   }
-  stopHealthUpdates();
+  captureHealth.stop();
   $("capture-health").hidden = true;
   closeMediaInterval();
   if (debugSession && !debugStop)
@@ -726,7 +681,7 @@ $("start").onclick = async () => {
       preparingVideo = true;
       stoppedAt ||= pausedAt || performance.now();
       publishState("stopping");
-      stopHealthUpdates();
+      captureHealth.stop();
       durationMs = Math.max(1, Math.min(maxMs, Math.round(recordingElapsed())));
       stream?.getTracks().forEach((track) => track.stop());
       microphone?.getTracks().forEach((track) => track.stop());
@@ -789,7 +744,7 @@ $("start").onclick = async () => {
     $("pause").hidden = false;
     $("pause").textContent = "Pause recording";
     publishState("recording");
-    startHealthUpdates();
+    captureHealth.start();
     $("audio-options").disabled = true;
     status("Recording. Highlight off · navigation allowed. Stop to review.");
     timer = setInterval(() => {
@@ -1025,8 +980,6 @@ window.addEventListener("pagehide", () => {
   exportController?.abort();
   stop();
 });
-const cropValues = () =>
-  ["crop-left", "crop-top", "crop-width", "crop-height"].map((id) => Number($(id).value));
 $("apply-edit").onclick = async () => {
   if (!originalBlob || createAttempt) return;
   const start = Number($("trim-start").value),
@@ -1051,7 +1004,7 @@ $("apply-edit").onclick = async () => {
       url: originalUrl,
       start,
       end,
-      crop: cropValues(),
+      crop: cropControls.values(),
       signal: exportController.signal,
       onProgress: (percent) =>
         status(`Preparing edited video · ${percent}% · keep this tab open`),
@@ -1131,85 +1084,6 @@ $("reset-edit").onclick = () => {
   status("Original recording restored.");
 };
 
-function drawCrop() {
-  const video = $("preview"),
-    canvas = $("crop-preview");
-  if (!video.videoWidth || !canvas.getContext) return;
-  canvas.width = Math.min(760, video.videoWidth);
-  canvas.height = Math.round((canvas.width * video.videoHeight) / video.videoWidth);
-  const ctx = canvas.getContext("2d");
-  if (timeline.isOriginal() && video.readyState >= 2) {
-    originalFrame = document.createElement("canvas");
-    originalFrame.width = canvas.width;
-    originalFrame.height = canvas.height;
-    originalFrame.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-  }
-  if (!originalFrame) return;
-  canvas.width = originalFrame.width;
-  canvas.height = originalFrame.height;
-  ctx.drawImage(originalFrame, 0, 0);
-  const [l, t, w, h] = cropValues();
-  const x = (l / 100) * canvas.width,
-    y = (t / 100) * canvas.height;
-  const width = (w / 100) * canvas.width,
-    height = (h / 100) * canvas.height;
-  ctx.fillStyle = "rgba(0,0,0,.5)";
-  ctx.beginPath();
-  ctx.rect(0, 0, canvas.width, canvas.height);
-  ctx.rect(x, y, width, height);
-  ctx.fill("evenodd");
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, width, height);
-}
-$("preview").onloadeddata = drawCrop;
-$("preview").onseeked = drawCrop;
-$("crop-editing").ontoggle = () => {
-  if ($("crop-editing").open) {
-    timeline.original();
-    drawCrop();
-  }
-};
-for (const id of ["crop-left", "crop-top", "crop-width", "crop-height"])
-  $(id).oninput = () => {
-    markEditsPending();
-    timeline.original();
-    drawCrop();
-  };
-let cropStart;
-const cropPoint = (event) => {
-  const rect = $("crop-preview").getBoundingClientRect();
-  return [
-    Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
-    Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)),
-  ];
-};
-$("crop-preview").onpointerdown = (event) => {
-  if (exportController) return;
-  timeline.original();
-  cropStart = cropPoint(event);
-  $("crop-preview").setPointerCapture(event.pointerId);
-};
-$("crop-preview").onpointermove = (event) => {
-  if (!cropStart) return;
-  const [x, y] = cropPoint(event),
-    [sx, sy] = cropStart;
-  const values = [
-    Math.min(x, sx),
-    Math.min(y, sy),
-    Math.abs(x - sx),
-    Math.abs(y - sy),
-  ].map(Math.floor);
-  ["crop-left", "crop-top", "crop-width", "crop-height"].forEach(
-    (id, i) => ($(id).value = String(values[i])),
-  );
-  markEditsPending();
-  drawCrop();
-};
-$("crop-preview").onpointerup = $("crop-preview").onpointercancel = () => {
-  cropStart = null;
-};
-
 let editsPending = false;
 function markEditsPending() {
   editsPending = true;
@@ -1217,3 +1091,9 @@ function markEditsPending() {
   $("edit-state").textContent = "Previewing your selection · Apply edits before sending";
 }
 const timeline = createVideoTimeline({ onChange: markEditsPending, onError: status });
+const cropControls = createCropControls({
+  $,
+  timeline,
+  onChange: markEditsPending,
+  getExportController: () => exportController,
+});
