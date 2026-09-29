@@ -18,7 +18,8 @@ Use incremental feature folders and extraction. Keep browser and server entrypoi
 
 - [x] Establish the source revision, clean isolated worktree, Node 22 dependencies, and full baseline check.
 - [x] Split thread list, composer, detail, and related UI into `src/web/threads/`; keep imports and CSS working. Move assignment and recording helpers into their own feature folders.
-- [ ] Group project and account settings by feature, and split broad web CSS by the same ownership boundaries without changing cascade order.
+- [x] Group project, member, and account settings by feature.
+- [ ] Split broad web CSS by ownership boundaries without changing cascade order.
 - [ ] Divide shared operation schemas into domain modules under `src/shared/contracts/`, preserving the single typed operation registry and generated catalog.
 - [ ] Extract extension capture, editing, and session concerns into focused folders while keeping manifest entrypoints, Chrome message behavior, and ZIP contents compatible.
 - [ ] Split extension browser QA into a common fixture and independently identifiable workflow scenarios.
@@ -34,6 +35,7 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Work from current `feedbacks-oss/main`, not the private foundation checkout. Preserve browser entrypoint filenames where the manifest, HTML, or packaging refers to them.
 - 2026-09-29: Favor feature folders over splitting only by file type; do not add wrapper files solely to make the top level appear smaller.
 - 2026-09-29: The first web stage passed the full Node 22 check and three Chromium recording-viewer scenarios. No product behavior was changed.
+- 2026-09-29: Project, member, and account views now have feature folders. The full Node 22 check and filter UI browser QA pass; a Node test caught and resolved the split JSX runtime import requirement.
 
 ## Completion receipt
 
