@@ -57,6 +57,7 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Rebasing onto Project administration tabs PR #116 preserved the new `SectionTabs` component, hash selection, panel markup, and dark/mobile styles. The moved Members body matches `main` exactly; Project Settings differs only by a trailing blank line. The reassembled web CSS matches all 2,300 nonblank lines of merged `main` in order. Full Node 22 check passed on the rebased branch.
 - 2026-09-29: The synthetic app visual QA exposed two stale Help selectors already present on `main`. Updated them to the current heading and button text; the browser then captured 56 route/viewport/theme screenshots with zero blocked requests. The filter UI browser check also passed.
 - 2026-09-29: PR #117 CI exposed a race in the extracted extension setup acceptance flow: the page status could update before Playwright observed the newly opened Options tab. The test now awaits the page event and Options URL. Its full local capture/review scenario and all six CI checks passed on `fc5f174`. A concurrent local video export test failed once under browser load, then passed in isolation; the complete recording browser suite passed 22/22 in CI.
+- 2026-09-29: Follow-up QA runner work groups thread review, project-switch defaults, ordered capture and upload retry, page review and combined upload, changing-page retry, and diagnostics masking under `scripts/qa/extension/`. The entry runner fell from 2,394 to about 1,685 lines while preserving scenario order and results. The extraction exposed a fixed-delay point-capture test race and a teammate hover assertion race; both now wait for their expected state with a bounded timeout. The full Chromium capture/review script passed after the latest extraction. Additional inline review scenarios remain in the runner.
 
 ## Completion receipt
 
@@ -65,3 +66,7 @@ Checks and results: Node 22 `npm run check` passed after the latest rebase (328 
 Artifacts: draft source PR #117; no extension Store package or deployed service produced.
 Deployment and live verification: outside scope of this source refactor; no deployment performed.
 Remaining risks or follow-up: `extension/content.js` retains a large shared state closure; `scripts/extension-browser-qa.mjs` still contains coupled sequential scenarios. Extract these with explicit state boundaries and browser receipts in the next reviewable stage. External GitHub transaction behavior and native browser permission prompts need separate targeted evidence before deeper restructuring.
+
+## Follow-up QA runner stage
+
+Branch: `codex/modular-qa-runner`, based on merged PR #117. This stage changes QA harness organization only; the application and extension source are unchanged. Node 22 `npm run check` passed (328 pass, 22 skipped, 0 fail; build, sandbox smoke, release package included). The complete packaged extension browser command passed: capture/review, screenshot editor, session replay, session origins, and recording navigation. Exact-revision CI is pending at this point. The inline review and capture setup portion of the runner still needs a later focused split.
