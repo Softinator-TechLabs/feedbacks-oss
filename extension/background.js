@@ -74,9 +74,9 @@ const rawDiagnostics = new Map();
 async function retireRawDiagnostics(tabId) {
   const raw = rawDiagnostics.get(tabId);
   if (!raw) return;
+  await raw.stop().catch(() => {});
+  await diagnosticEvidenceStore.deleteEvidence(raw.status().evidenceId);
   rawDiagnostics.delete(tabId);
-  const status = await raw.stop();
-  await diagnosticEvidenceStore.deleteEvidence(status.evidenceId);
 }
 const rawDebuggerSource = {
   isAttached: (tabId) => sessionCapture.isRecordingDebuggerAttached(tabId),
