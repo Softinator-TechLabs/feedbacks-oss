@@ -85,6 +85,16 @@ await writeFile(
   }, 40);
   void chrome.runtime.sendMessage({ type: 'qaTrace', stage: 'prelude' });
   navigator.mediaDevices.getUserMedia = async () => canvas.captureStream(24);
+  window.addEventListener('error', (event) => void chrome.runtime.sendMessage({
+    type: 'qaTrace', stage: 'scriptError:' + (event.message || event.target?.src || 'unknown')
+  }), true);
+  window.addEventListener('unhandledrejection', (event) => void chrome.runtime.sendMessage({
+    type: 'qaTrace', stage: 'rejection:' + String(event.reason)
+  }));
+  void import('./offscreen-video.js').then(
+    () => chrome.runtime.sendMessage({ type: 'qaTrace', stage: 'moduleResolved' }),
+    (error) => chrome.runtime.sendMessage({ type: 'qaTrace', stage: 'importError:' + String(error) }),
+  );
 `,
 );
 // Expose the lost-message race: the worker can finish diagnostics before the
@@ -119,7 +129,9 @@ const browserErrors = [];
 browser.on("console", (message) => {
   if (message.type() === "error") browserErrors.push(message.text());
 });
-browser.on("weberror", (error) => browserErrors.push(error.error()?.message || String(error)));
+browser.on("weberror", (error) =>
+  browserErrors.push(error.error()?.message || String(error)),
+);
 browser.setDefaultTimeout(15000);
 try {
   const worker =
