@@ -25,6 +25,8 @@ After installing Chromium with `npx playwright install chromium`, `npm run qa:ex
 
 Install `ffmpeg` for the synthetic video fixture used by the saved-frame browser test; CI installs it explicitly. For recording behavior, `npm run qa:recording-browser` runs the Chromium regressions sequentially and is a required step in the extension CI job. It checks source-page controls, native recorder timing with a canvas source, DOM geometry and click alignment, resource isolation, durable storage, replay cutoffs, time-filtered diagnostics, short video trim/seek and saved-frame metadata. Native Chrome tab-picker/MediaRecorder pause and trim acceptance is separate from synthetic browser fixtures.
 
+`node scripts/offscreen-recording-browser-qa.mjs` tests the packaged one-click source-page capture, hidden recorder, diagnostics and Stop-to-review handoff with a synthetic tab stream. The extension browser acceptance suite runs that scenario as its recording-controls workflow. A real Chrome toolbar permission grant, microphone permission and installed Web Store package still need native acceptance.
+
 After building the app, `npm run qa:app-filters` checks live category, tag, status, search and device filtering in a disposable sandbox, including badge keyboard activation, search debounce and focus, and desktop/mobile layout. It writes synthetic screenshots under ignored `output/playwright/`.
 
 Keep source, local checks, exact-revision CI, package integrity, deployment and live verification as separate receipt fields. A skipped native database test must be reported as skipped. CI runs it separately; a local PGlite pass does not replace it. Never report an automated check as visual review.

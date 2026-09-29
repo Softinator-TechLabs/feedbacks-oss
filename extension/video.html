@@ -14,7 +14,8 @@
       <h1>
         <span class="before-recording">Record a tab video</span
         ><span class="after-recording">Review video</span
-        ><span class="during-recording">Recording tab video</span>
+        ><span class="during-recording">Recording tab video</span
+        ><span class="completed-recording">Video shared</span>
       </h1>
       <p id="target"></p>
       <p class="hint before-recording">
@@ -84,13 +85,7 @@
       </details>
       <div class="review-workspace">
         <div class="review-primary">
-          <video
-            id="preview"
-            controls
-            playsinline
-            hidden
-            aria-label="Recording preview"
-          ></video>
+          <video id="preview" playsinline hidden aria-label="Recording preview"></video>
           <section id="editing" hidden aria-label="Video editor">
             <div class="timeline-heading">
               <strong>Trim video</strong><span id="trim-duration"></span>
@@ -142,6 +137,8 @@
                     <path d="M8 5v14M16 5v14" />
                   </svg>
                 </button>
+                <button id="trim-mute" type="button" aria-pressed="false">Mute</button>
+                <button id="trim-fullscreen" type="button">Full screen</button>
                 <output
                   ><span id="trim-current">0:00.0</span> /
                   <span id="trim-total">0:00.0</span></output
@@ -233,6 +230,10 @@
               tab discards it.
             </p>
             <button id="send" class="primary">Send video</button>
+            <div id="upload-progress" class="upload-progress" role="status" hidden>
+              <label id="upload-label" for="upload-meter"></label>
+              <progress id="upload-meter" max="100" value="0"></progress>
+            </div>
           </section>
           <p id="status" role="status"></p>
           <a id="thread" hidden target="_blank" rel="noreferrer">Open feedback</a>

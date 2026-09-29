@@ -21,6 +21,19 @@ const fixture = () => ({
     ],
     total: 1,
   },
+  recordings: {
+    items: [
+      {
+        id: "recording-id",
+        mode: "video" as const,
+        durationMs: 3700,
+        url: "https://example.test/form",
+        eventCount: 31,
+        coverage: [{ channel: "console", status: "complete" }],
+        video: { assetId: "video-id", offsetMs: 80 },
+      },
+    ],
+  },
   thread: {
     id: "thread",
     projectId: "project",
@@ -70,6 +83,12 @@ const fixture = () => ({
         height: 2400,
         url: "https://private.wasabi.test/file?X-Amz-Signature=SECRET",
         captureRegion: { startY: 0, endY: 2400, pageWidth: 1280 },
+        recordingFrame: {
+          recordingId: "recording-id",
+          atMs: 1200,
+          videoTimeMs: 1120,
+          annotationId: "point-b",
+        },
         markings: [{ tool: "point", annotationId: "point-b", number: 2 }],
       },
     ],
@@ -99,6 +118,8 @@ test("handoff includes task intent, reviewer, numbered points, discussion, assig
     "2026-09-29",
     "Asia/Kolkata",
     "https://feedback.example.test/api/assets/asset",
+    '"recordingId":"recording-id"',
+    '"videoTimeMs":1120',
     '"includeImage":true',
     "github.com/example/project/issues/1",
   ])
@@ -188,10 +209,14 @@ test("copied task keeps each point's human plan beside its text", () => {
 
 test("copied task directs recorded issues to local evidence files with honest remote fallback", () => {
   const { text } = buildTaskHandoff(fixture());
-  assert.match(text, /recordings\.list/);
+  assert.match(text, /feedbacks_describe\(\{"operation":"recordings\.list"\}\)/);
+  assert.match(text, /feedbacks_execute\(\{"operation":"recordings\.list"/);
   assert.match(text, /feedbacks_recording_materialize/);
+  assert.match(text, /"includeVideo":true/);
   assert.match(text, /temporary directory/);
   assert.match(text, /README.*coverage/);
   assert.match(text, /Remote HTTP MCP/);
-  assert.match(text, /clicks.*typing.*console.*network/);
+  assert.match(text, /Activity.*Console.*Network.*Performance.*Environment/);
+  assert.match(text, /points\/pins.*screenshots\/frames/);
+  assert.match(text, /discuss any unclear bug\/feature behavior/);
 });

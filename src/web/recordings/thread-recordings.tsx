@@ -3,6 +3,7 @@ import type { Replayer } from "@rrweb/replay";
 import "@rrweb/replay/dist/style.css";
 import { installReplayResourcePolicy } from "./replay-policy.js";
 import { api, ApiError, errorText, uid, type Thread } from "../api.js";
+import { Icon } from "../icons.js";
 import {
   clampTime,
   formatRecordingTime,
@@ -23,6 +24,7 @@ import {
 import "./thread-recordings.css";
 
 type MediaMode = "replay" | "video";
+
 type FrameAsset = {
   id: string;
   url: string;
@@ -45,13 +47,11 @@ export function ThreadRecordings({
   thread,
   canWrite = false,
   onSaved,
-  onLinkedAssets,
   onAnnotateFrame,
 }: {
   thread: Thread;
   canWrite?: boolean;
   onSaved?: (saved: Thread) => void;
-  onLinkedAssets?: (assetIds: string[]) => void;
   onAnnotateFrame?: (frame: {
     imageBase64: string;
     recordingFrame: { recordingId: string; atMs: number; videoTimeMs: number };
@@ -67,10 +67,12 @@ export function ThreadRecordings({
   const [permissionMissing, setPermissionMissing] = useState(false);
   const [reload, setReload] = useState(0);
   const [mediaMode, setMediaMode] = useState<MediaMode>("replay");
-  const [diagnosticTab, setDiagnosticTab] = useState<DiagnosticTab>("activity");
-  const [evidenceScope, setEvidenceScope] = useState<EvidenceScope>("playhead");
+  const [diagnosticTab, setDiagnosticTab] = useState<DiagnosticTab>("everything");
+  const [evidenceScope, setEvidenceScope] = useState<EvidenceScope>("all");
+  const [followPlayback, setFollowPlayback] = useState(true);
   const [cursorMs, setCursorMs] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [videoMuted, setVideoMuted] = useState(false);
   const [replayError, setReplayError] = useState("");
   const [replayReady, setReplayReady] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState("");
@@ -81,6 +83,7 @@ export function ThreadRecordings({
   const stageRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Replayer | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerShellRef = useRef<HTMLElement>(null);
   const cursorRef = useRef(0);
   const replayStartRef = useRef(0);
   const replayClockRef = useRef<{ atMs: number; startedAt: number } | null>(null);
@@ -128,8 +131,9 @@ export function ThreadRecordings({
     setPlaying(false);
     replayClockRef.current = null;
     setMediaMode("replay");
-    setDiagnosticTab("activity");
-    setEvidenceScope("playhead");
+    setDiagnosticTab("everything");
+    setEvidenceScope("all");
+    setFollowPlayback(true);
     setSelectedRequest("");
     setVideoReady(false);
     setFrameError("");
@@ -176,9 +180,9 @@ export function ThreadRecordings({
           asset.id === recording.video?.assetId && asset.contentType.startsWith("video/"),
       )
     : undefined;
-  useEffect(() => {
-    onLinkedAssets?.(videoAsset ? [videoAsset.id] : []);
-  }, [onLinkedAssets, videoAsset?.id]);
+  const standaloneVideos = thread.assets.filter(
+    (asset) => asset.contentType.startsWith("video/") && asset.id !== videoAsset?.id,
+  );
   const linkedFrames = (
     thread.assets as Array<
       Thread["assets"][number] & { recordingFrame?: FrameAsset["recordingFrame"] }
@@ -522,6 +526,7 @@ export function ThreadRecordings({
     videoReady &&
     !videoGap &&
     !frameBusy;
+
   const timelineMarks = useMemo(() => {
     if (!recording) return [];
     const marks = new Map<
@@ -533,10 +538,12 @@ export function ThreadRecordings({
         error: boolean;
         count: number;
         position: number;
+        requestId?: string;
       }
     >();
     for (const event of recording.events) {
-      if (!["activity", "console", "network"].includes(event.type)) continue;
+      if (!["activity", "console", "network", "performance"].includes(event.type))
+        continue;
       const position = Math.round((event.atMs / Math.max(1, recording.durationMs)) * 200);
       const key = `${event.type}:${position}`;
       const data = event.data as Record<string, unknown> | null;
@@ -556,6 +563,7 @@ export function ThreadRecordings({
           error,
           count: 1,
           position: Math.max(0, Math.min(200, position)),
+          requestId: typeof data?.requestId === "string" ? data.requestId : undefined,
         });
       }
     }
@@ -584,10 +592,18 @@ export function ThreadRecordings({
   }, [recording, thread.assets, thread.context?.annotations]);
 
   return (
-    <section className="thread-recordings" aria-labelledby="thread-recordings-heading">
+    <section
+      className="thread-recordings"
+      ref={playerShellRef}
+      aria-labelledby="thread-recordings-heading"
+    >
       <div className="recording-heading">
-        <h2 id="thread-recordings-heading">Session recordings</h2>
-        {!listing && !listError && (
+        <h2 id="thread-recordings-heading">
+          {!listing && !listError && summaries.length === 0 && standaloneVideos.length
+            ? "Video feedback"
+            : "Session recording"}
+        </h2>
+        {!listing && !listError && summaries.length > 1 && (
           <span className="recording-count">{summaries.length}</span>
         )}
       </div>
@@ -610,30 +626,49 @@ export function ThreadRecordings({
           )}
         </div>
       )}
-      {!listing && !listError && summaries.length === 0 && (
-        <p className="muted recording-empty">
-          No session recording was shared with this thread.
-        </p>
-      )}
+      {!listing &&
+        !listError &&
+        summaries.length === 0 &&
+        standaloneVideos.length === 0 && (
+          <p className="muted recording-empty">
+            No session recording was shared with this thread.
+          </p>
+        )}
+      {!listing &&
+        summaries.length === 0 &&
+        standaloneVideos.map((asset) => (
+          <video
+            key={asset.id}
+            id={`asset-${asset.id}`}
+            className="recording-standalone-video"
+            controls
+            preload="metadata"
+            src={asset.url}
+            aria-label="Tab video feedback"
+          />
+        ))}
       {!listing && !listError && summaries.length > 0 && (
         <>
-          <label className="recording-select-label" htmlFor="thread-recording-select">
-            Recording
-          </label>
-          <select
-            id="thread-recording-select"
-            value={selectedId}
-            onChange={(event) => setSelectedId(event.target.value)}
-          >
-            {summaries.map((item, index) => (
-              <option key={item.id} value={item.id}>
-                {new Date(item.startedAt).toLocaleString()} ·{" "}
-                {item.mode === "video" ? "Video + session" : "Session"} ·{" "}
-                {formatRecordingTime(item.durationMs)}
-                {summaries.length > 1 ? ` · ${index + 1}` : ""}
-              </option>
-            ))}
-          </select>
+          {summaries.length > 1 && (
+            <>
+              <label className="recording-select-label" htmlFor="thread-recording-select">
+                Recording
+              </label>
+              <select
+                id="thread-recording-select"
+                value={selectedId}
+                onChange={(event) => setSelectedId(event.target.value)}
+              >
+                {summaries.map((item, index) => (
+                  <option key={item.id} value={item.id}>
+                    {new Date(item.startedAt).toLocaleString()} ·{" "}
+                    {item.mode === "video" ? "Video + session" : "Session"} ·{" "}
+                    {formatRecordingTime(item.durationMs)} · {index + 1}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           {loading && (
             <p className="muted" role="status">
               Loading recording…
@@ -667,6 +702,20 @@ export function ThreadRecordings({
                   </span>
                 ))}
               </div>
+              {recording.coverage.some((item) => item.status !== "complete") && (
+                <details className="recording-coverage-notes">
+                  <summary>What is missing from this capture?</summary>
+                  <ul>
+                    {recording.coverage
+                      .filter((item) => item.status !== "complete")
+                      .map((item, index) => (
+                        <li key={`${item.channel}-${index}`}>
+                          <strong>{item.channel}</strong>: {item.detail || item.status}
+                        </li>
+                      ))}
+                  </ul>
+                </details>
+              )}
               <p className="recording-privacy">
                 Privacy:{" "}
                 {recording.privacy.maskInputs ? "inputs masked" : "input masking off"} ·{" "}
@@ -676,41 +725,73 @@ export function ThreadRecordings({
                   : "network bodies omitted"}
               </p>
               <div className="recording-timeline">
-                <button
-                  type="button"
-                  disabled={
-                    mediaMode === "replay" ? !replayReady : !videoAsset || !!videoGap
-                  }
-                  onClick={() => {
-                    if (mediaMode === "video") {
-                      const video = videoRef.current;
-                      if (!video) return;
-                      if (video.paused) void video.play();
-                      else video.pause();
-                      return;
+                <div className="recording-playback-actions">
+                  <button
+                    type="button"
+                    disabled={
+                      mediaMode === "replay" ? !replayReady : !videoAsset || !!videoGap
                     }
-                    const player = playerRef.current;
-                    if (!player) return;
-                    if (playing) {
-                      player.pause();
-                      replayClockRef.current = null;
-                      setPlaying(false);
-                    } else {
-                      replayClockRef.current = {
-                        atMs: cursorRef.current,
-                        startedAt: performance.now(),
-                      };
-                      player.play(
-                        Math.max(0, cursorRef.current - replayStartRef.current),
-                      );
-                      setPlaying(true);
-                    }
-                  }}
-                >
-                  {playing ? `Pause ${mediaMode}` : `Play ${mediaMode}`}
-                </button>
+                    onClick={() => {
+                      if (mediaMode === "video") {
+                        const video = videoRef.current;
+                        if (!video) return;
+                        if (video.paused) void video.play();
+                        else video.pause();
+                        return;
+                      }
+                      const player = playerRef.current;
+                      if (!player) return;
+                      if (playing) {
+                        player.pause();
+                        replayClockRef.current = null;
+                        setPlaying(false);
+                      } else {
+                        setDiagnosticTab("everything");
+                        setEvidenceScope("all");
+                        replayClockRef.current = {
+                          atMs: cursorRef.current,
+                          startedAt: performance.now(),
+                        };
+                        player.play(
+                          Math.max(0, cursorRef.current - replayStartRef.current),
+                        );
+                        setFollowPlayback(true);
+                        setPlaying(true);
+                      }
+                    }}
+                  >
+                    {playing ? `Pause ${mediaMode}` : `Play ${mediaMode}`}
+                  </button>
+                  {mediaMode === "video" && videoAsset && (
+                    <>
+                      <button
+                        type="button"
+                        className="recording-icon-button"
+                        aria-label={videoMuted ? "Unmute video" : "Mute video"}
+                        title={videoMuted ? "Unmute video" : "Mute video"}
+                        onClick={() => {
+                          const video = videoRef.current;
+                          if (!video) return;
+                          video.muted = !video.muted;
+                          setVideoMuted(video.muted);
+                        }}
+                      >
+                        <Icon name={videoMuted ? "volumeOff" : "volume"} />
+                      </button>
+                      <button
+                        type="button"
+                        className="recording-icon-button"
+                        aria-label="Full screen video"
+                        title="Full screen video"
+                        onClick={() => void playerShellRef.current?.requestFullscreen()}
+                      >
+                        <Icon name="expand" />
+                      </button>
+                    </>
+                  )}
+                </div>
                 <label htmlFor="thread-recording-timeline" className="sr-only">
-                  Recording position
+                  Session position
                 </label>
                 <input
                   id="thread-recording-timeline"
@@ -720,7 +801,7 @@ export function ThreadRecordings({
                   step="100"
                   value={cursorMs}
                   onChange={(event) => seek(Number(event.target.value))}
-                  aria-valuetext={`${formatRecordingTime(cursorMs)} of ${formatRecordingTime(recording.durationMs)}`}
+                  aria-valuetext={`${formatRecordingTime(cursorMs)} of ${formatRecordingTime(recording.durationMs)} in the recorded session`}
                 />
                 <div
                   className="recording-timeline-marks"
@@ -733,24 +814,47 @@ export function ThreadRecordings({
                       className="recording-timeline-mark"
                       data-channel={mark.type}
                       data-error={mark.error}
+                      data-align={
+                        mark.position < 35
+                          ? "start"
+                          : mark.position > 165
+                            ? "end"
+                            : "center"
+                      }
                       style={{ left: `${mark.position / 2}%` }}
-                      title={`${formatRecordingTime(mark.atMs)} · ${mark.label}${mark.count > 1 ? ` · ${mark.count} events` : ""}`}
                       aria-label={`${mark.type} at ${formatRecordingTime(mark.atMs)}: ${mark.label}`}
                       onClick={() => {
+                        setFollowPlayback(false);
                         setDiagnosticTab(
                           mark.type === "network"
                             ? "network"
                             : mark.type === "console"
                               ? "console"
-                              : "activity",
+                              : mark.type === "performance"
+                                ? "performance"
+                                : "activity",
                         );
+                        if (mark.requestId) setSelectedRequest(mark.requestId);
                         setEvidenceScope("all");
                         seek(mark.atMs);
                       }}
-                    />
+                    >
+                      <span className="recording-mark-tooltip" role="tooltip">
+                        <strong>
+                          {formatRecordingTime(mark.atMs)} ·{" "}
+                          {mark.type === "point"
+                            ? "Comment"
+                            : mark.type.charAt(0).toUpperCase() + mark.type.slice(1)}
+                        </strong>
+                        <span>
+                          {mark.label}
+                          {mark.count > 1 ? ` · ${mark.count} events` : ""}
+                        </span>
+                      </span>
+                    </button>
                   ))}
                 </div>
-                <output htmlFor="thread-recording-timeline">
+                <output htmlFor="thread-recording-timeline" title="Recorded session time">
                   {formatRecordingTime(cursorMs)} /{" "}
                   {formatRecordingTime(recording.durationMs)}
                 </output>
@@ -765,13 +869,15 @@ export function ThreadRecordings({
                     role="group"
                     aria-label="Recording media"
                   >
-                    <button
-                      type="button"
-                      aria-pressed={mediaMode === "replay"}
-                      onClick={() => chooseMedia("replay")}
-                    >
-                      Replay
-                    </button>
+                    {replayEvents.length >= 2 && (
+                      <button
+                        type="button"
+                        aria-pressed={mediaMode === "replay"}
+                        onClick={() => chooseMedia("replay")}
+                      >
+                        Replay
+                      </button>
+                    )}
                     {recording.video && (
                       <button
                         type="button"
@@ -819,49 +925,62 @@ export function ThreadRecordings({
                     {mediaMode === "video" &&
                       (videoAsset && recording.video ? (
                         <>
-                          <video
-                            ref={videoRef}
-                            controls
-                            preload="metadata"
-                            src={videoAsset.url}
-                            aria-label="Linked recording video"
-                            onPlay={(event) => {
-                              selectedVideoGapRef.current = false;
-                              checkVideoFrame(event.currentTarget);
-                              setPlaying(true);
-                            }}
-                            onPause={() => setPlaying(false)}
-                            onLoadedMetadata={() => alignVideo(cursorRef.current)}
-                            onLoadedData={(event) => checkVideoFrame(event.currentTarget)}
-                            onCanPlay={(event) => checkVideoFrame(event.currentTarget)}
-                            onSeeking={() => setVideoReady(false)}
-                            onSeeked={(event) => checkVideoFrame(event.currentTarget)}
-                            onTimeUpdate={(event) => {
-                              if (
-                                !recording.video ||
-                                selectedVideoGapRef.current ||
-                                pendingVideoSeekRef.current !== null ||
-                                event.currentTarget.seeking
-                              )
-                                return;
-                              const mapped = mapVideoToRecordingTime(
-                                event.currentTarget.currentTime * 1000,
-                                recording.video,
-                              );
-                              if (mapped !== null) {
-                                cursorRef.current = clampTime(
-                                  mapped,
-                                  recording.durationMs,
-                                );
-                                setCursorMs(cursorRef.current);
-                                if (
-                                  event.currentTarget.readyState >=
-                                  HTMLMediaElement.HAVE_CURRENT_DATA
-                                )
-                                  setVideoReady(true);
+                          <div className="recording-video-stage">
+                            <video
+                              ref={videoRef}
+                              preload="metadata"
+                              src={videoAsset.url}
+                              aria-label="Linked recording video"
+                              onPlay={(event) => {
+                                selectedVideoGapRef.current = false;
+                                checkVideoFrame(event.currentTarget);
+                                setDiagnosticTab("everything");
+                                setEvidenceScope("all");
+                                setFollowPlayback(true);
+                                setPlaying(true);
+                              }}
+                              onPause={() => setPlaying(false)}
+                              onEnded={() => setPlaying(false)}
+                              onLoadedMetadata={() => alignVideo(cursorRef.current)}
+                              onLoadedData={(event) =>
+                                checkVideoFrame(event.currentTarget)
                               }
-                            }}
-                          />
+                              onCanPlay={(event) => checkVideoFrame(event.currentTarget)}
+                              onSeeking={() => setVideoReady(false)}
+                              onSeeked={(event) => checkVideoFrame(event.currentTarget)}
+                              onTimeUpdate={(event) => {
+                                if (
+                                  !recording.video ||
+                                  selectedVideoGapRef.current ||
+                                  pendingVideoSeekRef.current !== null ||
+                                  event.currentTarget.seeking
+                                )
+                                  return;
+                                const mapped = mapVideoToRecordingTime(
+                                  event.currentTarget.currentTime * 1000,
+                                  recording.video,
+                                );
+                                if (mapped !== null) {
+                                  cursorRef.current = clampTime(
+                                    mapped,
+                                    recording.durationMs,
+                                  );
+                                  setCursorMs(cursorRef.current);
+                                  if (
+                                    event.currentTarget.readyState >=
+                                    HTMLMediaElement.HAVE_CURRENT_DATA
+                                  )
+                                    setVideoReady(true);
+                                }
+                              }}
+                            />
+                            {videoGap && (
+                              <div className="recording-video-gap" role="status">
+                                No video frame was retained at this session moment. Select
+                                another point on the timeline.
+                              </div>
+                            )}
+                          </div>
                           {canWrite && (
                             <div className="recording-frame-actions">
                               <button
@@ -925,11 +1044,14 @@ export function ThreadRecordings({
                       ))}
                   </div>
                 </div>
+
                 <RecordingDiagnostics
                   recording={recording}
-                  annotationFrames={annotationFrames}
                   cursorMs={cursorMs}
                   seek={seek}
+                  playing={playing}
+                  followPlayback={followPlayback}
+                  setFollowPlayback={setFollowPlayback}
                   diagnosticTab={diagnosticTab}
                   setDiagnosticTab={setDiagnosticTab}
                   evidenceScope={evidenceScope}

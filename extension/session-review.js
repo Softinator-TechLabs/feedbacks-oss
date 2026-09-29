@@ -67,6 +67,17 @@ export function eventLabel(e) {
   }
   if (e.type === "console")
     return `${d.level || "log"}: ${text(d.args ?? d.message ?? d.text ?? d)}`;
+  if (e.type === "performance")
+    return `${text(d.name || d.entryType || "Performance entry")}${Number.isFinite(d.durationMs) ? ` · ${Math.round(d.durationMs)} ms` : ""}`;
+  if (e.type === "environment") {
+    const viewport = d.viewport;
+    return [
+      d.browser || d.userAgent || "Browser details captured at start",
+      viewport?.width && viewport?.height ? `${viewport.width} × ${viewport.height}` : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
   return `${d.method || ""} ${d.url || d.requestId || "Request"} · ${d.error ? "failed: " + text(d.error) : (d.status ?? d.phase ?? "pending")}`;
 }
 const resource =
@@ -101,21 +112,46 @@ export function reviewTime(ms) {
 }
 export function createSessionReview(
   root,
-  { recording, videoElement, video, onFrame, annotations = [] } = {},
+  {
+    recording,
+    videoElement,
+    video,
+    onFrame,
+    annotations = [],
+    timelineStartMs = 0,
+    timelineDurationMs,
+  } = {},
 ) {
   let at = 0,
     playing = false,
     previous = 0,
     animation,
-    selected = "activity",
+    selected = "everything",
     disposed = false,
-    allEvents = false,
+    allEvents = true,
     detailEvent,
     pendingSeek = null,
     selectedGap = false,
     eventPage = 0,
     annotationDialog;
   const token = crypto.randomUUID();
+  const channels = ["activity", "console", "network", "performance"];
+  const allCaptureEvents = recording.events
+    .filter((event) => channels.includes(event.type))
+    .sort((a, b) => a.atMs - b.atMs || a.seq - b.seq);
+  const environmentEvent = {
+    seq: -1,
+    atMs: 0,
+    type: "environment",
+    data: recording.environment,
+  };
+  const everythingEvents = [environmentEvent, ...allCaptureEvents];
+  const byChannel = Object.fromEntries(
+    channels.map((channel) => [
+      channel,
+      allCaptureEvents.filter((event) => event.type === channel),
+    ]),
+  );
   const make = (tag, label, cls) => {
     const n = document.createElement(tag);
     if (label) n.textContent = label;
@@ -189,7 +225,7 @@ export function createSessionReview(
       );
     root.append(coverage);
   }
-  let frame;
+  let frame, timelineStrip;
   const replayStatus = make("p", "", "hint");
   if (!videoElement) {
     frame = make("iframe");
@@ -203,6 +239,7 @@ export function createSessionReview(
     play = make("button", "Play"),
     range = make("input"),
     clock = make("output");
+  const editTimeline = videoElement ? document.querySelector("#editing .timeline") : null;
   play.type = "button";
   range.type = "range";
   range.min = "0";
@@ -214,17 +251,35 @@ export function createSessionReview(
     videoElement ? "Video and event timeline" : "Captured context timeline",
   );
   toolbar.append(play, range, clock);
-  root.append(toolbar);
+  if (!editTimeline) root.append(toolbar);
   if (videoElement) {
     const strip = make("div", null, "review-timeline-events");
+    timelineStrip = strip;
     strip.setAttribute("aria-label", "Events on the video timeline");
+    const videoDurationMs =
+      timelineDurationMs ||
+      (video?.segments?.length
+        ? Math.max(
+            ...video.segments.map(
+              (segment) =>
+                segment.outputStartMs + segment.sourceEndMs - segment.sourceStartMs,
+            ),
+          )
+        : Number.isFinite(videoElement.duration)
+          ? videoElement.duration * 1000
+          : recording.durationMs);
     const grouped = new Map();
-    for (const event of recording.events.filter((e) =>
-      ["activity", "console", "network"].includes(e.type),
-    )) {
+    for (const event of allCaptureEvents) {
+      const videoAtMs = sourceToVideo(event.atMs, video);
+      if (videoAtMs === null) continue;
       const position = Math.min(
         200,
-        Math.max(0, Math.round((event.atMs / Math.max(1, recording.durationMs)) * 200)),
+        Math.max(
+          0,
+          Math.round(
+            ((videoAtMs + timelineStartMs) / Math.max(1, videoDurationMs)) * 200,
+          ),
+        ),
       );
       const key = `${event.type}:${position}`;
       const group = grouped.get(key);
@@ -251,15 +306,20 @@ export function createSessionReview(
               : "Activity"
           : event.type === "console"
             ? `Console ${event.data?.level === "warn" ? "warning" : event.data?.level || "log"}`
-            : error
-              ? "Network failure"
-              : "Network";
+            : event.type === "performance"
+              ? "Performance"
+              : error
+                ? "Network failure"
+                : "Network";
       mark.type = "button";
       mark.setAttribute(
         "aria-label",
         `${kind} at ${reviewTime(event.atMs)}${count > 1 ? `, ${count} events` : ""}`,
       );
-      mark.title = `${kind} · ${reviewTime(event.atMs)}${count > 1 ? ` · ${count} events` : ""}`;
+      mark.title = `${kind} · ${reviewTime(event.atMs)} · ${eventLabel(event)}${count > 1 ? ` · ${count} events` : ""}`;
+      const tooltip = make("span", mark.title, "review-mark-tooltip");
+      tooltip.setAttribute("role", "tooltip");
+      mark.append(tooltip);
       mark.dataset.channel = event.type;
       mark.dataset.error = String(error);
       mark.style.left = `${position / 2}%`;
@@ -271,19 +331,9 @@ export function createSessionReview(
       };
       strip.append(mark);
     }
-    root.append(strip);
-    const legend = make("p", null, "review-timeline-legend");
-    legend.append("Timeline: ");
-    for (const [channel, label] of [
-      ["activity", "actions"],
-      ["console", "console"],
-      ["network", "network"],
-    ]) {
-      const item = make("span", label);
-      item.dataset.channel = channel;
-      legend.append(item);
-    }
-    root.append(legend);
+    if (editTimeline)
+      editTimeline.insertBefore(strip, editTimeline.querySelector(".timeline-playback"));
+    else root.append(strip);
   }
   const gap = make("p", "", "hint");
   root.append(gap);
@@ -328,12 +378,12 @@ export function createSessionReview(
       }
       onFrame(source, videoElement.currentTime * 1000);
     };
-    toolbar.append(save);
+    root.append(save);
   }
   const tabs = make("div", null, "review-tabs");
   tabs.setAttribute("role", "tablist");
   const buttons = {};
-  for (const channel of ["activity", "console", "network"]) {
+  for (const channel of ["everything", ...channels, "environment"]) {
     const b = make("button", channel[0].toUpperCase() + channel.slice(1));
     b.type = "button";
     b.setAttribute("role", "tab");
@@ -352,6 +402,7 @@ export function createSessionReview(
   const modeLabel = make("label", null, "review-mode"),
     mode = make("input");
   mode.type = "checkbox";
+  mode.checked = allEvents;
   modeLabel.append(
     mode,
     document.createTextNode(" Browse all events (including later errors)"),
@@ -389,16 +440,32 @@ export function createSessionReview(
       else if (Number.isFinite(cutoff))
         replayStatus.textContent = `DOM replay is available before ${reviewTime(cutoff)}. See capture coverage for details.`;
     }
-    const state = reviewState(recording.events, at);
+    const state =
+      (["activity", "console", "network"].includes(selected) && !allEvents) ||
+      detailEvent?.type === "network"
+        ? reviewState(recording.events, at)
+        : null;
     const rows =
-      selected === "activity" || allEvents
-        ? recording.events.filter((e) => e.type === selected)
-        : state[selected];
+      selected === "everything"
+        ? allEvents
+          ? everythingEvents
+          : everythingEvents.filter((event) => event.atMs <= at)
+        : selected === "environment"
+          ? [environmentEvent]
+          : selected === "activity" || allEvents
+            ? byChannel[selected]
+            : selected === "performance"
+              ? byChannel.performance.filter((event) => event.atMs <= at)
+              : state[selected];
     for (const [channel, b] of Object.entries(buttons)) {
       const count =
-        channel === "activity" || allEvents
-          ? recording.events.filter((e) => e.type === channel).length
-          : state[channel].length;
+        channel === "everything"
+          ? everythingEvents.length
+          : channel === "environment"
+            ? 1
+            : !allEvents && channel === selected && state
+              ? state[channel].length
+              : byChannel[channel].length;
       b.textContent = `${channel[0].toUpperCase() + channel.slice(1)} (${count})`;
       b.setAttribute("aria-selected", String(channel === selected));
     }
@@ -415,25 +482,50 @@ export function createSessionReview(
           "hint",
         ),
       );
+    if (playing && selected === "everything") {
+      const reached = rows.findLastIndex((event) => event.atMs <= at);
+      if (reached >= 0) eventPage = Math.floor(reached / 200);
+    }
     eventPage = Math.min(eventPage, Math.max(0, Math.ceil(rows.length / 200) - 1));
+    const activeSeq = rows.findLast((event) => event.atMs <= at)?.seq;
     for (const e of rows.slice(eventPage * 200, (eventPage + 1) * 200)) {
-      const b = make("button", `${reviewTime(e.atMs)}  ${eventLabel(e)}`, "review-event");
+      const b = make("button", null, "review-event");
       b.type = "button";
       b.dataset.seq = String(e.seq);
       b.dataset.future = String(e.atMs > at);
+      if (e.seq === activeSeq) b.setAttribute("aria-current", "true");
+      b.append(make("time", reviewTime(e.atMs)));
+      if (selected === "everything") {
+        const tag = make("span", e.type, "review-event-tag");
+        tag.dataset.channel = e.type;
+        b.append(tag);
+      }
+      b.append(make("span", eventLabel(e), "review-event-label"));
       if (e.data?.level === "error" || e.data?.error || e.data?.status >= 400)
         b.classList.add("review-error");
       b.onclick = () => {
         seek(e.atMs);
         detailEvent = e;
+        if (e.type === "environment") selected = "environment";
         render();
       };
       content.append(b);
     }
+    if (playing) {
+      const active = content.querySelector('[aria-current="true"]');
+      if (active) {
+        const view = content.getBoundingClientRect();
+        const row = active.getBoundingClientRect();
+        const delta = row.top + row.height / 2 - (view.top + view.height / 2);
+        if (Math.abs(delta) > 8) content.scrollTop += delta;
+      }
+    }
     if (detailEvent) {
       const visible =
         detailEvent.type === "network"
-          ? state.network.find((e) => networkKey(e) === networkKey(detailEvent))
+          ? (state || reviewState(recording.events, at)).network.find(
+              (e) => networkKey(e) === networkKey(detailEvent),
+            )
           : detailEvent.atMs <= at
             ? detailEvent
             : null;
@@ -571,6 +663,7 @@ export function createSessionReview(
     seek,
     dispose() {
       disposed = true;
+      timelineStrip?.remove();
       annotationDialog?.close();
       annotationDialog?.remove();
       annotationDialog = null;

@@ -78,6 +78,8 @@ export function createReviewController({ get, set, authenticated, defaultServer 
         type: "activate",
         reviewShortcuts: state.reviewShortcuts !== false,
         reviewDefaults: reviewDefaults(state.reviewDefaults),
+        recordingOptions: state.videoRecordingOptions || {},
+        recordingRedirectOrigins: state.recordingRedirectOrigins?.[origin] || [],
         project: {
           id: project.id,
           name: project.name,
@@ -152,6 +154,8 @@ export function createReviewController({ get, set, authenticated, defaultServer 
       type: "activate",
       reviewShortcuts: latest.reviewShortcuts !== false,
       reviewDefaults: reviewDefaults(latest.reviewDefaults),
+      recordingOptions: latest.videoRecordingOptions || {},
+      recordingRedirectOrigins: latest.recordingRedirectOrigins?.[origin] || [],
       project: {
         id: project.id,
         name: project.name,

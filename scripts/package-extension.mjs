@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, readdir, copyFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir, readdir, copyFile, rm } from "node:fs/promises";
 import { resolve, relative } from "node:path";
 import { zipFiles } from "./zip.mjs";
 import { createHash } from "node:crypto";
@@ -32,6 +32,7 @@ const expected = [
   "alarms",
   "debugger",
   "tabCapture",
+  "offscreen",
 ];
 if (
   JSON.stringify(manifest.permissions) !== JSON.stringify(expected) ||
@@ -107,6 +108,7 @@ const webmDurationBundle = await build({
   sourcemap: false,
 });
 const unpacked = resolve(root, "dist/extension/unpacked");
+await rm(unpacked, { recursive: true, force: true });
 await mkdir(unpacked, { recursive: true });
 await writeFile(
   resolve(root, "dist/extension/rrweb-capture-metafile.json"),

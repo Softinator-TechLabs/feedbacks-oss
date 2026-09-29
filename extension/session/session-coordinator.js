@@ -3,6 +3,7 @@ import {
   captureUrl,
   sanitizeCapture,
   clipRecording,
+  canKeepReplayPrefix,
   CAPTURE_BATCH_BYTES,
   captureByteLength,
   CAPTURE_MAX_BYTES,
@@ -1197,7 +1198,9 @@ export function createSessionCoordinator({
               thread: message.thread || null,
             };
             if (message.clipReplay && message.video?.segments?.length)
-              v.recording = clipRecording(v.recording, message.video.segments);
+              v.recording = clipRecording(v.recording, message.video.segments, {
+                keepReplayPrefix: canKeepReplayPrefix(message.video),
+              });
             if (message.video) {
               v.recording.video = sanitizeCapture(message.video);
               v.recording.mode = "video";

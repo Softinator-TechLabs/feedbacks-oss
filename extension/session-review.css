@@ -25,9 +25,12 @@
 }
 .review-timeline-events {
   position: relative;
-  height: 28px;
+  height: 38px;
   margin: -12px 4px 14px;
   border-bottom: 1px solid var(--line);
+}
+.timeline .review-timeline-events {
+  margin: 4px 20px 8px;
 }
 .review-timeline-mark {
   position: absolute;
@@ -59,8 +62,38 @@
   height: 7px;
   min-height: 7px;
 }
+.review-timeline-mark[data-channel="performance"] {
+  top: 27px;
+  height: 7px;
+  min-height: 7px;
+  background: #8576b9;
+}
 .review-timeline-mark[data-error="true"] {
   background: #da6d64;
+}
+.review-mark-tooltip {
+  position: absolute;
+  z-index: 10;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  width: max-content;
+  max-width: min(280px, 78vw);
+  padding: 7px 9px;
+  transform: translateX(-50%);
+  border-radius: 5px;
+  background: var(--ink, #17232d);
+  color: var(--paper, #fff);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: normal;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+}
+.review-timeline-mark:hover .review-mark-tooltip,
+.review-timeline-mark:focus-visible .review-mark-tooltip {
+  opacity: 1;
 }
 .review-timeline-legend {
   display: flex;
@@ -85,19 +118,27 @@
 .review-timeline-legend span[data-channel="console"]::before {
   background: #c89a57;
 }
+.review-timeline-legend span[data-channel="performance"]::before {
+  background: #8576b9;
+}
 .review-tabs {
   display: flex;
-  gap: 8px;
+  gap: 5px;
+  overflow-x: auto;
   border-bottom: 1px solid var(--line);
-  padding-bottom: 10px;
+  scrollbar-color: var(--line) transparent;
 }
 .review-tabs button {
-  flex: 1;
-  padding: 8px;
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
 }
 .review-tabs [aria-selected="true"] {
   color: var(--accent);
-  border-color: var(--accent);
+  border-bottom-color: var(--accent);
   font-weight: 600;
 }
 .review-events {
@@ -106,7 +147,9 @@
   margin-top: 12px;
 }
 .review-event {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   width: 100%;
   text-align: left;
   border: 0;
@@ -117,11 +160,40 @@
   overflow-wrap: anywhere;
   font-size: 13px;
 }
+.review-event[aria-current="true"] {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+.review-event time {
+  flex: 0 0 48px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.review-event-label {
+  min-width: 0;
+}
+.review-event-tag {
+  --tag-color: #4c8270;
+  flex: 0 0 auto;
+  color: var(--tag-color);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.5;
+  text-transform: capitalize;
+}
+.review-event-tag[data-channel="console"] {
+  --tag-color: #a07537;
+}
+.review-event-tag[data-channel="network"] {
+  --tag-color: #5481a0;
+}
+.review-event-tag[data-channel="performance"] {
+  --tag-color: #8576b9;
+}
+.review-event-tag[data-channel="environment"] {
+  --tag-color: #627482;
+}
 .review-event[data-future="true"] {
   opacity: 0.65;
-}
-.review-error {
-  border-left: 3px solid var(--danger, var(--accent));
 }
 .review-detail {
   font-size: 12px;
@@ -295,12 +367,12 @@
   object-fit: contain;
 }
 .review-workspace .session-review {
-  order: 2;
+  order: 3;
   margin: 0;
   min-width: 0;
 }
 .review-workspace #editing {
-  order: 3;
+  order: 2;
   margin-top: 0;
 }
 .review-workspace #saved-frames {
