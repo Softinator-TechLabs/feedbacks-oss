@@ -27,6 +27,23 @@ export function createRecordingControls({ chrome, sessionFor, startCapture }) {
     elapsedMs: elapsed(entry),
     ...(Number.isFinite(entry.sourceAtMs) ? { sourceAtMs: entry.sourceAtMs } : {}),
   });
+  function sendStart(entry) {
+    if (
+      !entry.hidden ||
+      !entry.port ||
+      !entry.listenerReady ||
+      !entry.startConfig ||
+      entry.startPosted
+    )
+      return;
+    entry.startPosted = true;
+    try {
+      entry.port.postMessage({ action: "start", ...entry.startConfig });
+    } catch (error) {
+      entry.startPosted = false;
+      throw error;
+    }
+  }
   function finishControl(entry, error) {
     const pending = entry.pending;
     if (!pending) return;
@@ -68,7 +85,8 @@ export function createRecordingControls({ chrome, sessionFor, startCapture }) {
       }
       entry = pending[0];
       entry.port = port;
-      if (entry.startConfig) port.postMessage({ action: "start", ...entry.startConfig });
+      entry.listenerReady = false;
+      entry.startPosted = false;
     } else {
       const previous = sessions.get(sourceTabId);
       if (
@@ -99,6 +117,12 @@ export function createRecordingControls({ chrome, sessionFor, startCapture }) {
       }
     }
     const receive = (message) => {
+      if (hidden && message?.action === "ready") {
+        if (sessions.get(entry.sourceTabId) !== entry || entry.port !== port) return;
+        entry.listenerReady = true;
+        sendStart(entry);
+        return;
+      }
       const id = hidden ? message?.sourceTabId : sourceTabId;
       if (hidden && (id !== entry?.sourceTabId || message?.reviewId !== entry.reviewId))
         return;
@@ -226,8 +250,7 @@ export function createRecordingControls({ chrome, sessionFor, startCapture }) {
         sessions.set(sender.tab.id, entry);
         try {
           entry.startConfig = await startCapture(sender, session);
-          if (entry.port && entry.startConfig)
-            entry.port.postMessage({ action: "start", ...entry.startConfig });
+          sendStart(entry);
         } catch (error) {
           if (sessions.get(sender.tab.id) === entry) retire(sender.tab.id);
           throw error;

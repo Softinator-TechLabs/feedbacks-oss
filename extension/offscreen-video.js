@@ -242,12 +242,21 @@ async function finalize(current) {
   }
 }
 
+let readyTimer;
 port.onMessage.addListener((message) => {
-  if (message.action === "start") void start(message);
+  if (message.action === "start") {
+    clearInterval(readyTimer);
+    void start(message);
+  }
   if (message.action === "stop") stop();
   if (message.action === "pause" && capture) setPaused(capture, true);
   if (message.action === "resume" && capture) setPaused(capture, false);
 });
 port.onDisconnect.addListener(() => {
+  clearInterval(readyTimer);
   stop();
 });
+// A port may connect before this module has installed its message listener.
+// Confirm readiness before the worker sends the one-use stream configuration.
+port.postMessage({ action: "ready" });
+readyTimer = setInterval(() => port.postMessage({ action: "ready" }), 500);

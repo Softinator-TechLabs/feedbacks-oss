@@ -60,34 +60,7 @@ const streamSource =
 assert.ok(backgroundSource.includes(streamSource), "packaged tab stream hook changed");
 await writeFile(
   backgroundPath,
-  backgroundSource
-    .replace(
-      streamSource,
-      'const streamId = "qa-test-stream"; await chrome.storage.local.set({ qaBackgroundStream: true });',
-    )
-    .replace(
-      "  const capture = await sessionCapture.start(\n    target,",
-      "  await chrome.storage.local.set({ qaBeforeSessionStart: true });\n  const capture = await sessionCapture.start(\n    target,",
-    )
-    .replace(
-      "  return {\n    sourceTabId: tab.id,\n    reviewId: session.reviewId,\n    streamId,",
-      "  await chrome.storage.local.set({ qaAfterSessionStart: true });\n  return {\n    sourceTabId: tab.id,\n    reviewId: session.reviewId,\n    streamId,",
-    ) +
-    '\nchrome.runtime.onMessage.addListener((message) => { if (message?.type === "qaOffscreen") void chrome.storage.local.set({ qaOffscreen: message.stage }); });\n',
-);
-const coordinatorPath = path.join(extension, "session/session-coordinator.js");
-const coordinatorSource = await readFile(coordinatorPath, "utf8");
-const injectSource = "        try {\n          await inject(s);\n        } catch {";
-assert.ok(
-  coordinatorSource.includes(injectSource),
-  "packaged replay injection hook changed",
-);
-await writeFile(
-  coordinatorPath,
-  coordinatorSource.replace(
-    injectSource,
-    "        void chrome.storage.local.set({ qaBeforeInject: true });\n        try {\n          await inject(s);\n          void chrome.storage.local.set({ qaAfterInject: true });\n        } catch {",
-  ),
+  backgroundSource.replace(streamSource, 'const streamId = "qa-test-stream";'),
 );
 const offscreenPath = path.join(extension, "offscreen-video.html");
 const offscreenSource = await readFile(offscreenPath, "utf8");
@@ -110,24 +83,20 @@ await writeFile(
     context.fillStyle = '#17324d'; context.fillRect(0, 0, 640, 360);
     context.fillStyle = '#fff'; context.fillText(String(Date.now()), 20, 40);
   }, 40);
-  chrome.runtime.sendMessage({ type: 'qaOffscreen', stage: 'booted' }).catch(() => {});
-  navigator.mediaDevices.getUserMedia = async () => {
-    chrome.runtime.sendMessage({ type: 'qaOffscreen', stage: 'stream-requested' }).catch(() => {});
-    const stream = canvas.captureStream(24);
-    chrome.runtime.sendMessage({ type: 'qaOffscreen', stage: 'stream-ready' }).catch(() => {});
-    return stream;
-  };
+  navigator.mediaDevices.getUserMedia = async () => canvas.captureStream(24);
 `,
 );
+// Expose the lost-message race: the worker can finish diagnostics before the
+// offscreen module installs its listener. The ready handshake must bridge it.
 const recorderPath = path.join(extension, "offscreen-video.js");
 const recorderSource = await readFile(recorderPath, "utf8");
-const publishSource = "  current.state = state;\n  port.postMessage({";
-assert.ok(recorderSource.includes(publishSource), "packaged recorder state hook changed");
+const listenerSource = "port.onMessage.addListener((message) => {";
+assert.ok(recorderSource.includes(listenerSource), "packaged recorder listener changed");
 await writeFile(
   recorderPath,
   recorderSource.replace(
-    publishSource,
-    "  current.state = state;\n  chrome.runtime.sendMessage({ type: 'qaOffscreen', stage: state }).catch(() => {});\n  port.postMessage({",
+    listenerSource,
+    `await new Promise((resolve) => setTimeout(resolve, 2500));\n${listenerSource}`,
   ),
 );
 const manifestPath = path.join(extension, "manifest.json");
@@ -202,15 +171,6 @@ try {
           type: context.contextType,
           url: context.documentUrl,
         })),
-        qaOffscreen: (await chrome.storage.local.get("qaOffscreen")).qaOffscreen,
-        qaBackgroundStream: (await chrome.storage.local.get("qaBackgroundStream"))
-          .qaBackgroundStream,
-        qaBeforeSessionStart: (await chrome.storage.local.get("qaBeforeSessionStart"))
-          .qaBeforeSessionStart,
-        qaAfterSessionStart: (await chrome.storage.local.get("qaAfterSessionStart"))
-          .qaAfterSessionStart,
-        qaBeforeInject: (await chrome.storage.local.get("qaBeforeInject")).qaBeforeInject,
-        qaAfterInject: (await chrome.storage.local.get("qaAfterInject")).qaAfterInject,
       }));
       throw Error(
         `Video start failed: ${JSON.stringify({
@@ -233,7 +193,7 @@ try {
     "starting should not open a recorder tab",
   );
   await page.locator("#action").click();
-  await page.waitForTimeout(550);
+  await page.waitForTimeout(1500);
   const reviewOpened = browser.waitForEvent("page", {
     predicate: (tab) =>
       tab.url().includes("/video.html?") && tab.url().includes("draftId="),

@@ -6,7 +6,8 @@ test("one-click video starts hidden capture and opens review only after Stop", a
   let connect: any, receive: any;
   const created: any[] = [],
     started: any[] = [],
-    messages: any[] = [];
+    messages: any[] = [],
+    commands: any[] = [];
   const chrome = {
     runtime: {
       getURL: (path: string) => `chrome-extension://test/${path}`,
@@ -35,10 +36,16 @@ test("one-click video starts hidden capture and opens review only after Stop", a
     sender: { url: "chrome-extension://test/offscreen-video.html" },
     onMessage: { addListener: (fn: any) => (receive = fn) },
     onDisconnect: { addListener: () => {} },
-    postMessage() {},
+    postMessage: (message: any) => commands.push(message),
     disconnect() {},
   };
   connect(port);
+  assert.equal(commands.length, 0, "the stream waits for the offscreen listener");
+  receive({ action: "ready" });
+  assert.equal(commands.length, 1);
+  assert.equal(commands[0].action, "start");
+  receive({ action: "ready" });
+  assert.equal(commands.length, 1, "duplicate readiness cannot restart media");
   receive({ sourceTabId: 10, reviewId: "review-a", state: "recording", elapsedMs: 0 });
   assert.equal(created.length, 0);
   receive({
@@ -53,6 +60,41 @@ test("one-click video starts hidden capture and opens review only after Stop", a
   assert.equal(created[0].active, true);
   assert.match(created[0].url, /video\.html\?sourceTabId=10.*draftId=draft-1/);
   assert.equal(messages.at(-1)[1].state, "ready");
+});
+
+test("offscreen readiness before capture configuration starts media once", async () => {
+  let connect: any, receive: any, releaseConfig: any, captureStarted: any;
+  const commands: any[] = [];
+  const starting = new Promise((resolve) => (captureStarted = resolve));
+  const configuration = new Promise((resolve) => (releaseConfig = resolve));
+  const controller = createRecordingControls({
+    chrome: {
+      runtime: {
+        getURL: (path: string) => `chrome-extension://test/${path}`,
+        onConnect: { addListener: (fn: any) => (connect = fn) },
+      },
+      tabs: { sendMessage: async () => {} },
+    },
+    sessionFor: async () => ({ reviewId: "review-a" }),
+    startCapture: async () => {
+      captureStarted();
+      return configuration;
+    },
+  });
+  const opened = controller.open({ tab: { id: 10 } });
+  await starting;
+  connect({
+    name: "feedbacks-video-offscreen",
+    sender: { url: "chrome-extension://test/offscreen-video.html" },
+    onMessage: { addListener: (fn: any) => (receive = fn) },
+    onDisconnect: { addListener: () => {} },
+    postMessage: (message: any) => commands.push(message),
+  });
+  receive({ action: "ready" });
+  assert.equal(commands.length, 0);
+  releaseConfig({ streamId: "one-use-stream" });
+  await opened;
+  assert.deepEqual(commands, [{ action: "start", streamId: "one-use-stream" }]);
 });
 
 test("recording controls stay with their source tab and stop on disconnect", async () => {

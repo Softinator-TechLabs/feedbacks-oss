@@ -30,11 +30,12 @@ The extension adds Chrome's `offscreen` permission and moves local video storage
 - A hidden recorder is required to avoid an unexplained tab in the tab strip. A background tab styled differently would still expose that tab and would not meet the request.
 - The source-page controls own pre-start choices; the review page owns trim, crop, frame selection, comment, and Send.
 - Upload percent represents bytes handed to the browser transport, then waits visibly for server confirmation. Only a successful response marks video as uploaded.
+- Chrome can connect the offscreen port before its script installs the message listener. The recorder now announces readiness after listener registration and repeats that announcement until the worker sends the one-use stream configuration. Browser QA deliberately delays listener registration to verify the handoff.
 
 ## Completion receipt
 
-Source revision: pending.
-Checks and results: pending.
-Artifacts: pending.
+Source revision: PR #120, final revision pending CI.
+Checks and results: `npm run check`, `npm run qa:recording-browser` (23/23), `npm run qa:extension-browser`, `npm run test:postgres` (2/2), `npm audit --audit-level=high` (0 vulnerabilities), and packaged delayed-listener QA pass locally. Exact-revision CI pending.
+Artifacts: extension 0.1.39 ZIP, SHA-256 `61c54c8e585a1df6c28e46c0a9e7586f235ae303ec269b7b6e162206cfde41e0`.
 Deployment and live verification: pending.
-Remaining risks or follow-up: pending.
+Remaining risks or follow-up: native toolbar/Store permission acceptance and live capture on the installed package remain separate gates.
