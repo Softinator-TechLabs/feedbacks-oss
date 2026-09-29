@@ -21,7 +21,7 @@ Use incremental feature folders and extraction. Keep browser and server entrypoi
 - [x] Group project, member, and account settings by feature.
 - [x] Split broad web CSS by ownership boundaries without changing cascade order.
 - [x] Divide shared operation schemas into domain modules under `src/shared/contracts/`, preserving the single typed operation registry and generated catalog.
-- [ ] Extract extension capture, editing, and session concerns into focused folders while keeping manifest entrypoints, Chrome message behavior, and ZIP contents compatible.
+- [x] Extract extension capture, editing, and session concerns into focused folders while keeping manifest entrypoints, Chrome message behavior, and ZIP contents compatible.
 - [x] Split extension browser QA setup and shared page fixture into focused modules.
 - [ ] Split the remaining sequential acceptance scenario runner into independent workflows.
 - [x] Reassess server transport and dispatch for focused extraction; preserve transaction and authorization boundaries.
@@ -48,6 +48,10 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Extracted the extension browser setup scenario and mutable synthetic page fixture under `scripts/qa/extension/`. The full packaged Chromium QA sequence and Node 22 check pass. The remaining long sequential runner is a follow-up for smaller independent scenarios.
 - 2026-09-29: Moved the worker capture workflow and its in-progress guard into `extension/capture/workflow.js`. Kept the manifest worker entrypoint and Chrome calls in the same order. The Chromium capture acceptance and full Node 22 check pass.
 - 2026-09-29: Moved the worker submission, combined-image repair, progress, and busy guard into `extension/submission/workflow.js`. The worker fell from 2,587 to 1,651 lines across capture and submission extractions. The Chromium submit acceptance and full Node 22 check pass.
+- 2026-09-29: Rebasing onto Account UX PR #114 kept the new tabs, mobile Menu CSS, and token suffix contract in their feature modules. The full Node 22 check and native PostgreSQL checks pass on the rebased branch.
+- 2026-09-29: Reconstructed the web stylesheet from its ordered feature imports and compared every nonblank CSS line with the merged `origin/main` stylesheet: 2,280 lines matched in the same order. The Account component body also matches the merged source exactly.
+- 2026-09-29: Moved screenshot export rendering and PDF/raster assembly from the editor entrypoint into `extension/capture/editor-export.js`. Moved the point-view freeze helper from the content entrypoint into the already injected `frame-dom.js`. The ZIP still uses the same entrypoints and the packaged browser QA sequence passes.
+- 2026-09-29: Split the browser acceptance runner's popup/options, optional public capture, and recording-control workflows into `scripts/qa/extension/` modules. Keep scenario order and the same disposable browser. The complete suite must pass again after this last split.
 
 ## Completion receipt
 

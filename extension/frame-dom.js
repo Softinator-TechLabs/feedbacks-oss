@@ -124,10 +124,76 @@
     );
     scan(doc);
   }
+  function holdPointView(el) {
+    // A temporary stylesheet keeps CSS hover and JS-driven accordion styles at
+    // their selected values. Inline styles alone lose to animation frame writes.
+    const properties = [
+      "display",
+      "visibility",
+      "opacity",
+      "transform",
+      "translate",
+      "scale",
+      "rotate",
+      "clip-path",
+    ];
+    const attribute = `data-feedbacks-freeze-${crypto.randomUUID()}`;
+    const entries = [];
+    for (
+      let node = el;
+      node && node !== node.ownerDocument.documentElement;
+      node = node.parentElement
+    ) {
+      const style = node.ownerDocument.defaultView.getComputedStyle(node);
+      const pinned = node === node.ownerDocument.body ? [] : properties;
+      const dimensions =
+        node.style.height && style.overflowY !== "visible"
+          ? ["height", "max-height"]
+          : [];
+      const values = [...pinned, ...dimensions]
+        .map((name) => `${name}:${style.getPropertyValue(name)} !important`)
+        .join(";");
+      entries.push({ node, values, x: node.scrollLeft, y: node.scrollTop });
+    }
+    const doc = el.ownerDocument;
+    const sheet = new doc.defaultView.CSSStyleSheet();
+    sheet.replaceSync(
+      entries
+        .map(
+          ({ values }, i) =>
+            `[${attribute}="${i}"] {${values};transition:none !important;animation-play-state:paused !important}`,
+        )
+        .join("\n"),
+    );
+    entries.forEach(({ node }, i) => node.setAttribute(attribute, String(i)));
+    doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, sheet];
+    const restoreScroll = () => {
+      for (const { node, x, y } of entries) {
+        if (node.scrollLeft !== x) node.scrollLeft = x;
+        if (node.scrollTop !== y) node.scrollTop = y;
+      }
+    };
+    restoreScroll();
+    doc.defaultView.addEventListener("scroll", restoreScroll, true);
+    const motions = doc
+      .getAnimations()
+      .filter((motion) => motion.playState === "running");
+    for (const motion of motions) motion.pause();
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      doc.defaultView.removeEventListener("scroll", restoreScroll, true);
+      doc.adoptedStyleSheets = doc.adoptedStyleSheets.filter((value) => value !== sheet);
+      for (const { node } of entries) node.removeAttribute(attribute);
+      for (const motion of motions) if (motion.playState === "paused") motion.play();
+    };
+  }
   globalThis.FeedbacksFrames = {
     rect,
     path,
     find,
+    holdPointView,
     listen(type, handler, options) {
       const spec = { type, handler, options };
       listeners.push(spec);

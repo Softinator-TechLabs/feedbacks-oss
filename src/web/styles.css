@@ -9,8 +9,9 @@
 @import "./styles/account/auth.css";
 @import "./styles/threads/layout.css";
 @import "./styles/members/management.css";
-@import "./styles/projects/integrations.css";
+@import "./styles/account/tokens.css";
 @import "./styles/account/tabs.css";
+@import "./styles/projects/integrations.css";
 @import "./styles/help/main.css";
 @import "./styles/responsive.css";
 @import "./styles/list-followups.css";
