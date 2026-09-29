@@ -1,3 +1,6 @@
+import { verifySharedPins } from "./qa/extension/shared-pins.mjs";
+import { verifyPendingPoints } from "./qa/extension/pending-points.mjs";
+import { verifyMultiscrollReview } from "./qa/extension/multiscroll-review.mjs";
 import { verifyInlineSubmission } from "./qa/extension/inline-submission.mjs";
 import { verifyReviewInteractions } from "./qa/extension/review-interactions.mjs";
 import { verifyCaptureSafety } from "./qa/extension/capture-safety.mjs";
@@ -336,453 +339,58 @@ try {
       auth,
     },
   );
-  const hoverComments = ["Make this heading **clearer**", "Repair this link"];
-  const inspectPin = (body) =>
-    worker.evaluate(
-      async ({ tabId, body }) => {
-        const [result] = await chrome.scripting.executeScript({
-          target: { tabId },
-          func: (body) => {
-            const root = globalThis.__feedbacksQaRoot;
-            const pin = [...(root?.querySelectorAll("button.pin") || [])].find((item) =>
-              item.getAttribute("aria-label")?.includes(body),
-            );
-            if (!pin) return null;
-            const rect = pin.getBoundingClientRect();
-            return {
-              x: rect.x + rect.width / 2,
-              y: rect.y + rect.height / 2,
-              preview: root.querySelector(".preview")?.textContent,
-              link: root.querySelector(".preview a")?.getAttribute("href"),
-              resolve: !!root.querySelector(".preview button.resolve-thread"),
-              visible: getComputedStyle(pin).visibility !== "hidden",
-            };
-          },
-          args: [body],
-        });
-        return result.result;
-      },
-      { tabId: id, body },
-    );
-  for (const comment of hoverComments) {
-    let point;
-    for (let attempt = 0; attempt < 30; attempt++) {
-      point = await inspectPin(comment);
-      if (point) break;
-      await page.waitForTimeout(200);
-    }
-    assert.ok(point, `Saved point is not visible on its element: ${comment}`);
-    await page.mouse.move(point.x, point.y);
-    const hovered = await inspectPin(comment);
-    assert.ok(hovered?.preview?.includes(comment));
-    assert.match(hovered.preview, /just now|ago/);
-    assert.equal(hovered.link, `${access.url}/threads/${inlineThreadId}`);
-    assert.equal(hovered.resolve, true);
-  }
-  const firstPoint = await inspectPin(hoverComments[0]);
-  await page.evaluate(({ x, y }) => {
-    const menu = document.createElement("div");
-    menu.id = "qa-covering-menu";
-    menu.style.cssText = `position:fixed;left:${x - 40}px;top:${y - 40}px;width:80px;height:80px;background:white;z-index:1000`;
-    document.body.append(menu);
-  }, firstPoint);
-  await page.mouse.move(firstPoint.x + 1, firstPoint.y + 1);
-  // MutationObserver and the paint/occlusion frames may span more than 50 ms
-  // on a busy CI browser. Wait for the actual state, not one assumed frame.
-  for (let attempt = 0; attempt < 20; attempt++) {
-    if ((await inspectPin(hoverComments[0]))?.visible === false) break;
-    await page.waitForTimeout(50);
-  }
-  assert.equal((await inspectPin(hoverComments[0]))?.visible, false);
-  await page.locator("#qa-covering-menu").evaluate((menu) => menu.remove());
-  await page.mouse.move(firstPoint.x + 2, firstPoint.y + 2);
-  for (let attempt = 0; attempt < 20; attempt++) {
-    if ((await inspectPin(hoverComments[0]))?.visible === true) break;
-    await page.waitForTimeout(50);
-  }
-  assert.equal((await inspectPin(hoverComments[0]))?.visible, true);
-  await page.mouse.move(800, 400);
-  await page.waitForTimeout(200);
-  await page.mouse.move(firstPoint.x, firstPoint.y);
-  for (let attempt = 0; attempt < 20; attempt++) {
-    if ((await inspectPin(hoverComments[0]))?.resolve) break;
-    await page.waitForTimeout(50);
-  }
-  await page.screenshot({
-    path: join(root, ".local/remaining-todos-qa/inline-comment-hover.png"),
+  const teammateAuth = await verifySharedPins({
+    page,
+    worker,
+    id,
+    send,
+    results,
+    root,
+    post,
+    auth,
+    access,
+    inlineThreadId,
+    inlineThread,
+    paired,
   });
-  const resolveClick = await worker.evaluate(async (tabId) => {
-    const [entry] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        const control = globalThis.__feedbacksQaRoot.querySelector(
-          ".preview button.resolve-thread",
-        );
-        const before = {
-          found: !!control,
-          disabled: control?.disabled,
-          action: typeof control?.onclick,
-        };
-        control?.click();
-        return before;
-      },
-    });
-    return entry.result;
-  }, id);
-  assert.equal(resolveClick.found, true);
-  assert.equal(resolveClick.disabled, false);
-  for (let attempt = 0; attempt < 30; attempt++) {
-    const current = (await post("threads.get", { threadId: inlineThreadId }, auth)).data;
-    if (
-      current.annotationStates?.[inlineThread.context.annotations[0].id]?.state ===
-      "resolved"
-    )
-      break;
-    await page.waitForTimeout(100);
-  }
-  assert.equal(
-    (await post("threads.get", { threadId: inlineThreadId }, auth)).data.annotationStates[
-      inlineThread.context.annotations[0].id
-    ].state,
-    "resolved",
-  );
-  assert.equal(
-    (await post("threads.get", { threadId: inlineThreadId }, auth)).data.work.state,
-    "open",
-    "Resolving one pin must leave the thread and other points open",
-  );
-  const overview = await send({ type: "pageOverview", tabId: id, scope: "page" });
-  assert.ok(overview.summary.points.resolved >= 1);
-  assert.equal(new URL(overview.url).searchParams.get("url"), page.url());
-  assert.equal(new URL(overview.url).pathname, `/projects/${inlineThread.projectId}`);
-  const teammate = (
-    await post(
-      "members.create",
-      {
-        name: "Team reviewer",
-        email: "reviewer@example.test",
-        password: "Synthetic-Reviewer-Pass-123",
-        grants: [{ projectId: inlineThread.projectId, role: "reviewer" }],
-      },
-      auth,
-    )
-  ).data;
-  assert.ok(teammate.id);
-  const teammateLogin = await post("auth.login", {
-    email: "reviewer@example.test",
-    password: "Synthetic-Reviewer-Pass-123",
+  await verifyPendingPoints({
+    fixture,
+    toFixture,
+    exposeReviewRoot,
+    send,
+    id,
+    page,
+    root,
+    worker,
+    context,
+    extensionId,
+    draft,
+    post,
+    auth,
+    teammateAuth,
+    access,
+    saveInlinePoint,
+    setCaptureMarker,
+    results,
   });
-  const teammateAuth = {
-    cookie: teammateLogin.cookie,
-    csrf: teammateLogin.data.csrf,
-  };
-  const teammatePairing = (await post("pairing.request", { name: "Team browser" })).data;
-  await post("pairing.approve", { pairingId: teammatePairing.pairingId }, teammateAuth);
-  const teammateToken = (
-    await post("pairing.poll", {
-      pairingId: teammatePairing.pairingId,
-      deviceSecret: teammatePairing.deviceSecret,
-    })
-  ).data.token;
-  await send({ type: "popupAction", tabId: id, action: "stop" });
-  await worker.evaluate(
-    ({ server, token }) =>
-      chrome.storage.local.set({
-        accounts: { [server]: { token } },
-      }),
-    { server: access.url, token: teammateToken },
-  );
-  await send({ type: "activate", tabId: id });
-  await send({ type: "popupAction", tabId: id, action: "resolved" });
-  let teammatePin;
-  for (let attempt = 0; attempt < 30; attempt++) {
-    teammatePin = await inspectPin(hoverComments[0]);
-    if (teammatePin?.visible) break;
-    await page.waitForTimeout(100);
-  }
-  assert.ok(teammatePin?.visible, "A teammate should see the published point");
-  await page.mouse.move(teammatePin.x, teammatePin.y);
-  for (let attempt = 0; attempt < 30; attempt++) {
-    teammatePin = await inspectPin(hoverComments[0]);
-    if (teammatePin?.link) break;
-    await page.waitForTimeout(100);
-  }
-  assert.equal(teammatePin?.resolve, false);
-  assert.equal(teammatePin?.link, `${access.url}/threads/${inlineThreadId}`);
-  results.inlineReview.teammateCanRead = true;
-  await page.setViewportSize({ width: 390, height: 650 });
-  await page.waitForTimeout(200);
-  const publishedMobile = await inspectPin(hoverComments[0]);
-  assert.ok(
-    publishedMobile?.visible,
-    "A uniquely matched shared pin follows its element across screen sizes",
-  );
-  assert.ok(publishedMobile.x < 390);
-  results.inlineReview.sharedResponsive = true;
-  await page.setViewportSize({ width: 900, height: 650 });
-  await send({ type: "popupAction", tabId: id, action: "stop" });
-  await worker.evaluate(
-    ({ server, token }) =>
-      chrome.storage.local.set({
-        accounts: { [server]: { token } },
-      }),
-    { server: access.url, token: paired.token },
-  );
-  results.inlineReview.hoverComments = hoverComments;
-
-  fixture.mode = "long";
-  await toFixture();
-  await exposeReviewRoot();
-  await send({ type: "activate", tabId: id });
-  assert.equal(
-    await saveInlinePoint(
-      page.getByRole("heading", { name: "Controlled page" }),
-      "Top point",
-    ),
-    1,
-  );
-  await page.locator("#lower").scrollIntoViewIfNeeded();
-  assert.equal(await saveInlinePoint(page.locator("#lower"), "Bottom point"), 2);
-  // Finalize from the collapsed dock, using only already saved originals.
-  await mkdir(join(root, ".local/finalize-qa"), { recursive: true });
-  await page.screenshot({ path: join(root, ".local/finalize-qa/pending-points.png") });
-  const finalizeState = await worker.evaluate(async (tabId) => {
-    const [entry] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        const button = globalThis.__feedbacksQaRoot.querySelector(".finalize-review");
-        return { visible: !!button && !button.hidden, label: button?.textContent };
-      },
-    });
-    return entry.result;
-  }, id);
-  assert.equal(finalizeState.visible, true, "Pending pins need a visible dock action");
-  assert.match(finalizeState.label, /2 unsent/);
-  assert.deepEqual(await setCaptureMarker("none", "large"), {
-    sizeDisabled: true,
-    marker: { style: "none", size: "large" },
+  await verifyMultiscrollReview({
+    setCaptureMarker,
+    page,
+    saveInlinePoint,
+    worker,
+    id,
+    send,
+    draft,
+    results,
+    context,
+    extensionId,
+    root,
+    previewDimensions,
+    toFixture,
+    exposeReviewRoot,
+    waitReview,
+    inspectReview,
   });
-  await worker.evaluate(() => {
-    globalThis.qaNativeCapture = chrome.tabs.captureVisibleTab;
-    chrome.tabs.captureVisibleTab = () => {
-      throw Error("Finalize must not capture");
-    };
-  });
-  // An old completed/empty editor must not swallow a new review.
-  const staleEditor = await context.newPage();
-  await staleEditor.goto(`chrome-extension://${extensionId}/editor.html`);
-  await page.bringToFront();
-  const freshEditor = context.waitForEvent("page");
-  await worker.evaluate(async (tabId) => {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        globalThis.__feedbacksQaRoot.querySelector(".finalize-review").click();
-      },
-    });
-  }, id);
-  await worker.evaluate(async () => {
-    for (let i = 0; i < 100; i++) {
-      const { draft } = await chrome.storage.local.get("draft");
-      if (draft?.capturePages?.length === 2 && !draft.captureError) return;
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    throw Error("Finalizing saved points did not prepare the draft");
-  });
-  await worker.evaluate(() => {
-    chrome.tabs.captureVisibleTab = globalThis.qaNativeCapture;
-  });
-  const multiVisible = await draft();
-  assert.equal(multiVisible.captureScope, "points");
-  assert.equal(multiVisible.capturePages.length, 2);
-  assert.deepEqual(multiVisible.context.captureMarker, { style: "none", size: "large" });
-  assert.ok(
-    multiVisible.pageToolStates.every((shapes) =>
-      shapes.some((shape) => shape.tool === "point" && shape.markerStyle === "none"),
-    ),
-  );
-  assert.deepEqual(
-    multiVisible.capturePages.map((item) => item.pointNumber),
-    [1, 2],
-  );
-  for (let i = 0; i < 2; i++)
-    assert.ok(
-      multiVisible.pageToolStates[i].some(
-        (shape) => shape.tool === "point" && shape.number === i + 1,
-      ),
-    );
-  assert.equal(multiVisible.captureError, null);
-  results.inlineReview.finalizeWithoutCapture = true;
-  assert.equal(multiVisible.context.pointEvidence, undefined);
-  assert.equal(multiVisible.context.liveAnnotations, undefined);
-  results.inlineReview.offscreenOriginalRetained = true;
-  const pointsEditor = await freshEditor;
-  await pointsEditor.waitForURL(
-    `chrome-extension://${extensionId}/editor.html?draft=${multiVisible.id}`,
-  );
-  assert.notEqual(pointsEditor, staleEditor);
-  await pointsEditor.locator("#send-header:not([disabled])").waitFor();
-  await page.bringToFront();
-  await send({ type: "resume" });
-  const resumedEditors = await worker.evaluate(async (url) => {
-    const editors = await chrome.runtime.getContexts({
-      contextTypes: ["TAB"],
-      documentUrls: [url],
-    });
-    return Promise.all(editors.map((editor) => chrome.tabs.get(editor.tabId)));
-  }, pointsEditor.url());
-  assert.equal(resumedEditors.length, 1, "Resume must reuse the matching editor");
-  assert.equal(resumedEditors[0].active, true);
-  await staleEditor.close();
-  assert.equal(await pointsEditor.locator("#point-notes textarea").count(), 2);
-  await pointsEditor.locator("#send-header").click();
-  await pointsEditor.locator("#thread:not([hidden])").waitFor();
-  const pointsThreadId = (await pointsEditor.locator("#thread").getAttribute("href"))
-    .split("/")
-    .at(-1);
-  const pointsThread = (await post("threads.get", { threadId: pointsThreadId }, auth))
-    .data;
-  assert.equal(pointsThread.assets.length, 2, "Only the two originals should upload");
-  assert.equal(pointsThread.context.annotations.length, 2);
-  assert.equal(pointsThread.context.captureMarker.style, "none");
-  assert.ok(
-    pointsThread.assets.every((asset) =>
-      asset.markings.some((mark) => mark.tool === "point"),
-    ),
-  );
-  assert.deepEqual(
-    pointsThread.assets.map(
-      (asset) => asset.markings.find((mark) => mark.tool === "point")?.annotationId,
-    ),
-    pointsThread.context.annotations.map((item) => item.id),
-  );
-  const markerCookieSplit = teammateAuth.cookie.indexOf("=");
-  await context.addCookies([
-    {
-      name: teammateAuth.cookie.slice(0, markerCookieSplit),
-      value: teammateAuth.cookie.slice(markerCookieSplit + 1),
-      url: access.url,
-      sameSite: "Strict",
-    },
-  ]);
-  const noMarkerThreadPage = await context.newPage();
-  const noMarkerResponse = await noMarkerThreadPage.goto(
-    `${access.url}/threads/${pointsThreadId}`,
-  );
-  await noMarkerThreadPage.waitForTimeout(700);
-  if (
-    !(await noMarkerThreadPage
-      .getByRole("heading", { name: "Review on the page" })
-      .count())
-  )
-    throw Error(
-      `No-marker thread did not render: ${JSON.stringify({ status: noMarkerResponse?.status(), url: noMarkerThreadPage.url(), text: (await noMarkerThreadPage.locator("body").innerText()).slice(0, 500) })}`,
-    );
-  assert.equal(await noMarkerThreadPage.locator(".review-point-figure img").count(), 2);
-  assert.equal(await noMarkerThreadPage.locator(".review-image-pin").count(), 0);
-  assert.equal(
-    await noMarkerThreadPage.getByRole("button", { name: "Hide pins" }).count(),
-    0,
-  );
-  await noMarkerThreadPage.close();
-  await context.clearCookies();
-  assert.equal(await draft(), undefined);
-  await pointsEditor.close();
-  await page.bringToFront();
-  await setCaptureMarker("ring", "small");
-  // New editor tabs change the native capture area in headless Chromium.
-  await page.setViewportSize({ width: 900, height: 563 });
-  await page.evaluate(() => scrollTo(0, 0));
-  await saveInlinePoint(
-    page.getByRole("heading", { name: "Controlled page" }),
-    "Top point",
-  );
-  await page.locator("#lower").scrollIntoViewIfNeeded();
-  await saveInlinePoint(page.locator("#lower"), "Bottom point");
-  await page.bringToFront();
-  await worker.evaluate((tabId) => chrome.tabs.update(tabId, { active: true }), id);
-  const multiScroll = await send({
-    type: "popupAction",
-    tabId: id,
-    action: "capture-full",
-  });
-  const multiScrollDraft = await draft();
-  assert.equal(multiScroll.captured, true, JSON.stringify(multiScroll));
-  assert.equal(multiScrollDraft.captureScope, "fullPage");
-  assert.equal(multiScrollDraft.context.annotations.length, 2);
-  const markedPages = multiScrollDraft.pageToolStates.flatMap((states, pageIndex) =>
-    states.map((shape) => [pageIndex, shape.number]),
-  );
-  assert.ok(markedPages.some(([, number]) => number === 1));
-  assert.ok(markedPages.some(([, number]) => number === 2));
-  assert.notEqual(
-    markedPages.find(([, number]) => number === 1)[0],
-    markedPages.find(([, number]) => number === 2)[0],
-  );
-  results.inlineReview.multiScrollPages = markedPages;
-  const multiEditor = await context.newPage();
-  await multiEditor.goto(`chrome-extension://${extensionId}/editor.html`);
-  await multiEditor.locator("#full-page-toggle:not([disabled])").waitFor();
-  const editorViewport = multiEditor.viewportSize();
-  for (const width of [1280, 390, 320]) {
-    await multiEditor.setViewportSize({ width, height: 800 });
-    await multiEditor.evaluate(() => scrollTo(0, document.body.scrollHeight));
-    const headerState = await multiEditor.evaluate(() => {
-      const button = document.getElementById("send-header");
-      const rect = button.getBoundingClientRect();
-      return {
-        visible: rect.top >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth,
-        reachable: button.contains(
-          document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2),
-        ),
-        overflow: document.documentElement.scrollWidth > innerWidth,
-      };
-    });
-    assert.deepEqual(headerState, { visible: true, reachable: true, overflow: false });
-    const pointHeading = multiEditor.locator(".point-note-heading").first();
-    await pointHeading.scrollIntoViewIfNeeded();
-    const label = await pointHeading.locator("label").boundingBox();
-    const original = await pointHeading.locator("button").boundingBox();
-    assert.ok(
-      original.x >= label.x + label.width + 11 ||
-        original.y >= label.y + label.height + 7,
-      "Point label and original-image action need a visible gap, including when wrapped",
-    );
-    if (width !== 320)
-      await multiEditor.screenshot({
-        path: join(root, `.local/remaining-todos-qa/editor-actions-${width}.png`),
-      });
-  }
-  await multiEditor.setViewportSize(editorViewport);
-  await multiEditor.evaluate(() => scrollTo(0, 0));
-
-  await multiEditor.getByRole("button", { name: "Full page preview" }).click();
-  await previewDimensions(multiEditor);
-  const continuousHeight = multiScrollDraft.capturePages
-    .filter((item) => !item.annotationId)
-    .reduce((sum, item) => sum + item.pixelHeight, 0);
-  assert.equal((await previewDimensions(multiEditor)).height, continuousHeight);
-  results.inlineReview.combinedExcludesOriginals = true;
-  await multiEditor.close();
-  await send({ type: "discard" });
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await toFixture();
-  await exposeReviewRoot();
-  await send({ type: "activate", tabId: id });
-  await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
-  await waitReview((state) => state.ready);
-  await page.screenshot({
-    path: join(root, ".local/remaining-todos-qa/inline-comment-mobile.png"),
-  });
-  await page.keyboard.press("Escape");
-  assert.equal((await inspectReview()).ready, false);
-  assert.equal(await page.locator("#feedbacks-review-root").count(), 1);
-  await page.keyboard.press("Escape");
-  await page.locator("#feedbacks-review-root").waitFor({ state: "detached" });
-  results.escapeClosesEditorBeforeExit = true;
-  await page.setViewportSize({ width: 900, height: 650 });
-
   for (const scope of ["short", "long", "tall", "tooLong", "clipped"]) {
     fixture.mode = scope;
     if (["tall", "tooLong"].includes(scope))
