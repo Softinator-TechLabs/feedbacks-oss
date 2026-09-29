@@ -12,6 +12,7 @@ import {
   listDiagnosticEvidence,
   describeDiagnosticEvidence,
   readDiagnosticPage,
+  searchDiagnosticEvents,
 } from "./diagnostic-evidence.js";
 import { moveThread } from "./thread-move.js";
 import type { Database } from "./db.js";
@@ -210,6 +211,10 @@ export class Operations {
         if (name === "diagnostics.begin") return beginDiagnosticEvidence(db, a, i);
         if (name === "diagnostics.list") return listDiagnosticEvidence(db, a, i);
         if (name === "diagnostics.describe") return describeDiagnosticEvidence(db, a, i);
+        if (name === "diagnostics.search") {
+          await this.currentForOperation(db, a, "diagnostics.read");
+          return searchDiagnosticEvents(db, a, i);
+        }
         if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
         if (name.startsWith("views.")) return views(db, a, name, i);
         if (name.startsWith("assets.")) {

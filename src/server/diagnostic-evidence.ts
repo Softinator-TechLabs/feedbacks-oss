@@ -13,6 +13,12 @@ import type { Database } from "./db.js";
 import { DomainError, fail } from "./errors.js";
 import { checkRevision, fullThread, saveThread, threadRow } from "./feedback.js";
 import { diagnosticSummary as summary } from "./diagnostic-summary.js";
+import {
+  createDiagnosticEventIndexer,
+  DIAGNOSTIC_EVENT_INDEX_ROWS,
+  DIAGNOSTIC_EVENT_SCAN_LINES,
+  type DiagnosticEventLocator,
+} from "./diagnostic-event-index.js";
 
 export async function diagnosticRow(
   db: Database,
@@ -255,8 +261,17 @@ export async function finalizeDiagnosticEvidence(
     values.push(chunk);
     byFile.set(chunk.file_id, values);
   }
+  const indexRows: DiagnosticEventLocator[] = [];
+  const indexReasons = new Set<string>();
+  let scannedEvents = 0;
   for (const file of manifest.files) {
     const digest = createHash("sha256");
+    const indexer = ["console", "network", "performance"].includes(file.kind)
+      ? createDiagnosticEventIndexer(file.fileId, {
+          maxRows: DIAGNOSTIC_EVENT_INDEX_ROWS - indexRows.length,
+          maxEvents: DIAGNOSTIC_EVENT_SCAN_LINES - scannedEvents,
+        })
+      : null;
     for (const chunk of byFile.get(file.fileId) ?? []) {
       let bytes: Buffer;
       try {
@@ -274,9 +289,16 @@ export async function finalizeDiagnosticEvidence(
           503,
         );
       digest.update(bytes);
+      indexer?.push(chunk.sequence, bytes);
     }
     if (digest.digest("hex") !== file.sha256)
       fail("VALIDATION", "Diagnostic file checksum differs from stored bytes");
+    if (indexer) {
+      const indexed = indexer.finish();
+      indexRows.push(...indexed.rows);
+      scannedEvents += indexed.scannedCount;
+      for (const reason of indexed.reasons) indexReasons.add(reason);
+    }
   }
   return db.transaction(async (tx) => {
     const a = await current(tx, actor, "diagnostics.finalize");
@@ -291,9 +313,46 @@ export async function finalizeDiagnosticEvidence(
     );
     if (!rowsMatchManifest(chunks, manifest))
       fail("CONFLICT", "Diagnostic upload changed during finalization", 409);
+    for (let offset = 0; offset < indexRows.length; offset += 250) {
+      const batch = indexRows.slice(offset, offset + 250);
+      const values: unknown[] = [];
+      const slots = batch.map((event, index) => {
+        const start = values.length;
+        values.push(
+          row.id,
+          offset + index,
+          event.fileId,
+          event.sequence,
+          event.byteOffset,
+          event.byteLength,
+          event.ingressAt,
+          event.requestId,
+          event.method,
+        );
+        return `(${Array.from({ length: 9 }, (_, column) => `$${start + column + 1}`).join(",")})`;
+      });
+      await tx.query(
+        `INSERT INTO diagnostic_event_index(evidence_id,ordinal,file_id,sequence,byte_offset,byte_length,ingress_at,request_id,method) VALUES ${slots.join(",")}`,
+        values,
+      );
+    }
+    await tx.query(
+      "INSERT INTO diagnostic_event_index_state(evidence_id,status,indexed_count,reasons) VALUES($1,$2,$3,$4)",
+      [
+        row.id,
+        indexReasons.size ? "partial" : "complete",
+        indexRows.length,
+        [...indexReasons],
+      ],
+    );
     const publicSummary = {
       totalBytes: manifest.totalBytes,
       fileCount: manifest.files.length,
+      endedAt: manifest.endedAt,
+      domBytes: manifest.files
+        .filter((file) => file.kind === "dom")
+        .reduce((sum, file) => sum + file.byteLength, 0),
+      ...(manifest.stats ? { stats: manifest.stats } : {}),
       coverage: Object.fromEntries(
         Object.entries(manifest.coverage).map(([kind, value]) => [kind, value.status]),
       ),
@@ -481,6 +540,63 @@ export async function readDiagnosticPage(
       ? { dataBase64: Buffer.from(page.data).toString("base64") }
       : { text: page.text }),
     next,
+  };
+}
+
+export async function searchDiagnosticEvents(db: Database, actor: Actor, input: any) {
+  const { row } = await diagnosticRow(db, actor, input.evidenceId);
+  if (row.status !== "complete")
+    fail("CONFLICT", "Diagnostic evidence is not complete", 409);
+  const state = await db.one(
+    "SELECT status,indexed_count,reasons FROM diagnostic_event_index_state WHERE evidence_id=$1",
+    [row.id],
+  );
+  if (!state)
+    return {
+      index: { status: "unavailable", indexedCount: 0, reasons: ["index_unavailable"] },
+      items: [],
+      next: null,
+    };
+  const values: unknown[] = [row.id];
+  const bind = (value: unknown) => {
+    values.push(value);
+    return `$${values.length}`;
+  };
+  const where = ["evidence_id=$1"];
+  if (input.requestId !== undefined) where.push(`request_id=${bind(input.requestId)}`);
+  if (input.fromMs !== undefined) where.push(`ingress_at>=${bind(input.fromMs)}`);
+  if (input.toMs !== undefined) where.push(`ingress_at<=${bind(input.toMs)}`);
+  if (input.cursor)
+    where.push(
+      `(ingress_at,ordinal)>(${bind(input.cursor.ingressAt)},${bind(input.cursor.ordinal)})`,
+    );
+  const rows = await db.query(
+    `SELECT ordinal,file_id,sequence,byte_offset,byte_length,ingress_at,request_id,method
+     FROM diagnostic_event_index WHERE ${where.join(" AND ")}
+     ORDER BY ingress_at,ordinal LIMIT ${bind(input.limit + 1)}`,
+    values,
+  );
+  const selected = rows.slice(0, input.limit);
+  const last = selected.at(-1);
+  return {
+    index: {
+      status: state.status,
+      indexedCount: state.indexed_count,
+      reasons: state.reasons,
+    },
+    items: selected.map((event) => ({
+      fileId: event.file_id,
+      sequence: event.sequence,
+      byteOffset: event.byte_offset,
+      byteLength: event.byte_length,
+      ingressAt: Number(event.ingress_at),
+      requestId: event.request_id,
+      method: event.method,
+    })),
+    next:
+      rows.length > input.limit && last
+        ? { ingressAt: Number(last.ingress_at), ordinal: last.ordinal }
+        : null,
   };
 }
 

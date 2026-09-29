@@ -367,5 +367,32 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       );
       await tx.query("INSERT INTO migrations(version) VALUES(25)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=26"))) {
+      await tx.query(`CREATE TABLE diagnostic_event_index_state(
+        evidence_id uuid PRIMARY KEY REFERENCES diagnostic_evidence(id) ON DELETE CASCADE,
+        status text NOT NULL CHECK(status IN ('complete','partial')),
+        indexed_count integer NOT NULL CHECK(indexed_count BETWEEN 0 AND 50000),
+        reasons text[] NOT NULL DEFAULT '{}'
+      )`);
+      await tx.query(`CREATE TABLE diagnostic_event_index(
+        evidence_id uuid NOT NULL REFERENCES diagnostic_evidence(id) ON DELETE CASCADE,
+        ordinal integer NOT NULL CHECK(ordinal BETWEEN 0 AND 49999),
+        file_id uuid NOT NULL,
+        sequence integer NOT NULL CHECK(sequence>=0),
+        byte_offset integer NOT NULL CHECK(byte_offset>=0),
+        byte_length integer NOT NULL CHECK(byte_length>0),
+        ingress_at bigint NOT NULL CHECK(ingress_at>=0),
+        request_id text,
+        method text NOT NULL,
+        PRIMARY KEY(evidence_id,ordinal)
+      )`);
+      await tx.query(
+        "CREATE INDEX diagnostic_event_time ON diagnostic_event_index(evidence_id,ingress_at,ordinal)",
+      );
+      await tx.query(
+        "CREATE INDEX diagnostic_event_request_time ON diagnostic_event_index(evidence_id,request_id,ingress_at,ordinal) WHERE request_id IS NOT NULL",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(26)");
+    }
   });
 }

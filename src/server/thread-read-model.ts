@@ -242,7 +242,12 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
     diagnosticEvidence: {
       count: diagnosticCount,
       latest: diagnosticLatest,
-      followUp: ["diagnostics.list", "diagnostics.describe", "diagnostics.read"],
+      followUp: [
+        "diagnostics.list",
+        "diagnostics.describe",
+        "diagnostics.search",
+        "diagnostics.read",
+      ],
     },
     workPlan: data.workPlan ?? {
       priority: "normal",

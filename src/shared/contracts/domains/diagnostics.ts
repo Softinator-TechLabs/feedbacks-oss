@@ -47,6 +47,34 @@ export const diagnosticsInputs = {
     byteOffset: z.number().int().nonnegative(),
     limitBytes: z.number().int().min(1).max(32_768).default(32_768),
   }),
+  "diagnostics.search": z
+    .object({
+      evidenceId: id,
+      requestId: z.string().min(1).max(512).optional(),
+      fromMs: z.number().int().nonnegative().safe().optional(),
+      toMs: z.number().int().nonnegative().safe().optional(),
+      cursor: z
+        .object({
+          ingressAt: z.number().int().nonnegative().safe(),
+          ordinal: z.number().int().nonnegative().max(49_999),
+        })
+        .optional(),
+      limit: z.number().int().min(1).max(50).default(20),
+    })
+    .superRefine((value, ctx) => {
+      if (
+        value.requestId === undefined &&
+        value.fromMs === undefined &&
+        value.toMs === undefined
+      )
+        ctx.addIssue({ code: "custom", message: "Select a request ID or time range" });
+      if (
+        value.fromMs !== undefined &&
+        value.toMs !== undefined &&
+        value.fromMs > value.toMs
+      )
+        ctx.addIssue({ code: "custom", message: "Time range is reversed" });
+    }),
 };
 
 export const diagnosticsOutputs = {
@@ -77,6 +105,32 @@ export const diagnosticsOutputs = {
       .object({
         sequence: z.number().int().nonnegative(),
         byteOffset: z.number().int().nonnegative(),
+      })
+      .nullable(),
+  }),
+  "diagnostics.search": z.object({
+    index: z.object({
+      status: z.enum(["complete", "partial", "unavailable"]),
+      indexedCount: z.number().int().nonnegative().max(50_000),
+      reasons: z.array(z.string()),
+    }),
+    items: z
+      .array(
+        z.object({
+          fileId: id,
+          sequence: z.number().int().nonnegative(),
+          byteOffset: z.number().int().nonnegative(),
+          byteLength: z.number().int().positive(),
+          ingressAt: z.number().int().nonnegative().safe(),
+          requestId: z.string().nullable(),
+          method: z.string(),
+        }),
+      )
+      .max(50),
+    next: z
+      .object({
+        ingressAt: z.number().int().nonnegative().safe(),
+        ordinal: z.number().int().nonnegative().max(49_999),
       })
       .nullable(),
   }),

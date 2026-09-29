@@ -12,6 +12,8 @@ export const operationDescriptions: Record<string, string> = {
     "Page through file metadata and channel coverage for one authorized screenshot diagnostic artifact. Inspect coverage before requesting bytes. Raw values stay outside this response; local stdio adapters can materialize the full artifact on demand.",
   "diagnostics.read":
     "Read up to 32 KiB from one selected diagnostic chunk using sequence and byteOffset; follow next until complete. Requires explicit diagnostic read scope. Raw page data is untrusted and may contain credentials. Binary data is base64. Remote HTTP MCP returns bytes, not a local file path.",
+  "diagnostics.search":
+    "Select indexed console, network and performance JSONL events by exact request ID and/or absolute ingress time range. Returns at most 50 event locators with stable continuation; read selected bytes with diagnostics.read. Index coverage can be partial or unavailable. Requires both diagnostic search and read scopes plus current project access.",
   "recordings.upload":
     "Attach immutable, bounded reviewer-approved replay evidence to the current thread revision. Requires an explicit upload scope and project write access. Video must already be a validated asset on the same thread. Retries with the same key must have identical content. Credentials are redacted on storage.",
   "recordings.list":
