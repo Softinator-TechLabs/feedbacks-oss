@@ -23,7 +23,7 @@ Use incremental feature folders and extraction. Keep browser and server entrypoi
 - [x] Divide shared operation schemas into domain modules under `src/shared/contracts/`, preserving the single typed operation registry and generated catalog.
 - [x] Extract extension capture, editing, and session concerns into focused folders while keeping manifest entrypoints, Chrome message behavior, and ZIP contents compatible.
 - [x] Split extension browser QA setup and shared page fixture into focused modules.
-- [x] Split the remaining sequential acceptance scenario runner into independent workflows.
+- [x] Split the remaining sequential acceptance scenario runner into feature scenario modules with explicit handoffs.
 - [x] Reassess server transport and dispatch for focused extraction; preserve transaction and authorization boundaries.
 - [ ] Run focused checks after every stage, then the full check, extension browser acceptance, native PostgreSQL checks where server behavior changes, and exact-revision CI. Review the final diff and update architecture and quality guidance.
 
