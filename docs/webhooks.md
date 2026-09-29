@@ -1,6 +1,6 @@
 # Signed project webhooks
 
-One project maintainer can configure one outbound destination per project from **Project settings → Webhooks** or through the authenticated [operation API](api.md). The feature is off until `webhooks.save` succeeds. The settings page shows the signing secret only after the initial save or rotation; copy it before leaving. The endpoint must be a public HTTPS URL on port 443 with no credentials, query or fragment. The worker resolves DNS for each attempt, rejects private addresses, pins the checked address for TLS, and does not follow redirects. A receiver must expose a public endpoint. The server needs outbound HTTPS and DNS access.
+One project maintainer can configure one outbound destination per project from **Project settings → Integrations → Webhooks** or through the authenticated [operation API](api.md). The feature is off until `webhooks.save` succeeds. The settings page shows the signing secret only after the initial save or rotation; copy it before leaving. The endpoint must be a public HTTPS URL on port 443 with no credentials, query or fragment. The worker resolves DNS for each attempt, rejects private addresses, pins the checked address for TLS, and does not follow redirects. A receiver must expose a public endpoint. The server needs outbound HTTPS and DNS access.
 
 | Operation             | Input             | Result                                                                 |
 | --------------------- | ----------------- | ---------------------------------------------------------------------- |

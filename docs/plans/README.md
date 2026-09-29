@@ -6,6 +6,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Project administration tabs](project-administration-tabs.md)
 - [Compact Account navigation](account-mobile-navigation.md)
 - [Session replay and agent debug bundles](session-replay.md)
 - [Detect the active Feedbacks server](extension-server-detection.md)
