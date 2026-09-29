@@ -294,7 +294,7 @@ export function createSessionReview(
   }
   let saveFrameButton;
   if (videoElement && onFrame) {
-    const save = make("button", "Save this frame");
+    const save = make("button", "Save this frame", "review-save-frame");
     saveFrameButton = save;
     save.type = "button";
     save.onclick = () => {
@@ -344,7 +344,10 @@ export function createSessionReview(
       render();
     }
   };
-  root.append(follow);
+  const eventControls = make("div", null, "review-event-controls");
+  const pagination = make("div", null, "review-toolbar review-pages");
+  eventControls.append(follow, pagination);
+  root.append(eventControls);
   const modeLabel = make("label", null, "review-mode"),
     mode = make("input");
   mode.type = "checkbox";
@@ -371,7 +374,13 @@ export function createSessionReview(
   details.append(detailSummary, detailBody);
   details.hidden = true;
   root.append(details);
-  if (frameAction) root.append(frameAction);
+  if (frameAction) {
+    const playback = document.querySelector("#trim-playback");
+    playback?.querySelector(".review-save-frame")?.remove();
+    if (playback)
+      playback.insertBefore(frameAction, playback.querySelector(".trim-bounds"));
+    else root.append(frameAction);
+  }
   if (annotationNotes) root.append(annotationNotes);
   root.append(guide);
   if (coverage) root.append(coverage);
@@ -508,9 +517,10 @@ export function createSessionReview(
       details.hidden = !visible;
       detailBody.textContent = visible ? JSON.stringify(visible.data, null, 2) : "";
     }
+    pagination.replaceChildren();
+    pagination.hidden = rows.length <= 200;
     if (rows.length > 200) {
-      const pagination = make("div", null, "review-toolbar"),
-        prev = make("button", "Earlier events"),
+      const prev = make("button", "Earlier events"),
         next = make("button", "Later events");
       prev.type = next.type = "button";
       prev.disabled = eventPage === 0;
@@ -531,7 +541,6 @@ export function createSessionReview(
         ),
         next,
       );
-      content.append(pagination);
     }
   }
   function seek(value, fromMedia = false) {

@@ -133,6 +133,12 @@ export async function exportVideo({ url, start, end, crop, signal, onProgress })
         error = Error("Video export failed. Original recording kept.");
         stopRecorder();
       };
+      recorder.onstart = () => {
+        // Publish a frame after the encoder is ready as well as before playback.
+        // This matters for a static source that reaches EOF almost immediately.
+        draw();
+        stream.getVideoTracks()[0]?.requestFrame?.();
+      };
       recorder.onstop = () => {
         clearTimeout(finishTimer);
         signal.removeEventListener("abort", abort);
