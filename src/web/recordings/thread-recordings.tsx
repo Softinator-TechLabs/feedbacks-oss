@@ -3,7 +3,6 @@ import type { Replayer } from "@rrweb/replay";
 import "@rrweb/replay/dist/style.css";
 import { installReplayResourcePolicy } from "./replay-policy.js";
 import { api, ApiError, errorText, uid, type Thread } from "../api.js";
-import { Icon } from "../icons.js";
 import {
   clampTime,
   formatRecordingTime,
@@ -13,28 +12,25 @@ import {
   recordingAnnotation,
   type Recording,
   type RecordingSummary,
-  type RecordingChannel,
 } from "./model.js";
 import {
   RecordingDiagnostics,
-  eventTitle,
   type DiagnosticTab,
   type EvidenceScope,
 } from "./diagnostics-panel.js";
+import {
+  RecordingTimeline,
+  recordingTimelineMarks,
+  type MediaMode,
+} from "./recording-timeline.js";
+import {
+  RecordingFrameControls,
+  RecordingReplayStage,
+  RecordingVideoStage,
+  type FrameAsset,
+} from "./recording-media.js";
 import "./thread-recordings.css";
 
-type MediaMode = "replay" | "video";
-
-type FrameAsset = {
-  id: string;
-  url: string;
-  recordingFrame: {
-    recordingId: string;
-    atMs: number;
-    videoTimeMs?: number;
-    annotationId?: string;
-  };
-};
 type PendingFrame = {
   imageBase64: string;
   atMs: number;
@@ -527,69 +523,10 @@ export function ThreadRecordings({
     !videoGap &&
     !frameBusy;
 
-  const timelineMarks = useMemo(() => {
-    if (!recording) return [];
-    const marks = new Map<
-      string,
-      {
-        atMs: number;
-        type: RecordingChannel | "point";
-        label: string;
-        error: boolean;
-        count: number;
-        position: number;
-        requestId?: string;
-      }
-    >();
-    for (const event of recording.events) {
-      if (!["activity", "console", "network", "performance"].includes(event.type))
-        continue;
-      const position = Math.round((event.atMs / Math.max(1, recording.durationMs)) * 200);
-      const key = `${event.type}:${position}`;
-      const data = event.data as Record<string, unknown> | null;
-      const error =
-        data?.level === "error" ||
-        !!data?.error ||
-        (typeof data?.status === "number" && data.status >= 400);
-      const prior = marks.get(key);
-      if (prior) {
-        prior.count++;
-        prior.error ||= error;
-      } else {
-        marks.set(key, {
-          atMs: event.atMs,
-          type: event.type,
-          label: eventTitle(event.type, event.data),
-          error,
-          count: 1,
-          position: Math.max(0, Math.min(200, position)),
-          requestId: typeof data?.requestId === "string" ? data.requestId : undefined,
-        });
-      }
-    }
-    for (const { annotation } of annotationFrames) {
-      marks.set(`point:${annotation.id}`, {
-        atMs: annotation.atMs,
-        type: "point",
-        label: annotation.body,
-        error: false,
-        count: 1,
-        position: Math.max(
-          0,
-          Math.min(
-            200,
-            Math.round((annotation.atMs / Math.max(1, recording.durationMs)) * 200),
-          ),
-        ),
-      });
-    }
-    return [...marks.values()]
-      .sort(
-        (a, b) =>
-          Number(b.type === "point") - Number(a.type === "point") || a.atMs - b.atMs,
-      )
-      .slice(0, 600);
-  }, [recording, thread.assets, thread.context?.annotations]);
+  const timelineMarks = useMemo(
+    () => (recording ? recordingTimelineMarks(recording, annotationFrames) : []),
+    [recording, thread.assets, thread.context?.annotations],
+  );
 
   return (
     <section
@@ -724,141 +661,66 @@ export function ThreadRecordings({
                   ? "network bodies included"
                   : "network bodies omitted"}
               </p>
-              <div className="recording-timeline">
-                <div className="recording-playback-actions">
-                  <button
-                    type="button"
-                    disabled={
-                      mediaMode === "replay" ? !replayReady : !videoAsset || !!videoGap
-                    }
-                    onClick={() => {
-                      if (mediaMode === "video") {
-                        const video = videoRef.current;
-                        if (!video) return;
-                        if (video.paused) void video.play();
-                        else video.pause();
-                        return;
-                      }
-                      const player = playerRef.current;
-                      if (!player) return;
-                      if (playing) {
-                        player.pause();
-                        replayClockRef.current = null;
-                        setPlaying(false);
-                      } else {
-                        setDiagnosticTab("everything");
-                        setEvidenceScope("all");
-                        replayClockRef.current = {
-                          atMs: cursorRef.current,
-                          startedAt: performance.now(),
-                        };
-                        player.play(
-                          Math.max(0, cursorRef.current - replayStartRef.current),
-                        );
-                        setFollowPlayback(true);
-                        setPlaying(true);
-                      }
-                    }}
-                  >
-                    {playing ? `Pause ${mediaMode}` : `Play ${mediaMode}`}
-                  </button>
-                  {mediaMode === "video" && videoAsset && (
-                    <>
-                      <button
-                        type="button"
-                        className="recording-icon-button"
-                        aria-label={videoMuted ? "Unmute video" : "Mute video"}
-                        title={videoMuted ? "Unmute video" : "Mute video"}
-                        onClick={() => {
-                          const video = videoRef.current;
-                          if (!video) return;
-                          video.muted = !video.muted;
-                          setVideoMuted(video.muted);
-                        }}
-                      >
-                        <Icon name={videoMuted ? "volumeOff" : "volume"} />
-                      </button>
-                      <button
-                        type="button"
-                        className="recording-icon-button"
-                        aria-label="Full screen video"
-                        title="Full screen video"
-                        onClick={() => void playerShellRef.current?.requestFullscreen()}
-                      >
-                        <Icon name="expand" />
-                      </button>
-                    </>
-                  )}
-                </div>
-                <label htmlFor="thread-recording-timeline" className="sr-only">
-                  Session position
-                </label>
-                <input
-                  id="thread-recording-timeline"
-                  type="range"
-                  min="0"
-                  max={Math.max(recording.durationMs, 1)}
-                  step="100"
-                  value={cursorMs}
-                  onChange={(event) => seek(Number(event.target.value))}
-                  aria-valuetext={`${formatRecordingTime(cursorMs)} of ${formatRecordingTime(recording.durationMs)} in the recorded session`}
-                />
-                <div
-                  className="recording-timeline-marks"
-                  aria-label="Events on recording timeline"
-                >
-                  {timelineMarks.map((mark, index) => (
-                    <button
-                      key={`${mark.type}-${mark.position}-${index}`}
-                      type="button"
-                      className="recording-timeline-mark"
-                      data-channel={mark.type}
-                      data-error={mark.error}
-                      data-align={
-                        mark.position < 35
-                          ? "start"
-                          : mark.position > 165
-                            ? "end"
-                            : "center"
-                      }
-                      style={{ left: `${mark.position / 2}%` }}
-                      aria-label={`${mark.type} at ${formatRecordingTime(mark.atMs)}: ${mark.label}`}
-                      onClick={() => {
-                        setFollowPlayback(false);
-                        setDiagnosticTab(
-                          mark.type === "network"
-                            ? "network"
-                            : mark.type === "console"
-                              ? "console"
-                              : mark.type === "performance"
-                                ? "performance"
-                                : "activity",
-                        );
-                        if (mark.requestId) setSelectedRequest(mark.requestId);
-                        setEvidenceScope("all");
-                        seek(mark.atMs);
-                      }}
-                    >
-                      <span className="recording-mark-tooltip" role="tooltip">
-                        <strong>
-                          {formatRecordingTime(mark.atMs)} ·{" "}
-                          {mark.type === "point"
-                            ? "Comment"
-                            : mark.type.charAt(0).toUpperCase() + mark.type.slice(1)}
-                        </strong>
-                        <span>
-                          {mark.label}
-                          {mark.count > 1 ? ` · ${mark.count} events` : ""}
-                        </span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <output htmlFor="thread-recording-timeline" title="Recorded session time">
-                  {formatRecordingTime(cursorMs)} /{" "}
-                  {formatRecordingTime(recording.durationMs)}
-                </output>
-              </div>
+              <RecordingTimeline
+                recording={recording}
+                marks={timelineMarks}
+                cursorMs={cursorMs}
+                mediaMode={mediaMode}
+                replayReady={replayReady}
+                videoAvailable={!!videoAsset}
+                videoGap={!!videoGap}
+                videoMuted={videoMuted}
+                playing={playing}
+                togglePlayback={() => {
+                  if (mediaMode === "video") {
+                    const video = videoRef.current;
+                    if (!video) return;
+                    if (video.paused) void video.play();
+                    else video.pause();
+                    return;
+                  }
+                  const player = playerRef.current;
+                  if (!player) return;
+                  if (playing) {
+                    player.pause();
+                    replayClockRef.current = null;
+                    setPlaying(false);
+                  } else {
+                    setDiagnosticTab("everything");
+                    setEvidenceScope("all");
+                    replayClockRef.current = {
+                      atMs: cursorRef.current,
+                      startedAt: performance.now(),
+                    };
+                    player.play(Math.max(0, cursorRef.current - replayStartRef.current));
+                    setFollowPlayback(true);
+                    setPlaying(true);
+                  }
+                }}
+                toggleMute={() => {
+                  const video = videoRef.current;
+                  if (!video) return;
+                  video.muted = !video.muted;
+                  setVideoMuted(video.muted);
+                }}
+                enterFullscreen={() => void playerShellRef.current?.requestFullscreen()}
+                seek={seek}
+                selectMark={(mark) => {
+                  setFollowPlayback(false);
+                  setDiagnosticTab(
+                    mark.type === "network"
+                      ? "network"
+                      : mark.type === "console"
+                        ? "console"
+                        : mark.type === "performance"
+                          ? "performance"
+                          : "activity",
+                  );
+                  if (mark.requestId) setSelectedRequest(mark.requestId);
+                  setEvidenceScope("all");
+                  seek(mark.atMs);
+                }}
+              />
               <div className="recording-workspace">
                 <div
                   className="recording-media"
@@ -890,152 +752,70 @@ export function ThreadRecordings({
                   </div>
                   <div className="recording-media-content">
                     {mediaMode === "replay" && (
-                      <>
-                        {replayEvents.length < 2 ? (
-                          <p className="recording-state">
-                            Replay was not captured. Check coverage and the diagnostic
-                            evidence.
-                          </p>
-                        ) : (
-                          <>
-                            <div
-                              className="recording-stage"
-                              ref={stageRef}
-                              hidden={replayExpired}
-                              role="img"
-                              aria-label="Sandboxed page replay"
-                            />
-                            {replayExpired && (
-                              <p className="recording-state" role="status">
-                                DOM capture ended at{" "}
-                                {formatRecordingTime(replayStoppedAtMs!)}. This later
-                                moment has no page reconstruction. Use the video or
-                                diagnostic events for the remaining recording.
-                              </p>
-                            )}
-                            {replayError && <p role="alert">{replayError}</p>}
-                            <p className="recording-footnote">
-                              Captured page resources are withheld during replay. Layout
-                              may differ from the original page.
-                            </p>
-                          </>
-                        )}
-                      </>
+                      <RecordingReplayStage
+                        stageRef={stageRef}
+                        eventsAvailable={replayEvents.length >= 2}
+                        replayExpired={replayExpired}
+                        stoppedAtMs={replayStoppedAtMs}
+                        error={replayError}
+                      />
                     )}
                     {mediaMode === "video" &&
                       (videoAsset && recording.video ? (
                         <>
-                          <div className="recording-video-stage">
-                            <video
-                              ref={videoRef}
-                              preload="metadata"
-                              src={videoAsset.url}
-                              aria-label="Linked recording video"
-                              onPlay={(event) => {
-                                selectedVideoGapRef.current = false;
-                                checkVideoFrame(event.currentTarget);
-                                setDiagnosticTab("everything");
-                                setEvidenceScope("all");
-                                setFollowPlayback(true);
-                                setPlaying(true);
-                              }}
-                              onPause={() => setPlaying(false)}
-                              onEnded={() => setPlaying(false)}
-                              onLoadedMetadata={() => alignVideo(cursorRef.current)}
-                              onLoadedData={(event) =>
-                                checkVideoFrame(event.currentTarget)
-                              }
-                              onCanPlay={(event) => checkVideoFrame(event.currentTarget)}
-                              onSeeking={() => setVideoReady(false)}
-                              onSeeked={(event) => checkVideoFrame(event.currentTarget)}
-                              onTimeUpdate={(event) => {
-                                if (
-                                  !recording.video ||
-                                  selectedVideoGapRef.current ||
-                                  pendingVideoSeekRef.current !== null ||
-                                  event.currentTarget.seeking
-                                )
-                                  return;
-                                const mapped = mapVideoToRecordingTime(
-                                  event.currentTarget.currentTime * 1000,
-                                  recording.video,
+                          <RecordingVideoStage
+                            videoRef={videoRef}
+                            src={videoAsset.url}
+                            gap={!!videoGap}
+                            onPlay={(video) => {
+                              selectedVideoGapRef.current = false;
+                              checkVideoFrame(video);
+                              setDiagnosticTab("everything");
+                              setEvidenceScope("all");
+                              setFollowPlayback(true);
+                              setPlaying(true);
+                            }}
+                            onPause={() => setPlaying(false)}
+                            onLoadedMetadata={() => alignVideo(cursorRef.current)}
+                            onFrameReady={checkVideoFrame}
+                            onSeeking={() => setVideoReady(false)}
+                            onTimeUpdate={(video) => {
+                              if (
+                                !recording.video ||
+                                selectedVideoGapRef.current ||
+                                pendingVideoSeekRef.current !== null ||
+                                video.seeking
+                              )
+                                return;
+                              const mapped = mapVideoToRecordingTime(
+                                video.currentTime * 1000,
+                                recording.video,
+                              );
+                              if (mapped !== null) {
+                                cursorRef.current = clampTime(
+                                  mapped,
+                                  recording.durationMs,
                                 );
-                                if (mapped !== null) {
-                                  cursorRef.current = clampTime(
-                                    mapped,
-                                    recording.durationMs,
-                                  );
-                                  setCursorMs(cursorRef.current);
-                                  if (
-                                    event.currentTarget.readyState >=
-                                    HTMLMediaElement.HAVE_CURRENT_DATA
-                                  )
-                                    setVideoReady(true);
-                                }
-                              }}
-                            />
-                            {videoGap && (
-                              <div className="recording-video-gap" role="status">
-                                No video frame was retained at this session moment. Select
-                                another point on the timeline.
-                              </div>
-                            )}
-                          </div>
-                          {canWrite && (
-                            <div className="recording-frame-actions">
-                              <button
-                                type="button"
-                                disabled={!canSaveFrame}
-                                onClick={() => void saveCurrentFrame()}
-                              >
-                                {frameBusy ? "Saving frame…" : "Save frame"}
-                              </button>
-                              {onAnnotateFrame && (
-                                <button
-                                  type="button"
-                                  disabled={!canSaveFrame}
-                                  onClick={annotateCurrentFrame}
-                                >
-                                  Annotate frame
-                                </button>
-                              )}
-                              <span>
-                                Choose a moment in the activity or timeline, then save or
-                                mark its frame on this thread.
-                              </span>
-                            </div>
-                          )}
-                          {frameError && (
-                            <p className="recording-frame-error" role="alert">
-                              {frameError}
-                            </p>
-                          )}
-                          {displayedFrame && (
-                            <div className="recording-saved-frame" role="status">
-                              <a
-                                href={displayedFrame.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <img
-                                  src={displayedFrame.url}
-                                  alt={`Saved frame at ${formatRecordingTime(displayedFrame.recordingFrame.atMs)}`}
-                                  loading="lazy"
-                                />
-                                <span>
-                                  Saved frame at{" "}
-                                  {formatRecordingTime(
-                                    displayedFrame.recordingFrame.atMs,
-                                  )}
-                                </span>
-                              </a>
-                            </div>
-                          )}
-                          <p className="recording-footnote">
-                            {videoGap
-                              ? "No video frame matches this moment because this section was removed from the video."
-                              : "Video and events share the recorded timeline. Removed video sections have no matching frame."}
-                          </p>
+                                setCursorMs(cursorRef.current);
+                                if (
+                                  video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+                                )
+                                  setVideoReady(true);
+                              }
+                            }}
+                          />
+                          <RecordingFrameControls
+                            canWrite={canWrite}
+                            canSaveFrame={canSaveFrame}
+                            frameBusy={frameBusy}
+                            onSave={() => void saveCurrentFrame()}
+                            onAnnotate={
+                              onAnnotateFrame ? annotateCurrentFrame : undefined
+                            }
+                            error={frameError}
+                            displayedFrame={displayedFrame}
+                            videoGap={!!videoGap}
+                          />
                         </>
                       ) : (
                         <p className="recording-state">
