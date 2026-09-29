@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
+import { installVideoPageModules } from "./support/video-page-vm.js";
 import {
   VIDEO_MAX_BYTES,
   VIDEO_MAX_MS,
@@ -85,6 +86,7 @@ test("lost create acknowledgement retries the original comment and review target
       },
     },
   });
+  await installVideoPageModules(context);
   vm.runInContext(
     (await readFile(new URL("../extension/video.js", import.meta.url), "utf8")).replace(
       /^import[\s\S]*?from "\.\/video\/video-media.js";\n/,
@@ -185,6 +187,7 @@ test("ending review while the native picker is open stops its eventual stream", 
       },
     },
   });
+  await installVideoPageModules(context);
   vm.runInContext(
     (await readFile(new URL("../extension/video.js", import.meta.url), "utf8")).replace(
       /^import[\s\S]*?from "\.\/video\/video-media.js";\n/,
