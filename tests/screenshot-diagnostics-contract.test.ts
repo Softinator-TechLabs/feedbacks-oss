@@ -133,5 +133,18 @@ test("manifest rejects oversized evidence and client archive paths", () => {
     diagnosticManifestSchema.safeParse({ ...manifest, archiveName: "../escape" }).success,
     false,
   );
+  assert.equal(
+    diagnosticManifestSchema.safeParse({
+      ...manifest,
+      coverage: {
+        ...manifest.coverage,
+        console: {
+          ...manifest.coverage.console,
+          reasons: ["Authorization: Bearer fake-token"],
+        },
+      },
+    }).success,
+    false,
+  );
   assert.equal(diagnosticArchiveName("dom", fileId), `dom/${fileId}.html`);
 });

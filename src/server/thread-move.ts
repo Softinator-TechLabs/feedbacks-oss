@@ -207,6 +207,10 @@ export async function moveThread(
     row.id,
     destination.id,
   ]);
+  await db.query("UPDATE diagnostic_evidence SET project_id=$2 WHERE thread_id=$1", [
+    row.id,
+    destination.id,
+  ]);
   await db.query("UPDATE documents SET project_id=$2 WHERE id=ANY($1::uuid[])", [
     documents.map((d) => d.id),
     destination.id,

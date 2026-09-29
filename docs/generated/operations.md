@@ -25,6 +25,9 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `context.changes`             | Yes                  | Yes                            |
 | `context.export`              | Yes                  | Yes                            |
 | `context.reviewers`           | Yes                  | Yes                            |
+| `diagnostics.begin`           | No                   | Yes                            |
+| `diagnostics.finalize`        | No                   | Yes                            |
+| `diagnostics.putChunk`        | No                   | Yes                            |
 | `documents.get`               | Yes                  | Yes                            |
 | `documents.list`              | Yes                  | Yes                            |
 | `documents.threads`           | Yes                  | Yes                            |

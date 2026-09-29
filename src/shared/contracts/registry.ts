@@ -8,6 +8,7 @@ import { guestInputs, guestOutputs } from "./domains/guest.js";
 import { surveysInputs, surveysOutputs } from "./domains/surveys.js";
 import { viewsInputs, viewsOutputs } from "./domains/views.js";
 import { recordingsInputs, recordingsOutputs } from "./domains/recordings.js";
+import { diagnosticsInputs, diagnosticsOutputs } from "./domains/diagnostics.js";
 import { assetsInputs, assetsOutputs } from "./domains/assets.js";
 
 export const inputSchemas = {
@@ -141,6 +142,9 @@ export const inputSchemas = {
   "recordings.get": recordingsInputs["recordings.get"],
   "recordings.events": recordingsInputs["recordings.events"],
   "recordings.export": recordingsInputs["recordings.export"],
+  "diagnostics.begin": diagnosticsInputs["diagnostics.begin"],
+  "diagnostics.putChunk": diagnosticsInputs["diagnostics.putChunk"],
+  "diagnostics.finalize": diagnosticsInputs["diagnostics.finalize"],
   "assets.upload": assetsInputs["assets.upload"],
   "assets.uploadVideo": assetsInputs["assets.uploadVideo"],
   "assets.get": assetsInputs["assets.get"],
@@ -282,6 +286,9 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "recordings.get": recordingsOutputs["recordings.get"],
   "recordings.events": recordingsOutputs["recordings.events"],
   "recordings.export": recordingsOutputs["recordings.export"],
+  "diagnostics.begin": diagnosticsOutputs["diagnostics.begin"],
+  "diagnostics.putChunk": diagnosticsOutputs["diagnostics.putChunk"],
+  "diagnostics.finalize": diagnosticsOutputs["diagnostics.finalize"],
   "assets.get": assetsOutputs["assets.get"],
   "assets.upload": assetsOutputs["assets.upload"],
   "assets.uploadVideo": assetsOutputs["assets.uploadVideo"],

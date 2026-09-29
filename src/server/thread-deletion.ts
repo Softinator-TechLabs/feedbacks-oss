@@ -112,6 +112,11 @@ export async function manageThreadDeletion(
     "SELECT id,object_key FROM recordings WHERE thread_id=ANY($1::uuid[])",
     [ids],
   );
+  const diagnosticChunks = await db.query(
+    `SELECT c.object_key FROM diagnostic_chunks c JOIN diagnostic_evidence e ON e.id=c.evidence_id
+     WHERE e.thread_id=ANY($1::uuid[])`,
+    [ids],
+  );
   const id = randomUUID();
   await db.query(
     "INSERT INTO thread_deletions(id,project_id,actor_id,request_key,input_hash,thread_ids) VALUES($1,$2,$3,$4,$5,$6)",
@@ -139,6 +144,14 @@ export async function manageThreadDeletion(
       "INSERT INTO thread_deletion_objects(deletion_id,object_key) VALUES($1,$2)",
       [id, recording.object_key],
     );
+  for (const chunk of diagnosticChunks)
+    await db.query(
+      "INSERT INTO thread_deletion_objects(deletion_id,object_key) VALUES($1,$2)",
+      [id, chunk.object_key],
+    );
+  await db.query("DELETE FROM diagnostic_evidence WHERE thread_id=ANY($1::uuid[])", [
+    ids,
+  ]);
   await db.query("DELETE FROM recordings WHERE thread_id=ANY($1::uuid[])", [ids]);
   await db.query("DELETE FROM qa_baselines WHERE thread_id=ANY($1::uuid[])", [ids]);
   await db.query("DELETE FROM assets WHERE thread_id=ANY($1::uuid[])", [ids]);

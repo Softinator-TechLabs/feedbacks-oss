@@ -329,5 +329,43 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       await tx.query("ALTER TABLE account_links ADD COLUMN secret_suffix text");
       await tx.query("INSERT INTO migrations(version) VALUES(24)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=25"))) {
+      await tx.query(`CREATE TABLE diagnostic_evidence(
+        id uuid PRIMARY KEY,
+        project_id uuid NOT NULL REFERENCES projects(id),
+        thread_id uuid NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+        owner_id uuid NOT NULL REFERENCES users(id),
+        status text NOT NULL CHECK(status IN ('pending','complete','expired')),
+        request_key text NOT NULL,
+        source_origin text NOT NULL,
+        started_at timestamptz NOT NULL,
+        summary jsonb NOT NULL DEFAULT '{}'::jsonb,
+        manifest jsonb,
+        finalize_key text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        expires_at timestamptz NOT NULL DEFAULT now() + interval '24 hours',
+        UNIQUE(owner_id,request_key)
+      )`);
+      await tx.query(`CREATE TABLE diagnostic_chunks(
+        evidence_id uuid NOT NULL REFERENCES diagnostic_evidence(id) ON DELETE CASCADE,
+        file_id uuid NOT NULL,
+        sequence integer NOT NULL CHECK(sequence>=0),
+        sha256 text NOT NULL CHECK(sha256 ~ '^[a-f0-9]{64}$'),
+        byte_size integer NOT NULL CHECK(byte_size BETWEEN 1 AND 2097152),
+        object_key text NOT NULL UNIQUE,
+        PRIMARY KEY(evidence_id,file_id,sequence)
+      )`);
+      await tx.query(`CREATE TABLE diagnostic_cleanup_objects(
+        object_key text PRIMARY KEY,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(
+        "CREATE INDEX diagnostic_evidence_thread ON diagnostic_evidence(thread_id,created_at DESC,id DESC)",
+      );
+      await tx.query(
+        "CREATE INDEX diagnostic_evidence_expiry ON diagnostic_evidence(expires_at) WHERE status='pending'",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(25)");
+    }
   });
 }

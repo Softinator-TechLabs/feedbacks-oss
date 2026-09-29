@@ -24,7 +24,8 @@ const coverageSchema = z
     status: z.enum(["complete", "partial", "unavailable", "stopped"]),
     observedCount: z.number().int().nonnegative(),
     capturedBytes: byteLength,
-    reasons: z.array(z.string().min(1).max(240)).max(100),
+    // Details containing page values belong in evidence files, not SQL manifests.
+    reasons: z.array(z.string().regex(/^[a-z][a-z0-9._-]{0,79}$/)).max(100),
   })
   .superRefine((coverage, ctx) => {
     if (coverage.status !== "complete" && coverage.reasons.length === 0)
