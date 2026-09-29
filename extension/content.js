@@ -358,7 +358,7 @@
       recordingControls.append(recordingError);
     } else {
       if (recordingControls.parentElement !== bar)
-        bar.insertBefore(recordingControls, bar.querySelector(".review-tools"));
+        bar.insertBefore(recordingControls, bar.querySelector(".feedback-controls"));
       if (state === "ready") {
         button(
           `Review ${recordingMode}`,
@@ -932,7 +932,11 @@
       : "Feedbacks";
     drawerHandle.dataset.count = annotations.length || "";
     drawerHandle.setAttribute("aria-label", dockLabel);
-    drawerHandle.title = `${dockLabel}. Hover for controls; drag to move.`;
+    drawerHandle.title = `${dockLabel}. Hover for controls; drag to move or use arrow keys when focused.`;
+    drawerHandle.setAttribute(
+      "aria-description",
+      "Drag to move, or focus and use arrow keys.",
+    );
     positionControls();
     meta.textContent = annotations.length
       ? `${annotations.length} not sent${outside ? ` · ${outside} outside this view` : ""}`
@@ -1821,7 +1825,7 @@
     }
     renderCategories(unmatched, other);
     if (!annotations.length) {
-      const count = matched + unmatched.length;
+      const count = matched + unmatched.length + other.length;
       meta.textContent = `${count} ${count === 1 ? "comment" : "comments"} on this page`;
     }
     schedulePinOcclusion();
@@ -1861,9 +1865,8 @@
         preview.textContent = `${thread.author.name}: ${thread.body.slice(0, 300)}`;
         item.append(preview);
         button("Open thread", () => send({ type: "openThread", id: thread.id }), item);
-        const { width, height } = thread.context.viewport;
         button(
-          `Preview ${width} × ${height}`,
+          "Preview original view",
           () => send({ type: "openThread", id: thread.id, preview: true }),
           item,
         );

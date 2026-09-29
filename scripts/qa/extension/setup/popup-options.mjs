@@ -24,11 +24,11 @@ export async function verifyPopupOptions({
     "Primary capture actions should fit without scrolling in a compact popup",
   );
   assert.equal(await control.locator(".access-status").getAttribute("open"), null);
-  await control.screenshot({
+  await control.locator("body").screenshot({
     path: join(root, ".local/remaining-todos-qa/access-status.png"),
   });
   await control.emulateMedia({ colorScheme: "dark" });
-  await control.screenshot({
+  await control.locator("body").screenshot({
     path: join(root, ".local/remaining-todos-qa/popup-dark.png"),
   });
   await control.emulateMedia({ colorScheme: "light" });

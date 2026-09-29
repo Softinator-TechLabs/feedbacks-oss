@@ -26,11 +26,13 @@ No schema, permission or server API change. Session-only recording remains avail
 - One popup recording action starts the existing video route, which includes session context; the separate session-only route stays available on the page.
 - Scope and count filters remain available under Team feedback, with the thread count visible in the summary.
 - Icon-only actions keep an accessible name and tooltip; primary actions keep visible text.
+- Keep the active project visible in the popup routing line, and include other-size comments in the Page Controls count.
+- Keep the grip movement keys discoverable through its tooltip and accessible description.
 
 ## Completion receipt
 
 Source revision: `codex/simplify-review-controls`, based on `0a363068`.
-Checks and results: `npm run check` passed; `npm run qa:extension-browser` passed; focused popup tests passed 13/13 and Page Controls browser tests passed 2/2. Light and dark screenshots were inspected for both surfaces.
-Artifacts: local extension 0.1.40 ZIP, SHA-256 `52d02589fc69dbdf362619ba2237d1c8768adf5bd2ed899a5d5eca40ad95436e`; ignored synthetic screenshots under `.local/remaining-todos-qa/` and `.local/review-controls-qa/`.
+Checks and results: `npm run check` passed, including 397 tests (24 skipped), builds, isolated smoke and release checks; focused popup and Page Controls browser tests passed 15/15. `npm run qa:extension-browser` passed on the packaged extension; the popup screenshot capture was also rerun at its actual 368 px width.
+Artifacts: local extension 0.1.40 ZIP, SHA-256 `8898cef5f3b97b2643061d671a5f5357756ebd01fadbb8484b641c7adcf06834`; synthetic captures: [popup light](../screenshots/extension-review-controls/popup-light.png), [popup dark](../screenshots/extension-review-controls/popup-dark.png), [Page Controls desktop](../screenshots/extension-review-controls/page-controls-desktop.png), [Page Controls mobile](../screenshots/extension-review-controls/page-controls-mobile.png), and [panel detail](../screenshots/extension-review-controls/page-controls-detail.png).
 Deployment and live verification: not requested; not performed.
 Remaining risks or follow-up: required CI and native installed Chrome/Store acceptance remain unverified.

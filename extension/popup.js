@@ -147,8 +147,10 @@ async function start(projectId) {
     $("connection").textContent = "Review is on";
     $("connection").className = "connected";
     showAccess("tab-access", "ready", "Ready");
-    $("routing").textContent = "Right-click to add feedback on this page.";
-    $("routing").title = new URL(result.origin).hostname;
+    $("routing").textContent =
+      `Reviewing ${result.project.name} · Right-click to comment`;
+    $("routing").title =
+      `Reviewing ${result.project.name} on ${new URL(result.origin).hostname}`;
     $("project-choice").hidden = result.choices.length < 2;
     $("project").replaceChildren(...result.choices.map((p) => new Option(p.name, p.id)));
     $("project").value = result.project.id;

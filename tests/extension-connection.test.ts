@@ -193,6 +193,11 @@ test("one popup recording action starts video with session context and redirect 
   assert.doesNotMatch(html, /id="record-session"/);
   assert.match(html, /Record video \+ session/);
   const video = await popup({ connected: true, serverAllowed: true });
+  assert.match(
+    video.nodes.routing.textContent,
+    /Review/,
+    "single-project popup names its destination",
+  );
   video.nodes["record-redirect-origins"].value = "https://dashboard.example.test";
   await video.nodes["save-record-redirects"].onclick();
   assert.deepEqual(JSON.parse(JSON.stringify(video.recordingRedirects())), {

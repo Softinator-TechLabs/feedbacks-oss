@@ -110,4 +110,4 @@ Drag the dock’s grip to move it, or focus the grip and use arrow keys. **Hide*
 
 The popup’s collapsed **Team feedback** summary shows the thread count. Expand it for project totals and filters for the exact page, its hostname, or the page at the current mobile/tablet/desktop size. Open the link to see matching threads on your configured server. Individual point resolution needs the updated server and an extension token with `threads.annotationStatus`; older connections can use the web thread or reconnect.
 
-The Page Controls icon has a dotted drag grip. Drag it to move the controls, or focus the icon and use arrow keys. The panel repeats this hint; hiding controls keeps review active.
+The Page Controls icon has a dotted drag grip. Drag it to move the controls, or focus the icon and use arrow keys. Its tooltip and accessible description explain the movement keys; hiding controls keeps review active.
