@@ -91,6 +91,49 @@ test(
       await handle.hover();
       await drawer.getByText("Comments on other screen sizes (1)").waitFor();
       assert.match(await drawer.locator(".meta").innerText(), /1 comment on this page/);
+      for (const [section, label] of [
+        [".review-tools", "Review tools"],
+        [".recording-options", "Options"],
+      ]) {
+        const details = drawer.locator(section);
+        const before = await drawer.boundingBox();
+        assert.ok(before);
+        await details.locator("summary").click();
+        await page.waitForFunction(
+          (previousTop) =>
+            document
+              .querySelector("#feedbacks-review-root")!
+              .shadowRoot!.querySelector(".bar")!
+              .getBoundingClientRect().top <
+            previousTop - 16,
+          before.y,
+          { timeout: 1000 },
+        );
+        const expanded = await drawer.boundingBox();
+        assert.ok(expanded);
+        assert.ok(
+          expanded.y < before.y - 16,
+          `${label} must move the expanded panel upward without re-hovering the dock`,
+        );
+        assert.ok(expanded.y >= 8 && expanded.y + expanded.height <= 792);
+        await details.locator("summary").click();
+        await page.waitForFunction(
+          (previousTop) =>
+            document
+              .querySelector("#feedbacks-review-root")!
+              .shadowRoot!.querySelector(".bar")!
+              .getBoundingClientRect().top >
+            previousTop + 16,
+          expanded.y,
+          { timeout: 1000 },
+        );
+        const collapsed = await drawer.boundingBox();
+        assert.ok(collapsed);
+        assert.ok(
+          collapsed.y > expanded.y + 16,
+          `${label} must move the collapsed panel back beside the dock`,
+        );
+      }
       await drawer.getByText("Comments on other screen sizes (1)").click();
       assert.equal(await drawer.getByRole("button", { name: /390 × 740/ }).count(), 0);
       await handle.hover();
