@@ -104,6 +104,7 @@ export function createSessionReview(
   root.hidden = false;
   root.replaceChildren();
   root.classList.add("session-review");
+  root.setAttribute("role", "region");
   root.setAttribute("aria-label", "Recorded moments");
   const guide = make("details", null, "review-guide");
   guide.append(make("summary", "About this capture"));
