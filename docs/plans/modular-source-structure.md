@@ -67,9 +67,9 @@ No migration, object-key, token, permission, or public operation name change is 
 
 ## Phase 1 completion receipt
 
-Source revision: PR #117 on `codex/modular-refactor`, based on `7e6a4ad` (PR #116); merge revision is recorded by GitHub after integration.
-Checks and results: Node 22 `npm run check` passed after the latest rebase (328 pass, 22 skipped, 0 fail; builds, harness smoke, and release package checks included). Current-base synthetic app visual QA captured 56 screenshots with zero blocked requests; `npm run qa:app-filters` and native `npm run test:postgres` (2 pass) passed. The packaged extension capture/review scenario passed after the setup race fix. All six PR CI jobs, including Node 22/24, containers, Android, secrets, and extension/recording browser acceptance, passed on `fc5f174`; required CI remains the merge gate for the final revision.
-Artifacts: draft source PR #117; no extension Store package or deployed service produced.
+Source revision: PR #117 on `codex/modular-refactor`, based on `7e6a4ad` (PR #116), merged at `c1f12a5`.
+Checks and results: Node 22 `npm run check` passed after the latest rebase (328 pass, 22 skipped, 0 fail; builds, harness smoke, and release package checks included). Current-base synthetic app visual QA captured 56 screenshots with zero blocked requests; `npm run qa:app-filters` and native `npm run test:postgres` (2 pass) passed. The packaged extension capture/review scenario passed after the setup race fix. All six PR CI jobs, including Node 22/24, containers, Android, secrets, and extension/recording browser acceptance, passed on `fc5f174` before merge.
+Artifacts: merged source PR #117; no extension Store package or deployed service produced.
 Deployment and live verification: outside scope of this source refactor; no deployment performed.
 Remaining risks or follow-up at this stage: `extension/content.js` retains a large shared state closure. The extension browser runner and GitHub operation grouping are covered in the subsequent stages. Native browser permission prompts need separate targeted evidence.
 
