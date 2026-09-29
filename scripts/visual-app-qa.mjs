@@ -211,18 +211,18 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
             animations: "disabled",
           });
           await page.goto(`${access.url}/help`, { waitUntil: "load" });
-          await page.getByRole("heading", { name: "Help & setup" }).waitFor();
+          await page.getByRole("heading", { name: "Let’s get you connected" }).waitFor();
           await page.evaluate(() => scrollTo(0, 0));
           images[`help-${device}-${theme}`] = await page.screenshot({
             type: "png",
             animations: "disabled",
           });
           await page
-            .getByRole("button", { name: "Create key and copy setup", exact: true })
+            .getByRole("button", { name: "Create key & copy prompt", exact: true })
             .waitFor();
           assert.equal(
             await page
-              .getByRole("button", { name: "Create key and copy setup", exact: true })
+              .getByRole("button", { name: "Create key & copy prompt", exact: true })
               .isVisible(),
             true,
           );
