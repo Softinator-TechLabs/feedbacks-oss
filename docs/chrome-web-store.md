@@ -40,7 +40,7 @@ VIDEO AND SESSION CONTEXT
 • Network request and response bodies are a separate recording option. Page text and input masking can be enabled. Video pixels need their own visual review before sending.
 
 FOR DEVELOPERS
-Feedbacks keeps submitted comments, screenshots, page URLs and recording evidence in the project on your chosen server. Authorized developers and coding agents can read the relevant thread through Feedbacks MCP or API. Connecting an agent does not automatically make changes or send data to an AI provider.
+Feedbacks keeps submitted comments, screenshots, page URLs and recording evidence in the project on your chosen server. Authorized teammates can download a complete thread bundle with its discussion, page context, approved images, recordings and available diagnostics for offline review. Developers and coding agents can also read the relevant thread through Feedbacks MCP or API. Connecting an agent does not automatically make changes or send data to an AI provider.
 
 SETUP
 Your organization needs a Feedbacks server and an account first. Self-host the open-source application or ask your team for its server URL and project access. Pin the extension, connect it to that server, open a website, start review, and send only after inspecting the draft.
@@ -53,7 +53,7 @@ Privacy: https://feedbacks.softinator.ai/privacy.html
 Source: https://github.com/Softinator-TechLabs/feedbacks-oss
 ```
 
-This copy describes the current merged recording feature. Add a complete thread-bundle claim only after that separate work has merged and passed the release checks.
+The complete thread bundle requires the updated Feedbacks server. An unavailable required media file or oversized bundle fails visibly rather than producing an incomplete download.
 
 ## Privacy practices → Single purpose
 
@@ -109,7 +109,7 @@ If the dashboard asks for reviewer access, provide a separate non-sensitive demo
 1. Sign in to the supplied demonstration Feedbacks server with the private reviewer credentials.
 2. Open its Setup page, copy the server URL, and connect the extension. Approve server access and the connection.
 3. Open the supplied demonstration website. Use the pinned Feedbacks popup to start review, right-click a point, save a comment, then open Review & send.
-4. Inspect or mark the screenshot and send the synthetic feedback. Open the resulting thread to view its page context and discussion.
+4. Inspect or mark the screenshot and send the synthetic feedback. Open the resulting thread to view its page context and discussion, then use Download complete thread bundle.
 5. On the demonstration website, start Record video + session, stop after a few seconds, inspect the event timeline and discard the sample. No payment or real customer data is needed.
 ```
 
