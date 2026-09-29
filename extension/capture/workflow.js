@@ -15,6 +15,7 @@ export function createCaptureWorkflow({
   set,
   captureUrl,
   captureVisibleTab,
+  captureProgress,
   review,
   sessionFor,
   openDraft,
@@ -46,7 +47,9 @@ export function createCaptureWorkflow({
     }
     let pending,
       captured = false;
+    const report = (stage) => captureProgress?.(sender.tab.id, stage);
     try {
+      await report("preparing");
       const session = await sessionFor(sender),
         state = await get();
       const ownerIdentity = await accountIdentity(session.server);
@@ -169,6 +172,7 @@ export function createCaptureWorkflow({
           signature: before.signature,
           captureEpoch: before.captureEpoch,
           pointSnapshot: true,
+          onProgress: report,
         });
         unattachedEvidenceId = pending.diagnosticEvidence.evidenceId;
         const checked = await chrome.tabs.sendMessage(tab.id, {
@@ -178,6 +182,7 @@ export function createCaptureWorkflow({
         if (checked.signature !== before.signature || checked.captureEpoch !== 0)
           throw Error("The page moved while collecting point diagnostics.");
         pending.captureError = null;
+        await report("saving");
         await attachPointEvidence(pending);
         if (replacedEvidenceId && replacedEvidenceId !== unattachedEvidenceId)
           queueObsoleteEvidence(pending, replacedEvidenceId);
@@ -185,6 +190,7 @@ export function createCaptureWorkflow({
         unattachedEvidenceId = null;
         await clearReplacedEvidence();
         captured = true;
+        await report("opening");
         await chrome.tabs.create({
           url: chrome.runtime.getURL(`editor.html?draft=${pending.id}`),
         });
@@ -213,6 +219,7 @@ export function createCaptureWorkflow({
         ownerIdentity,
         signature: before.signature,
         captureEpoch: before.captureEpoch,
+        onProgress: report,
       });
       unattachedEvidenceId = diagnosticEvidence.evidenceId;
       const afterDiagnostics = await chrome.tabs.sendMessage(tab.id, {
@@ -265,7 +272,12 @@ export function createCaptureWorkflow({
           if (step.error) throw Error(step.error);
           verifyFullPageStep(metrics, step, y);
           await new Promise((resolve) => setTimeout(resolve, 550));
-          const pixels = await captureVisibleTab(tab.windowId);
+          await report("screenshot");
+          const pixels = await captureVisibleTab(
+            tab.windowId,
+            () => report("hide"),
+            () => report("processing"),
+          );
           guard.assert();
           const after = await chrome.tabs.sendMessage(tab.id, {
             type: "captureCheck",
@@ -413,6 +425,7 @@ export function createCaptureWorkflow({
           captureNotice: `${plan.pages.length} ordered ${plan.pages.length === 1 ? "screenshot" : "screenshots"}. Review each page before sending.`,
           pageToolStates: [...pending.pageToolStates],
         };
+        await report("saving");
         await attachPointEvidence(draft, retainedPointStates);
         await set({ draft });
         const persisted = await chrome.tabs.sendMessage(tab.id, {
@@ -423,13 +436,20 @@ export function createCaptureWorkflow({
           throw Error("The page moved during capture. Retry the visible area.");
         guard.assert();
         guard.dispose();
-        if (!retryId)
+        if (!retryId) {
+          await report("opening");
           await chrome.tabs.create({ url: chrome.runtime.getURL("editor.html") });
+        }
         captured = true;
         return { captured: true, pages: pending.capturePages.length };
       }
       {
-        const pixels = await captureVisibleTab(tab.windowId);
+        await report("screenshot");
+        const pixels = await captureVisibleTab(
+          tab.windowId,
+          () => report("hide"),
+          () => report("processing"),
+        );
         guard.assert();
         const after = await chrome.tabs.sendMessage(tab.id, {
           type: "captureCheck",
@@ -552,6 +572,7 @@ export function createCaptureWorkflow({
         draft.pageToolStates = [draft.toolState];
         draft.toolState = [];
       }
+      await report("saving");
       await attachPointEvidence(draft, retainedPointStates);
       await set({ draft });
       const persisted = await chrome.tabs.sendMessage(tab.id, {
@@ -562,8 +583,10 @@ export function createCaptureWorkflow({
         throw Error("The page moved during capture. Try again once it is still.");
       guard.assert();
       guard.dispose();
-      if (!retryId)
+      if (!retryId) {
+        await report("opening");
         await chrome.tabs.create({ url: chrome.runtime.getURL("editor.html") });
+      }
       captured = true;
       return { captured: true };
     } catch (error) {
@@ -617,28 +640,32 @@ export function createCaptureWorkflow({
       throw error;
     } finally {
       guard.dispose();
-      const saved = (await get()).draft;
-      if (pending && saved?.id === pending.id) {
-        // The editor owns the only original now, so permanent redaction cannot
-        // leave an unredacted duplicate behind in the point cache.
-        for (const page of saved.capturePages || [])
-          if (page.snapshotKey)
-            await deletePage(`point-${sender.tab.id}`, page.snapshotKey);
+      try {
+        const saved = (await get()).draft;
+        if (pending && saved?.id === pending.id) {
+          // The editor owns the only original now, so permanent redaction cannot
+          // leave an unredacted duplicate behind in the point cache.
+          for (const page of saved.capturePages || [])
+            if (page.snapshotKey)
+              await deletePage(`point-${sender.tab.id}`, page.snapshotKey);
+          await chrome.tabs
+            .sendMessage(sender.tab.id, { type: "draftPrepared" })
+            .catch(() => {});
+        }
+      } finally {
+        capturing = false;
         await chrome.tabs
-          .sendMessage(sender.tab.id, { type: "draftPrepared" })
+          .sendMessage(sender.tab.id, {
+            type: "restore",
+            captured,
+            pointToken,
+            ...(pending?.captureScope === "fullPage"
+              ? { scroll: pending.context.scroll }
+              : {}),
+          })
           .catch(() => {});
+        await report("done");
       }
-      capturing = false;
-      await chrome.tabs
-        .sendMessage(sender.tab.id, {
-          type: "restore",
-          captured,
-          pointToken,
-          ...(pending?.captureScope === "fullPage"
-            ? { scroll: pending.context.scroll }
-            : {}),
-        })
-        .catch(() => {});
     }
   }
   return capture;

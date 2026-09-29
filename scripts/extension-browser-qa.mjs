@@ -201,7 +201,7 @@ try {
     root,
     toFixture,
   });
-  await verifyDiagnosticDom({ page, control, toFixture, tabId, send, draft });
+  await verifyDiagnosticDom({ page, control, toFixture, tabId, send, draft, results });
   await verifyLargeVisibleCapture({
     context,
     page,

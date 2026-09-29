@@ -5,6 +5,8 @@
   const F = globalThis.FeedbacksFrames;
   let host,
     root,
+    captureProgressHost,
+    captureProgressLabel,
     bar,
     notice,
     meta,
@@ -1252,6 +1254,74 @@
     draftPin.style.top = `${y}px`;
     draftPin.classList.remove("hidden");
   }
+  const captureLabels = {
+    preparing: "Preparing capture…",
+    network: "Fetching network and console data…",
+    dom: "Fetching DOM data…",
+    storage: "Fetching page storage…",
+    performance: "Reading performance data…",
+    environment: "Reading page environment…",
+    screenshot: "Capturing screenshot…",
+    processing: "Processing screenshot…",
+    saving: "Saving local draft…",
+    opening: "Opening review…",
+  };
+  async function showCaptureProgress(stage) {
+    if (stage === "done") {
+      captureProgressHost?.remove();
+      captureProgressHost = null;
+      captureProgressLabel = null;
+      return;
+    }
+    if (stage === "hide") {
+      if (captureProgressHost)
+        captureProgressHost.style.setProperty("display", "none", "important");
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+      return;
+    }
+    const label = captureLabels[stage];
+    if (!label || !active) return;
+    if (!captureProgressHost) {
+      captureProgressHost = document.createElement("div");
+      captureProgressHost.id = "feedbacks-capture-progress";
+      captureProgressHost.style.cssText =
+        "all:initial!important;position:fixed!important;top:16px!important;right:16px!important;z-index:2147483647!important;pointer-events:none!important";
+      (globalThis.feedbacksOwnedRoots ||= new WeakSet()).add(captureProgressHost);
+      const shadow = captureProgressHost.attachShadow({ mode: "closed" });
+      const style = document.createElement("style");
+      style.textContent = `
+        .capture-progress { box-sizing: border-box; display: flex; align-items: center; gap: 10px;
+          max-width: min(320px, calc(100vw - 32px)); min-height: 40px; padding: 9px 14px;
+          border: 1px solid color-mix(in srgb, #fff 30%, transparent);
+          border-radius: 8px; background: #17324d;
+          color: #fff; box-shadow: 0 5px 20px color-mix(in srgb, #202020 30%, transparent);
+          font: 600 13px/1.35 system-ui, sans-serif; }
+        .capture-progress::before { content: ""; flex: none; width: 12px; height: 12px;
+          border: 2px solid color-mix(in srgb, #fff 45%, transparent);
+          border-top-color: #fff; border-radius: 50%;
+          animation: capture-spin .8s linear infinite; }
+        @keyframes capture-spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { .capture-progress::before { animation: none; } }
+      `;
+      captureProgressLabel = document.createElement("div");
+      captureProgressLabel.className = "capture-progress";
+      captureProgressLabel.setAttribute("role", "status");
+      captureProgressLabel.setAttribute("aria-live", "polite");
+      shadow.append(style, captureProgressLabel);
+      document.documentElement.append(captureProgressHost);
+    }
+    if (!captureProgressHost.isConnected)
+      document.documentElement.append(captureProgressHost);
+    captureProgressLabel.textContent = label;
+    captureProgressHost.style.removeProperty("display");
+    // Let the label paint before the next page-side snapshot can block rendering.
+    if (["dom", "storage", "performance"].includes(stage))
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+  }
   function setup(css) {
     draftRenderSignature = "";
     host = document.createElement("div");
@@ -2190,6 +2260,7 @@
         "feedbackThreadCreated",
         "feedbackSubmissionIncomplete",
         "captureContext",
+        "captureProgress",
         "prepareCapture",
         "captureCheck",
         "preparePointImage",
@@ -2431,6 +2502,11 @@
         recordingClock = null;
         clearTimeout(drawerTimer);
         host?.remove();
+        await showCaptureProgress("done");
+        return {};
+      }
+      if (message.type === "captureProgress") {
+        await showCaptureProgress(message.stage);
         return {};
       }
       if (message.type === "metrics")
@@ -2617,6 +2693,7 @@
       }
       if (message.type === "restore") {
         captureActive = false;
+        await showCaptureProgress("done");
         if (message.scroll && Number.isSafeInteger(message.scroll.y))
           scrollTo({
             left: message.scroll.x || 0,

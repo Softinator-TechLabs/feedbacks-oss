@@ -43,6 +43,7 @@ export function createWorkerDiagnostics({
     reviewId,
     ownerIdentity,
     pointSnapshot = false,
+    onProgress,
   }) {
     const raw = rawDiagnostics.get(tabId);
     let rawStatus = raw?.status();
@@ -52,6 +53,7 @@ export function createWorkerDiagnostics({
       (rawStatus.sourceOrigin !== sourceOrigin ||
         !sameDiagnosticBinding(rawStatus.binding, binding));
     if (raw) {
+      await onProgress?.("network");
       rawStatus = await raw.stop();
       rawDiagnostics.delete(tabId);
       if (contextChanged) {
@@ -62,6 +64,7 @@ export function createWorkerDiagnostics({
     const evidenceId = rawStatus?.evidenceId || crypto.randomUUID();
     const startedAt = rawStatus?.startedAt || new Date().toISOString();
     try {
+      await onProgress?.("dom");
       const captured = await capturePreparedDom({
         tabId,
         evidenceId,
@@ -70,6 +73,14 @@ export function createWorkerDiagnostics({
         captureEpoch,
         store: diagnosticEvidenceStore,
         remainingBytes: 268_435_456 - (rawStatus?.totalBytes || 0),
+        onChannelDone: (channel) => {
+          const next = {
+            dom: "storage",
+            storage: "performance",
+            performance: "environment",
+          }[channel];
+          return next ? onProgress?.(next) : undefined;
+        },
       });
       const coverage =
         rawStatus?.coverage ||

@@ -15,6 +15,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 - [Session replay and agent debug bundles](session-replay.md)
 - [Aligned recording timeline and portable thread bundle](recording-timeline-and-thread-bundle.md)
 - [Screenshot diagnostic evidence](../superpowers/plans/2026-09-29-screenshot-diagnostic-evidence.md)
+- [Visible screenshot capture progress](capture-progress.md)
 - [Source-page recording controls and video upload progress](recording-source-controls.md)
 - [Detect the active Feedbacks server](extension-server-detection.md)
 

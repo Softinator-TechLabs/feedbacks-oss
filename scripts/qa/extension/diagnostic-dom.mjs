@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
 
 export async function verifyDiagnosticDom({
   page,
@@ -7,9 +8,46 @@ export async function verifyDiagnosticDom({
   tabId,
   send,
   draft,
+  results,
 }) {
   await toFixture();
+  const captureTabId = await tabId();
+  await control.evaluate(async (id) => {
+    await chrome.scripting.executeScript({
+      target: { tabId: id },
+      func: () => {
+        globalThis.__captureProgressHistory = [];
+        const attach = Element.prototype.attachShadow;
+        Element.prototype.attachShadow = function (options) {
+          const shadow = attach.call(this, options);
+          if (this.id === "feedbacks-capture-progress") {
+            globalThis.__captureProgressRoot = shadow;
+            const record = () => {
+              const label = shadow.querySelector('[role="status"]')?.textContent?.trim();
+              if (label && globalThis.__captureProgressHistory.at(-1)?.label !== label)
+                globalThis.__captureProgressHistory.push({
+                  label,
+                  at: performance.now(),
+                });
+            };
+            new MutationObserver(record).observe(shadow, {
+              childList: true,
+              characterData: true,
+              subtree: true,
+            });
+            queueMicrotask(record);
+          }
+          return shadow;
+        };
+      },
+    });
+  }, captureTabId);
   await page.evaluate(async () => {
+    const pixelCanary = document.createElement("div");
+    pixelCanary.id = "capture-pixel-canary";
+    pixelCanary.style.cssText =
+      "position:fixed;top:0;right:0;width:320px;height:70px;background:#eee;z-index:2147483646;pointer-events:none";
+    document.body.append(pixelCanary);
     const hidden = document.createElement("div");
     hidden.hidden = true;
     hidden.id = "diagnostic-large-dom";
@@ -54,9 +92,60 @@ export async function verifyDiagnosticDom({
       }),
     );
   });
-  await send({ type: "popupAction", tabId: await tabId(), action: "capture" });
+  await send({ type: "popupAction", tabId: captureTabId, action: "capture" });
   const current = await draft();
   assert.ok(current?.diagnosticEvidence?.evidenceId);
+  const progress = await control.evaluate(async (id) => {
+    const [entry] = await chrome.scripting.executeScript({
+      target: { tabId: id },
+      func: () => ({
+        history: globalThis.__captureProgressHistory || [],
+        removed: !document.getElementById("feedbacks-capture-progress"),
+      }),
+    });
+    return entry.result;
+  }, captureTabId);
+  const labels = progress.history.map(({ label }) => label);
+  assert.ok(labels.includes("Fetching DOM data…"), JSON.stringify(labels));
+  assert.ok(labels.includes("Saving local draft…"), JSON.stringify(labels));
+  assert.equal(progress.removed, true);
+  const screenshotTopRight = await control.evaluate(async (image) => {
+    const decoded = new Image();
+    decoded.src = image;
+    await decoded.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = decoded.naturalWidth;
+    canvas.height = decoded.naturalHeight;
+    const context = canvas.getContext("2d");
+    context.drawImage(decoded, 0, 0);
+    return [...context.getImageData(canvas.width - 30, 30, 1, 1).data];
+  }, current.image);
+  assert.ok(
+    screenshotTopRight.slice(0, 3).every((value) => value > 180),
+    `Capture progress appeared in screenshot pixels: ${screenshotTopRight}`,
+  );
+  results.captureProgress = { labels, removed: progress.removed };
+  if (process.env.FEEDBACKS_CAPTURE_PROGRESS_SHOTS) {
+    const output = `${process.cwd()}/.local/capture-progress`;
+    await mkdir(output, { recursive: true });
+    const viewport = page.viewportSize();
+    await page.locator("#capture-pixel-canary").evaluate((element) => element.remove());
+    await control.evaluate(
+      (id) => chrome.tabs.sendMessage(id, { type: "captureProgress", stage: "dom" }),
+      captureTabId,
+    );
+    try {
+      await page.screenshot({ path: `${output}/desktop.png` });
+      await page.setViewportSize({ width: 390, height: 780 });
+      await page.screenshot({ path: `${output}/mobile.png` });
+    } finally {
+      await page.setViewportSize(viewport);
+      await control.evaluate(
+        (id) => chrome.tabs.sendMessage(id, { type: "captureProgress", stage: "done" }),
+        captureTabId,
+      );
+    }
+  }
   const saved = await control.evaluate(async (evidenceId) => {
     const db = await new Promise((resolve, reject) => {
       const request = indexedDB.open("feedbacks-screenshot-evidence");
