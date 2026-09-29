@@ -619,10 +619,13 @@ try {
         chrome.runtime.sendMessage = async (message, ...rest) => {
           if (message.type !== "freezeView") return send(message, ...rest);
           globalThis.__captureToken = message.key;
-          return new Promise((resolve) => {
+          const result = await new Promise((resolve) => {
             globalThis.__captureFailures ??= new Map();
             globalThis.__captureFailures.set(message.key, resolve);
           });
+          globalThis.__captureSettled ??= new Set();
+          globalThis.__captureSettled.add(message.key);
+          return result;
         };
       },
     });
@@ -664,6 +667,24 @@ try {
       },
       { tabId: id, token },
     );
+  const waitCaptureSettled = async (token) => {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const settled = await worker.evaluate(
+        async ({ tabId, token }) => {
+          const [entry] = await chrome.scripting.executeScript({
+            target: { tabId },
+            func: (token) => globalThis.__captureSettled?.has(token) || false,
+            args: [token],
+          });
+          return entry.result;
+        },
+        { tabId: id, token },
+      );
+      if (settled) return;
+      await page.waitForTimeout(50);
+    }
+    throw Error("Canceled point capture did not settle");
+  };
   const cancelPoint = () =>
     worker.evaluate(async (tabId) => {
       await chrome.scripting.executeScript({
@@ -684,17 +705,23 @@ try {
     { id, token: oldToken },
   );
   await cancelPoint();
-  assert.equal(await failPointCapture(oldToken), true);
   await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
   await waitReview((state) => state.ready);
   const currentToken = await waitCaptureToken(oldToken);
   assert.notEqual(oldToken, currentToken);
-  const retainedHidden = await worker.evaluate(
-    async ({ id, oldToken, currentToken }) => {
-      await chrome.tabs.sendMessage(id, {
+  await worker.evaluate(
+    async ({ id, currentToken }) =>
+      chrome.tabs.sendMessage(id, {
         type: "preparePointImage",
         pointToken: currentToken,
-      });
+      }),
+    { id, currentToken },
+  );
+  assert.equal(await failPointCapture(oldToken), true);
+  await waitCaptureSettled(oldToken);
+  assert.doesNotMatch((await inspectReview()).tip, /Synthetic capture failure/);
+  const retainedHidden = await worker.evaluate(
+    async ({ id, oldToken, currentToken }) => {
       await chrome.tabs.sendMessage(id, {
         type: "pointImageCaptured",
         pointToken: oldToken,
