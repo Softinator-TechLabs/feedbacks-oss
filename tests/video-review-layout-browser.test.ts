@@ -38,15 +38,21 @@ test(
         ])
           document.getElementById(id)!.hidden = false;
         document.getElementById("capture-inspector")!.innerHTML =
-          '<h2>Recorded moments</h2><div class="review-toolbar">Play <input type="range" /></div><div class="review-timeline-events">Click · Console · Network</div><div class="review-events">Activity · Console · Network</div>';
+          '<h2>Recorded moments</h2><div class="review-events">Activity · Console · Network</div>';
         document.getElementById("capture-inspector")!.classList.add("session-review");
+        document
+          .querySelector("#editing .timeline")!
+          .insertAdjacentHTML(
+            "beforeend",
+            '<div class="review-timeline-events">Click · Console · Network</div>',
+          );
       });
       const video = (await page.locator("#preview").boundingBox())!;
       const inspector = (await page.locator("#capture-inspector").boundingBox())!;
       const editor = (await page.locator("#editing").boundingBox())!;
       const review = (await page.locator("#review").boundingBox())!;
       assert.ok(video.width >= 1050 && inspector.width >= 1050);
-      assert.ok(video.y < inspector.y && inspector.y < editor.y && editor.y < review.y);
+      assert.ok(video.y < editor.y && editor.y < inspector.y && inspector.y < review.y);
       const marks = (await page.locator(".review-timeline-events").boundingBox())!;
       const events = (await page.locator(".review-events").boundingBox())!;
       assert.ok(video.y < marks.y && marks.y < events.y);
@@ -71,9 +77,9 @@ test(
       const mobileReview = (await page.locator("#review").boundingBox())!;
       assert.ok(mobileVideo.width <= 390 && mobileReview.width <= 390);
       assert.ok(
-        mobileVideo.y < mobileInspector.y &&
-          mobileInspector.y < mobileEditor.y &&
-          mobileEditor.y < mobileReview.y,
+        mobileVideo.y < mobileEditor.y &&
+          mobileEditor.y < mobileInspector.y &&
+          mobileInspector.y < mobileReview.y,
       );
       await page.screenshot({
         path: "output/playwright/video-review-layout/mobile.png",

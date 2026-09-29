@@ -55,6 +55,48 @@ video {
 }
 #send {
   margin-top: 12px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+#send::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent-hover);
+  transform: scaleX(var(--send-progress, 0%));
+  transform-origin: left;
+  transition: transform 180ms ease-out;
+}
+.upload-progress {
+  margin-top: 10px;
+  max-width: 360px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.upload-progress label {
+  display: block;
+  margin: 0 0 6px;
+  font-weight: 500;
+}
+.upload-progress progress {
+  display: block;
+  width: 100%;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--workbench);
+}
+.upload-progress progress::-webkit-progress-value {
+  background: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  #send::before {
+    transition: none;
+  }
 }
 #status {
   min-height: 1.5em;
@@ -221,6 +263,16 @@ video {
   justify-content: flex-start;
   font-size: 13px;
 }
+.timeline-playback #trim-mute,
+.timeline-playback #trim-fullscreen {
+  min-height: 40px;
+  padding: 6px 10px;
+}
+.review-primary:fullscreen {
+  overflow: auto;
+  padding: 20px;
+  background: var(--canvas);
+}
 .trim-bounds {
   margin-left: auto;
 }
@@ -266,6 +318,20 @@ video {
   }
 }
 .after-recording {
+  display: none;
+}
+.completed-recording {
+  display: none;
+}
+.video-complete .completed-recording {
+  display: inline;
+}
+.video-complete .before-recording,
+.video-complete .after-recording,
+.video-complete .during-recording,
+.video-complete #audio-options,
+.video-complete #debug-options,
+.video-complete #redirect-options {
   display: none;
 }
 .has-recording .before-recording,

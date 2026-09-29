@@ -494,20 +494,41 @@ export function videoSegments(intervals, trimStartMs, trimEndMs) {
   }
   return result;
 }
-export function clipRecording(recording, segments) {
+export function canKeepReplayPrefix(video) {
+  const segments = video?.segments;
+  if (!Array.isArray(segments) || segments.length !== 1) return false;
+  const [segment] = segments;
+  return (
+    Number.isFinite(video.offsetMs) &&
+    Number.isFinite(segment.sourceStartMs) &&
+    Number.isFinite(segment.sourceEndMs) &&
+    segment.outputStartMs === 0 &&
+    segment.sourceEndMs > segment.sourceStartMs &&
+    Math.abs(segment.sourceStartMs - Math.max(0, -video.offsetMs)) <= 50
+  );
+}
+
+export function clipRecording(recording, segments, { keepReplayPrefix = false } = {}) {
+  const replayEnd = segments[0]?.sourceEndMs;
+  const hasBaseline = recording.events.some(
+    (event) =>
+      event.type === "replay" && event.data?.type === 2 && event.atMs <= replayEnd,
+  );
+  const keepReplay = keepReplayPrefix && segments.length === 1 && hasBaseline;
   const events = recording.events
-    .filter(
-      (e) =>
-        e.type !== "replay" &&
-        segments.some((s) => e.atMs >= s.sourceStartMs && e.atMs <= s.sourceEndMs),
+    .filter((e) =>
+      e.type === "replay"
+        ? keepReplay && e.atMs <= replayEnd
+        : segments.some((s) => e.atMs >= s.sourceStartMs && e.atMs <= s.sourceEndMs),
     )
     .map((e, seq) => ({ ...e, seq }));
   const coverage = recording.coverage.filter((c) => c.channel !== "replay");
   coverage.push({
     channel: "replay",
-    status: "unavailable",
-    detail:
-      "DOM replay is omitted after video trimming or pauses because a trustworthy DOM baseline cannot be reconstructed without retaining excluded page content. Remaining diagnostics follow the kept video intervals.",
+    status: keepReplay ? "partial" : "unavailable",
+    detail: keepReplay
+      ? "DOM replay remains available through the retained beginning of this video. The trimmed tail was removed."
+      : "DOM replay is omitted after video trimming or pauses because a trustworthy DOM baseline cannot be reconstructed without retaining excluded page content. Remaining diagnostics follow the kept video intervals.",
   });
   return { ...recording, events, coverage };
 }

@@ -84,3 +84,43 @@ test("points remain readable when the main capture or a point original is absent
   assert.match(html, /Saved page position/);
   assert.equal((html.match(/class="review-point-figure"/g) || []).length, 2);
 });
+
+test("recording frames and the linked video are shown once in the recording player", () => {
+  const item = thread(false);
+  item.assets = [
+    {
+      id: "frame",
+      url: "/api/assets/frame",
+      width: 800,
+      height: 600,
+      rendition: "annotated",
+      contentType: "image/webp",
+      recordingFrame: {
+        recordingId: "rec",
+        atMs: 5000,
+        videoTimeMs: 4800,
+        annotationId: "a",
+      },
+      markings: [
+        {
+          tool: "point",
+          annotationId: "a",
+          bounds: { x: 0.2, y: 0.2, width: 0, height: 0 },
+          endpoints: [{ x: 0.2, y: 0.2 }],
+        },
+      ],
+    },
+    {
+      id: "video",
+      url: "/api/assets/video",
+      rendition: "tabVideo",
+      contentType: "video/webm",
+    },
+  ] as Thread["assets"];
+  const html = renderToStaticMarkup(
+    React.createElement(ReviewEvidence, { thread: item }),
+  );
+  assert.doesNotMatch(html, /review-main-capture|review-extra-captures|<video/);
+  assert.equal((html.match(/src="\/api\/assets\/frame"/g) || []).length, 1);
+  assert.match(html, /First request/);
+});

@@ -25,12 +25,12 @@ test(
             async play() { this.paused = false; this.dispatchEvent(new Event("play")); },
           });
           window.media = media;
-          window.mount = (recording, video, annotations = []) => {
+          window.mount = (recording, video, annotations = [], timeline = {}) => {
             window.inspector?.dispose();
             window.savedFrames = [];
             media.currentTime = 0.3;
             window.inspector = createSessionReview(document.getElementById("root"), {
-              recording, video, annotations, videoElement: media,
+              recording, video, annotations, videoElement: media, ...timeline,
               onFrame: (atMs, videoTimeMs) => window.savedFrames.push({ atMs, videoTimeMs }),
             });
           };
@@ -71,6 +71,7 @@ test(
           (window as any).mount(
             {
               durationMs: 3000,
+              environment: { browser: "Chrome", viewport: { width: 1280, height: 720 } },
               events: [
                 {
                   seq: 0,
@@ -90,13 +91,36 @@ test(
                   type: "network",
                   data: { phase: "response", status: 500, url: "/api" },
                 },
+                {
+                  seq: 3,
+                  atMs: 1800,
+                  type: "performance",
+                  data: { name: "Largest contentful paint", durationMs: 480 },
+                },
               ],
             },
             { offsetMs: 0 },
           ),
         );
         const marks = page.locator(".review-timeline-mark");
-        assert.equal(await marks.count(), 3);
+        assert.equal(await marks.count(), 4);
+        assert.equal(
+          await page
+            .getByRole("tab", { name: /^Everything/ })
+            .getAttribute("aria-selected"),
+          "true",
+        );
+        assert.deepEqual(
+          await page.locator(".review-events .review-event-tag").allTextContents(),
+          ["environment", "activity", "console", "performance", "network"],
+        );
+        await page.locator('.review-timeline-mark[data-channel="performance"]').hover();
+        assert.match(
+          (await page
+            .locator('.review-timeline-mark[data-channel="performance"] [role="tooltip"]')
+            .textContent()) ?? "",
+          /Largest contentful paint/,
+        );
         await page.getByRole("button", { name: /Console warning at 0:01.1/ }).click();
         assert.equal(await page.getByRole("slider").inputValue(), "1100");
         assert.equal(await page.evaluate(() => (window as any).media.currentTime), 1.1);
@@ -272,6 +296,7 @@ test(
           (window as any).media.dispatchEvent(new Event("seeked"));
         });
         await page.getByRole("tab", { name: /^Network/ }).click();
+        await page.getByLabel(/Browse all events/).uncheck();
         assert.equal(await page.locator(".review-event").count(), 2);
         assert.equal(await page.getByRole("button", { name: /\/future/ }).count(), 0);
         await page.getByRole("button", { name: /\/second/ }).click();
@@ -298,6 +323,87 @@ test(
             url: "/first",
             durationMs: 11,
           },
+        );
+      },
+    );
+    await t.test(
+      "video review uses the editor seek bar and maps event marks to retained video time",
+      async () => {
+        await page.evaluate(() => {
+          document.body.insertAdjacentHTML(
+            "beforeend",
+            '<section id="editing"><div class="timeline"><input id="trim-seek" type="range" /><div class="timeline-playback"></div></div></section>',
+          );
+          (window as any).mount(
+            {
+              durationMs: 3000,
+              events: [
+                {
+                  seq: 1,
+                  atMs: 500,
+                  type: "activity",
+                  data: { action: "click", label: "First" },
+                },
+                {
+                  seq: 2,
+                  atMs: 2500,
+                  type: "activity",
+                  data: { action: "click", label: "Second" },
+                },
+                {
+                  seq: 3,
+                  atMs: 1500,
+                  type: "console",
+                  data: { level: "warn", args: ["Gap"] },
+                },
+              ],
+            },
+            {
+              segments: [
+                { sourceStartMs: 0, sourceEndMs: 1000, outputStartMs: 0 },
+                { sourceStartMs: 2000, sourceEndMs: 3000, outputStartMs: 1000 },
+              ],
+            },
+          );
+        });
+        assert.equal(await page.locator("#root .review-toolbar input").count(), 0);
+        assert.equal(await page.locator("#editing .review-timeline-mark").count(), 2);
+        assert.deepEqual(
+          await page
+            .locator("#editing .review-timeline-mark")
+            .evaluateAll((marks) =>
+              marks.map((mark) => (mark as HTMLElement).style.left),
+            ),
+          ["25%", "75%"],
+        );
+        await page.getByRole("button", { name: /Click at 0:02.5/ }).click();
+        assert.equal(await page.evaluate(() => (window as any).media.currentTime), 1.5);
+        await page.evaluate(() =>
+          (window as any).mount(
+            {
+              durationMs: 3000,
+              events: [
+                {
+                  seq: 4,
+                  atMs: 2500,
+                  type: "activity",
+                  data: { action: "click", label: "Trimmed" },
+                },
+              ],
+            },
+            {
+              segments: [{ sourceStartMs: 2000, sourceEndMs: 3000, outputStartMs: 0 }],
+            },
+            [],
+            { timelineStartMs: 1000, timelineDurationMs: 2000 },
+          ),
+        );
+        assert.equal(
+          await page
+            .locator("#editing .review-timeline-mark")
+            .evaluate((mark) => (mark as HTMLElement).style.left),
+          "75%",
+          "a trimmed clip keeps marks at their original editor-track positions",
         );
       },
     );

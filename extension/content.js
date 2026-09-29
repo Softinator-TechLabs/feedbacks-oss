@@ -58,6 +58,8 @@
     recordingClock,
     recordingError,
     recordingFocusAction,
+    recordingOptions = {},
+    recordingRedirectOrigins = [],
     highlightEnabled = true,
     highlightButton,
     clickIndicators = true,
@@ -238,7 +240,7 @@
       beforeRecording = { highlightEnabled, navigationLocked, clickIndicators };
       setHighlight(false);
       setNavigationLock(!recordingOnly && defaults.recordingNavigationLocked === true);
-      setClicks(defaults.recordingClickIndicators !== false);
+      setClicks(defaults.recordingClickIndicators === true);
     } else if (!compact && beforeRecording) {
       setHighlight(beforeRecording.highlightEnabled);
       setNavigationLock(beforeRecording.navigationLocked);
@@ -357,17 +359,125 @@
     } else {
       if (navigationButton?.parentElement?.parentElement === bar)
         bar.insertBefore(recordingControls, navigationButton.parentElement);
-      button(
-        state === "ready" ? `Review ${recordingMode}` : "Record video",
-        () =>
-          send({
-            type:
-              state === "ready" && recordingMode === "session"
-                ? "openSessionReview"
-                : "openRecorder",
-          }),
-        recordingControls,
-      );
+      if (state === "ready") {
+        button(
+          `Review ${recordingMode}`,
+          () =>
+            send({
+              type: recordingMode === "session" ? "openSessionReview" : "openRecorder",
+            }),
+          recordingControls,
+        );
+      } else {
+        let selectedMode = recordingOptions.mode === "session" ? "session" : "video";
+        const start = button(
+          selectedMode === "session" ? "Record session" : "Record video + session",
+          async () => {
+            renderRecording("starting", 0, selectedMode);
+            try {
+              await send({ type: "startRecording", mode: selectedMode });
+            } catch (error) {
+              renderRecording("idle", 0, selectedMode);
+              throw error;
+            }
+          },
+          recordingControls,
+        );
+        start.className = "recording-primary";
+        start.title =
+          selectedMode === "session"
+            ? "Record page activity, replay, console and network without video"
+            : "Record tab video with synced activity, replay, console and network";
+        const settings = document.createElement("details");
+        settings.className = "recording-options";
+        const summary = document.createElement("summary");
+        summary.textContent = "Options";
+        summary.setAttribute("aria-label", "Recording options");
+        settings.append(summary);
+        const panel = document.createElement("div");
+        panel.className = "recording-options-panel";
+        const modeLabel = document.createElement("label");
+        modeLabel.textContent = "Capture";
+        const mode = document.createElement("select");
+        mode.setAttribute("aria-label", "Recording mode");
+        for (const [value, label] of [
+          ["video", "Video + session"],
+          ["session", "Session only"],
+        ])
+          mode.add(new Option(label, value));
+        mode.value = selectedMode;
+        mode.onchange = async () => {
+          try {
+            recordingOptions = await send({
+              type: "recordingOptions",
+              options: { mode: mode.value },
+            });
+            selectedMode = mode.value;
+            start.textContent =
+              mode.value === "session" ? "Record session" : "Record video + session";
+            audio.hidden = mode.value === "session";
+          } catch (error) {
+            mode.value = selectedMode;
+            notice.textContent = error.message;
+          }
+        };
+        modeLabel.append(mode);
+        panel.append(modeLabel);
+        const audio = document.createElement("div");
+        audio.className = "recording-option-group";
+        audio.hidden = selectedMode === "session";
+        panel.append(audio);
+        const addOption = (parent, key, label) => {
+          const row = document.createElement("label");
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.checked = recordingOptions[key] === true;
+          input.onchange = async () => {
+            try {
+              recordingOptions = await send({
+                type: "recordingOptions",
+                options: { [key]: input.checked },
+              });
+            } catch (error) {
+              input.checked = !input.checked;
+              notice.textContent = error.message;
+            }
+          };
+          row.append(input, document.createTextNode(label));
+          parent.append(row);
+        };
+        addOption(audio, "tabAudio", "Tab audio");
+        addOption(audio, "microphone", "Microphone");
+        addOption(panel, "maskInputs", "Mask input values");
+        addOption(panel, "maskText", "Mask page text");
+        addOption(panel, "networkBodies", "Include bounded network bodies");
+        const redirects = document.createElement("label");
+        redirects.textContent = "Redirect sites (exact origins)";
+        const origins = document.createElement("input");
+        origins.type = "text";
+        origins.placeholder = "https://dashboard.example.com";
+        origins.value = recordingRedirectOrigins.join(", ");
+        origins.setAttribute("aria-label", "Redirect site origins");
+        redirects.append(origins);
+        panel.append(redirects);
+        button(
+          "Allow sites",
+          async () => {
+            const result = await send({
+              type: "recordingRedirects",
+              origins: origins.value,
+            });
+            recordingRedirectOrigins = result.origins.slice(1);
+            origins.value = recordingRedirectOrigins.join(", ");
+            notice.textContent = recordingRedirectOrigins.length
+              ? "Redirect sites allowed for this recording."
+              : "Recording limited to this site.";
+          },
+          panel,
+        );
+        settings.append(panel);
+        recordingControls.append(settings);
+      }
     }
     updateRecordingClock();
     syncRecordingAnnotationControls();
@@ -2257,6 +2367,10 @@
       }
       if (message.type === "recordingState") {
         renderRecording(message.state, message.elapsedMs, message.mode || "video");
+        if (message.error) {
+          notice.textContent = message.error;
+          revealDrawer(true);
+        }
         return {};
       }
       if (message.type === "draftPrepared") {
@@ -2304,6 +2418,8 @@
       }
       if (message.type === "activate") {
         reviewShortcuts = message.reviewShortcuts !== false;
+        recordingOptions = message.recordingOptions || {};
+        recordingRedirectOrigins = message.recordingRedirectOrigins || [];
         const wasActive = active && host?.isConnected;
         const modeChanged = recordingOnly !== (message.recordingOnly === true);
         recordingOnly = message.recordingOnly === true;
@@ -2343,6 +2459,10 @@
         }
         project = message.project;
         if (!host?.isConnected) setup(message.css);
+        else if (!recordingBusy()) {
+          recordingControls.replaceChildren();
+          renderRecording();
+        }
         const styleSelect = root?.querySelector(
           '[aria-label="Screenshot marker for this review"]',
         );

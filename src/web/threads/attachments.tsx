@@ -3,11 +3,9 @@ import type { Thread } from "../api.js";
 
 export function ThreadAttachments({
   thread,
-  recordingAssetIds,
   onAnnotate,
 }: {
   thread: Thread;
-  recordingAssetIds: string[];
   onAnnotate?: (asset: Thread["assets"][number]) => void;
 }) {
   const capturePages = thread.assets.filter((asset) =>
@@ -18,7 +16,7 @@ export function ThreadAttachments({
     (asset) =>
       !capturePages.includes(asset) &&
       !recordingFrames.includes(asset) &&
-      !recordingAssetIds.includes(asset.id),
+      !asset.contentType.startsWith("video/"),
   );
   return (
     <>

@@ -10,10 +10,13 @@ import {
   captureHandleMatches,
   videoSegments,
   clipRecording,
+  canKeepReplayPrefix,
   captureOrigins,
 } from "./session/session-capture.js";
 import { createVideoTimeline } from "./video/video-timeline.js";
 import { finalizeWebmMetadata } from "./video/video-metadata.js";
+import { uploadVideoWithProgress } from "./video-upload.js";
+import { getVideoDraft, deleteVideoDraft } from "./video-draft-store.js";
 import {
   VIDEO_MAX_BYTES,
   VIDEO_MAX_MS,
@@ -23,6 +26,7 @@ import {
 const $ = (id) => document.getElementById(id);
 const recorderUrl = new URL(location.href);
 const sourceTabId = Number(recorderUrl.searchParams.get("sourceTabId"));
+const draftId = recorderUrl.searchParams.get("draftId");
 const autoStart = recorderUrl.searchParams.get("autoStart") === "1";
 let captureDefaults = {},
   pendingTabError;
@@ -165,13 +169,20 @@ async function refreshDebugReview() {
   if (!createAttempt)
     annotationFrames = mapAnnotationFrames(annotationItems, video, durationMs);
   const recording = !debugAligned
-    ? clipRecording(debugStopped.recording, segments)
+    ? clipRecording(debugStopped.recording, segments, {
+        keepReplayPrefix: canKeepReplayPrefix({
+          offsetMs: debugSession.started - videoStartWall,
+          segments,
+        }),
+      })
     : debugStopped.recording;
   inspector?.dispose();
   inspector = createSessionReview($("capture-inspector"), {
     recording,
     videoElement: $("preview"),
     video,
+    timelineStartMs: appliedTrim?.start || 0,
+    timelineDurationMs: originalDuration,
     onFrame: saveReviewFrame,
     annotations: annotationFrames,
   });
@@ -213,6 +224,71 @@ let stream,
   tooLarge = false,
   recordingFailed = false,
   preparingVideo = false;
+async function showReview() {
+  originalUrl = URL.createObjectURL(originalBlob);
+  previewUrl = URL.createObjectURL(blob);
+  $("preview").src = previewUrl;
+  $("preview").hidden = false;
+  $("review").hidden = false;
+  $("editing").hidden = false;
+  document.body?.classList.add("has-recording");
+  $("start").hidden = !!draftId;
+  $("start").textContent = "Record again";
+  $("timer").textContent =
+    `${(durationMs / 1000).toFixed(1)} seconds · ${(blob.size / 1024 / 1024).toFixed(1)} MiB`;
+  ["crop-left", "crop-top", "crop-width", "crop-height"].forEach(
+    (id, i) => ($(id).value = i < 2 ? "0" : "100"),
+  );
+  $("trim-start").value = "0";
+  $("trim-end").value = (durationMs / 1000).toFixed(3);
+  timeline.load(originalUrl, originalDuration / 1000);
+  $("edit-state").textContent = "";
+  $("discard").hidden = false;
+  publishState("ready");
+  status("Review the recording, then send or discard it.");
+  void refreshDebugReview().catch((error) => status(error.message));
+}
+async function loadDraft() {
+  const draft = await getVideoDraft(draftId);
+  if (!draft || draft.sourceTabId !== sourceTabId || draft.reviewId !== target.reviewId)
+    throw Error(
+      "This video draft is unavailable. Start a new recording from the website.",
+    );
+  blob = originalBlob = draft.blob;
+  durationMs = originalDuration = draft.durationMs;
+  videoStartWall = draft.videoStartWall;
+  mediaIntervals = draft.mediaIntervals || [];
+  debugAligned = mediaIntervals.length <= 1;
+  startedAt = performance.now() - durationMs;
+  stoppedAt = performance.now();
+  let capture = await send({ type: "sessionStatus" });
+  if (
+    capture?.active &&
+    capture?.recording?.id === draft.recordingId &&
+    capture.target?.sourceTabId === sourceTabId &&
+    capture.target?.reviewId === target.reviewId
+  )
+    capture = await send({ type: "sessionStop" }).catch(() => capture);
+  if (
+    capture?.active === false &&
+    capture?.recording?.id === draft.recordingId &&
+    capture.target?.sourceTabId === sourceTabId &&
+    capture.target?.reviewId === target.reviewId
+  ) {
+    debugSession = { started: draft.debugStarted };
+    debugStop = Promise.resolve(capture);
+    debugStopped = capture;
+    $("debug-status").textContent =
+      "Session activity, console, network and replay are ready for review.";
+  } else {
+    $("debug-status").textContent = draft.diagnosticError
+      ? `Session diagnostics could not finish: ${draft.diagnosticError}. The video draft is still here.`
+      : "Session diagnostics are unavailable in this browser. The video draft is still here.";
+  }
+  await showReview();
+  if (draft.videoWarning)
+    status(`${draft.videoWarning}. Review the video before sending.`);
+}
 let thread,
   uploadKey,
   serverOrigin,
@@ -352,6 +428,45 @@ async function send(message) {
 function status(message) {
   $("status").textContent = message;
 }
+function videoSendProgress(phase, percent = 0) {
+  const button = $("send");
+  const progress = $("upload-progress");
+  const meter = $("upload-meter");
+  const label = $("upload-label");
+  progress.hidden = phase === "idle";
+  meter.value = percent;
+  button.style.setProperty("--send-progress", `${percent}%`);
+  button.setAttribute("aria-busy", String(phase !== "idle" && phase !== "complete"));
+  if (phase === "uploading") {
+    button.textContent = `Sending ${percent}%`;
+    label.textContent = `Video sent to server · ${percent}%`;
+  } else if (phase === "confirming") {
+    button.textContent = "Confirming video…";
+    label.textContent = "Video transferred · waiting for server confirmation";
+  } else if (phase === "evidence") {
+    button.textContent = "Sharing activity…";
+    label.textContent = "Video uploaded · sharing timeline and saved frames";
+  } else if (phase === "complete") {
+    button.textContent = "Video sent";
+    label.textContent = "Video and selected evidence shared";
+  } else {
+    button.textContent = "Send video";
+    button.style.removeProperty("--send-progress");
+    label.textContent = "";
+  }
+}
+async function uploadVideo(input) {
+  const saved = await chrome.storage.local.get(["server", "accounts"]);
+  const token = saved.accounts?.[serverOrigin]?.token;
+  if (!token || saved.server !== serverOrigin || typeof XMLHttpRequest !== "function")
+    return send({ type: "videoUpload", server: serverOrigin, input });
+  return uploadVideoWithProgress({
+    server: serverOrigin,
+    token,
+    input,
+    onProgress: ({ phase, percent }) => videoSendProgress(phase, percent),
+  });
+}
 function clearPreview() {
   reviewGeneration++;
   $("capture-health").hidden = true;
@@ -365,6 +480,7 @@ function clearPreview() {
   blob = null;
   editsPending = false;
   $("send").disabled = false;
+  videoSendProgress("idle");
   durationMs = 0;
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = null;
@@ -641,27 +757,7 @@ $("start").onclick = async () => {
         blob = ready;
         originalBlob = ready;
         originalDuration = durationMs;
-        originalUrl = URL.createObjectURL(originalBlob);
-        previewUrl = URL.createObjectURL(blob);
-        $("preview").src = previewUrl;
-        $("preview").hidden = false;
-        $("review").hidden = false;
-        $("editing").hidden = false;
-        document.body?.classList.add("has-recording");
-        $("start").textContent = "Record again";
-        $("timer").textContent =
-          `${(durationMs / 1000).toFixed(1)} seconds · ${(blob.size / 1024 / 1024).toFixed(1)} MiB`;
-        ["crop-left", "crop-top", "crop-width", "crop-height"].forEach(
-          (id, i) => ($(id).value = i < 2 ? "0" : "100"),
-        );
-        $("trim-start").value = "0";
-        $("trim-end").value = (durationMs / 1000).toFixed(3);
-        timeline.load(originalUrl, originalDuration / 1000);
-        $("edit-state").textContent = "";
-        $("discard").hidden = false;
-        publishState("ready");
-        status("Review the recording, then send or discard it.");
-        void refreshDebugReview().catch((error) => status(error.message));
+        await showReview();
       } catch (error) {
         clearPreview();
         publishState("idle");
@@ -711,6 +807,7 @@ $("pause").onclick = pauseOrResume;
 $("discard").onclick = async () => {
   stop();
   clearPreview();
+  if (draftId) await deleteVideoDraft(draftId).catch(() => {});
   publishState("idle");
   if (debugSession) {
     await debugStop;
@@ -728,6 +825,7 @@ $("send").onclick = async () => {
     return;
   }
   $("send").disabled = true;
+  videoSendProgress("uploading", 0);
   try {
     // Snapshot the local comments before sessionSubmit consumes the worker capture.
     if (debugSession && !submittedCapture) {
@@ -774,19 +872,16 @@ $("send").onclick = async () => {
     });
     const result =
       uploadedVideo ||
-      (await send({
-        type: "videoUpload",
-        server: serverOrigin,
-        input: {
-          threadId: thread.id,
-          revision: thread.revision,
-          videoBase64,
-          durationMs,
-          idempotencyKey: uploadKey,
-        },
+      (await uploadVideo({
+        threadId: thread.id,
+        revision: thread.revision,
+        videoBase64,
+        durationMs,
+        idempotencyKey: uploadKey,
       }));
     uploadedVideo = result;
     thread = result.thread;
+    videoSendProgress("evidence", 100);
     if (debugSession) {
       await debugStop;
       const segments = videoSegments(
@@ -817,6 +912,10 @@ $("send").onclick = async () => {
             ...(!debugAligned ? { segments } : {}),
           },
           clipReplay: !debugAligned,
+          keepReplayPrefix: canKeepReplayPrefix({
+            offsetMs: debugSession.started - videoStartWall,
+            segments,
+          }),
         }));
       submittedCapture = capture;
       thread = capture.thread;
@@ -837,11 +936,14 @@ $("send").onclick = async () => {
     $("thread").href = `${serverOrigin}/threads/${thread.id}`;
     $("thread").textContent = "Open feedback with recording";
     clearPreview();
+    if (draftId) await deleteVideoDraft(draftId).catch(() => {});
+    document.body.classList.add("video-complete");
     $("start").hidden = true;
     $("send").hidden = true;
     $("thread").hidden = false;
     status("Video shared with the project.");
     publishState("sent");
+    videoSendProgress("complete", 100);
   } catch (error) {
     if (error.code === "CONFLICT" && thread && !submittedCapture) {
       try {
@@ -860,6 +962,8 @@ $("send").onclick = async () => {
     status(
       `${submittedCapture ? "Video and diagnostics are shared; saved frames are still pending. " : uploadedVideo ? "Video reached the draft feedback; timeline evidence and screenshot points are still pending. " : thread ? "Draft feedback was created; video and evidence are still pending. " : ""}${error.message} Keep this tab open and retry Send video.`,
     );
+    videoSendProgress("idle");
+    $("send").textContent = "Retry Send video";
   } finally {
     $("send").disabled = false;
   }
@@ -888,7 +992,9 @@ else
       $("start").disabled = !connected;
       $("audio-options").disabled = false;
       return (
-        autoStart ? Promise.resolve() : send({ type: "videoCaptureHandle", target })
+        autoStart || draftId
+          ? Promise.resolve()
+          : send({ type: "videoCaptureHandle", target })
       )
         .then((value) => {
           captureHandle = value;
@@ -899,6 +1005,7 @@ else
           $("debug-status").textContent = error.message;
         })
         .then(async () => {
+          if (draftId) return loadDraft();
           if (!autoStart) return;
           await pendingTabStream;
           for (const [key, id] of Object.entries({
@@ -965,7 +1072,12 @@ $("apply-edit").onclick = async () => {
       ));
       $("debug-status").textContent = debugAligned
         ? "Full video selected. Debug context uses the original recording clock."
-        : "Measured pause/trim intervals remain aligned; diagnostics outside them and DOM replay are omitted.";
+        : canKeepReplayPrefix({
+              offsetMs: debugSession.started - videoStartWall,
+              segments: videoSegments(mediaIntervals, start, end),
+            })
+          ? "The video tail was trimmed. Session replay remains available through the retained beginning."
+          : "Measured pause/trim intervals remain aligned; diagnostics outside them and DOM replay are omitted.";
     }
     durationMs = editedDurationMs;
     previewUrl = URL.createObjectURL(blob);

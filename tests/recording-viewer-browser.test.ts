@@ -132,7 +132,7 @@ test(
       durationMs: 5000,
       mode: "session",
       url: "https://example.test/page",
-      eventCount: 12,
+      eventCount: 13,
       privacy: { maskText: false, maskInputs: true, networkBodies: true },
       coverage: [{ channel: "replay", status: "complete" }],
       environment: { browser: "Synthetic", replayStoppedAtMs: 3500 },
@@ -181,6 +181,12 @@ test(
             url: "/api/check",
             requestBody: "sent",
           },
+        },
+        {
+          seq: 13,
+          atMs: 1100,
+          type: "performance",
+          data: { name: "Largest contentful paint", durationMs: 287 },
         },
         {
           seq: 6,
@@ -294,6 +300,35 @@ test(
         waitUntil: "domcontentloaded",
       });
       await page.getByRole("button", { name: "Play replay" }).waitFor();
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Everything", exact: true })
+          .getAttribute("aria-pressed"),
+        "true",
+      );
+      assert.deepEqual(
+        await page
+          .locator(".recording-everything .recording-event-tag")
+          .allTextContents(),
+        [
+          "Environment",
+          "console",
+          "console",
+          "console",
+          "network",
+          "performance",
+          "activity",
+          "activity",
+          "activity",
+          "activity",
+          "console",
+          "network",
+        ],
+      );
+      assert.match(
+        (await page.locator(".recording-everything").textContent()) ?? "",
+        /0:01\.0.*POST \/api\/check.*0:01\.1.*Largest contentful paint.*0:01\.2.*Typed in Search/s,
+      );
       await page.waitForFunction(
         () =>
           !document.querySelector<HTMLButtonElement>(".recording-timeline button")
@@ -306,6 +341,7 @@ test(
         .locator(".recording-tabs")
         .getByRole("button", { name: "Console" })
         .click();
+      await page.getByRole("button", { name: "At playhead" }).click();
       await page.waitForFunction(
         () =>
           Number(
@@ -348,7 +384,10 @@ test(
         .getByRole("button", { name: "Network" })
         .click();
       await page.getByRole("button", { name: "All events" }).click();
-      await page.getByRole("button", { name: /POST.*api\/check/ }).click();
+      await page
+        .locator(".recording-network .recording-events")
+        .getByRole("button", { name: /POST.*api\/check/ })
+        .click();
       assert.match(
         (await page.locator(".recording-network-detail").textContent()) ?? "",
         /Response has not appeared at this point/,
@@ -433,7 +472,7 @@ test(
       durationMs: 3000,
       mode: "video",
       url: "https://example.test/page",
-      eventCount: 4,
+      eventCount: 24,
       privacy: { maskText: false, maskInputs: true, networkBodies: false },
       coverage: [
         { channel: "video", status: "complete" },
@@ -499,6 +538,12 @@ test(
           type: "activity",
           data: { action: "click", label: "Removed", x: 10, y: 10 },
         },
+        ...Array.from({ length: 20 }, (_, index) => ({
+          seq: 20 + index,
+          atMs: 200 + index * 55,
+          type: "activity",
+          data: { action: "click", label: `Step ${index + 1}` },
+        })),
         {
           seq: 1,
           atMs: 2500,
@@ -614,11 +659,25 @@ test(
       const videoMode = page.getByRole("button", { name: "Video", exact: true });
       const replayMode = page.getByRole("button", { name: "Replay", exact: true });
       assert.equal(await videoMode.getAttribute("aria-pressed"), "true");
+      assert.equal(await page.locator("#thread-recording-select").count(), 0);
+      assert.equal(await page.locator(".recording-media video").count(), 1);
       assert.equal(await page.locator(".recording-media video").isVisible(), true);
+      assert.equal(
+        await page.locator(".recording-media video").evaluate((video) => video.controls),
+        false,
+        "video and session must expose one seek bar",
+      );
+      assert.equal(await page.locator("#thread-recording-timeline").count(), 1);
+      assert.equal(await page.getByRole("button", { name: "Mute video" }).count(), 1);
+      assert.equal(
+        await page.getByRole("button", { name: "Full screen video" }).count(),
+        1,
+      );
       const videoBox = (await page.locator(".recording-media video").boundingBox())!;
       const timelineBox = (await page.locator(".recording-timeline").boundingBox())!;
       const eventsBox = (await page.locator(".recording-diagnostics").boundingBox())!;
       assert.ok(videoBox.y < timelineBox.y && timelineBox.y < eventsBox.y);
+      assert.ok(eventsBox.y - (timelineBox.y + timelineBox.height) < 2);
       assert.ok(videoBox.width >= timelineBox.width * 0.8);
       await page.screenshot({
         path: ".local/thread-video-layout-light.png",
@@ -652,14 +711,48 @@ test(
       await page.locator(".recording-media video").waitFor();
       await page.getByRole("button", { name: "All events" }).click();
       const pointMark = page.locator('.recording-timeline-mark[data-channel="point"]');
-      assert.match((await pointMark.getAttribute("title")) || "", /Make this larger/);
-      assert.equal(
-        await page.getByRole("heading", { name: "Screenshot comments (1)" }).isVisible(),
-        true,
+      await pointMark.hover();
+      assert.match(
+        (await pointMark.locator('[role="tooltip"]').textContent()) || "",
+        /Make this larger/,
       );
-      const buyMark = page.locator('.recording-timeline-mark[title*="Clicked Buy"]');
-      assert.match((await buyMark.getAttribute("title")) || "", /0:02.5/);
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(
+            document.querySelector(
+              '.recording-timeline-mark[data-channel="point"] [role="tooltip"]',
+            )!,
+          ).opacity === "1",
+      );
+      assert.equal(
+        await pointMark
+          .locator('[role="tooltip"]')
+          .evaluate((element) => getComputedStyle(element).opacity),
+        "1",
+      );
+      assert.equal(
+        await page.getByRole("heading", { name: /Screenshot comments/ }).count(),
+        0,
+      );
+      const buyMark = page.locator('.recording-timeline-mark[aria-label*="Clicked Buy"]');
+      await buyMark.hover();
+      assert.match(
+        (await buyMark.locator('[role="tooltip"]').textContent()) || "",
+        /0:02.5.*Clicked Buy/,
+      );
       await buyMark.click();
+      assert.equal(
+        await page
+          .locator(".recording-tabs button", { hasText: "Activity" })
+          .getAttribute("aria-pressed"),
+        "true",
+      );
+      assert.match(
+        (await page
+          .locator('.recording-events button[aria-current="true"]')
+          .textContent()) || "",
+        /Clicked Buy/,
+      );
       await page.waitForFunction(
         () =>
           ![...document.querySelectorAll<HTMLButtonElement>("button")].find(
@@ -692,7 +785,26 @@ test(
       await page.waitForFunction(
         () =>
           document.querySelector<HTMLVideoElement>(".recording-media video")!
-            .currentTime > 0.15,
+            .currentTime > 1.55,
+      );
+      await page.waitForFunction(() => {
+        const video = document.querySelector<HTMLVideoElement>(".recording-media video");
+        const timeline = document.querySelector<HTMLInputElement>(
+          "#thread-recording-timeline",
+        );
+        return (
+          !!video &&
+          !!timeline &&
+          Math.abs(Number(timeline.value) - (video.currentTime * 1000 + 1000)) < 350
+        );
+      });
+      await page.waitForFunction(() =>
+        document
+          .querySelector('.recording-events button[aria-current="true"]')
+          ?.textContent?.includes("Clicked Buy"),
+      );
+      assert.ok(
+        await page.locator(".recording-events").evaluate((list) => list.scrollTop > 0),
       );
       await page
         .locator(".recording-events")

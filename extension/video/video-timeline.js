@@ -138,6 +138,13 @@ export function createVideoTimeline({ onChange, onError }) {
       onError(error.message);
     }
   };
+  $("trim-mute").onclick = () => {
+    video.muted = !video.muted;
+    $("trim-mute").textContent = video.muted ? "Unmute" : "Mute";
+    $("trim-mute").setAttribute("aria-pressed", String(video.muted));
+  };
+  $("trim-fullscreen").onclick = () =>
+    $("preview").closest(".review-primary")?.requestFullscreen();
   const playIcon = $("trim-play-icon"),
     pauseIcon = $("trim-pause-icon");
   video.addEventListener("play", () => {

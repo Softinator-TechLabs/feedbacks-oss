@@ -1,5 +1,5 @@
 import { DeleteThreadsButton, ArchiveThreadButton } from "./deletion.js";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ThreadMove } from "./move.js";
 import { ThreadTaskCopy } from "./task-copy.js";
 import { ThreadWorkPlan } from "./work-plan.js";
@@ -11,7 +11,7 @@ import { ContextPanel } from "./context.js";
 import { ReviewEvidence } from "../review-evidence.js";
 import { ThreadRecordings } from "../recordings/thread-recordings.js";
 import { ScreenshotMarkup, type MarkupTarget } from "../screenshot-markup.js";
-import { ThreadAttachments, RecordingFrames } from "./attachments.js";
+import { ThreadAttachments } from "./attachments.js";
 import { ThreadLinks } from "./links.js";
 import {
   DiagnosticEvidencePanel,
@@ -88,15 +88,7 @@ export function ThreadDetail({
         : Promise.resolve(undefined),
     [threadId, project?.id, projectVersion],
   );
-  const [recordingAssets, setRecordingAssets] = useState<{
-    threadId: string;
-    ids: string[];
-  }>({ threadId: "", ids: [] });
   const [markupTarget, setMarkupTarget] = useState<MarkupTarget | null>(null);
-  const handleLinkedAssets = useCallback(
-    (ids: string[]) => setRecordingAssets({ threadId, ids }),
-    [threadId],
-  );
   const assetIds = t?.assets.map((asset) => asset.id).join(",");
   useEffect(() => {
     if (!t || t.context.annotations?.length) return;
@@ -495,6 +487,17 @@ export function ThreadDetail({
               </div>
               <MarkdownText body={t.body} className="message" />
             </article>
+            <ThreadRecordings
+              key={t.id}
+              thread={t}
+              canWrite={!!project?.permissions.canWrite}
+              onSaved={setThread}
+              onAnnotateFrame={
+                project?.permissions.canWrite
+                  ? (frame) => setMarkupTarget({ kind: "frame", ...frame })
+                  : undefined
+              }
+            />
             {!!t.context.annotations?.length && (
               <ReviewEvidence
                 thread={t}
@@ -506,29 +509,6 @@ export function ThreadDetail({
               />
             )}
             <ThreadAttachments
-              thread={t}
-              recordingAssetIds={
-                recordingAssets.threadId === t.id ? recordingAssets.ids : []
-              }
-              onAnnotate={
-                project?.permissions.canWrite
-                  ? (asset) => setMarkupTarget({ kind: "asset", asset })
-                  : undefined
-              }
-            />
-            <ThreadRecordings
-              key={t.id}
-              thread={t}
-              canWrite={!!project?.permissions.canWrite}
-              onSaved={setThread}
-              onLinkedAssets={handleLinkedAssets}
-              onAnnotateFrame={
-                project?.permissions.canWrite
-                  ? (frame) => setMarkupTarget({ kind: "frame", ...frame })
-                  : undefined
-              }
-            />
-            <RecordingFrames
               thread={t}
               onAnnotate={
                 project?.permissions.canWrite

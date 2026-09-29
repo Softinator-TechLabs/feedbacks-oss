@@ -1,6 +1,6 @@
 # Modular source structure
 
-Status: in progress. Owner: Feedbacks maintainers. Date: 2026-09-29.
+Status: six reviewed stages merged; thread-list and extension runtime follow-ups in progress. Owner: Feedbacks maintainers. Date: 2026-09-29.
 
 ## Outcome and scope
 
@@ -25,7 +25,7 @@ Use incremental feature folders and extraction. Keep browser and server entrypoi
 - [x] Split extension browser QA setup and shared page fixture into focused modules.
 - [x] Split the remaining sequential acceptance scenario runner into feature scenario modules with explicit handoffs.
 - [x] Reassess server transport and dispatch for focused extraction; preserve transaction and authorization boundaries.
-- [ ] Run focused checks after every stage, then the full check, extension browser acceptance, native PostgreSQL checks where server behavior changes, and exact-revision CI. Review the final diff and update architecture and quality guidance.
+- [x] Run focused checks after every merged stage, then the full check, extension browser acceptance, native PostgreSQL checks where server behavior changes, and exact-revision CI. Review each diff and update architecture and quality guidance.
 
 ## Compatibility and recovery
 
@@ -67,9 +67,9 @@ No migration, object-key, token, permission, or public operation name change is 
 
 ## Phase 1 completion receipt
 
-Source revision: PR #117 on `codex/modular-refactor`, based on `7e6a4ad` (PR #116); merge revision is recorded by GitHub after integration.
-Checks and results: Node 22 `npm run check` passed after the latest rebase (328 pass, 22 skipped, 0 fail; builds, harness smoke, and release package checks included). Current-base synthetic app visual QA captured 56 screenshots with zero blocked requests; `npm run qa:app-filters` and native `npm run test:postgres` (2 pass) passed. The packaged extension capture/review scenario passed after the setup race fix. All six PR CI jobs, including Node 22/24, containers, Android, secrets, and extension/recording browser acceptance, passed on `fc5f174`; required CI remains the merge gate for the final revision.
-Artifacts: draft source PR #117; no extension Store package or deployed service produced.
+Source revision: PR #117 on `codex/modular-refactor`, based on `7e6a4ad` (PR #116), merged at `c1f12a5`.
+Checks and results: Node 22 `npm run check` passed after the latest rebase (328 pass, 22 skipped, 0 fail; builds, harness smoke, and release package checks included). Current-base synthetic app visual QA captured 56 screenshots with zero blocked requests; `npm run qa:app-filters` and native `npm run test:postgres` (2 pass) passed. The packaged extension capture/review scenario passed after the setup race fix. All six PR CI jobs, including Node 22/24, containers, Android, secrets, and extension/recording browser acceptance, passed on `fc5f174` before merge.
+Artifacts: merged source PR #117; no extension Store package or deployed service produced.
 Deployment and live verification: outside scope of this source refactor; no deployment performed.
 Remaining risks or follow-up at this stage: `extension/content.js` retains a large shared state closure. The extension browser runner and GitHub operation grouping are covered in the subsequent stages. Native browser permission prompts need separate targeted evidence.
 
@@ -87,4 +87,14 @@ Branch: `codex/modular-github-operations`, based on merged PR #119. The 827-line
 
 ## Web feature folder stage
 
-Branch: `codex/modular-web-features`, based on merged PR #121. Document and survey code now lives in feature folders. The previous 570-line account and member administration file is split by responsibility: `account/password-replacement.tsx` and member credential, Markdown, creation, and administration modules. The five extracted bodies match the prior code after formatting normalization, except the password alphabet literal is now composed from shorter strings with an identical 57-character result. Targeted document/survey tests passed (5), targeted account/member tests passed (6), and the production web CSS asset retained SHA-256 `f8f165fd1751a8db22692b1a719de04e605e7661dc5c34391e1b5df8d9d17309`. Full Node 22 `npm run check` passed (328 tests passed, 22 skipped, 0 failed; build, sandbox smoke, and release checks included). Synthetic app browser QA captured 56 route, viewport, and theme screenshots with zero blocked requests. Gitleaks found zero findings in the rewritten branch. Independent review and exact-head CI remain the merge gates.
+Branch: `codex/modular-web-features`, based on merged PR #121. Document and survey code now lives in feature folders. The previous 570-line account and member administration file is split by responsibility: `account/password-replacement.tsx` and member credential, Markdown, creation, and administration modules. The five extracted bodies match the prior code after formatting normalization, except the password alphabet literal is now composed from shorter strings with an identical 57-character result. Targeted document/survey tests passed (5), targeted account/member tests passed (6), and the production web CSS asset retained SHA-256 `f8f165fd1751a8db22692b1a719de04e605e7661dc5c34391e1b5df8d9d17309`. Full Node 22 `npm run check` passed on the final head (328 tests passed, 22 skipped, 0 failed; build, sandbox smoke, and release checks included). Synthetic app browser QA captured 56 route, viewport, and theme screenshots with zero blocked requests. Gitleaks found zero findings in the rewritten branch. Independent review found no issues, all six exact-head CI checks passed, and PR #122 merged at `0757a19`.
+
+## Remaining runtime seams
+
+The HTTP route stage started from merged PR #123 and placed operation dispatch plus authorized asset and document downloads under `src/server/http/`. `app.ts` keeps middleware and registration order and fell from 628 to 271 lines. This was a source move with no intended HTTP, rate-limit, authorization, or range behavior change. Twelve focused HTTP, widget, survey, guest, login, mobile, preview, and video tests passed. The full Node 22 `npm run check` passed, including harness, tests, builds, smoke, and release checks; native PostgreSQL concurrency tests passed 2/2. Independent review found no critical or important issues. All six exact-head CI checks passed, and PR #124 merged at `14f1c40`.
+
+The thread-list stage starts from merged PR #124 and separates filter controls and per-thread row rendering under `src/web/threads/`. The list entrypoint falls from 769 to 373 lines; its `ThreadList` and `threadAttachmentLabels` exports remain stable. Filter browser QA passes, the full Node 22 `npm run check` passes, and synthetic Chromium QA captures 56 viewport/theme screenshots with zero blocked requests. Independent review and exact-head CI are still required.
+
+The next substantive extraction candidates are `extension/content.js` (2,645 lines of shared injected UI state), `extension/background.js` (1,713 lines with a large message dispatcher), `extension/editor.js` (1,358 lines), `extension/session/session-coordinator.js` (1,316 lines of capture lifecycle), `extension/video.js` (1,107 lines), and `src/web/recordings/thread-recordings.tsx` (947 lines). Recording PR #120 touches most of these paths, and separate screenshot diagnostics work also touches injected capture and diagnostics. Rebase those changes first, then split state and message boundaries with packaged Chrome QA and exact-head CI. Preserve manifest entrypoints, message contracts, permissions, transaction guards, and ZIP contents.
+
+Large CSS files for one public page and long single-domain test suites should be split only when their ownership or editing cost warrants it. Line count alone does not establish mixed responsibility. The current checks establish source structure and local behavior; they do not establish Store-installed extension behavior, production deployment, or a measured load and high-availability baseline.
