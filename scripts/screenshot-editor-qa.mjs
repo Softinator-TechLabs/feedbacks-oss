@@ -299,6 +299,15 @@ try {
     path: join(root, ".local/screenshot-editor-qa/wide-single-header.png"),
   });
   await page.locator("#page-navigation").evaluate((nav) => (nav.hidden = false));
+  assert.equal(await page.locator("#export-scope").isVisible(), true);
+  assert.deepEqual(await page.locator("#export-scope option").allTextContents(), [
+    "This screenshot",
+    "Full page",
+  ]);
+  assert.equal(
+    await page.locator(".export-actions").getAttribute("aria-label"),
+    "Copy or download",
+  );
   for (const tool of [
     "pencil",
     "arrow",
@@ -505,6 +514,7 @@ try {
     [
       ".export-tools",
       ".zoom-control",
+      ".export-actions",
       "#export-scope",
       '[data-export="copy"]',
       ".download-menu summary",
@@ -514,10 +524,10 @@ try {
     }),
   );
   assert.ok(
-    Math.abs(mobileExports[1].top - mobileExports[4].top) <= 2 &&
-      mobileExports[4].left + mobileExports[4].width <=
+    Math.abs(mobileExports[3].top - mobileExports[5].top) <= 2 &&
+      mobileExports[5].left + mobileExports[5].width <=
         mobileExports[0].left + mobileExports[0].width,
-    `mobile zoom and export actions stay on one row: ${JSON.stringify(mobileExports)}`,
+    `mobile copy and download actions stay with export scope: ${JSON.stringify(mobileExports)}`,
   );
   await page.screenshot({
     path: join(root, ".local/screenshot-editor-qa/mobile-dark.png"),
@@ -669,6 +679,7 @@ try {
     const store = await import("/extension/capture/page-store.js");
     Object.assign(window.qaDraft, {
       capturePages: [],
+      captureScope: "viewport",
       image: await store.pageDataUrl(await store.getPage("synthetic-editor", 0)),
       toolState: [originalImage],
     });
@@ -682,6 +693,36 @@ try {
     return result.toolState[0].source;
   }, originalImage);
   assert.notEqual(viewportSource, originalImage.source);
+  await page.evaluate(() => {
+    Object.assign(window.qaDraft, {
+      capturePages: [{ name: "Screenshot 1", startY: 0, endY: 1000 }],
+      pageToolStates: [[]],
+      captureScope: "viewport",
+    });
+    window.qaPersist();
+  });
+  await page.reload();
+  await page.waitForFunction(
+    () => !document.querySelector('[data-export="copy"]').disabled,
+  );
+  assert.equal(await page.locator("#page-thumbnails").isVisible(), false);
+  assert.equal(await page.locator("#page-navigation").isVisible(), false);
+  assert.equal(await page.locator("#export-scope").isVisible(), false);
+  assert.equal(await page.locator("#export-scope").inputValue(), "current");
+  assert.equal(await page.locator(".export-actions [data-export='copy']").count(), 1);
+  assert.equal(await page.locator(".export-actions .download-menu").count(), 1);
+  const singleLayout = await page.evaluate(() => {
+    const stage = document.querySelector("#canvas-scroll").getBoundingClientRect();
+    const image = document.querySelector("#canvas").getBoundingClientRect();
+    return { left: image.left - stage.left, right: stage.right - image.right };
+  });
+  assert.ok(
+    Math.abs(singleLayout.left - singleLayout.right) <= 2,
+    `a narrow screenshot stays centered: ${JSON.stringify(singleLayout)}`,
+  );
+  await page.screenshot({
+    path: join(root, ".local/screenshot-editor-qa/single-capture.png"),
+  });
   assert.deepEqual(errors, []);
   console.log(
     "PASS: 26 full-resolution preview sections, fine pixels, PNG/JPEG/WebP, clipboard, PDF, export crop, marks, image move/resize, dark mobile, upload flattening, inserted-image permanent redaction across reload/move/resize/reset/export, and viewport redaction.",

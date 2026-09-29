@@ -113,43 +113,45 @@
                   ><span class="visually-hidden">View zoom</span></label
                 ><select id="zoom">
                   <option value="fit">Fit width</option>
-                  <option value="1">100% · Actual pixels</option>
+                  <option value="1">100%</option>
                   <option value="2">200%</option>
                 </select>
               </div>
-              <label for="export-scope" class="visually-hidden">Export scope</label
-              ><select id="export-scope" title="Choose what to export">
-                <option value="current">Current</option>
-                <option value="full">Full page</option>
-              </select>
-              <button
-                data-export="copy"
-                class="icon-action"
-                aria-label="Copy image"
-                title="Copy image"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="8" y="8" width="12" height="12" rx="2" />
-                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-                </svg>
-              </button>
-              <details class="download-menu">
-                <summary
-                  aria-label="Download image"
-                  title="Download image"
+              <div class="export-actions" role="group" aria-label="Copy or download">
+                <label for="export-scope" class="visually-hidden">Copy or download</label
+                ><select id="export-scope" title="Choose what to copy or download" hidden>
+                  <option value="current">This screenshot</option>
+                  <option value="full">Full page</option>
+                </select>
+                <button
+                  data-export="copy"
                   class="icon-action"
+                  aria-label="Copy image"
+                  title="Copy image"
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3" />
+                    <rect x="8" y="8" width="12" height="12" rx="2" />
+                    <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
                   </svg>
-                </summary>
-                <div>
-                  <button data-export="png">PNG</button
-                  ><button data-export="jpeg">JPEG</button
-                  ><button data-export="webp">WebP</button
-                  ><button data-export="pdf">PDF</button>
-                </div>
-              </details>
+                </button>
+                <details class="download-menu">
+                  <summary
+                    aria-label="Download image"
+                    title="Download image"
+                    class="icon-action"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3" />
+                    </svg>
+                  </summary>
+                  <div>
+                    <button data-export="png">PNG</button
+                    ><button data-export="jpeg">JPEG</button
+                    ><button data-export="webp">WebP</button
+                    ><button data-export="pdf">PDF</button>
+                  </div>
+                </details>
+              </div>
             </div>
             <nav
               id="page-navigation"

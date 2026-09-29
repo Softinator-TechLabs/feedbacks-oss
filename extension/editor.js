@@ -540,9 +540,9 @@ function renderThumbnails(fresh) {
   thumbnailObserver?.disconnect();
   const list = $("page-thumbnails");
   const pages = fresh?.capturePages || [];
-  list.hidden = !pages.length;
+  list.hidden = pages.length < 2;
   list.replaceChildren();
-  if (!pages.length) return;
+  if (pages.length < 2) return;
   thumbnailObserver = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -631,6 +631,8 @@ async function loadBase(fresh) {
   $("series-guide").hidden = pages.length < 2;
   renderThumbnails(fresh);
   const continuousPages = pages.filter((page) => !page.annotationId);
+  $("export-scope").hidden = continuousPages.length < 2;
+  if (continuousPages.length < 2) $("export-scope").value = "current";
   $("series-guide").textContent =
     continuousPages.length > 1
       ? "Choose a section to annotate. Marks also appear in the combined full-page image."
