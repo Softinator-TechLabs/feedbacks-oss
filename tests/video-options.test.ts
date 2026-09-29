@@ -34,6 +34,8 @@ for (const tabAudio of [false, true])
           {
             value: "",
             checked: false,
+            style: { setProperty() {}, removeProperty() {} },
+            setAttribute() {},
             addEventListener() {},
             removeAttribute() {},
             replaceChildren() {},

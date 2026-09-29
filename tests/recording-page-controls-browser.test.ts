@@ -68,6 +68,27 @@ test(
         await page.getByRole("button", { name: "Screenshot", exact: true }).isVisible(),
         true,
       );
+      assert.equal(
+        await page.getByRole("button", { name: "Record video + session" }).count(),
+        1,
+      );
+      assert.equal(await page.getByRole("button", { name: "Record session" }).count(), 0);
+      await page.getByText("Options", { exact: true }).click();
+      await page.getByLabel("Recording mode").selectOption("session");
+      await page.getByRole("button", { name: "Record session" }).click();
+      assert.deepEqual(await page.evaluate(() => (window as any).sent.at(-1)), {
+        type: "startRecording",
+        mode: "session",
+      });
+      await message(page, { type: "recordingState", state: "idle", mode: "session" });
+      await handle.hover();
+      await page.getByText("Options", { exact: true }).click();
+      await page.getByLabel("Recording mode").selectOption("video");
+      await page.getByRole("button", { name: "Record video + session" }).click();
+      assert.deepEqual(await page.evaluate(() => (window as any).sent.at(-1)), {
+        type: "startRecording",
+        mode: "video",
+      });
       await message(page, { type: "recordingState", state: "starting" });
       assert.equal(await drawer.isVisible(), false);
       assert.match(await dock.innerText(), /Starting video/);

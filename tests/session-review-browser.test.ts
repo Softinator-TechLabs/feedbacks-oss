@@ -71,6 +71,7 @@ test(
           (window as any).mount(
             {
               durationMs: 3000,
+              environment: { browser: "Chrome", viewport: { width: 1280, height: 720 } },
               events: [
                 {
                   seq: 0,
@@ -90,13 +91,36 @@ test(
                   type: "network",
                   data: { phase: "response", status: 500, url: "/api" },
                 },
+                {
+                  seq: 3,
+                  atMs: 1800,
+                  type: "performance",
+                  data: { name: "Largest contentful paint", durationMs: 480 },
+                },
               ],
             },
             { offsetMs: 0 },
           ),
         );
         const marks = page.locator(".review-timeline-mark");
-        assert.equal(await marks.count(), 3);
+        assert.equal(await marks.count(), 4);
+        assert.equal(
+          await page
+            .getByRole("tab", { name: /^Everything/ })
+            .getAttribute("aria-selected"),
+          "true",
+        );
+        assert.deepEqual(
+          await page.locator(".review-events .review-event-tag").allTextContents(),
+          ["environment", "activity", "console", "performance", "network"],
+        );
+        await page.locator('.review-timeline-mark[data-channel="performance"]').hover();
+        assert.match(
+          (await page
+            .locator('.review-timeline-mark[data-channel="performance"] [role="tooltip"]')
+            .textContent()) ?? "",
+          /Largest contentful paint/,
+        );
         await page.getByRole("button", { name: /Console warning at 0:01.1/ }).click();
         assert.equal(await page.getByRole("slider").inputValue(), "1100");
         assert.equal(await page.evaluate(() => (window as any).media.currentTime), 1.1);
@@ -272,6 +296,7 @@ test(
           (window as any).media.dispatchEvent(new Event("seeked"));
         });
         await page.getByRole("tab", { name: /^Network/ }).click();
+        await page.getByLabel(/Browse all events/).uncheck();
         assert.equal(await page.locator(".review-event").count(), 2);
         assert.equal(await page.getByRole("button", { name: /\/future/ }).count(), 0);
         await page.getByRole("button", { name: /\/second/ }).click();

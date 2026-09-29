@@ -29,6 +29,7 @@ const expected = [
   "alarms",
   "debugger",
   "tabCapture",
+  "offscreen",
 ];
 if (
   JSON.stringify(manifest.permissions) !== JSON.stringify(expected) ||

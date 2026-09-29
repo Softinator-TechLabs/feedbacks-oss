@@ -2,6 +2,59 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createRecordingControls } from "../extension/recording-controls.js";
 
+test("one-click video starts hidden capture and opens review only after Stop", async () => {
+  let connect: any, receive: any;
+  const created: any[] = [],
+    started: any[] = [],
+    messages: any[] = [];
+  const chrome = {
+    runtime: {
+      getURL: (path: string) => `chrome-extension://test/${path}`,
+      onConnect: { addListener: (fn: any) => (connect = fn) },
+    },
+    tabs: {
+      sendMessage: async (...args: any[]) => messages.push(args),
+      update: async () => {},
+      create: async (input: any) => {
+        created.push(input);
+        return { id: 21, ...input };
+      },
+    },
+  };
+  const controls = createRecordingControls({
+    chrome,
+    sessionFor: async () => ({ reviewId: "review-a" }),
+    startCapture: async (sender: any, session: any) =>
+      started.push({ sourceTabId: sender.tab.id, reviewId: session.reviewId }),
+  });
+  await controls.open({ tab: { id: 10 } });
+  assert.deepEqual(started, [{ sourceTabId: 10, reviewId: "review-a" }]);
+  assert.equal(created.length, 0, "starting capture must not add a tab");
+  const port = {
+    name: "feedbacks-video-offscreen",
+    sender: { url: "chrome-extension://test/offscreen-video.html" },
+    onMessage: { addListener: (fn: any) => (receive = fn) },
+    onDisconnect: { addListener: () => {} },
+    postMessage() {},
+    disconnect() {},
+  };
+  connect(port);
+  receive({ sourceTabId: 10, reviewId: "review-a", state: "recording", elapsedMs: 0 });
+  assert.equal(created.length, 0);
+  receive({
+    sourceTabId: 10,
+    reviewId: "review-a",
+    state: "ready",
+    elapsedMs: 2500,
+    draftId: "draft-1",
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(created.length, 1);
+  assert.equal(created[0].active, true);
+  assert.match(created[0].url, /video\.html\?sourceTabId=10.*draftId=draft-1/);
+  assert.equal(messages.at(-1)[1].state, "ready");
+});
+
 test("recording controls stay with their source tab and stop on disconnect", async () => {
   let connect: any;
   const notices: any[] = [],

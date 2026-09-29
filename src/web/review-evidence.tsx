@@ -243,21 +243,24 @@ export function ReviewEvidence({
     }
   }
   const images = thread.assets.filter((asset) => asset.contentType === "image/webp");
-  const numbered = images.filter((asset) =>
+  const pageImages = images.filter((asset) => !asset.recordingFrame);
+  const numbered = pageImages.filter((asset) =>
     /^full-page-\d+-of-\d+\.webp$/.test(asset.filename || ""),
   );
-  const combined = images.find((asset) => asset.filename === "full-page-combined.webp");
-  const pageVisible = images.find((asset) => asset.filename === "page-visible.webp");
+  const combined = pageImages.find(
+    (asset) => asset.filename === "full-page-combined.webp",
+  );
+  const pageVisible = pageImages.find((asset) => asset.filename === "page-visible.webp");
   const mainCaptures = combined
     ? [combined]
     : numbered.length
       ? numbered
       : pageVisible
         ? [pageVisible]
-        : images.filter(
+        : pageImages.filter(
             (asset) => !/^point-\d+-original\.webp$/.test(asset.filename || ""),
           );
-  const extraCaptures = images.filter(
+  const extraCaptures = pageImages.filter(
     (asset) =>
       !mainCaptures.includes(asset) &&
       !/^point-\d+-original\.webp$/.test(asset.filename || ""),
@@ -314,19 +317,21 @@ export function ReviewEvidence({
           {counts.closed ? ` · ${counts.closed} closed` : ""}
           {counts.removed ? ` · ${counts.removed} removed` : ""}
         </p>
-        <label>
-          Points{" "}
-          <select
-            aria-label="Filter points"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-          >
-            <option value="all">All active points</option>
-            <option value="open">Open</option>
-            <option value="resolved">Resolved / closed</option>
-            <option value="removed">Removed</option>
-          </select>
-        </label>
+        {annotations.length > 1 && (
+          <label>
+            Points{" "}
+            <select
+              aria-label="Filter points"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+            >
+              <option value="all">All active points</option>
+              <option value="open">Open</option>
+              <option value="resolved">Resolved / closed</option>
+              <option value="removed">Removed</option>
+            </select>
+          </label>
+        )}
       </div>
       {threadClosed && (
         <p className="muted">
@@ -550,18 +555,6 @@ export function ReviewEvidence({
           );
         })}
       </ol>
-      {thread.assets
-        .filter((asset) => asset.contentType === "video/webm")
-        .map((asset) => (
-          <video
-            id={`asset-${asset.id}`}
-            key={asset.id}
-            controls
-            preload="metadata"
-            src={asset.url}
-            aria-label="Tab video feedback"
-          />
-        ))}
     </section>
   );
 }

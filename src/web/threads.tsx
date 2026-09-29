@@ -1046,15 +1046,7 @@ export function ThreadDetail({
         : Promise.resolve(undefined),
     [threadId, project?.id, projectVersion],
   );
-  const [recordingAssets, setRecordingAssets] = useState<{
-    threadId: string;
-    ids: string[];
-  }>({ threadId: "", ids: [] });
   const [markupTarget, setMarkupTarget] = useState<MarkupTarget | null>(null);
-  const handleLinkedAssets = useCallback(
-    (ids: string[]) => setRecordingAssets({ threadId, ids }),
-    [threadId],
-  );
   const assetIds = t?.assets.map((asset) => asset.id).join(",");
   useEffect(() => {
     if (!t || t.context.annotations?.length) return;
@@ -1188,7 +1180,7 @@ export function ThreadDetail({
     (asset) =>
       !capturePages.includes(asset) &&
       !recordingFrames.includes(asset) &&
-      !(recordingAssets.threadId === t.id && recordingAssets.ids.includes(asset.id)),
+      !asset.contentType.startsWith("video/"),
   );
   return (
     <>
@@ -1455,6 +1447,17 @@ export function ThreadDetail({
               </div>
               <MarkdownText body={t.body} className="message" />
             </article>
+            <ThreadRecordings
+              key={t.id}
+              thread={t}
+              canWrite={!!project?.permissions.canWrite}
+              onSaved={setThread}
+              onAnnotateFrame={
+                project?.permissions.canWrite
+                  ? (frame) => setMarkupTarget({ kind: "frame", ...frame })
+                  : undefined
+              }
+            />
             {!!t.context.annotations?.length && (
               <ReviewEvidence
                 thread={t}
@@ -1546,47 +1549,6 @@ export function ThreadDetail({
                   )}
                 </section>
               )}
-            <ThreadRecordings
-              key={t.id}
-              thread={t}
-              canWrite={!!project?.permissions.canWrite}
-              onSaved={setThread}
-              onLinkedAssets={handleLinkedAssets}
-              onAnnotateFrame={
-                project?.permissions.canWrite
-                  ? (frame) => setMarkupTarget({ kind: "frame", ...frame })
-                  : undefined
-              }
-            />
-            {recordingFrames.length > 0 && (
-              <details className="capture-page-set recording-frame-gallery">
-                <summary>Saved video frames · {recordingFrames.length}</summary>
-                <div className="capture-page-grid">
-                  {recordingFrames.map((asset) => (
-                    <figure id={`asset-${asset.id}`} key={asset.id}>
-                      <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                        <img
-                          src={asset.url}
-                          alt={`Video frame at ${(asset.recordingFrame!.atMs / 1000).toFixed(1)} seconds`}
-                          loading="lazy"
-                        />
-                      </a>
-                      <figcaption>
-                        {(asset.recordingFrame!.atMs / 1000).toFixed(1)}s in recording
-                      </figcaption>
-                      {project?.permissions.canWrite && (
-                        <button
-                          type="button"
-                          onClick={() => setMarkupTarget({ kind: "asset", asset })}
-                        >
-                          Add or revise marks
-                        </button>
-                      )}
-                    </figure>
-                  ))}
-                </div>
-              </details>
-            )}
             {markupTarget && project?.permissions.canWrite && (
               <ScreenshotMarkup
                 key={

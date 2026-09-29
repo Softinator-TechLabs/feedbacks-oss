@@ -47,7 +47,11 @@ const serverSetup = createServerSetup({
   normalize: U.server,
   probe: (tabId) => probeFeedbacksServer(chrome, tabId),
 });
-const recordings = createRecordingControls({ chrome, sessionFor: recordingSessionFor });
+const recordings = createRecordingControls({
+  chrome,
+  sessionFor: recordingSessionFor,
+  startCapture: startOffscreenVideo,
+});
 const sessionCapture = createSessionCoordinator({
   chrome,
   sessionFor,
@@ -55,6 +59,58 @@ const sessionCapture = createSessionCoordinator({
   ready,
   annotationImage: getRecordingPointImage,
 });
+async function startOffscreenVideo(sender, session) {
+  const tab = await chrome.tabs.get(sender.tab.id);
+  const target = {
+    ...(await videoTarget(tab, session, U.safeUrl)),
+    origin: new URL(tab.url).origin,
+  };
+  const { videoRecordingOptions = {}, recordingRedirectOrigins = {} } = await get();
+  target.allowedOrigins = captureOrigins(
+    target.origin,
+    recordingRedirectOrigins[target.origin] || [],
+  );
+  const extra = target.allowedOrigins.slice(1).map((origin) => `${origin}/*`);
+  if (extra.length && !(await chrome.permissions.contains({ origins: extra })))
+    throw Error(
+      "Allow the selected redirect sites in recording options before starting.",
+    );
+  const contexts = chrome.runtime.getContexts
+    ? await chrome.runtime.getContexts({ contextTypes: ["OFFSCREEN_DOCUMENT"] })
+    : [];
+  if (
+    contexts.some((item) =>
+      item.documentUrl?.startsWith(chrome.runtime.getURL("offscreen-video.html")),
+    )
+  )
+    await chrome.offscreen.closeDocument();
+  await chrome.offscreen.createDocument({
+    url: "offscreen-video.html",
+    reasons: ["USER_MEDIA"],
+    justification: "Record the website tab only after the user starts video feedback.",
+  });
+  const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id });
+  const capture = await sessionCapture.start(
+    target,
+    {
+      maskText: !!videoRecordingOptions.maskText,
+      maskInputs: !!videoRecordingOptions.maskInputs,
+      networkBodies: !!videoRecordingOptions.networkBodies,
+    },
+    "video",
+    tab.id,
+  );
+  return {
+    sourceTabId: tab.id,
+    reviewId: session.reviewId,
+    streamId,
+    debugStarted: capture.started,
+    options: {
+      tabAudio: !!videoRecordingOptions.tabAudio,
+      microphone: !!videoRecordingOptions.microphone,
+    },
+  };
+}
 async function getRecordingPointImage(recordingId, annotationId) {
   return pageDataUrl(await getPage(`recording-${recordingId}`, annotationId));
 }
@@ -1990,6 +2046,75 @@ async function route(message, sender) {
       return {};
     }
     if (message.type === "openRecorder") return recordings.open(sender);
+    if (message.type === "recordingOptions") {
+      const allowed = [
+        "mode",
+        "tabAudio",
+        "microphone",
+        "maskInputs",
+        "maskText",
+        "networkBodies",
+      ];
+      if (
+        !message.options ||
+        typeof message.options !== "object" ||
+        Object.keys(message.options).some(
+          (key) =>
+            !allowed.includes(key) ||
+            (key === "mode"
+              ? !["video", "session"].includes(message.options[key])
+              : typeof message.options[key] !== "boolean"),
+        )
+      )
+        throw Error("Invalid recording options.");
+      const current = (await get()).videoRecordingOptions || {};
+      const options = { ...current, ...message.options };
+      await set({ videoRecordingOptions: options });
+      return options;
+    }
+    if (message.type === "recordingRedirects") {
+      const origin = new URL(sender.tab.url).origin;
+      const origins = captureOrigins(origin, message.origins);
+      const extra = origins.slice(1).map((value) => `${value}/*`);
+      if (extra.length && !(await chrome.permissions.contains({ origins: extra }))) {
+        if (!(await chrome.permissions.request({ origins: extra })))
+          throw Error(
+            "Redirect sites were not authorized. Remove them or allow access before recording.",
+          );
+      }
+      const saved = (await get()).recordingRedirectOrigins || {};
+      await set({ recordingRedirectOrigins: { ...saved, [origin]: origins.slice(1) } });
+      return { origins };
+    }
+    if (message.type === "startRecording") {
+      if (message.mode === "video") return recordings.open(sender);
+      if (message.mode !== "session") throw Error("Choose a recording mode.");
+      const tab = await chrome.tabs.get(sender.tab.id);
+      const target = {
+        ...(await videoTarget(tab, session, U.safeUrl)),
+        origin: new URL(tab.url).origin,
+      };
+      const { videoRecordingOptions = {}, recordingRedirectOrigins = {} } = await get();
+      target.allowedOrigins = captureOrigins(
+        target.origin,
+        recordingRedirectOrigins[target.origin] || [],
+      );
+      const extra = target.allowedOrigins.slice(1).map((value) => `${value}/*`);
+      if (extra.length && !(await chrome.permissions.contains({ origins: extra })))
+        throw Error(
+          "Allow the selected redirect sites in recording options before starting.",
+        );
+      const capture = await sessionCapture.start(
+        target,
+        {
+          maskText: !!videoRecordingOptions.maskText,
+          maskInputs: !!videoRecordingOptions.maskInputs,
+          networkBodies: !!videoRecordingOptions.networkBodies,
+        },
+        "session",
+      );
+      return { state: "recording", recordingId: capture.recording.id };
+    }
     if (message.type === "recordingControl") {
       const capture = await sessionCapture.status();
       if (
@@ -2411,7 +2536,16 @@ async function route(message, sender) {
     }
     case "sessionSubmit": {
       const capture = await sessionCapture.status();
-      const result = await sessionCapture.submit(message, sender.tab?.id);
+      const owner =
+        capture?.recording.mode === "video" &&
+        capture.target.ownerTabId !== sender.tab?.id
+          ? recordings.reviewOwner(
+              sender.tab?.id,
+              capture.target.sourceTabId,
+              capture.target.reviewId,
+            )
+          : sender.tab?.id;
+      const result = await sessionCapture.submit(message, owner);
       if (capture?.recording.mode === "session")
         await deleteDraftPages(`recording-${capture.recording.id}`).catch(() => {});
       return result;
@@ -2471,12 +2605,28 @@ async function route(message, sender) {
     }
     case "videoContext": {
       const tab = await chrome.tabs.get(message.sourceTabId);
-      const session = await sessionFor({ tab, frameId: 0, url: tab.url });
+      const session = await recordingSessionFor({ tab, frameId: 0, url: tab.url });
       const projects = await authenticated("projects.list");
-      const target = recordings.bindTarget(
-        sender.tab?.id,
-        await videoTarget(tab, session, U.safeUrl),
-      );
+      const capture = await sessionCapture.status();
+      const original =
+        capture?.target.sourceTabId === tab.id &&
+        capture.target.reviewId === session.reviewId
+          ? capture.target
+          : null;
+      const startingTarget = original
+        ? Object.fromEntries(
+            [
+              "sourceTabId",
+              "projectId",
+              "reviewId",
+              "server",
+              "url",
+              "viewport",
+              "routeFingerprint",
+            ].map((key) => [key, original[key]]),
+          )
+        : await videoTarget(tab, session, U.safeUrl);
+      const target = recordings.bindTarget(sender.tab?.id, startingTarget);
       const { recordingRedirectOrigins = {} } = await chrome.storage.local.get(
         "recordingRedirectOrigins",
       );
@@ -2484,7 +2634,9 @@ async function route(message, sender) {
       return {
         project: projects.items.find((project) => project.id === session.projectId),
         ...target,
-        allowedOrigins: captureOrigins(origin, recordingRedirectOrigins[origin] || []),
+        allowedOrigins:
+          original?.allowedOrigins ||
+          captureOrigins(origin, recordingRedirectOrigins[origin] || []),
       };
     }
     case "videoCreate": {
@@ -2506,13 +2658,14 @@ async function route(message, sender) {
         async () => {
           // A recording spans navigation. Use the worker-owned starting context,
           // bound to this recorder and review; current server grants still apply.
+          const bound = recordings.target(sender.tab.id, message.target);
           const target =
             capturedVideoTarget(
               await sessionCapture.status(),
               message.target,
-              sender.tab.id,
+              bound.sourceTabId,
               await videoFingerprint(account.token),
-            ) || recordings.target(sender.tab.id, message.target);
+            ) || bound;
           return {
             projectId: target.projectId,
             body: message.body,

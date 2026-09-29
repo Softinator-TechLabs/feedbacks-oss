@@ -1,5 +1,9 @@
 import React, { useRef, useState } from "react";
-import { buildTaskHandoff, type HandoffAssignments } from "../shared/task-handoff.js";
+import {
+  buildTaskHandoff,
+  type HandoffAssignments,
+  type HandoffRecordings,
+} from "../shared/task-handoff.js";
 import { Icon } from "./icons.js";
 import { api, type Project, type Thread } from "./api.js";
 import { ErrorNotice, showToast, useAction } from "./ui.js";
@@ -20,7 +24,7 @@ export function ThreadTaskCopy({
     pending.current = true;
     try {
       await action.run(async () => {
-        const [fresh, assignments] = await Promise.all([
+        const [fresh, assignments, recordings] = await Promise.all([
           api<Thread>("threads.get", { threadId: thread.id }),
           api<HandoffAssignments>("assignments.delegations", {
             projectId: project.id,
@@ -29,11 +33,13 @@ export function ThreadTaskCopy({
             limit: 50,
             offset: 0,
           }),
+          api<HandoffRecordings>("recordings.list", { threadId: thread.id }),
         ]);
         const result = buildTaskHandoff({
           thread: fresh,
           project,
           assignments,
+          recordings,
           origin: location.origin,
           copiedAt: new Date().toISOString(),
         });

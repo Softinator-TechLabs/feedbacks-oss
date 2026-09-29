@@ -915,6 +915,7 @@
 }
 .review-point-figure {
   margin-top: 12px;
+  max-width: 280px;
 }
 .review-point-list {
   list-style: none;

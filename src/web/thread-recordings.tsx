@@ -22,9 +22,16 @@ import {
 import "./thread-recordings.css";
 
 type MediaMode = "replay" | "video";
-type DiagnosticTab = "activity" | "console" | "network" | "performance" | "environment";
+type DiagnosticTab =
+  | "everything"
+  | "activity"
+  | "console"
+  | "network"
+  | "performance"
+  | "environment";
 type EvidenceScope = "playhead" | "all";
 const tabs: { id: DiagnosticTab; label: string }[] = [
+  { id: "everything", label: "Everything" },
   { id: "activity", label: "Activity" },
   { id: "console", label: "Console" },
   { id: "network", label: "Network" },
@@ -47,6 +54,8 @@ function eventTitle(type: RecordingChannel, data: unknown): string {
   const entry = data as Record<string, unknown>;
   if (type === "console")
     return `${String(entry.level ?? "log")} · ${Array.isArray(entry.args) ? entry.args.map((part) => (typeof part === "string" ? part : evidenceText(part))).join(" ") : evidenceText(entry.message)}`;
+  if (type === "network")
+    return `${String(entry.method ?? "Request")} ${String(entry.url ?? "URL unavailable")} · ${String(entry.phase ?? "event")}${typeof entry.status === "number" ? ` · ${entry.status}` : ""}`;
   if (type === "activity") return activityTitle(entry);
   if (type === "performance")
     return `${String(entry.name ?? entry.entryType ?? "Performance entry")}${typeof entry.durationMs === "number" ? ` · ${Math.round(entry.durationMs)} ms` : ""}`;
@@ -88,6 +97,22 @@ function activityDetail(data: unknown): string {
   if ("value" in entry)
     return `Value: ${String(entry.value) || "(empty)"}${entry.valueTruncated ? " (truncated)" : ""}`;
   return "";
+}
+
+function environmentSummary(value: unknown): string {
+  if (!value || typeof value !== "object") return "Browser details captured at start";
+  const entry = value as Record<string, unknown>;
+  const viewport = entry.viewport as Record<string, unknown> | undefined;
+  const size =
+    typeof viewport?.width === "number" && typeof viewport.height === "number"
+      ? `${viewport.width} × ${viewport.height}`
+      : "";
+  const userAgent = typeof entry.userAgent === "string" ? entry.userAgent : "";
+  const browser =
+    typeof entry.browser === "string"
+      ? entry.browser
+      : (userAgent.match(/(?:Chrome|Firefox|Edg|Safari)\/[\d.]+/)?.[0] ?? "Browser");
+  return [browser, size].filter(Boolean).join(" · ");
 }
 
 function NetworkDetail({ exchange }: { exchange: NetworkExchange }) {
@@ -146,13 +171,11 @@ export function ThreadRecordings({
   thread,
   canWrite = false,
   onSaved,
-  onLinkedAssets,
   onAnnotateFrame,
 }: {
   thread: Thread;
   canWrite?: boolean;
   onSaved?: (saved: Thread) => void;
-  onLinkedAssets?: (assetIds: string[]) => void;
   onAnnotateFrame?: (frame: {
     imageBase64: string;
     recordingFrame: { recordingId: string; atMs: number; videoTimeMs: number };
@@ -168,8 +191,10 @@ export function ThreadRecordings({
   const [permissionMissing, setPermissionMissing] = useState(false);
   const [reload, setReload] = useState(0);
   const [mediaMode, setMediaMode] = useState<MediaMode>("replay");
-  const [diagnosticTab, setDiagnosticTab] = useState<DiagnosticTab>("activity");
-  const [evidenceScope, setEvidenceScope] = useState<EvidenceScope>("playhead");
+  const [diagnosticTab, setDiagnosticTab] = useState<DiagnosticTab>("everything");
+  const [evidenceScope, setEvidenceScope] = useState<EvidenceScope>("all");
+  const [everythingPage, setEverythingPage] = useState(0);
+  const [followPlayback, setFollowPlayback] = useState(true);
   const [cursorMs, setCursorMs] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [replayError, setReplayError] = useState("");
@@ -190,6 +215,8 @@ export function ThreadRecordings({
   const selectedVideoGapRef = useRef(false);
   const videoSeekAttemptsRef = useRef(0);
   const pendingFrameRef = useRef<PendingFrame | null>(null);
+  const eventListRef = useRef<HTMLOListElement>(null);
+  const followedEventRef = useRef<number | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -229,8 +256,11 @@ export function ThreadRecordings({
     setPlaying(false);
     replayClockRef.current = null;
     setMediaMode("replay");
-    setDiagnosticTab("activity");
-    setEvidenceScope("playhead");
+    setDiagnosticTab("everything");
+    setEvidenceScope("all");
+    setEverythingPage(0);
+    setFollowPlayback(true);
+    followedEventRef.current = null;
     setSelectedRequest("");
     setVideoReady(false);
     setFrameError("");
@@ -285,9 +315,9 @@ export function ThreadRecordings({
           asset.id === recording.video?.assetId && asset.contentType.startsWith("video/"),
       )
     : undefined;
-  useEffect(() => {
-    onLinkedAssets?.(videoAsset ? [videoAsset.id] : []);
-  }, [onLinkedAssets, videoAsset?.id]);
+  const standaloneVideos = thread.assets.filter(
+    (asset) => asset.contentType.startsWith("video/") && asset.id !== videoAsset?.id,
+  );
   const linkedFrames = (
     thread.assets as Array<
       Thread["assets"][number] & { recordingFrame?: FrameAsset["recordingFrame"] }
@@ -649,16 +679,99 @@ export function ThreadRecordings({
       : [];
   const totalEvents =
     recording && eventType ? entriesAt(recording.events, eventType).length : 0;
+  const combinedEvents = useMemo(
+    () =>
+      recording?.events
+        .filter((event) =>
+          ["activity", "console", "network", "performance"].includes(event.type),
+        )
+        .sort((a, b) => a.atMs - b.atMs || a.seq - b.seq) ?? [],
+    [recording],
+  );
+  const reachedEventCount = useMemo(() => {
+    let low = 0;
+    let high = combinedEvents.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (combinedEvents[middle].atMs <= cursorMs) low = middle + 1;
+      else high = middle;
+    }
+    return low;
+  }, [combinedEvents, cursorMs]);
+  const visibleCombinedEvents =
+    evidenceScope === "all" ? combinedEvents : combinedEvents.slice(0, reachedEventCount);
+  const everythingPageSize = 200;
+  const maxEverythingPage = Math.max(
+    0,
+    Math.ceil((visibleCombinedEvents.length + 1) / everythingPageSize) - 1,
+  );
+  const shownEverythingPage = Math.min(everythingPage, maxEverythingPage);
+  const everythingPageStart = shownEverythingPage * everythingPageSize;
+  const pageEvents = visibleCombinedEvents.slice(
+    Math.max(0, everythingPageStart - 1),
+    everythingPageStart === 0
+      ? everythingPageSize - 1
+      : everythingPageStart + everythingPageSize - 1,
+  );
   const visibleCount = eventType
     ? visibleEvents.length
-    : diagnosticTab === "network"
-      ? visibleExchanges.length
-      : 0;
+    : diagnosticTab === "everything"
+      ? visibleCombinedEvents.length + 1
+      : diagnosticTab === "network"
+        ? visibleExchanges.length
+        : 0;
   const totalCount = eventType
     ? totalEvents
-    : diagnosticTab === "network"
-      ? exchanges.length
-      : 0;
+    : diagnosticTab === "everything"
+      ? combinedEvents.length + 1
+      : diagnosticTab === "network"
+        ? exchanges.length
+        : 0;
+  const latestMoment = combinedEvents[reachedEventCount - 1] ?? null;
+  const activeEventSeq = visibleEvents
+    .filter((event) => event.atMs <= cursorMs)
+    .at(-1)?.seq;
+  const activeEverythingSeq = latestMoment?.seq;
+  const activeExchangeKey = visibleExchanges
+    .filter((exchange) => exchange.atMs <= cursorMs)
+    .at(-1)?.key;
+
+  useEffect(() => {
+    if (diagnosticTab !== "everything") return;
+    setEverythingPage(Math.floor(reachedEventCount / everythingPageSize));
+  }, [reachedEventCount, diagnosticTab, evidenceScope, selectedId]);
+
+  useEffect(() => {
+    if (!playing || !followPlayback || !latestMoment) return;
+    if (followedEventRef.current === latestMoment.seq) return;
+    followedEventRef.current = latestMoment.seq;
+    if (diagnosticTab !== "everything")
+      setDiagnosticTab(latestMoment.type as DiagnosticTab);
+    setEvidenceScope("all");
+    if (latestMoment.type === "network") {
+      const data = latestMoment.data as Record<string, unknown> | null;
+      if (typeof data?.requestId === "string") setSelectedRequest(data.requestId);
+    }
+  }, [playing, followPlayback, latestMoment, diagnosticTab]);
+
+  useEffect(() => {
+    const list = eventListRef.current;
+    if (!list) return;
+    const current = list.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!current) return;
+    const listBounds = list.getBoundingClientRect();
+    const rowBounds = current.getBoundingClientRect();
+    const centerDelta =
+      rowBounds.top + rowBounds.height / 2 - (listBounds.top + listBounds.height / 2);
+    if (Math.abs(centerDelta) > 8) list.scrollTop += centerDelta;
+  }, [
+    activeEventSeq,
+    activeEverythingSeq,
+    activeExchangeKey,
+    diagnosticTab,
+    evidenceScope,
+  ]);
+
   const timelineMarks = useMemo(() => {
     if (!recording) return [];
     const marks = new Map<
@@ -670,10 +783,12 @@ export function ThreadRecordings({
         error: boolean;
         count: number;
         position: number;
+        requestId?: string;
       }
     >();
     for (const event of recording.events) {
-      if (!["activity", "console", "network"].includes(event.type)) continue;
+      if (!["activity", "console", "network", "performance"].includes(event.type))
+        continue;
       const position = Math.round((event.atMs / Math.max(1, recording.durationMs)) * 200);
       const key = `${event.type}:${position}`;
       const data = event.data as Record<string, unknown> | null;
@@ -693,6 +808,7 @@ export function ThreadRecordings({
           error,
           count: 1,
           position: Math.max(0, Math.min(200, position)),
+          requestId: typeof data?.requestId === "string" ? data.requestId : undefined,
         });
       }
     }
@@ -722,8 +838,12 @@ export function ThreadRecordings({
   return (
     <section className="thread-recordings" aria-labelledby="thread-recordings-heading">
       <div className="recording-heading">
-        <h2 id="thread-recordings-heading">Session recordings</h2>
-        {!listing && !listError && (
+        <h2 id="thread-recordings-heading">
+          {!listing && !listError && summaries.length === 0 && standaloneVideos.length
+            ? "Video feedback"
+            : "Session recording"}
+        </h2>
+        {!listing && !listError && summaries.length > 1 && (
           <span className="recording-count">{summaries.length}</span>
         )}
       </div>
@@ -746,30 +866,49 @@ export function ThreadRecordings({
           )}
         </div>
       )}
-      {!listing && !listError && summaries.length === 0 && (
-        <p className="muted recording-empty">
-          No session recording was shared with this thread.
-        </p>
-      )}
+      {!listing &&
+        !listError &&
+        summaries.length === 0 &&
+        standaloneVideos.length === 0 && (
+          <p className="muted recording-empty">
+            No session recording was shared with this thread.
+          </p>
+        )}
+      {!listing &&
+        summaries.length === 0 &&
+        standaloneVideos.map((asset) => (
+          <video
+            key={asset.id}
+            id={`asset-${asset.id}`}
+            className="recording-standalone-video"
+            controls
+            preload="metadata"
+            src={asset.url}
+            aria-label="Tab video feedback"
+          />
+        ))}
       {!listing && !listError && summaries.length > 0 && (
         <>
-          <label className="recording-select-label" htmlFor="thread-recording-select">
-            Recording
-          </label>
-          <select
-            id="thread-recording-select"
-            value={selectedId}
-            onChange={(event) => setSelectedId(event.target.value)}
-          >
-            {summaries.map((item, index) => (
-              <option key={item.id} value={item.id}>
-                {new Date(item.startedAt).toLocaleString()} ·{" "}
-                {item.mode === "video" ? "Video + session" : "Session"} ·{" "}
-                {formatRecordingTime(item.durationMs)}
-                {summaries.length > 1 ? ` · ${index + 1}` : ""}
-              </option>
-            ))}
-          </select>
+          {summaries.length > 1 && (
+            <>
+              <label className="recording-select-label" htmlFor="thread-recording-select">
+                Recording
+              </label>
+              <select
+                id="thread-recording-select"
+                value={selectedId}
+                onChange={(event) => setSelectedId(event.target.value)}
+              >
+                {summaries.map((item, index) => (
+                  <option key={item.id} value={item.id}>
+                    {new Date(item.startedAt).toLocaleString()} ·{" "}
+                    {item.mode === "video" ? "Video + session" : "Session"} ·{" "}
+                    {formatRecordingTime(item.durationMs)} · {index + 1}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           {loading && (
             <p className="muted" role="status">
               Loading recording…
@@ -803,6 +942,20 @@ export function ThreadRecordings({
                   </span>
                 ))}
               </div>
+              {recording.coverage.some((item) => item.status !== "complete") && (
+                <details className="recording-coverage-notes">
+                  <summary>What is missing from this capture?</summary>
+                  <ul>
+                    {recording.coverage
+                      .filter((item) => item.status !== "complete")
+                      .map((item, index) => (
+                        <li key={`${item.channel}-${index}`}>
+                          <strong>{item.channel}</strong>: {item.detail || item.status}
+                        </li>
+                      ))}
+                  </ul>
+                </details>
+              )}
               <p className="recording-privacy">
                 Privacy:{" "}
                 {recording.privacy.maskInputs ? "inputs masked" : "input masking off"} ·{" "}
@@ -832,6 +985,8 @@ export function ThreadRecordings({
                       replayClockRef.current = null;
                       setPlaying(false);
                     } else {
+                      setDiagnosticTab("everything");
+                      setEvidenceScope("all");
                       replayClockRef.current = {
                         atMs: cursorRef.current,
                         startedAt: performance.now(),
@@ -839,6 +994,7 @@ export function ThreadRecordings({
                       player.play(
                         Math.max(0, cursorRef.current - replayStartRef.current),
                       );
+                      setFollowPlayback(true);
                       setPlaying(true);
                     }
                   }}
@@ -869,21 +1025,44 @@ export function ThreadRecordings({
                       className="recording-timeline-mark"
                       data-channel={mark.type}
                       data-error={mark.error}
+                      data-align={
+                        mark.position < 35
+                          ? "start"
+                          : mark.position > 165
+                            ? "end"
+                            : "center"
+                      }
                       style={{ left: `${mark.position / 2}%` }}
-                      title={`${formatRecordingTime(mark.atMs)} · ${mark.label}${mark.count > 1 ? ` · ${mark.count} events` : ""}`}
                       aria-label={`${mark.type} at ${formatRecordingTime(mark.atMs)}: ${mark.label}`}
                       onClick={() => {
+                        setFollowPlayback(false);
                         setDiagnosticTab(
                           mark.type === "network"
                             ? "network"
                             : mark.type === "console"
                               ? "console"
-                              : "activity",
+                              : mark.type === "performance"
+                                ? "performance"
+                                : "activity",
                         );
+                        if (mark.requestId) setSelectedRequest(mark.requestId);
                         setEvidenceScope("all");
                         seek(mark.atMs);
                       }}
-                    />
+                    >
+                      <span className="recording-mark-tooltip" role="tooltip">
+                        <strong>
+                          {formatRecordingTime(mark.atMs)} ·{" "}
+                          {mark.type === "point"
+                            ? "Comment"
+                            : tabs.find((tab) => tab.id === mark.type)?.label}
+                        </strong>
+                        <span>
+                          {mark.label}
+                          {mark.count > 1 ? ` · ${mark.count} events` : ""}
+                        </span>
+                      </span>
+                    </button>
                   ))}
                 </div>
                 <output htmlFor="thread-recording-timeline">
@@ -901,13 +1080,15 @@ export function ThreadRecordings({
                     role="group"
                     aria-label="Recording media"
                   >
-                    <button
-                      type="button"
-                      aria-pressed={mediaMode === "replay"}
-                      onClick={() => chooseMedia("replay")}
-                    >
-                      Replay
-                    </button>
+                    {replayEvents.length >= 2 && (
+                      <button
+                        type="button"
+                        aria-pressed={mediaMode === "replay"}
+                        onClick={() => chooseMedia("replay")}
+                      >
+                        Replay
+                      </button>
+                    )}
                     {recording.video && (
                       <button
                         type="button"
@@ -964,6 +1145,9 @@ export function ThreadRecordings({
                             onPlay={(event) => {
                               selectedVideoGapRef.current = false;
                               checkVideoFrame(event.currentTarget);
+                              setDiagnosticTab("everything");
+                              setEvidenceScope("all");
+                              setFollowPlayback(true);
                               setPlaying(true);
                             }}
                             onPause={() => setPlaying(false)}
@@ -1062,38 +1246,6 @@ export function ThreadRecordings({
                   </div>
                 </div>
                 <div className="recording-diagnostics">
-                  {annotationFrames.length > 0 && (
-                    <section
-                      aria-label="Screenshot comments"
-                      className="recording-tab-content"
-                    >
-                      <h4>Screenshot comments ({annotationFrames.length})</h4>
-                      <ol className="recording-events">
-                        {annotationFrames.map(({ frame, annotation }) => (
-                          <li key={frame.id}>
-                            <button type="button" onClick={() => seek(annotation.atMs)}>
-                              <time>{formatRecordingTime(annotation.atMs)}</time>
-                              <span>{annotation.body}</span>
-                            </button>
-                            <div className="recording-saved-frame">
-                              <a
-                                href={frame.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <img
-                                  src={frame.url}
-                                  alt={`Screenshot for comment at ${formatRecordingTime(annotation.atMs)}`}
-                                  loading="lazy"
-                                />
-                                <span>Open screenshot</span>
-                              </a>
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
-                    </section>
-                  )}
                   <div
                     className="recording-tabs"
                     role="group"
@@ -1104,12 +1256,25 @@ export function ThreadRecordings({
                         type="button"
                         key={item.id}
                         aria-pressed={diagnosticTab === item.id}
-                        onClick={() => setDiagnosticTab(item.id)}
+                        onClick={() => {
+                          setFollowPlayback(false);
+                          setDiagnosticTab(item.id);
+                        }}
                       >
                         {item.label}
                       </button>
                     ))}
                   </div>
+                  {diagnosticTab !== "environment" && (
+                    <button
+                      type="button"
+                      className="recording-follow"
+                      aria-pressed={followPlayback}
+                      onClick={() => setFollowPlayback((value) => !value)}
+                    >
+                      {followPlayback ? "Following playback" : "Follow playback"}
+                    </button>
+                  )}
                   {diagnosticTab !== "environment" && (
                     <div className="recording-scope">
                       <div role="group" aria-label="Event range">
@@ -1136,17 +1301,107 @@ export function ThreadRecordings({
                     </div>
                   )}
                   <div className="recording-tab-content">
+                    {diagnosticTab === "everything" && (
+                      <div className="recording-everything-wrap">
+                        <ol
+                          className="recording-events recording-everything"
+                          ref={eventListRef}
+                        >
+                          {shownEverythingPage === 0 && (
+                            <li>
+                              <button
+                                type="button"
+                                aria-current={!activeEverythingSeq ? "true" : undefined}
+                                onClick={() => {
+                                  setDiagnosticTab("environment");
+                                  seek(0);
+                                }}
+                              >
+                                <time>0:00.0</time>
+                                <span>
+                                  <span
+                                    className="recording-event-tag"
+                                    data-channel="environment"
+                                  >
+                                    Environment
+                                  </span>
+                                  {environmentSummary(recording.environment)}
+                                </span>
+                              </button>
+                            </li>
+                          )}
+                          {pageEvents.map((event) => (
+                            <li key={event.seq}>
+                              <button
+                                type="button"
+                                aria-current={
+                                  activeEverythingSeq === event.seq ? "true" : undefined
+                                }
+                                onClick={() => seek(event.atMs)}
+                              >
+                                <time>{formatRecordingTime(event.atMs)}</time>
+                                <span>
+                                  <span
+                                    className="recording-event-tag"
+                                    data-channel={event.type}
+                                  >
+                                    {event.type}
+                                  </span>
+                                  {eventTitle(event.type, event.data)}
+                                  {event.type === "activity" &&
+                                    activityDetail(event.data) && (
+                                      <small className="recording-event-detail">
+                                        {activityDetail(event.data)}
+                                      </small>
+                                    )}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ol>
+                        {maxEverythingPage > 0 && (
+                          <div className="recording-event-pages">
+                            <button
+                              type="button"
+                              disabled={shownEverythingPage === 0}
+                              onClick={() => {
+                                setFollowPlayback(false);
+                                setEverythingPage(shownEverythingPage - 1);
+                              }}
+                            >
+                              Earlier
+                            </button>
+                            <span>
+                              {everythingPageStart + 1}–
+                              {Math.min(
+                                visibleCombinedEvents.length + 1,
+                                everythingPageStart + everythingPageSize,
+                              )}{" "}
+                              of {visibleCombinedEvents.length + 1}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={shownEverythingPage === maxEverythingPage}
+                              onClick={() => {
+                                setFollowPlayback(false);
+                                setEverythingPage(shownEverythingPage + 1);
+                              }}
+                            >
+                              Later
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {eventType &&
                       (visibleEvents.length ? (
-                        <ol className="recording-events">
+                        <ol className="recording-events" ref={eventListRef}>
                           {visibleEvents.map((event) => (
                             <li key={event.seq}>
                               <button
                                 type="button"
-                                className={
-                                  Math.abs(cursorMs - event.atMs) < 500
-                                    ? "near-cursor"
-                                    : ""
+                                aria-current={
+                                  activeEventSeq === event.seq ? "true" : undefined
                                 }
                                 onClick={() => seek(event.atMs)}
                               >
@@ -1174,12 +1429,15 @@ export function ThreadRecordings({
                     {diagnosticTab === "network" &&
                       (visibleExchanges.length ? (
                         <div className="recording-network">
-                          <ol className="recording-events">
+                          <ol className="recording-events" ref={eventListRef}>
                             {visibleExchanges.map((item) => (
                               <li key={item.key}>
                                 <button
                                   type="button"
                                   aria-expanded={selectedRequest === item.key}
+                                  aria-current={
+                                    activeExchangeKey === item.key ? "true" : undefined
+                                  }
                                   onClick={() => {
                                     setSelectedRequest(item.key);
                                     seek(item.atMs);

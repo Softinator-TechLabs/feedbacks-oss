@@ -559,6 +559,49 @@ test("stopped capture without full DOM baseline explicitly marks replay unavaila
   );
 });
 
+test("trimming only the video tail keeps a valid replay prefix", async () => {
+  const { clipRecording, canKeepReplayPrefix } = await import(
+    "../extension/session-capture.js"
+  );
+  const recording: any = {
+    events: [
+      { seq: 0, atMs: 0, type: "replay", data: { type: 2, timestamp: 1000 } },
+      { seq: 1, atMs: 110, type: "replay", data: { type: 3, timestamp: 1110 } },
+      { seq: 2, atMs: 700, type: "activity", data: { action: "click" } },
+      { seq: 3, atMs: 1300, type: "replay", data: { type: 3, timestamp: 2300 } },
+    ],
+    coverage: [{ channel: "replay", status: "complete" }],
+  };
+  const segments = [{ sourceStartMs: 100, sourceEndMs: 1000, outputStartMs: 0 }];
+  assert.equal(canKeepReplayPrefix({ offsetMs: -100, segments }), true);
+  const clipped = clipRecording(recording, segments, { keepReplayPrefix: true });
+  assert.deepEqual(
+    clipped.events.map((event: any) => event.seq),
+    [0, 1, 2],
+  );
+  assert.equal(
+    clipped.coverage.find((item: any) => item.channel === "replay").status,
+    "partial",
+  );
+  assert.equal(
+    canKeepReplayPrefix({
+      offsetMs: -100,
+      segments: [{ ...segments[0], sourceStartMs: 500 }],
+    }),
+    false,
+  );
+  assert.equal(
+    canKeepReplayPrefix({
+      offsetMs: -100,
+      segments: [
+        ...segments,
+        { sourceStartMs: 1200, sourceEndMs: 1300, outputStartMs: 900 },
+      ],
+    }),
+    false,
+  );
+});
+
 test("capture budget counts UTF-8 bytes for multibyte diagnostics", async () => {
   const store = createCaptureStore({ storage: memory(), now: () => 1000, maxBytes: 300 });
   await store.start(
