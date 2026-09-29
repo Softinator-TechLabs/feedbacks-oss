@@ -261,10 +261,12 @@ export function PasswordReplacement({
 export function CreateMember({
   onSaved,
   initiallyOpen = false,
+  flat = false,
 }: {
   project?: Project;
   onSaved: () => void;
   initiallyOpen?: boolean;
+  flat?: boolean;
 }) {
   const a = useAction(),
     [password, setPassword] = useState(""),
@@ -274,9 +276,8 @@ export function CreateMember({
       password: string;
     } | null>(null),
     { data, error } = useLoad(() => api<{ items: Project[] }>("projects.list", {}), []);
-  return (
-    <details className="section member-action-panel" open={initiallyOpen}>
-      <summary>Create a user</summary>
+  const content = (
+    <>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -363,6 +364,17 @@ export function CreateMember({
           </button>
         </div>
       )}
+    </>
+  );
+  return flat ? (
+    <section className="section member-action-panel">
+      <h2>Create a user</h2>
+      {content}
+    </section>
+  ) : (
+    <details className="section member-action-panel" open={initiallyOpen}>
+      <summary>Create a user</summary>
+      {content}
     </details>
   );
 }

@@ -1115,6 +1115,9 @@ details form {
 .member-action-panel[open] > summary {
   margin-bottom: 12px;
 }
+.member-action-panel > h2 {
+  margin-top: 0;
+}
 .member-directory-controls {
   display: flex;
   align-items: center;
@@ -1250,7 +1253,8 @@ legend {
 .token-row details {
   max-width: 70ch;
 }
-.account-tabs {
+.account-tabs,
+.section-tabs {
   position: sticky;
   top: 0;
   z-index: 20;
@@ -1261,7 +1265,8 @@ legend {
   background: var(--surface);
   scrollbar-width: thin;
 }
-:root .account-tabs button {
+:root .account-tabs button,
+:root .section-tabs button {
   flex: 0 0 auto;
   min-height: 48px;
   padding: 9px 2px;
@@ -1272,7 +1277,8 @@ legend {
   color: var(--muted);
   white-space: nowrap;
 }
-:root .account-tabs button[aria-selected="true"] {
+:root .account-tabs button[aria-selected="true"],
+:root .section-tabs button[aria-selected="true"] {
   border-bottom-color: var(--accent);
   color: var(--accent);
   font-weight: 700;
@@ -1283,6 +1289,15 @@ legend {
 }
 .account-panel[hidden] {
   display: none;
+}
+.section-panel {
+  padding-top: 24px;
+}
+.section-panel[hidden] {
+  display: none;
+}
+.section-panel > .section:first-child {
+  margin-top: 0;
 }
 .account-panel > .section:first-child {
   margin-top: 0;
@@ -1307,16 +1322,21 @@ legend {
   border-bottom: 0;
 }
 @media (max-width: 440px) {
-  .account-tabs {
+  .account-tabs,
+  .section-tabs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0 12px;
     overflow: visible;
   }
-  :root .account-tabs button {
+  :root .account-tabs button,
+  :root .section-tabs button {
     min-width: 0;
     justify-content: flex-start;
     text-align: left;
+  }
+  :root .section-tabs button {
+    white-space: normal;
   }
 }
 .secret {
