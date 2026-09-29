@@ -12,6 +12,14 @@ export function taskCounts(thread: any) {
     legacyAnchor: !points.length && !!thread.context.anchor,
   };
 }
+// Absent content needs no prompt tokens; explicit requested section reads still
+// return their pagination/empty result, and access denials remain separate.
+export function presentTaskCounts(thread: any) {
+  const entries = Object.entries(taskCounts(thread)).filter(
+    ([, value]) => value === true || (typeof value === "number" && value > 0),
+  );
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
 export function reviewedPage(raw: string, serverOrigin?: string, taskId?: string) {
   const result: { url: string; relationship: string; threadId?: string } = {
     url: raw,

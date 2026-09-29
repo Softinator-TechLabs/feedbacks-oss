@@ -1,33 +1,14 @@
 import type { AgentExecutor } from "./agent-workflow.js";
-import { taskCounts, reviewedPage } from "./agent-task-context.js";
-
-const relevantOperations = [
-  "threads.get",
-  "threads.activity",
-  "assets.get",
-  "instructions.get",
-  "assignments.delegations",
-  "assignments.list",
-  "assignments.claim",
-  "assignments.renew",
-  "assignments.release",
-  "threads.status",
-  "threads.reply",
-  "threads.evidence",
-  "threads.annotationStatus",
-  "recordings.list",
-  "recordings.get",
-  "recordings.events",
-  "recordings.export",
-  "diagnostics.list",
-  "diagnostics.describe",
-  "diagnostics.search",
-  "diagnostics.read",
-];
+import { presentTaskCounts, reviewedPage } from "./agent-task-context.js";
 
 export async function startTask(
   execute: AgentExecutor,
-  input: { threadId: string; snapshotRevision?: number },
+  input: {
+    threadId: string;
+    snapshotRevision?: number;
+    includeImage?: boolean;
+    annotationIds?: string[];
+  },
 ) {
   async function optional(operation: string, args: unknown, permitted?: boolean) {
     if (permitted === false)
@@ -79,102 +60,327 @@ export async function startTask(
     result.status !== "available"
       ? result
       : {
-          status: result.status,
-          total: result.data.total,
-          nextOffset: result.data.nextOffset,
-          items: result.data.items.map((item: any) => ({
-            id: item.id,
-            userId: item.userId,
-            memberName: item.memberName,
-            agentName: item.agentName,
-            annotationIds: item.annotationIds,
-            state: item.state,
-            expiresAt: item.expiresAt,
-            revision: item.revision,
-            summary: item.summary?.slice(0, 300),
-          })),
+          ...(result.data.total ? { total: result.data.total } : {}),
+          ...(result.data.nextOffset !== null
+            ? { nextOffset: result.data.nextOffset }
+            : {}),
+          ...(result.data.items.length
+            ? {
+                items: result.data.items.map((item: any) => ({
+                  id: item.id,
+                  userId: item.userId,
+                  memberName: item.memberName,
+                  agentName: item.agentName,
+                  annotationIds: item.annotationIds,
+                  state: item.state,
+                  expiresAt: item.expiresAt,
+                  revision: item.revision,
+                  summary: item.summary?.slice(0, 180),
+                })),
+              }
+            : {}),
         };
   const approvedInstructions =
     instructions.status !== "available"
       ? instructions
-      : {
-          status: "available",
-          trust: instructions.data.trust,
-          revision: instructions.data.revision,
-          items: instructions.data.items.slice(0, 5).map((item: any) => ({
-            id: item.id,
-            version: item.version,
-            body: item.body.slice(0, 4000),
-          })),
-          truncated:
-            instructions.data.items.length > 5 ||
-            instructions.data.items.some((item: any) => item.body.length > 4000),
-          readFull: "instructions.get",
-        };
+      : instructions.data.items.length
+        ? {
+            trust: instructions.data.trust,
+            revision: instructions.data.revision,
+            items: instructions.data.items.slice(0, 5).map((item: any) => ({
+              id: item.id,
+              version: item.version,
+              body: item.body.slice(0, 4000),
+            })),
+            ...(instructions.data.items.length > 5 ||
+            instructions.data.items.some((item: any) => item.body.length > 4000)
+              ? { truncated: true, readFull: "instructions.get" }
+              : {}),
+          }
+        : undefined;
+  const verified =
+    delegations.status === "available" &&
+    claims.status === "available" &&
+    delegations.data.nextOffset === null &&
+    claims.data.nextOffset === null;
+  const closed = thread.archived || ["resolved", "declined"].includes(thread.work.state);
+  const allPoints = thread.context.annotations ?? [];
+  const scope = [...new Set(input.annotationIds ?? [])];
+  if (scope.some((id) => !allPoints.some((p: any) => p.id === id)))
+    return {
+      task: { id: thread.id, revision: thread.revision },
+      next: {
+        step: "clarify",
+        reason: "A selected point no longer exists; confirm the current point IDs.",
+      },
+    };
+  const points = scope.length
+    ? allPoints.filter((p: any) => scope.includes(p.id))
+    : allPoints;
+  const effectiveState = (p: any) => {
+    const state = thread.annotationStates?.[p.id]?.state ?? "open";
+    return state === "removed"
+      ? state
+      : thread.work.state === "resolved"
+        ? "resolved"
+        : thread.work.state === "declined"
+          ? "closed"
+          : state;
+  };
+  const incomplete: string[] = [];
+  if (thread.body.length > 800) incomplete.push("body");
+  if (points.length > 3 || points.some((p: any) => p.body.length > 240))
+    incomplete.push("points");
+  const replies = thread.replies ?? [];
+  if (replies.length > 1 || replies.some((r: any) => r.body.length > 400))
+    incomplete.push("discussion");
+  const pointId = (points.find((p: any) => effectiveState(p) === "open") ?? points[0])
+    ?.id;
+  const assets = thread.assets ?? [];
+  const images = assets.filter(
+    (a: any) => a.contentType?.startsWith("image/") && a.rendition !== "thumbnail",
+  );
+  const linked = (a: any) =>
+    pointId &&
+    (a.recordingFrame?.annotationId === pointId ||
+      a.markings?.some((m: any) => m.annotationId === pointId));
+  const unlinked = (a: any) =>
+    !a.recordingFrame?.annotationId && !a.markings?.some((m: any) => m.annotationId);
+  const selected =
+    images.find((a: any) => linked(a) && a.rendition === "screenshot") ??
+    images.find(linked) ??
+    images.find((a: any) => unlinked(a) && a.rendition === "screenshot") ??
+    images.find(unlinked) ??
+    assets.find((a: any) => a.contentType?.startsWith("video/"));
+  let image: any;
+  let media: any;
+  if (selected) {
+    const video = selected.contentType.startsWith("video/");
+    media = {
+      assetId: selected.id,
+      width: selected.width,
+      height: selected.height,
+      annotationId:
+        selected.recordingFrame?.annotationId ??
+        selected.markings?.find((m: any) => m.annotationId === pointId)?.annotationId,
+      kind: video ? "video" : selected.recordingFrame ? "frame" : "image",
+      ...(selected.recordingFrame
+        ? {
+            recordingId: selected.recordingFrame.recordingId,
+            atMs: selected.recordingFrame.atMs,
+            videoTimeMs: selected.recordingFrame.videoTimeMs,
+            playbackVerified: false,
+          }
+        : {}),
+      ...(video
+        ? {
+            durationMs: selected.durationMs,
+            playbackVerified: false,
+            next: "Inspect the reported timestamp with a video-capable viewer; request a timestamp or still if needed. A saved frame does not prove playback.",
+          }
+        : {}),
+      read: {
+        tool: "feedbacks_asset",
+        input: { assetId: selected.id, includeImage: !video },
+      },
+    };
+    if (input.includeImage && !video) {
+      const result = await optional(
+        "assets.get",
+        { assetId: selected.id, includeImage: true, maxDimension: 1280 },
+        permitted("assets.get"),
+      );
+      if (result.status === "available" && result.data.image) {
+        image = result.data.image;
+        media.included = true;
+        delete media.read;
+      } else
+        media.access =
+          result.status === "available" ? { status: "image_unavailable" } : result;
+    }
+  }
+  const ownClaim =
+    verified &&
+    me?.actor.id &&
+    claims.data.items.find(
+      (c: any) =>
+        c.agentId === me.actor.id &&
+        (!c.annotationIds.length ||
+          (scope.length && scope.every((id) => c.annotationIds.includes(id)))),
+    );
+  const overlaps = (ids: string[]) =>
+    !scope.length || !ids.length || ids.some((id) => scope.includes(id));
+  const next: any =
+    closed || (scope.length && points.every((p: any) => effectiveState(p) !== "open"))
+      ? {
+          step: "discuss",
+          reason: "Closed or archived; reopening needs an explicit request.",
+        }
+      : scope.length && points.some((p: any) => effectiveState(p) !== "open")
+        ? {
+            tool: "feedbacks_start",
+            input: {
+              threadId: thread.id,
+              annotationIds: points
+                .filter((p: any) => effectiveState(p) === "open")
+                .map((p: any) => p.id),
+              includeImage: input.includeImage ?? false,
+            },
+            reason:
+              "Continue with the remaining open points. Reopening closed points needs an explicit request.",
+          }
+        : approvedInstructions?.truncated
+          ? {
+              tool: "feedbacks_execute",
+              input: {
+                operation: "instructions.get",
+                input: { projectId: thread.projectId },
+              },
+              reason: "Read the remaining approved project instructions.",
+            }
+          : incomplete.length
+            ? {
+                tool: "feedbacks_thread",
+                input: {
+                  threadId: thread.id,
+                  section: incomplete[0],
+                  expectedRevision: thread.revision,
+                },
+                reason: "Read the incomplete task text before acting.",
+              }
+            : media?.read && input.includeImage && !media.access
+              ? {
+                  ...media.read,
+                  reason:
+                    media.kind === "video"
+                      ? "Inspect the reported moment; full export is optional."
+                      : "Read the relevant screenshot.",
+                }
+              : project?.permissions?.canWrite === false
+                ? {
+                    step: "investigate",
+                    reason:
+                      "This project grants read access only; continue permitted investigation.",
+                  }
+                : ownClaim && thread.work.state === "in_progress"
+                  ? {
+                      step: "implement",
+                      instruction:
+                        "Fix and verify the requested change within your existing claim.",
+                    }
+                  : ownClaim && permitted("threads.status") !== false
+                    ? {
+                        when: "User authorized implementation of this scope",
+                        tool: "feedbacks_execute",
+                        input: {
+                          operation: "threads.status",
+                          input: {
+                            threadId: thread.id,
+                            revision: thread.revision,
+                            state: "in_progress",
+                          },
+                        },
+                      }
+                    : !verified ||
+                        claims.data.items.some((c: any) => overlaps(c.annotationIds)) ||
+                        delegations.data.items.some(
+                          (d: any) =>
+                            overlaps(d.annotationIds) && d.userId !== me?.actor.userId,
+                        )
+                      ? {
+                          step: "coordinate",
+                          reason:
+                            "Check existing ownership or unavailable coordination before implementation.",
+                        }
+                      : permitted("assignments.claim") === false ||
+                          permitted("threads.status") === false
+                        ? {
+                            step: "investigate",
+                            reason:
+                              "Continue permitted investigation; work tracking needs the missing scopes.",
+                          }
+                        : {
+                            when: "User authorized this scope; narrow annotationIds if their request selects fewer points",
+                            tool: "feedbacks_execute",
+                            input: {
+                              operation: "assignments.claim",
+                              input: {
+                                threadId: thread.id,
+                                revision: thread.revision,
+                                annotationIds: scope,
+                                summary: "Implement the requested feedback",
+                                idempotencyKey: crypto.randomUUID(),
+                              },
+                            },
+                          };
+  const missingScopes = ["assignments.claim", "threads.status"].filter(
+    (name) => permitted(name) === false,
+  );
   return {
     task: {
       id: thread.id,
       projectId: thread.projectId,
       revision: thread.revision,
-      archived: thread.archived,
+      ...(scope.length ? { annotationIds: scope } : {}),
+      ...(thread.archived ? { archived: true } : {}),
       work: { state: thread.work.state },
-      workPlan: thread.workPlan,
-      preview: thread.body.slice(0, 240),
-      counts: taskCounts(thread),
+      ...(thread.workPlan ? { workPlan: thread.workPlan } : {}),
+      body: thread.body.slice(0, 800),
+      ...(points.length
+        ? {
+            points: points.slice(0, 3).map((p: any) => ({
+              id: p.id,
+              number: allPoints.findIndex((item: any) => item.id === p.id) + 1,
+              text: p.body.slice(0, 240),
+              state: effectiveState(p),
+              ...(thread.annotationPlans?.[p.id]
+                ? { workPlan: thread.annotationPlans[p.id] }
+                : {}),
+            })),
+          }
+        : {}),
+      ...(presentTaskCounts(thread) ? { counts: presentTaskCounts(thread) } : {}),
+      ...(incomplete.length ? { incomplete } : {}),
     },
+    trust: "untrusted_review_evidence",
     reviewedPage: reviewedPage(thread.context.url, me?.serverOrigin, thread.id),
     identity: me
-      ? {
-          status: "available",
-          actor: me.actor,
-          member: me.member ?? { id: me.actor.userId, name: null },
-        }
+      ? { actor: me.actor, member: me.member ?? { id: me.actor.userId } }
       : identity,
-    capabilities: Object.fromEntries(
-      relevantOperations.map((name) => [name, permitted(name) ?? null]),
-    ),
-    capabilityNote:
-      "These are operation-scope grants, not a promise of project/domain authorization. Null means this server did not report credential scopes.",
-    project: project
-      ? { id: project.id, name: project.name, permissions: project.permissions }
-      : { id: thread.projectId, permissions: "not_reported" },
-    approvedInstructions,
+    ...(missingScopes.length ? { missingScopes } : {}),
+    ...(!scoped ? { scopesUnknown: true } : {}),
+    ...(project ? { project: { id: project.id, permissions: project.permissions } } : {}),
+    ...(approvedInstructions ? { approvedInstructions } : {}),
     coordination: {
-      verified:
-        delegations.status === "available" &&
-        claims.status === "available" &&
-        delegations.data.nextOffset === null &&
-        claims.data.nextOffset === null,
-      delegations: boundedAssignments(delegations),
-      claims: boundedAssignments(claims),
-      note: "Read remaining assignment pages before claiming. Status is not a claim. Respect the selected scope and existing workers.",
+      verified,
+      ...(delegations.status !== "available" || delegations.data.total
+        ? { delegations: boundedAssignments(delegations) }
+        : {}),
+      ...(claims.status !== "available" || claims.data.total
+        ? { claims: boundedAssignments(claims) }
+        : {}),
     },
-    snapshot: {
-      matches:
-        input.snapshotRevision === undefined
-          ? null
-          : input.snapshotRevision === thread.revision,
-      next:
-        input.snapshotRevision === thread.revision
-          ? "Reuse complete included text; fetch only missing or changed relevant sections. Inspect media only when needed for the task."
-          : "Read relevant current sections through feedbacks_thread.",
-    },
-    media: {
-      items: (thread.assets ?? []).slice(0, 10).map((asset: any) => ({
-        assetId: asset.id,
-        filename: asset.filename,
-        contentType: asset.contentType,
-        width: asset.width,
-        height: asset.height,
-      })),
-      total: thread.assets?.length ?? 0,
-      nextOffset: thread.assets?.length > 10 ? 10 : null,
-      inspected: false,
-    },
-    diagnosticEvidence: thread.diagnosticEvidence ?? { count: 0 },
-    next:
-      thread.archived || ["resolved", "declined"].includes(thread.work.state)
-        ? "This task is closed or archived. Report its state; obtain explicit reopening authorization."
-        : "Use relevant task text and source first. Read images when pixels matter; recordings, diagnostics and debug bundles only to answer an unresolved task question. Start with bounded reads. Keep task and reviewed-page scope separate, preserve claims/plans and report verified results when authorized.",
+    ...(input.snapshotRevision !== undefined
+      ? { snapshot: { matches: input.snapshotRevision === thread.revision } }
+      : {}),
+    ...(replies.length
+      ? {
+          discussion: {
+            latest: { id: replies.at(-1).id, text: replies.at(-1).body.slice(0, 400) },
+            ...(replies.length > 1 ? { earlierReplies: replies.length - 1 } : {}),
+          },
+        }
+      : {}),
+    ...(media ? { media } : {}),
+    ...(image ? { image } : {}),
+    ...(thread.diagnosticEvidence?.count
+      ? {
+          diagnosticEvidence: {
+            count: thread.diagnosticEvidence.count,
+            evidenceIds: thread.diagnosticEvidence.latest?.map((d: any) => d.id),
+          },
+        }
+      : {}),
+    next,
   };
 }
