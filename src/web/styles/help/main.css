@@ -199,3 +199,53 @@
 .skip-link:focus {
   top: 12px;
 }
+
+.agent-handoff {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.agent-handoff-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-block: 18px;
+}
+.agent-handoff-options > section {
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.agent-handoff h3 {
+  margin: 0 0 12px;
+}
+.agent-handoff ol {
+  padding-left: 22px;
+  margin: 0 0 12px;
+}
+.agent-handoff li + li {
+  margin-top: 6px;
+}
+.agent-handoff .actions {
+  margin-block: 14px;
+}
+.agent-handoff details {
+  margin-block: 12px;
+}
+.agent-handoff summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 10px;
+}
+.agent-handoff textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.agent-handoff button {
+  white-space: normal;
+}
+@media (max-width: 760px) {
+  .agent-handoff-options {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+}

@@ -70,6 +70,38 @@ test("a zero-project setup retains the issued read scopes without inventing proj
   assert.match(prompt, /If threads\.list is not scoped, mark the preview unavailable/);
 });
 
+test("setup keeps the credential out of the default prompt and includes it only in explicit quick mode", () => {
+  const issued = {
+    id: "synthetic-key",
+    token: "synthetic-sensitive-credential",
+    origin: "https://feedbacks.example.test",
+    name: "Personal key",
+    projects: [{ id: "synthetic-project", name: "``` <script>untrusted</script>" }],
+    scopes: ["auth.me", "projects.list"],
+    expiresAt: "2026-12-01T00:00:00.000Z",
+    canResolve: false,
+  };
+  const separate = agentSetupPrompt(issued, "Connect {{MCP_ENDPOINT_JSON}}");
+  assert.equal(separate.includes(issued.token), false);
+  const separateData = JSON.parse(separate.match(/```json\n([\s\S]*?)\n```/)![1]);
+  assert.deepEqual(separateData.authentication, {
+    type: "bearer",
+    source: "local-clipboard",
+  });
+  assert.deepEqual(separateData.projects, issued.projects);
+  assert.equal(separate.includes("<script>"), false);
+  const quick = agentSetupPrompt(issued, "Connect {{MCP_ENDPOINT_JSON}}", "quick");
+  const quickData = JSON.parse(quick.match(/```json\n([\s\S]*?)\n```/)![1]);
+  assert.equal(quickData.authentication.secret, issued.token);
+  assert.deepEqual(quickData.scopes, separateData.scopes);
+  assert.equal(quickData.tokenId, separateData.tokenId);
+  assert.equal(
+    issued.token,
+    "synthetic-sensitive-credential",
+    "copy mode must not mutate the issuance snapshot",
+  );
+});
+
 test("skill installer checks without writing, installs all references, preserves custom files and rejects symlinks", async () => {
   const root = await mkdtemp(join(await realpath(tmpdir()), "feedbacks-skill-"));
   const target = join(root, "review-feedback");

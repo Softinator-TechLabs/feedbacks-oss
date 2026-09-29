@@ -6,11 +6,18 @@ description: Copy your personal Feedbacks setup prompt into your coding agent, v
 
 **For the developer resolving feedback.** Sign in to your team’s Feedbacks server as yourself.
 
-1. Open **Setup → Create key & copy prompt**. Check the permissions shown beside it.
-2. Paste it privately into **Codex, Claude Code or Antigravity**.
-3. Let the agent verify project access. Then choose the feedback to work on.
+1. Open **Setup → Create key & copy setup prompt** under **Keep key out of chat**. Check the permissions shown beside it.
+2. Paste this prompt, which has no API key, into **Codex, Claude Code or Antigravity**.
+3. Let the agent prepare a command for your OS and client. Return to **Copy key**, then run the command locally. Do not paste the key into chat.
+4. Let the agent verify project access. Then choose the feedback to work on.
+
+**Quick setup with key** is available alongside the recommended option. It copies the prompt and key together in one action. Pasting shares the key with your chat provider and anyone who can access that conversation. Use only a client/provider you trust with the credential; turning training off does not guarantee no storage or access.
+
+Both paths use the same key. Clipboard history or sync may retain it. The recommended path keeps it out of the transcript, while the local agent can still access its configuration. See [local credential import](/reference/manual/agent-setup#local-credential-import) for Windows, macOS, Linux and remote-agent limitations.
 
 <Demo step="agent" />
+
+Easy Setup includes access to shared recordings and diagnostics for your permitted projects. Detailed permission choices live in **Account → Agent setup → Advanced**. Existing keys keep their original scopes.
 
 Each person needs their own key. An owner’s default key has full administration access; use **Choose projects and permissions** for narrower access.
 

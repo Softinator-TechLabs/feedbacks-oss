@@ -34,3 +34,5 @@ Keep source, local checks, exact-revision CI, package integrity, deployment and 
 ## CI behavior
 
 [CI](../.github/workflows/ci.yml) runs Node 22/24 checks, native PostgreSQL checks, isolated Chromium extension acceptance, dependency audit, container smoke, source export, SBOM generation and history secret scanning. Workflow tokens have read-only contents permissions; pull requests do not receive deployment secrets. Deployment credentials and operator acceptance records remain private.
+
+Agent setup handoff changes also run `npm run qa:agent-setup` after building. This disposable browser check covers secret-free/default and explicit quick copies, evidence-read scopes, retry/recovery, mobile layout and keyboard controls. It never uses the developer’s clipboard or production credentials.
