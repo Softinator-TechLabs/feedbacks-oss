@@ -184,7 +184,14 @@ async function popup({
   };
 }
 
-test("record buttons start from one popup click and redirect origins stay scoped to the source site", async () => {
+test("one popup recording action starts video with session context and redirect origins stay scoped", async () => {
+  const html = await readFile(
+    new URL("../extension/popup.html", import.meta.url),
+    "utf8",
+  );
+  assert.equal((html.match(/id="record-video"/g) || []).length, 1);
+  assert.doesNotMatch(html, /id="record-session"/);
+  assert.match(html, /Record video \+ session/);
   const video = await popup({ connected: true, serverAllowed: true });
   video.nodes["record-redirect-origins"].value = "https://dashboard.example.test";
   await video.nodes["save-record-redirects"].onclick();
@@ -196,14 +203,6 @@ test("record buttons start from one popup click and redirect origins stay scoped
     video.sent.some((message) => message.type === "openRecorder" && message.tabId === 1),
   );
   assert.equal(video.closed(), 1);
-  const session = await popup({ connected: true, serverAllowed: true });
-  await session.nodes["record-session"].onclick();
-  assert.ok(
-    session.sent.some(
-      (message) => message.type === "openSessionRecorder" && message.tabId === 1,
-    ),
-  );
-  assert.equal(session.closed(), 1);
 });
 
 test("popup pairs only with the entered server and keeps broad website permission explicit", async () => {

@@ -1,22 +1,22 @@
 body {
   width: 368px;
-  padding: 12px 16px;
+  padding: 12px 16px 10px;
 }
 .popup-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 h1 {
-  font-size: 21px;
+  font-size: 19px;
   letter-spacing: -0.025em;
   margin: 0;
   color: var(--accent);
 }
 .version {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   margin: 0;
 }
 #update-notice {
@@ -53,15 +53,37 @@ button {
   width: auto;
   min-width: 0;
 }
-.capture-extras button svg {
-  width: 16px;
-  height: 16px;
-  vertical-align: -3px;
-  margin-right: 3px;
+.icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 7px;
+}
+.icon-action svg,
+#capture svg,
+.record-action svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
+  stroke-linecap: round;
   stroke-linejoin: round;
+}
+#settings,
+#stop {
+  margin: 0;
+}
+#settings {
+  border-color: transparent;
+}
+#stop {
+  color: var(--muted);
 }
 #page-feedback {
   display: block;
@@ -70,12 +92,22 @@ button {
 }
 .page-overview {
   border-top: 1px solid var(--line);
-  margin: 8px 0 6px;
-  padding-top: 8px;
+  margin: 12px 0 0;
+  padding-top: 4px;
+}
+.page-overview summary {
+  color: var(--text);
+}
+.page-overview summary span {
+  float: right;
+  margin-right: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
 }
 .page-overview label {
   font-size: 12px;
-  margin: 0 0 5px;
+  margin: 4px 0 5px;
 }
 .page-overview select {
   padding: 6px 9px;
@@ -88,41 +120,36 @@ button {
   margin: 6px 0;
   line-height: 1.5;
 }
-.review-heading,
 .capture-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.review-heading {
-  justify-content: space-between;
-  margin: 8px 0 5px;
-}
-.review-heading strong {
-  font-size: 14px;
-}
-.review-heading button {
-  width: auto;
-  margin: 0;
-  min-height: 36px;
-  padding: 6px 10px;
-  font-size: 12px;
-}
-.capture-row button {
+.capture-row #capture {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   flex: 1;
   width: auto;
   min-width: 0;
+}
+.capture-row .icon-action {
+  margin-top: 8px;
 }
 .viewport-row {
   margin-top: 8px;
 }
 .viewport-row button {
-  padding: 7px 2px;
-  font-size: 12px;
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  padding: 6px;
+  margin: 0;
   min-height: 36px;
 }
 .shortcut-help {
-  margin: 9px 0 3px;
+  margin: 2px 0 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
@@ -192,10 +219,10 @@ button {
   margin-top: 10px;
 }
 .more-actions {
-  margin-top: 10px;
+  margin-top: 2px;
 }
 .more-actions summary {
-  color: var(--accent);
+  color: var(--text);
 }
 .access-status p {
   display: flex;
@@ -306,19 +333,11 @@ footer {
 }
 .is-paired #routing {
   font-size: 12px;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: var(--muted);
 }
 #message:empty {
   display: none;
-}
-.review-heading strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.review-heading button {
-  flex: none;
 }
 .shortcut-help summary {
   cursor: pointer;
@@ -331,7 +350,7 @@ footer {
 .header-links {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
 }
 button.text-action {
   width: auto;
@@ -346,15 +365,15 @@ button.text-action {
   text-underline-offset: 3px;
 }
 
-.capture-extras {
-  margin-top: 10px;
-}
-.capture-extras button {
-  margin: 0;
-}
-.media-cost {
-  font-size: 11px;
-  margin: 6px 0 10px;
+.record-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  min-height: 40px;
+  font-size: 13px;
 }
 .page-overview .control-row {
   margin-top: 8px;
@@ -363,8 +382,7 @@ button.text-action {
 .is-paired summary {
   padding: 4px 0;
 }
-.is-paired .page-overview .control-row button,
-.is-paired .capture-extras button {
+.is-paired .page-overview .control-row button {
   min-height: 36px;
   padding: 6px 8px;
 }

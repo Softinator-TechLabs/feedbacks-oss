@@ -357,8 +357,8 @@
       recordingError.setAttribute("role", "alert");
       recordingControls.append(recordingError);
     } else {
-      if (navigationButton?.parentElement?.parentElement === bar)
-        bar.insertBefore(recordingControls, navigationButton.parentElement);
+      if (recordingControls.parentElement !== bar)
+        bar.insertBefore(recordingControls, bar.querySelector(".review-tools"));
       if (state === "ready") {
         button(
           `Review ${recordingMode}`,
@@ -630,6 +630,27 @@
     parent.append(b);
     return b;
   }
+  function controlIcon(name) {
+    const paths = {
+      screenshot: "M4 7h4l1.5-2h5L16 7h4v12H4z M12 10a3 3 0 1 0 0 6a3 3 0 0 0 0-6",
+      page: "M7 3h8l4 4v14H7z M15 3v5h4 M10 12h6 M10 16h6",
+      exit: "M10 5H5v14h5 M14 9l4 3-4 3 M18 12H9",
+      hide: "M4 4l16 16 M3 12s3-6 9-6c2 0 3.8.5 5.2 1.4 M21 12s-3 6-9 6c-2 0-3.8-.5-5.2-1.4",
+      comments: "M4 4h16v12H9l-5 4z M8 9h8 M8 12h5",
+      mobile: "M7 2h10v20H7z M11 19h2",
+      tablet: "M4 3h16v18H4z M11 18h2",
+      desktop: "M2 4h20v14H2z M8 22h8 M12 18v4",
+      reset:
+        "M4 8V4h4 M20 16v4h-4 M4 4l6 6 M20 20l-6-6 M20 8V4h-4 M4 16v4h4 M20 4l-6 6 M4 20l6-6",
+    };
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS(svg.namespaceURI, "path");
+    path.setAttribute("d", paths[name]);
+    svg.append(path);
+    return svg;
+  }
   async function changeMode(value, narrow = false) {
     const result = await send({ type: "resize", mode: value, narrow });
     mode = value;
@@ -899,6 +920,7 @@
       occlusionPins.push({ kind: "draft", pin, element, x, y, hidePreview: hide });
     });
     reviewButton.hidden = finalizeButton.hidden = annotations.length === 0;
+    draftList.parentElement.hidden = annotations.length === 0;
     finalizeButton.querySelector(".unsent-count").textContent =
       `${annotations.length} unsent`;
     finalizeButton.setAttribute(
@@ -914,7 +936,7 @@
     positionControls();
     meta.textContent = annotations.length
       ? `${annotations.length} not sent${outside ? ` · ${outside} outside this view` : ""}`
-      : `${threads.length} comments on this view · ${innerWidth} × ${innerHeight}`;
+      : `${threads.length} ${threads.length === 1 ? "comment" : "comments"} on this page`;
     schedulePinOcclusion();
   }
   function releasePointImage(item) {
@@ -1314,38 +1336,64 @@
     bar.addEventListener("focusout", collapseAfterLeave);
 
     const heading = document.createElement("strong");
-    heading.textContent = `Feedbacks · ${project.name}`;
+    heading.textContent = project.name;
+    heading.title = `Reviewing ${project.name}`;
     const barHeading = document.createElement("div");
     barHeading.className = "review-bar-heading";
     barHeading.append(heading);
-    button("Hide", hideControls, barHeading).title =
-      "Keep reviewing without the icon. Reopen Feedbacks from Chrome to restore it.";
-    button("Exit", exitReview, barHeading).title =
-      "Stop review (Esc or R). Draft points stay on this page.";
+    const hideButton = button("", hideControls, barHeading);
+    hideButton.className = "icon-control";
+    hideButton.setAttribute("aria-label", "Hide page controls");
+    hideButton.title = "Hide controls. Reopen Feedbacks from Chrome to restore them.";
+    hideButton.append(controlIcon("hide"));
+    const exitButton = button("", exitReview, barHeading);
+    exitButton.className = "icon-control";
+    exitButton.setAttribute("aria-label", "Exit review");
+    exitButton.title = "Exit review (Esc or R). Draft points stay on this page.";
+    exitButton.append(controlIcon("exit"));
     bar.append(barHeading);
-    const dragHint = document.createElement("p");
-    dragHint.className = "drag-hint";
-    dragHint.textContent = "Drag the dotted handle to move · Arrow keys when focused";
-    bar.append(dragHint);
     meta = document.createElement("p");
     meta.className = "meta";
     bar.append(meta);
     const row = document.createElement("div");
-    row.className = "row";
+    row.className = "row capture-controls";
     bar.append(row);
-    button("Screenshot", () => capturePoint(), row).className = "primary";
-    row.lastChild.title = "Capture the visible view and each point’s original (S)";
-    button("Full page", () => capturePoint("fullPage"), row).title =
-      "Optional: scroll and capture the whole page (P). More images can increase agent processing and token use.";
+    const screenshotButton = button("Screenshot", () => capturePoint(), row);
+    screenshotButton.className = "primary";
+    screenshotButton.prepend(controlIcon("screenshot"));
+    screenshotButton.title = "Capture this view (S)";
+    const fullPageButton = button("", () => capturePoint("fullPage"), row);
+    fullPageButton.className = "icon-control";
+    fullPageButton.setAttribute("aria-label", "Capture full page");
+    fullPageButton.title = "Capture full page (P). Adds more images.";
+    fullPageButton.append(controlIcon("page"));
     recordingControls = document.createElement("div");
     recordingControls.className = "row recording-controls";
     recordingControls.title =
       "Long recordings can increase agent processing and token use.";
     bar.append(recordingControls);
     renderRecording();
+    const feedbackRow = document.createElement("div");
+    feedbackRow.className = "row feedback-controls";
+    bar.append(feedbackRow);
+    const commentsButton = button(
+      "Page comments",
+      () => send({ type: "openPageThreads" }),
+      feedbackRow,
+    );
+    commentsButton.prepend(controlIcon("comments"));
+    commentsButton.title = "Open team threads for this page";
+    const reviewTools = document.createElement("details");
+    reviewTools.className = "review-tools";
+    const toolsSummary = document.createElement("summary");
+    toolsSummary.textContent = "Review tools";
+    const toolsBody = document.createElement("div");
+    toolsBody.className = "review-tools-body";
+    reviewTools.append(toolsSummary, toolsBody);
+    bar.append(reviewTools);
     const navigationRow = document.createElement("div");
     navigationRow.className = "row navigation-controls";
-    bar.append(navigationRow);
+    toolsBody.append(navigationRow);
     navigationButton = button(
       "Navigation locked",
       () => setNavigationLock(!navigationLocked),
@@ -1372,7 +1420,7 @@
     setClicks(clickIndicators);
     const pinRow = document.createElement("div");
     pinRow.className = "row pin-controls";
-    bar.append(pinRow);
+    toolsBody.append(pinRow);
     pinsButton = button(
       "Hide pins",
       (b) => {
@@ -1396,7 +1444,7 @@
     syncPinControls();
     const markerControls = document.createElement("div");
     markerControls.className = "capture-marker-controls";
-    bar.append(markerControls);
+    toolsBody.append(markerControls);
     const markerStyleLabel = document.createElement("label");
     markerStyleLabel.textContent = "Screenshot marker";
     const markerStyleSelect = document.createElement("select");
@@ -1432,34 +1480,37 @@
     };
     markerSizeLabel.append(markerSizeSelect);
     markerControls.append(markerStyleLabel, markerSizeLabel);
-    const feedbackRow = document.createElement("div");
-    feedbackRow.className = "row feedback-controls";
-    bar.append(feedbackRow);
-    button("Page comments", () => send({ type: "openPageThreads" }), feedbackRow).title =
-      "Open your team’s threads for this page, across all screen sizes";
+    const diagnosticsRow = document.createElement("div");
+    diagnosticsRow.className = "row diagnostics-controls";
+    toolsBody.append(diagnosticsRow);
     diagnosticsButton = button(
       "Start diagnostics",
       () => updateDiagnostics(diagnosticsActive ? "stop" : "start"),
-      feedbackRow,
+      diagnosticsRow,
     );
     diagnosticsButton.title =
       "Console and network diagnostics. Collected locally for up to 5 minutes; review before sharing. Stop discards the collection.";
     sizes = document.createElement("div");
-    sizes.className = "row";
-    sizes.style.marginTop = "8px";
-    bar.append(sizes);
-    for (const [label, value] of [
-      ["M", "mobile"],
-      ["T", "tablet"],
-      ["D", "desktop"],
-      ["W", "wide"],
+    sizes.className = "row size-controls";
+    const sizeLabel = document.createElement("span");
+    sizeLabel.className = "section-label";
+    sizeLabel.textContent = "Preview size";
+    toolsBody.append(sizeLabel, sizes);
+    for (const [label, value, iconName] of [
+      ["Mobile preview", "mobile", "mobile"],
+      ["Tablet preview", "tablet", "tablet"],
+      ["Desktop preview", "desktop", "desktop"],
+      ["Restore window width", "wide", "reset"],
     ]) {
-      const control = button(label, () => changeMode(value), sizes);
-      control.title = `${value} viewport`;
+      const control = button("", () => changeMode(value), sizes);
+      control.className = "icon-control";
+      control.setAttribute("aria-label", label);
+      control.append(controlIcon(iconName));
+      control.title = label;
       control.dataset.viewportMode = value;
       control.setAttribute("aria-pressed", String(mode === value));
     }
-    button("Narrow window", () => changeMode("mobile", true), sizes).title =
+    button("Move to narrow window", () => changeMode("mobile", true), toolsBody).title =
       "Move this page into a window that fits a phone preview";
     notice = document.createElement("p");
     notice.className = "notice";
@@ -1528,12 +1579,6 @@
     reviewButton.className = "primary";
     reviewButton.hidden = true;
     bar.append(draftSection);
-    const shortcutTip = document.createElement("p");
-    shortcutTip.className = "meta";
-    shortcutTip.textContent = "Right-click to comment · S screenshot · R exit";
-    shortcutTip.title =
-      "Shortcuts pause while typing. M mobile · T tablet · D desktop · W reset. Drag the Feedbacks icon to move it.";
-    bar.append(shortcutTip);
     document.documentElement.append(host);
   }
   async function loadPins() {
@@ -1775,8 +1820,10 @@
       }
     }
     renderCategories(unmatched, other);
-    if (!annotations.length)
-      meta.textContent = `${matched + unmatched.length} comments on this view · ${innerWidth} × ${innerHeight}`;
+    if (!annotations.length) {
+      const count = matched + unmatched.length;
+      meta.textContent = `${count} ${count === 1 ? "comment" : "comments"} on this page`;
+    }
     schedulePinOcclusion();
   }
   function renderCategories(unmatched, other) {

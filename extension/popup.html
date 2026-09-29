@@ -11,7 +11,25 @@
       <h1>Feedbacks</h1>
       <div class="header-links">
         <span id="installed-version" class="version"></span
-        ><button id="settings" class="text-action">Settings</button>
+        ><button id="settings" class="icon-action" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M10 2.5h4l.5 2 1.6.7 1.8-1 2.8 2.8-1 1.8.7 1.6 2 .5v4l-2 .5-.7 1.6 1 1.8-2.8 2.8-1.8-1-1.6.7-.5 2h-4l-.5-2-1.6-.7-1.8 1-2.8-2.8 1-1.8-.7-1.6-2-.5v-4l2-.5.7-1.6-1-1.8 2.8-2.8 1.8 1 1.6-.7z"
+            />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
+        <button
+          id="stop"
+          class="icon-action"
+          aria-label="Exit review"
+          title="Exit review (Esc or R)"
+          hidden
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 5H5v14h5m4-4 4-3-4-3m4 3H9" />
+          </svg>
+        </button>
       </div>
     </header>
     <aside id="update-notice" role="status" aria-live="polite" hidden>
@@ -59,41 +77,95 @@
     <button id="retry" hidden>Try this page again</button>
     <button id="draft" hidden>Continue draft</button>
     <section id="review-controls" hidden aria-label="Review controls">
-      <div class="review-heading">
-        <strong id="review-title">Reviewing this page</strong
-        ><button id="stop" title="Stop reviewing this page (Esc or R)">
-          Exit review
-        </button>
-      </div>
       <div class="capture-row">
-        <button id="capture" class="primary">Capture view</button>
+        <button id="capture" class="primary">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h4l1.5-2h5L16 7h4v12H4z" />
+            <circle cx="12" cy="13" r="3" /></svg
+          >Capture view
+        </button>
+        <button
+          id="capture-full"
+          class="icon-action"
+          aria-label="Capture full page"
+          title="Capture full page (P). Adds more images."
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 3h8l4 4v14H7zM15 3v5h4M10 12h6m-6 4h6" />
+          </svg>
+        </button>
         <button
           id="show-controls"
-          title="Show the draggable Feedbacks icon and page tools"
+          class="icon-action"
+          aria-label="Show page controls"
+          title="Show page controls"
         >
-          Page controls
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+            <circle cx="9" cy="7" r="2" />
+            <circle cx="15" cy="12" r="2" />
+            <circle cx="10" cy="17" r="2" />
+          </svg>
         </button>
       </div>
       <div class="control-row viewport-row" aria-label="Preview size">
-        <button id="mobile" title="Mobile preview">Mobile</button
-        ><button id="tablet" title="Tablet preview">Tablet</button>
-        <button id="desktop" title="Desktop preview">Desktop</button
-        ><button id="wide" title="Restore width">Reset</button>
+        <button
+          id="mobile"
+          class="icon-action"
+          aria-label="Mobile preview"
+          title="Mobile preview (M)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="7" y="2" width="10" height="20" rx="2" />
+            <path d="M11 19h2" />
+          </svg></button
+        ><button
+          id="tablet"
+          class="icon-action"
+          aria-label="Tablet preview"
+          title="Tablet preview (T)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4" y="3" width="16" height="18" rx="2" />
+            <path d="M11 18h2" />
+          </svg>
+        </button>
+        <button
+          id="desktop"
+          class="icon-action"
+          aria-label="Desktop preview"
+          title="Desktop preview (D)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="2" y="4" width="20" height="14" rx="2" />
+            <path d="M8 22h8m-4-4v4" />
+          </svg></button
+        ><button
+          id="wide"
+          class="icon-action"
+          aria-label="Restore window width"
+          title="Restore window width (W)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M4 8V4h4m12 12v4h-4M4 4l6 6m10 10-6-6M20 8V4h-4M4 16v4h4m12-16-6 6M4 20l6-6"
+            />
+          </svg>
+        </button>
       </div>
-      <details class="shortcut-help">
-        <summary>Keyboard shortcuts</summary>
-        <p id="shortcut-help">
-          While not typing: <kbd>M</kbd> mobile · <kbd>T</kbd> tablet ·
-          <kbd>D</kbd> desktop · <kbd>W</kbd> reset · <kbd>S</kbd> screenshot ·
-          <kbd>Esc</kbd> or <kbd>R</kbd> exit.
-          <span id="popup-shortcut"></span>
-          <button id="customize-shortcuts" class="text-action">
-            Customize opening shortcut
-          </button>
-        </p>
-      </details>
-      <section class="page-overview" aria-label="Team feedback">
-        <label for="feedback-scope">Team feedback</label>
+      <button
+        id="record-video"
+        class="record-action"
+        title="Record video and session activity. Stop from Page Controls to review. Long recordings can increase agent processing and token use."
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="5" width="13" height="14" rx="2" />
+          <path d="m16 10 5-3v10l-5-3" /></svg
+        >Record video + session
+      </button>
+      <details class="page-overview" aria-label="Team feedback">
+        <summary>Team feedback <span id="feedback-summary">Loading…</span></summary>
+        <label for="feedback-scope">Show</label>
         <select id="feedback-scope">
           <option value="page">This page · all sizes</option>
           <option value="website">This website</option>
@@ -101,43 +173,12 @@
         </select>
         <p id="feedback-counts" role="status">Loading feedback…</p>
         <a id="page-feedback" target="_blank" rel="noreferrer">View page threads</a>
+      </details>
+      <details class="more-actions">
+        <summary>More review tools</summary>
         <div class="control-row">
           <button id="pins">Hide pins</button><button id="resolved">Show resolved</button>
         </div>
-      </section>
-      <div class="capture-extras control-row" aria-label="More capture options">
-        <button
-          id="capture-full"
-          title="Optional: scrolls the page and adds more images (P)"
-        >
-          Full page
-        </button>
-        <button
-          id="record-video"
-          title="Start recording this tab now. Stop from the page dock to review."
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="6" width="13" height="12" rx="2" />
-            <path d="m16 10 5-3v10l-5-3" />
-          </svg>
-          Record video
-        </button>
-        <button
-          id="record-session"
-          title="Start session replay and diagnostics on this tab now"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="3" />
-            <path d="m10 8 6 4-6 4z" />
-          </svg>
-          Record session
-        </button>
-      </div>
-      <p class="hint media-cost">
-        Extra media can increase agent processing and token use.
-      </p>
-      <details class="more-actions">
-        <summary>More review tools</summary>
         <button
           id="navigation"
           title="Keep links and forms from leaving this page; menu toggles still work"
@@ -152,6 +193,17 @@
         </div>
         <button id="qa-scan">Scan page for QA findings</button>
         <button id="choose">Choose a point</button>
+        <details class="diagnostic-controls">
+          <summary>Console &amp; network diagnostics</summary>
+          <button
+            id="diagnostics-start"
+            title="Collect locally until capture, navigation or 5 minutes. Review before sharing."
+          >
+            Start diagnostics
+          </button>
+          <button id="diagnostics-stop" hidden>Stop &amp; discard diagnostics</button>
+          <p id="diagnostics-status" class="hint" role="status">Off</p>
+        </details>
         <details id="recording-redirects">
           <summary>Recording across redirect sites</summary>
           <label for="record-redirect-origins">Additional exact website origins</label>
@@ -168,16 +220,17 @@
           </p>
         </details>
       </details>
-      <details class="diagnostic-controls">
-        <summary>Console &amp; network diagnostics</summary>
-        <button
-          id="diagnostics-start"
-          title="Collect locally until capture, navigation or 5 minutes. Review before sharing."
-        >
-          Start diagnostics
-        </button>
-        <button id="diagnostics-stop" hidden>Stop &amp; discard diagnostics</button>
-        <p id="diagnostics-status" class="hint" role="status">Off</p>
+      <details class="shortcut-help">
+        <summary>Keyboard shortcuts</summary>
+        <p id="shortcut-help">
+          <kbd>M</kbd> mobile · <kbd>T</kbd> tablet · <kbd>D</kbd> desktop ·
+          <kbd>W</kbd> reset · <kbd>S</kbd> screenshot · <kbd>P</kbd> full page ·
+          <kbd>Esc</kbd> or <kbd>R</kbd> exit. Shortcuts pause while typing.
+          <span id="popup-shortcut"></span>
+          <button id="customize-shortcuts" class="text-action">
+            Change opening shortcut
+          </button>
+        </p>
       </details>
     </section>
     <details class="first-feedback">

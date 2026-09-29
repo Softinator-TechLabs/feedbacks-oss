@@ -27,17 +27,23 @@ export async function verifyPopupOptions({
   await control.screenshot({
     path: join(root, ".local/remaining-todos-qa/access-status.png"),
   });
+  await control.emulateMedia({ colorScheme: "dark" });
+  await control.screenshot({
+    path: join(root, ".local/remaining-todos-qa/popup-dark.png"),
+  });
+  await control.emulateMedia({ colorScheme: "light" });
   assert.equal(
     await control.locator("#capture-full").isVisible(),
     true,
     "Full page remains directly available beside video",
   );
   assert.equal(await control.locator("#record-video").isVisible(), true);
-  const diagnosticsSummary = await control
-    .locator(".diagnostic-controls summary")
-    .boundingBox();
+  assert.equal(await control.locator("#record-session").count(), 0);
+  assert.equal(await control.locator(".page-overview").getAttribute("open"), null);
+  assert.equal(await control.locator(".more-actions").getAttribute("open"), null);
+  const toolsSummary = await control.locator(".more-actions > summary").boundingBox();
   assert.ok(
-    diagnosticsSummary.y + diagnosticsSummary.height < 600,
+    toolsSummary && toolsSummary.y + toolsSummary.height < 600,
     "Connected popup's collapsed controls should fit Chrome's popup height",
   );
   const optionsOpened = context.waitForEvent("page");

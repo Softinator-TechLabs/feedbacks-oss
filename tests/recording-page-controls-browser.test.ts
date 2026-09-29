@@ -69,6 +69,30 @@ test(
       const drawer = page.locator(".bar");
       const handle = page.locator(".drawer-handle");
       await handle.hover();
+      await mkdir(".local/review-controls-qa", { recursive: true });
+      await drawer.screenshot({
+        path: ".local/review-controls-qa/page-controls-light.png",
+      });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await drawer.screenshot({
+        path: ".local/review-controls-qa/page-controls-dark.png",
+      });
+      await page.emulateMedia({ colorScheme: "light" });
+      assert.equal(
+        await drawer.getByText("Review tools", { exact: true }).isVisible(),
+        true,
+      );
+      assert.equal(
+        await drawer.getByRole("button", { name: "Navigation locked" }).isVisible(),
+        false,
+      );
+      assert.equal(await drawer.getByText("1280 × 800").count(), 0);
+      await drawer.getByText("Review tools", { exact: true }).click();
+      assert.equal(
+        await drawer.getByRole("button", { name: "Navigation locked" }).isVisible(),
+        true,
+      );
+      await drawer.getByText("Review tools", { exact: true }).click();
       assert.equal(
         await page.getByRole("button", { name: "Screenshot", exact: true }).isVisible(),
         true,
@@ -266,6 +290,7 @@ test(
         await page.getByRole("button", { name: "Screenshot", exact: true }).isVisible(),
         true,
       );
+      await drawer.getByText("Review tools", { exact: true }).click();
       assert.equal(
         await page
           .getByRole("button", { name: "Navigation locked", exact: true })

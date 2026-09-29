@@ -88,12 +88,12 @@ export async function verifyReviewInteractions({
         const bounds = root.querySelector(".bar").getBoundingClientRect();
         const fits = bounds.top >= 0 && bounds.bottom <= innerHeight;
         [...root.querySelectorAll(".review-bar-heading button")]
-          .find((b) => b.textContent === "Hide")
+          .find((b) => b.getAttribute("aria-label") === "Hide page controls")
           .click();
         return {
           moved,
           visibleGrip: root.querySelectorAll(".drag-grip circle").length === 6,
-          moveHint: root.querySelector(".drag-hint").textContent,
+          moveHint: root.querySelector(".drawer-handle").title,
           fits,
           hidden: dock.hidden,
           label: root.querySelector(".drawer-handle").getAttribute("aria-label"),
@@ -104,7 +104,7 @@ export async function verifyReviewInteractions({
   }, id);
   assert.equal(dockResult.moved, true);
   assert.equal(dockResult.visibleGrip, true);
-  assert.match(dockResult.moveHint, /Drag the dotted handle/);
+  assert.match(dockResult.moveHint, /drag to move/);
   assert.equal(dockResult.fits, true);
   assert.equal(dockResult.hidden, true);
   assert.doesNotMatch(dockResult.label, /FeedbacksS/);
