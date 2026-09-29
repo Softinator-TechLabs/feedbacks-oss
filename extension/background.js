@@ -2,6 +2,7 @@ import { reviewDefaults, updateReviewDefaults } from "./review/review-preference
 import { diagnosticCollector } from "./diagnostics/diagnostics.js";
 import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
 import { createRawDiagnosticCapture } from "./diagnostics/raw-debug.js";
+import { capturePreparedDom } from "./capture/dom-stream.js";
 import "./utils.js";
 import { createReviewController } from "./review/review-session.js";
 import {
@@ -82,6 +83,79 @@ const rawDebuggerSource = {
       params,
     ),
 };
+async function captureScreenshotDiagnostics({
+  tabId,
+  sourceUrl,
+  signature,
+  captureEpoch,
+  sourceOrigin,
+  pointSnapshot = false,
+}) {
+  const raw = rawDiagnostics.get(tabId);
+  let rawStatus = raw?.status();
+  if (rawStatus?.sourceOrigin !== sourceOrigin) rawStatus = null;
+  else if (raw) {
+    rawStatus = await raw.stop();
+    rawDiagnostics.delete(tabId);
+  }
+  const evidenceId = rawStatus?.evidenceId || crypto.randomUUID();
+  const startedAt = rawStatus?.startedAt || new Date().toISOString();
+  const captured = await capturePreparedDom({
+    tabId,
+    evidenceId,
+    expectedUrl: sourceUrl,
+    expectedSignature: signature,
+    captureEpoch,
+    store: diagnosticEvidenceStore,
+    remainingBytes: 268_435_456 - (rawStatus?.totalBytes || 0),
+  });
+  const coverage =
+    rawStatus?.coverage ||
+    Object.fromEntries(
+      [
+        "dom",
+        "console",
+        "network",
+        "body",
+        "storage",
+        "environment",
+        "performance",
+        "coverage",
+      ].map((kind) => [
+        kind,
+        {
+          status: "unavailable",
+          observedCount: 0,
+          capturedBytes: 0,
+          reasons: [
+            kind === "console" || kind === "network" || kind === "body"
+              ? "prestart_history_unavailable"
+              : "not_collected",
+          ],
+        },
+      ]),
+    );
+  for (const [channel, state] of Object.entries(captured.coverage))
+    coverage[channel] = state;
+  if (pointSnapshot) {
+    coverage.dom.status = "partial";
+    if (!coverage.dom.reasons.includes("point_snapshot_at_finalize"))
+      coverage.dom.reasons.push("point_snapshot_at_finalize");
+  }
+  const files = [...(rawStatus?.files || []), ...captured.files];
+  const manifest = {
+    schemaVersion: 1,
+    id: evidenceId,
+    sourceOrigin,
+    startedAt,
+    endedAt: new Date().toISOString(),
+    coverage,
+    files,
+    totalBytes: files.reduce((total, file) => total + file.byteLength, 0),
+  };
+  await diagnosticEvidenceStore.putEvidenceState(evidenceId, { manifest, sourceUrl });
+  return { evidenceId, totalBytes: manifest.totalBytes, coverage };
+}
 async function getRecordingPointImage(recordingId, annotationId) {
   return pageDataUrl(await getPage(`recording-${recordingId}`, annotationId));
 }
@@ -518,6 +592,7 @@ const capture = createCaptureWorkflow({
   sessionFor,
   openDraft,
   watchCapture,
+  captureDiagnostics: captureScreenshotDiagnostics,
 });
 async function saveDraft(message) {
   const { draft } = await get();
@@ -1736,7 +1811,6 @@ async function runDiagnostics(sender, action) {
     rawDiagnostics.set(tab.id, raw);
   } else if (action === "stop" && raw) {
     rawStatus = await raw.stop();
-    rawDiagnostics.delete(tab.id);
   } else rawStatus = raw?.status();
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },

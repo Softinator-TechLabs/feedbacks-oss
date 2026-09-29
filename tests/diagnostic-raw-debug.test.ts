@@ -172,6 +172,10 @@ test("raw CDP events retain credentials, ordering, binary body and a 2 MiB chunk
   const consoleFile = result.files.find((file: any) => file.kind === "console")!;
   const bodies = result.files.filter((file: any) => file.kind === "body");
   const networkText = h.read(network).toString("utf8");
+  assert.equal(
+    network.sha256,
+    createHash("sha256").update(h.read(network)).digest("hex"),
+  );
   assert.ok(networkText.includes("sid=fake-cookie"));
   assert.ok(networkText.includes("Bearer fake-token"));
   assert.ok(networkText.includes("fake-frame"));

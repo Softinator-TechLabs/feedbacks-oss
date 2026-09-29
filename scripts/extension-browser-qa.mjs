@@ -2,6 +2,7 @@ import { verifyGithubToolbar } from "./qa/extension/github-toolbar.mjs";
 import { verifyRecordingControls } from "./qa/extension/recording-controls.mjs";
 import { verifyPublicCapture } from "./qa/extension/public-capture.mjs";
 import { verifyPopupOptions } from "./qa/extension/popup-options.mjs";
+import { verifyDiagnosticDom } from "./qa/extension/diagnostic-dom.mjs";
 import { previewDimensions, installReviewFixture } from "./qa/extension/fixture.mjs";
 import { verifySetup } from "./qa/extension/setup.mjs";
 import assert from "node:assert/strict";
@@ -158,6 +159,8 @@ try {
     await page.getByRole("heading", { name: "Controlled page" }).waitFor();
   };
   const results = {};
+
+  await verifyDiagnosticDom({ page, control, toFixture, tabId, send, draft });
 
   await verifyPublicCapture({
     context,

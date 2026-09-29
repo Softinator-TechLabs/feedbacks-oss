@@ -1,5 +1,6 @@
 // Chrome debugger traffic is already JSON data. Copy only own data descriptors:
 // never inspect page object getters or evaluate captured code.
+import { createSha256Hasher } from "./sha256.js";
 function inertCopy(value, seen = new WeakSet(), depth = 0) {
   if (value === null || typeof value === "string" || typeof value === "boolean")
     return value;
@@ -82,6 +83,7 @@ export function createRawDiagnosticCapture({
       mimeType,
       byteLength: 0,
       chunks: [],
+      hasher: createSha256Hasher(),
       pieces: [],
       bufferedBytes: 0,
     };
@@ -119,6 +121,7 @@ export function createRawDiagnosticCapture({
       item.pieces.push(selected.slice(offset, offset + length));
       item.bufferedBytes += length;
       item.byteLength += length;
+      item.hasher.update(bytes.subarray(offset, offset + length));
       coverage[item.kind].capturedBytes += length;
       totalBytes += length;
       offset += length;
@@ -250,15 +253,18 @@ export function createRawDiagnosticCapture({
   };
   const view = () => ({
     evidenceId,
+    sourceOrigin,
     active,
     startedAt,
     endedAt,
     totalBytes,
     coverage: structuredClone(coverage),
-    files: files.map(({ pieces: _pieces, bufferedBytes: _bufferedBytes, ...item }) => ({
-      ...item,
-      chunks: item.chunks.map((chunk) => ({ ...chunk })),
-    })),
+    files: files.map(
+      ({ pieces: _pieces, bufferedBytes: _bufferedBytes, hasher: _hasher, ...item }) => ({
+        ...item,
+        chunks: item.chunks.map((chunk) => ({ ...chunk })),
+      }),
+    ),
   });
   function stop() {
     if (stopPromise) return stopPromise;
@@ -267,6 +273,7 @@ export function createRawDiagnosticCapture({
     stopPromise = (async () => {
       await queue;
       for (const item of files) await flush(item);
+      for (const item of files) item.sha256 ||= item.hasher.hexDigest();
       endedAt ||= new Date().toISOString();
       unsubscribe?.();
       unsubscribe = null;

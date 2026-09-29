@@ -12,6 +12,7 @@ export function createCaptureWorkflow({
   sessionFor,
   openDraft,
   watchCapture,
+  captureDiagnostics,
 }) {
   let capturing = false;
   async function capture(
@@ -121,6 +122,27 @@ export function createCaptureWorkflow({
       if (scope === "points") {
         // Finalizing consumes the originals captured with each point. It must never
         // invoke native capture: menus, viewports and scroll positions may have changed.
+        const before = await chrome.tabs.sendMessage(tab.id, {
+          type: "captureCheck",
+          pointToken,
+        });
+        if (before.error || before.captureEpoch !== 0)
+          throw Error(before.error || "The page moved before point diagnostics.");
+        guard.assert();
+        pending.diagnosticEvidence = await captureDiagnostics({
+          tabId: tab.id,
+          sourceUrl: tab.url,
+          sourceOrigin: session.origin,
+          signature: before.signature,
+          captureEpoch: before.captureEpoch,
+          pointSnapshot: true,
+        });
+        const checked = await chrome.tabs.sendMessage(tab.id, {
+          type: "captureCheck",
+          pointToken,
+        });
+        if (checked.signature !== before.signature || checked.captureEpoch !== 0)
+          throw Error("The page moved while collecting point diagnostics.");
         pending.captureError = null;
         await attachPointEvidence(pending);
         await set({ draft: pending });
@@ -143,6 +165,25 @@ export function createCaptureWorkflow({
           "The page moved while preparing capture. Try again once it is still.",
         );
       guard.assert();
+      const diagnosticEvidence = await captureDiagnostics({
+        tabId: tab.id,
+        sourceUrl: tab.url,
+        sourceOrigin: session.origin,
+        signature: before.signature,
+        captureEpoch: before.captureEpoch,
+      });
+      const afterDiagnostics = await chrome.tabs.sendMessage(tab.id, {
+        type: "captureCheck",
+        pointToken,
+      });
+      if (
+        afterDiagnostics.signature !== before.signature ||
+        afterDiagnostics.captureEpoch !== 0
+      )
+        throw Error("The page moved while collecting diagnostics. Retry capture.");
+      guard.assert();
+      pending.diagnosticEvidence = diagnosticEvidence;
+      await set({ draft: pending });
       let canvas,
         sx,
         sy,
