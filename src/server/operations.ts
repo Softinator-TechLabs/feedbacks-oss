@@ -9,6 +9,9 @@ import {
   beginDiagnosticEvidence,
   putDiagnosticChunk,
   finalizeDiagnosticEvidence,
+  listDiagnosticEvidence,
+  describeDiagnosticEvidence,
+  readDiagnosticPage,
 } from "./diagnostic-evidence.js";
 import { moveThread } from "./thread-move.js";
 import type { Database } from "./db.js";
@@ -94,6 +97,17 @@ export class Operations {
       );
     if (name === "diagnostics.finalize")
       return finalizeDiagnosticEvidence(
+        this.db,
+        this.store,
+        actor,
+        parsed.data,
+        async (db, original, operation) => {
+          await accountLock(db);
+          return this.currentForOperation(db, original, operation);
+        },
+      );
+    if (name === "diagnostics.read")
+      return readDiagnosticPage(
         this.db,
         this.store,
         actor,
@@ -194,6 +208,8 @@ export class Operations {
         if (name.startsWith("recordings."))
           return recordingRead(db, a, this.store, name, i);
         if (name === "diagnostics.begin") return beginDiagnosticEvidence(db, a, i);
+        if (name === "diagnostics.list") return listDiagnosticEvidence(db, a, i);
+        if (name === "diagnostics.describe") return describeDiagnosticEvidence(db, a, i);
         if (name.startsWith("reviewViews.")) return reviewViews(db, a, name, i);
         if (name.startsWith("views.")) return views(db, a, name, i);
         if (name.startsWith("assets.")) {

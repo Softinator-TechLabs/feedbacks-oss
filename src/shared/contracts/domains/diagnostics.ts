@@ -4,22 +4,7 @@ import {
   DIAGNOSTIC_CHUNK_BYTES,
 } from "../../screenshot-diagnostics.js";
 import { id, revision } from "../common.js";
-import { threadOutput } from "../output-common.js";
-
-const evidenceSummary = z.object({
-  id,
-  threadId: id,
-  projectId: id,
-  status: z.enum(["pending", "complete", "expired"]),
-  startedAt: z.string().datetime(),
-  createdAt: z.string().datetime(),
-  totalBytes: z.number().int().nonnegative(),
-  fileCount: z.number().int().nonnegative(),
-  coverage: z.record(
-    z.string(),
-    z.enum(["complete", "partial", "unavailable", "stopped"]),
-  ),
-});
+import { diagnosticEvidenceSummaryOutput, threadOutput } from "../output-common.js";
 
 export const diagnosticsInputs = {
   "diagnostics.begin": z.object({
@@ -45,10 +30,54 @@ export const diagnosticsInputs = {
     manifest: diagnosticManifestSchema,
     idempotencyKey: z.string().min(8).max(200),
   }),
+  "diagnostics.list": z.object({
+    threadId: id,
+    offset: z.number().int().min(0).max(100_000).default(0),
+    limit: z.number().int().min(1).max(100).default(20),
+  }),
+  "diagnostics.describe": z.object({
+    evidenceId: id,
+    offset: z.number().int().min(0).max(100_000).default(0),
+    limit: z.number().int().min(1).max(100).default(20),
+  }),
+  "diagnostics.read": z.object({
+    evidenceId: id,
+    fileId: id,
+    sequence: z.number().int().nonnegative(),
+    byteOffset: z.number().int().nonnegative(),
+    limitBytes: z.number().int().min(1).max(32_768).default(32_768),
+  }),
 };
 
 export const diagnosticsOutputs = {
-  "diagnostics.begin": z.object({ evidence: evidenceSummary }),
+  "diagnostics.begin": z.object({ evidence: diagnosticEvidenceSummaryOutput }),
   "diagnostics.putChunk": z.object({ sha256: z.string(), byteLength: z.number().int() }),
-  "diagnostics.finalize": z.object({ evidence: evidenceSummary, thread: threadOutput }),
+  "diagnostics.finalize": z.object({
+    evidence: diagnosticEvidenceSummaryOutput,
+    thread: threadOutput,
+  }),
+  "diagnostics.list": z.object({
+    items: z.array(diagnosticEvidenceSummaryOutput),
+    total: z.number().int().nonnegative(),
+    nextOffset: z.number().int().nonnegative().nullable(),
+  }),
+  "diagnostics.describe": z.object({
+    evidence: diagnosticEvidenceSummaryOutput,
+    coverage: diagnosticManifestSchema.shape.coverage.optional(),
+    files: z.array(diagnosticManifestSchema.shape.files.element),
+    total: z.number().int().nonnegative(),
+    nextOffset: z.number().int().nonnegative().nullable(),
+  }),
+  "diagnostics.read": z.object({
+    byteLength: z.number().int().min(0).max(32_768),
+    encoding: z.enum(["utf8", "base64"]),
+    text: z.string().optional(),
+    dataBase64: z.string().optional(),
+    next: z
+      .object({
+        sequence: z.number().int().nonnegative(),
+        byteOffset: z.number().int().nonnegative(),
+      })
+      .nullable(),
+  }),
 };

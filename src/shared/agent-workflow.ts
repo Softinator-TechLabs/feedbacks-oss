@@ -334,6 +334,11 @@ export async function runAgentTool(
         ? { round: thread.review.round, state: thread.review.state }
         : undefined,
       counts: counts(thread),
+      diagnosticEvidence: thread.diagnosticEvidence ?? {
+        count: 0,
+        latest: [],
+        followUp: ["diagnostics.list", "diagnostics.describe", "diagnostics.read"],
+      },
       sections: [
         "body",
         "points",

@@ -5,6 +5,7 @@ import { fail } from "./errors.js";
 import { reviewerContext } from "./accounts.js";
 import { discussionLikes } from "./discussion-likes.js";
 import { viewStats } from "./views.js";
+import { diagnosticSummary } from "./diagnostic-summary.js";
 
 // Legacy human messages had no reliable intent. Treat them as requests on read;
 // preserve agent responses and explicit intent without rewriting work history.
@@ -46,6 +47,10 @@ type ListData = {
   likes: Map<string, Map<string, { uniqueLikes: number; liked: boolean }>>;
   replies: Map<string, any[]>;
   assets: Map<string, any[]>;
+  diagnostics: Map<
+    string,
+    { count: number; latest: ReturnType<typeof diagnosticSummary>[] }
+  >;
   views: Map<string, any>;
   reviewers?: { trust: "owner_approved_advisory_reviewer_context"; items: any[] };
   policies?: Map<string, any>;
@@ -62,28 +67,49 @@ function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
 export async function listData(db: Database, a: Actor, rows: any[]): Promise<ListData> {
   const ids = rows.map((row) => row.id);
   const fingerprints = [...new Set(rows.map((row) => row.data.context.fingerprint))];
-  const [replyRows, assetRows, likeRows, viewRows, countRows] = await Promise.all([
-    db.query(
-      "SELECT id,thread_id,data,created_at FROM replies WHERE thread_id=ANY($1::uuid[]) ORDER BY created_at,id",
-      [ids],
-    ),
-    db.query(
-      "SELECT id,thread_id,data FROM assets WHERE thread_id=ANY($1::uuid[]) AND status='validated' ORDER BY data->>'createdAt',data->>'filename',id",
-      [ids],
-    ),
-    db.query(
-      'SELECT thread_id,COALESCE(reply_id,thread_id) AS id,count(*)::integer AS "uniqueLikes",bool_or(user_id=$2) AS liked FROM discussion_likes WHERE thread_id=ANY($1::uuid[]) GROUP BY thread_id,COALESCE(reply_id,thread_id)',
-      [ids, a.userId],
-    ),
-    db.query(
-      "SELECT fingerprint,count(*)::integer AS count,bool_or(user_id=$3) AS liked FROM view_likes WHERE project_id=$1 AND fingerprint=ANY($2::text[]) GROUP BY fingerprint",
-      [rows[0].project_id, fingerprints, a.userId],
-    ),
-    db.query(
-      "SELECT t.data->'context'->>'fingerprint' AS fingerprint,count(DISTINCT t.id)::integer AS threads,count(r.id)::integer AS replies FROM threads t LEFT JOIN replies r ON r.thread_id=t.id WHERE t.project_id=$1 AND t.data->'context'->>'fingerprint'=ANY($2::text[]) GROUP BY fingerprint",
-      [rows[0].project_id, fingerprints],
-    ),
-  ]);
+  const [replyRows, assetRows, likeRows, viewRows, countRows, diagnosticRows] =
+    await Promise.all([
+      db.query(
+        "SELECT id,thread_id,data,created_at FROM replies WHERE thread_id=ANY($1::uuid[]) ORDER BY created_at,id",
+        [ids],
+      ),
+      db.query(
+        "SELECT id,thread_id,data FROM assets WHERE thread_id=ANY($1::uuid[]) AND status='validated' ORDER BY data->>'createdAt',data->>'filename',id",
+        [ids],
+      ),
+      db.query(
+        'SELECT thread_id,COALESCE(reply_id,thread_id) AS id,count(*)::integer AS "uniqueLikes",bool_or(user_id=$2) AS liked FROM discussion_likes WHERE thread_id=ANY($1::uuid[]) GROUP BY thread_id,COALESCE(reply_id,thread_id)',
+        [ids, a.userId],
+      ),
+      db.query(
+        "SELECT fingerprint,count(*)::integer AS count,bool_or(user_id=$3) AS liked FROM view_likes WHERE project_id=$1 AND fingerprint=ANY($2::text[]) GROUP BY fingerprint",
+        [rows[0].project_id, fingerprints, a.userId],
+      ),
+      db.query(
+        "SELECT t.data->'context'->>'fingerprint' AS fingerprint,count(DISTINCT t.id)::integer AS threads,count(r.id)::integer AS replies FROM threads t LEFT JOIN replies r ON r.thread_id=t.id WHERE t.project_id=$1 AND t.data->'context'->>'fingerprint'=ANY($2::text[]) GROUP BY fingerprint",
+        [rows[0].project_id, fingerprints],
+      ),
+      db.query(
+        `SELECT id,project_id,thread_id,status,summary,started_at,created_at,total
+       FROM (SELECT id,project_id,thread_id,status,summary,started_at,created_at,
+         count(*) OVER(PARTITION BY thread_id)::integer AS total,
+         row_number() OVER(PARTITION BY thread_id ORDER BY created_at DESC,id DESC) AS rank
+         FROM diagnostic_evidence WHERE thread_id=ANY($1::uuid[])) ranked WHERE rank<=3`,
+        [ids],
+      ),
+    ]);
+  const diagnostics = new Map<
+    string,
+    { count: number; latest: ReturnType<typeof diagnosticSummary>[] }
+  >();
+  for (const item of diagnosticRows) {
+    const group = diagnostics.get(item.thread_id) ?? {
+      count: Number(item.total),
+      latest: [],
+    };
+    group.latest.push(diagnosticSummary(item));
+    diagnostics.set(item.thread_id, group);
+  }
   const likes = new Map<string, Map<string, { uniqueLikes: number; liked: boolean }>>();
   for (const row of likeRows) {
     if (!likes.has(row.thread_id)) likes.set(row.thread_id, new Map());
@@ -136,12 +162,36 @@ export async function listData(db: Database, a: Actor, rows: any[]): Promise<Lis
     likes,
     replies: groupBy(replyRows, (row) => row.thread_id),
     assets: groupBy(assetRows, (row) => row.thread_id),
+    diagnostics,
     views,
     reviewers,
     policies,
   };
 }
 export async function fullThread(db: Database, a: Actor, row: any, list?: ListData) {
+  // Queue pages bulk-load bounded summaries; direct reads query the same shape.
+  // Neither path selects manifest JSON or private object keys.
+  const diagnosticCount = list
+    ? (list.diagnostics.get(row.id)?.count ?? 0)
+    : Number(
+        (
+          await db.one(
+            "SELECT count(*)::integer AS total FROM diagnostic_evidence WHERE thread_id=$1",
+            [row.id],
+          )
+        ).total,
+      );
+  const diagnosticLatest = list
+    ? (list.diagnostics.get(row.id)?.latest ?? [])
+    : diagnosticCount
+      ? (
+          await db.query(
+            `SELECT id,project_id,thread_id,status,summary,started_at,created_at
+         FROM diagnostic_evidence WHERE thread_id=$1 ORDER BY created_at DESC,id DESC LIMIT 3`,
+            [row.id],
+          )
+        ).map(diagnosticSummary)
+      : [];
   const likes =
     list?.likes.get(row.id) ?? (list ? new Map() : await discussionLikes(db, a, row.id));
   const data = structuredClone(row.data),
@@ -189,6 +239,11 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
   }
   return {
     ...data,
+    diagnosticEvidence: {
+      count: diagnosticCount,
+      latest: diagnosticLatest,
+      followUp: ["diagnostics.list", "diagnostics.describe", "diagnostics.read"],
+    },
     workPlan: data.workPlan ?? {
       priority: "normal",
       schedule: "unscheduled",

@@ -5,26 +5,14 @@ import type { DiagnosticManifestV1 } from "../shared/screenshot-diagnostics.js";
 import {
   DIAGNOSTIC_CHUNK_BYTES,
   DIAGNOSTIC_MAX_BYTES,
+  nextDiagnosticPage,
 } from "../shared/screenshot-diagnostics.js";
 import type { AssetStore } from "./assets.js";
 import type { Config } from "./config.js";
 import type { Database } from "./db.js";
 import { DomainError, fail } from "./errors.js";
 import { checkRevision, fullThread, saveThread, threadRow } from "./feedback.js";
-
-function summary(row: any) {
-  return {
-    id: row.id as string,
-    threadId: row.thread_id as string,
-    projectId: row.project_id as string,
-    status: row.status as "pending" | "complete" | "expired",
-    startedAt: new Date(row.started_at).toISOString(),
-    createdAt: new Date(row.created_at).toISOString(),
-    totalBytes: Number(row.summary?.totalBytes ?? 0),
-    fileCount: Number(row.summary?.fileCount ?? 0),
-    coverage: row.summary?.coverage ?? {},
-  };
-}
+import { diagnosticSummary as summary } from "./diagnostic-summary.js";
 
 export async function diagnosticRow(
   db: Database,
@@ -376,4 +364,140 @@ export async function drainExpiredDiagnosticEvidence(db: Database, store: AssetS
       // Retain for the next bounded drain.
     }
   }
+}
+
+export async function listDiagnosticEvidence(db: Database, actor: Actor, input: any) {
+  await threadRow(db, actor, input.threadId);
+  const count = Number(
+    (
+      await db.one(
+        "SELECT count(*)::integer AS total FROM diagnostic_evidence WHERE thread_id=$1",
+        [input.threadId],
+      )
+    ).total,
+  );
+  const rows = await db.query(
+    `SELECT id,project_id,thread_id,status,summary,started_at,created_at
+     FROM diagnostic_evidence WHERE thread_id=$1 ORDER BY created_at DESC,id DESC LIMIT $2 OFFSET $3`,
+    [input.threadId, input.limit, input.offset],
+  );
+  return {
+    items: rows.map(summary),
+    total: count,
+    nextOffset: input.offset + rows.length < count ? input.offset + rows.length : null,
+  };
+}
+
+export async function describeDiagnosticEvidence(db: Database, actor: Actor, input: any) {
+  const { row } = await diagnosticRow(db, actor, input.evidenceId);
+  const manifest =
+    row.status === "complete" ? (row.manifest as DiagnosticManifestV1) : null;
+  const files = manifest?.files ?? [];
+  return {
+    evidence: summary(row),
+    ...(manifest ? { coverage: manifest.coverage } : {}),
+    files: files.slice(input.offset, input.offset + input.limit),
+    total: files.length,
+    nextOffset:
+      input.offset + input.limit < files.length ? input.offset + input.limit : null,
+  };
+}
+
+export async function prepareDiagnosticFile(
+  db: Database,
+  actor: Actor,
+  evidenceId: string,
+  fileId: string,
+  sequence: number,
+) {
+  const { row } = await diagnosticRow(db, actor, evidenceId);
+  if (row.status !== "complete")
+    fail("CONFLICT", "Diagnostic evidence is not complete", 409);
+  const manifest = row.manifest as DiagnosticManifestV1;
+  const file = manifest.files.find((value) => value.fileId === fileId);
+  if (!file) fail("NOT_FOUND", "Diagnostic file not found", 404);
+  const part = file.chunks[sequence];
+  if (!part || part.sequence !== sequence)
+    fail("NOT_FOUND", "Diagnostic chunk not found", 404);
+  const chunk = await db.one(
+    "SELECT object_key,sha256,byte_size FROM diagnostic_chunks WHERE evidence_id=$1 AND file_id=$2 AND sequence=$3",
+    [evidenceId, fileId, sequence],
+  );
+  if (!chunk || chunk.sha256 !== part.sha256 || chunk.byte_size !== part.byteLength)
+    fail("EVIDENCE_UNAVAILABLE", "Diagnostic chunk metadata is unavailable", 503);
+  return { file, part, chunk };
+}
+
+export async function checkedDiagnosticBytes(
+  store: AssetStore,
+  chunk: any,
+): Promise<Buffer> {
+  let bytes: Buffer;
+  try {
+    bytes = await store.get(chunk.object_key);
+  } catch {
+    fail("EVIDENCE_UNAVAILABLE", "Private diagnostic chunk is unavailable", 503);
+  }
+  if (
+    bytes.length !== chunk.byte_size ||
+    createHash("sha256").update(bytes).digest("hex") !== chunk.sha256
+  )
+    fail("EVIDENCE_UNAVAILABLE", "Private diagnostic chunk failed integrity check", 503);
+  return bytes;
+}
+
+export async function readDiagnosticPage(
+  db: Database,
+  store: AssetStore,
+  actor: Actor,
+  input: any,
+  current: (db: Database, actor: Actor, name: string) => Promise<Actor>,
+) {
+  const prepared = await db.transaction(async (tx) => {
+    const a = await current(tx, actor, "diagnostics.read");
+    return prepareDiagnosticFile(tx, a, input.evidenceId, input.fileId, input.sequence);
+  });
+  const bytes = await checkedDiagnosticBytes(store, prepared.chunk);
+  if (input.byteOffset > bytes.length)
+    fail("VALIDATION", "Diagnostic byte offset exceeds chunk length");
+  const page = nextDiagnosticPage(
+    bytes,
+    input.byteOffset,
+    input.limitBytes,
+    /^(text\/|application\/(?:json|xml|javascript|.*\+json))/.test(
+      prepared.file.mimeType,
+    ),
+  );
+  const next =
+    page.nextOffset < bytes.length
+      ? { sequence: input.sequence, byteOffset: page.nextOffset }
+      : input.sequence + 1 < prepared.file.chunks.length
+        ? { sequence: input.sequence + 1, byteOffset: 0 }
+        : null;
+  return {
+    byteLength: page.data.byteLength,
+    encoding: page.text === undefined ? ("base64" as const) : ("utf8" as const),
+    ...(page.text === undefined
+      ? { dataBase64: Buffer.from(page.data).toString("base64") }
+      : { text: page.text }),
+    next,
+  };
+}
+
+export async function prepareDiagnosticArchive(
+  db: Database,
+  actor: Actor,
+  evidenceId: string,
+) {
+  const { row } = await diagnosticRow(db, actor, evidenceId);
+  if (row.status !== "complete")
+    fail("CONFLICT", "Diagnostic evidence is not complete", 409);
+  const manifest = row.manifest as DiagnosticManifestV1;
+  const chunks = await db.query(
+    "SELECT file_id,sequence,sha256,byte_size,object_key FROM diagnostic_chunks WHERE evidence_id=$1 ORDER BY file_id,sequence",
+    [evidenceId],
+  );
+  if (!rowsMatchManifest(chunks, manifest))
+    fail("EVIDENCE_UNAVAILABLE", "Diagnostic archive metadata is incomplete", 503);
+  return { manifest, chunks };
 }
