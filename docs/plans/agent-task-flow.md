@@ -1,6 +1,6 @@
 # Plan: reliable agent task intake and completion
 
-Status: in progress. Date: 2026-09-29.
+Status: implemented; delivery gates tracked in [PR #150](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/150). Date: 2026-09-29.
 
 ## Outcome and scope
 
@@ -41,3 +41,7 @@ Implementation complete; final gates in progress. Focused original regressions: 
 ## Independent review
 
 One Important finding: the final JSON CLI serializer discarded HTTP scope details. A real CLI subprocess regression failed with missing details before the fix; the serializer now retains them. The CLI help entry is updated with the supported start command as part of the same CLI integration repair. No authorization or data-access blockers were found. Production/client installation and ongoing CI were explicitly outside the read-only review; deployment and client limitations remain separate gates. A mobile screenshot exposed a clipped copied-task tooltip; a scoped positioning correction passed the final desktop/mobile browser run.
+
+## Final local receipt
+
+Node 24 check matrix passed: formatting, harness/docs generation, type checks, 414 tests passed with 24 opt-in browser/native skips, all builds, isolated smoke and release validation. The test phase used concurrency 4 after an unbounded local run encountered an ECONNRESET; required CI retains the standard commands and native PostgreSQL/browser jobs. The independent-review CLI regression passed red-to-green. Synthetic browser checks passed for desktop/mobile, keyboard evidence selection, actual issued scopes, disabled issued state, optional-read failure and copied intent; screenshots were inspected and the tooltip correction confirmed. The latest concurrent main UI changes were merged without conflict and the integration receives another browser/type check. Exact-revision CI, deployment and live receipts belong to the linked PR rather than being inferred from this source receipt.
