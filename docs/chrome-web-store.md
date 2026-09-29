@@ -95,7 +95,7 @@ The [public privacy page](https://feedbacks.softinator.ai/privacy.html) must des
 
 ## Store listing → Images
 
-Upload current synthetic, browser-rendered 1280 × 800 screenshots in a useful order: review controls, point comment, draft review, screenshot editor, and team thread or recording timeline. Keep screenshots full bleed, with no private server addresses or credentials. Provide the 128 × 128 icon and 440 × 280 promo tile from the same verified package build. Google accepts one to five 1280 × 800 or 640 × 400 screenshots and requires a small promo tile ([image requirements](https://developer.chrome.com/docs/webstore/images)). Leave the optional marquee and promo video blank unless current assets exist.
+Upload four current synthetic, browser-rendered 1280 × 800 screenshots in order: review controls, point comment, saved draft and screenshot editor. Keep screenshots full bleed, with no private server addresses or credentials. Provide the 128 × 128 icon and 440 × 280 promo tile from the same verified package build. Google accepts one to five 1280 × 800 or 640 × 400 screenshots and requires a small promo tile ([image requirements](https://developer.chrome.com/docs/webstore/images)). Leave the optional marquee and promo video blank unless current assets exist.
 
 ## Distribution and reviewer instructions
 

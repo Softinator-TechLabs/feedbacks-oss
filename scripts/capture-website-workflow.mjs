@@ -10,6 +10,7 @@ const captureDir = join(
   root,
   storeMode ? "dist/store-submission/screenshots" : "site/public/media/workflow",
 );
+if (storeMode) await rm(captureDir, { recursive: true, force: true });
 await mkdir(captureDir, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), "feedbacks-extension-browser-"));
 const extension = join(profile, "extension");
@@ -239,9 +240,7 @@ try {
     });
     await app.goto(url);
     await app.waitForTimeout(2000);
-    await app.screenshot({
-      path: join(captureDir, storeMode ? "05-team-thread.png" : "thread.png"),
-    });
+    if (!storeMode) await app.screenshot({ path: join(captureDir, "thread.png") });
     console.log(
       "Captured actual extension review and sent server thread using synthetic data.",
     );
