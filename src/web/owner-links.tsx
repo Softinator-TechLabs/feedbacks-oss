@@ -61,6 +61,7 @@ export function OwnerLinks() {
         api<{
           items: Array<{
             id: string;
+            secretSuffix?: string | null;
             expiresAt: string;
             usedAt: string | null;
             revokedAt: string | null;
@@ -68,18 +69,54 @@ export function OwnerLinks() {
         }>("account.links.list", {}),
       [version],
     );
+  const current = (data?.items ?? []).filter(
+    (item) =>
+      !item.revokedAt && (item.usedAt || new Date(item.expiresAt).getTime() > Date.now()),
+  );
+  const history = (data?.items ?? []).filter((item) => !current.includes(item));
+  const linkRow = (item: (typeof current)[number]) => (
+    <div className="token-row" key={item.id}>
+      <div>
+        <strong>
+          Owner link{" "}
+          {item.secretSuffix ? `ending ${item.secretSuffix}` : "· ending unavailable"}
+        </strong>
+        <p>
+          Expires <HumanTime at={item.expiresAt} /> ·{" "}
+          {item.revokedAt ? "Revoked" : item.usedAt ? "Used" : "Unused"}
+        </p>
+      </div>
+      {!item.revokedAt && (
+        <ConfirmButton
+          disabled={a.busy}
+          onConfirm={() =>
+            a.run(async () => {
+              await api("account.links.revoke", { linkId: item.id });
+              setLink("");
+              setVersion((v) => v + 1);
+            }, "Link and its linked session revoked.")
+          }
+        >
+          Revoke link
+        </ConfirmButton>
+      )}
+    </div>
+  );
   return (
     <section className="section">
       <h2>Owner sign-in links</h2>
       <p>
-        A link grants full access to your own owner account, including its private
-        information. Anyone holding it can sign in as you. Keep it private. This is not an
-        agent token and does not authorize production changes.
+        A link grants full access to your owner account. Anyone holding it can sign in as
+        you. Keep it private.
       </p>
-      <p>
-        Links expire after seven days and work once. Revoking a used link also ends the
-        browser session it created.
-      </p>
+      <details className="compact-details">
+        <summary>How owner links work</summary>
+        <p>
+          A link grants access to your private account information. It expires after seven
+          days and works once. Revoking a used link ends the browser session it created.
+          This is not an agent token and does not authorize production changes.
+        </p>
+      </details>
       <form
         className="narrow"
         onSubmit={(e) => {
@@ -103,28 +140,19 @@ export function OwnerLinks() {
       {!data && !error ? (
         <Loading />
       ) : (
-        data?.items.map((item) => (
-          <div className="token-row" key={item.id}>
-            <p>
-              Expires <HumanTime at={item.expiresAt} /> ·{" "}
-              {item.revokedAt ? "Revoked" : item.usedAt ? "Used" : "Unused"}
-            </p>
-            {!item.revokedAt && (
-              <ConfirmButton
-                disabled={a.busy}
-                onConfirm={() =>
-                  a.run(async () => {
-                    await api("account.links.revoke", { linkId: item.id });
-                    setLink("");
-                    setVersion((v) => v + 1);
-                  }, "Link and its linked session revoked.")
-                }
-              >
-                Revoke link
-              </ConfirmButton>
-            )}
-          </div>
-        ))
+        <>
+          {current.length ? (
+            current.map(linkRow)
+          ) : (
+            <p className="muted">No current owner links.</p>
+          )}
+          {!!history.length && (
+            <details className="account-group">
+              <summary>Expired and revoked ({history.length})</summary>
+              {history.map(linkRow)}
+            </details>
+          )}
+        </>
       )}
       <ActionState action={a} />
     </section>

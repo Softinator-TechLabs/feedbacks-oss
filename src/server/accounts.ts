@@ -44,7 +44,7 @@ export async function accounts(db: Database, a: Actor, op: string, i: any) {
   if (op === "account.links.list")
     return {
       items: await db.query(
-        'SELECT id,expires_at AS "expiresAt",used_at AS "usedAt",revoked_at AS "revokedAt" FROM account_links WHERE user_id=$1 AND kind=\'login\' ORDER BY expires_at DESC',
+        'SELECT id,secret_suffix AS "secretSuffix",expires_at AS "expiresAt",used_at AS "usedAt",revoked_at AS "revokedAt" FROM account_links WHERE user_id=$1 AND kind=\'login\' ORDER BY expires_at DESC',
         [a.userId],
       ),
     };
@@ -53,8 +53,8 @@ export async function accounts(db: Database, a: Actor, op: string, i: any) {
       token = secret(),
       expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
     await db.query(
-      "INSERT INTO account_links(id,hash,user_id,kind,expires_at) VALUES($1,$2,$3,'login',$4)",
-      [id, hash(token), a.userId, expiresAt],
+      "INSERT INTO account_links(id,hash,user_id,kind,expires_at,secret_suffix) VALUES($1,$2,$3,'login',$4,$5)",
+      [id, hash(token), a.userId, expiresAt, token.slice(-4)],
     );
     return { id, loginPath: `/owner-login#token=${token}`, expiresAt };
   }

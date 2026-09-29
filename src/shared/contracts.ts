@@ -1192,6 +1192,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
     items: z.array(
       z.object({
         id,
+        secretSuffix: z.string().nullable().optional(),
         expiresAt: z.string(),
         usedAt: z.string().nullable(),
         revokedAt: z.string().nullable(),

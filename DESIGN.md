@@ -171,6 +171,8 @@ The [extension popup](extension/popup.html) states the running-server and accoun
 
 ### Navigation and review controls
 
+Account groups agent setup, connections, owner links and security in keyboard-accessible tabs. At narrow widths all tabs stay visible in two rows. Active credentials appear first; extension and expired/revoked lists use disclosures. Newly created owner links show a four-character ending, while older hashed links state that the ending is unavailable. The mobile Menu overlays navigation without moving the header or page content.
+
 Navigation preserves applied filters and protects unsaved drafts. Thread rows keep a narrow selection column at every breakpoint, with actions below the content on mobile. The Saved views icon stays in the filter panel’s top-right corner without reserving a separate column. Top priority uses the same outlined control treatment as Archive. Optional organization, personal views and diagnostics use disclosure sections. Screenshot comparison preserves proportions and provides a labeled native range control. Arrow-key navigation must not intercept typing, selectors, sliders or dialogs. Keep response obligation, work status and delivery evidence distinct.
 
 ## Do's and Don'ts

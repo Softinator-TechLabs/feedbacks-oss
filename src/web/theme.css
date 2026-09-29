@@ -34,6 +34,15 @@
   color: var(--accent);
   border-color: #526374;
 }
+:root[data-theme="dark"] .account-tabs button {
+  background: transparent;
+  color: var(--muted);
+  border-color: transparent;
+}
+:root[data-theme="dark"] .account-tabs button[aria-selected="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
 :root[data-theme="dark"] .thread-filter-mobile-toggle {
   background: transparent;
   border-color: transparent;
