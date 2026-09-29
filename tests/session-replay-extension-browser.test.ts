@@ -36,6 +36,23 @@ test(
       await page.goto(`chrome-extension://${extensionId}/options.html`, {
         waitUntil: "domcontentloaded",
       });
+      const appearance = page.locator("#extension-theme");
+      await appearance.selectOption("dark");
+      await page.waitForFunction(
+        () => document.documentElement.dataset.feedbacksTheme === "dark",
+      );
+      assert.equal(
+        await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme),
+        "dark",
+      );
+      await appearance.selectOption("light");
+      await page.waitForFunction(
+        () => document.documentElement.dataset.feedbacksTheme === "light",
+      );
+      assert.equal(
+        await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme),
+        "light",
+      );
       const startedAt = Date.parse("2026-01-01T00:00:00Z");
       const messages = await page.evaluate(async (start) => {
         const snapshot = {

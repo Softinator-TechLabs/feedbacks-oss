@@ -50,6 +50,11 @@ async function refresh() {
     const { videoRecordingOptions = {} } = await chrome.storage.local.get(
       "videoRecordingOptions",
     );
+    const { extensionTheme = "system" } =
+      await chrome.storage.local.get("extensionTheme");
+    $("extension-theme").value = ["light", "dark"].includes(extensionTheme)
+      ? extensionTheme
+      : "system";
     for (const input of document.querySelectorAll("[data-video-default]"))
       input.checked = videoRecordingOptions[input.dataset.videoDefault] === true;
     $("connection-status").textContent = state.pending
@@ -101,6 +106,9 @@ $("server").oninput = () => {
 };
 $("allow-local").onchange = () => {
   edited = true;
+};
+$("extension-theme").onchange = () => {
+  void chrome.storage.local.set({ extensionTheme: $("extension-theme").value });
 };
 action("connect", async () => {
   if (!$("server").value.trim())

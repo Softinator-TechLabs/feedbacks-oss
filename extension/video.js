@@ -1102,6 +1102,19 @@ function markEditsPending() {
   $("edit-state").textContent = "Previewing your selection · Apply edits before sending";
 }
 const timeline = createVideoTimeline({ onChange: markEditsPending, onError: status });
+$("video-size").onclick = () => {
+  const large = document.body.classList.toggle("video-large");
+  $("video-size").textContent = large ? "Smaller video" : "Larger video";
+  $("video-size").setAttribute("aria-pressed", String(large));
+};
+$("review-layout").onclick = () => {
+  const beside = $("review-layout").getAttribute("aria-pressed") !== "true";
+  $("review-layout").setAttribute("aria-pressed", String(beside));
+  $("review-layout").textContent = beside ? "Inspector below" : "Inspector beside";
+  $("review-layout").closest(".review-workspace").dataset.layout = beside
+    ? "side"
+    : "stack";
+};
 const cropControls = createCropControls({
   $,
   timeline,

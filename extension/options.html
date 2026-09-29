@@ -6,6 +6,7 @@
     <title>Settings · Feedbacks</title>
     <link rel="stylesheet" href="appearance.css" />
     <link rel="stylesheet" href="options.css" />
+    <script src="appearance-theme.js"></script>
   </head>
   <body>
     <header>
@@ -104,6 +105,12 @@
         </section>
         <section id="defaults" aria-labelledby="defaults-title">
           <h2 id="defaults-title">Review defaults</h2>
+          <label for="extension-theme">Extension appearance</label>
+          <select id="extension-theme">
+            <option value="system">Match device</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
           <p class="hint">
             Starting settings for each new review. Page controls let you change the
             current session.

@@ -96,6 +96,12 @@
             </button>
             <button id="trim-mute" type="button" aria-pressed="false">Mute</button>
             <button id="trim-fullscreen" type="button">Full screen</button>
+            <button id="video-size" type="button" aria-pressed="false">
+              Larger video
+            </button>
+            <button id="review-layout" type="button" aria-pressed="false">
+              Inspector beside
+            </button>
             <output
               ><span id="trim-current">0:00.0</span> /
               <span id="trim-total">0:00.0</span></output
@@ -104,7 +110,13 @@
               ><span id="trim-start-label"></span> — <span id="trim-end-label"></span
             ></span>
           </div>
-          <video id="preview" playsinline hidden aria-label="Recording preview"></video>
+          <video
+            id="preview"
+            playsinline
+            hidden
+            tabindex="0"
+            aria-label="Recording preview"
+          ></video>
           <section id="editing" hidden aria-label="Video editor">
             <span id="trim-duration" class="sr-only"></span>
             <div class="timeline">
@@ -151,6 +163,12 @@
           <section id="capture-inspector" hidden></section>
           <details id="video-edit-tools" hidden>
             <summary>Edit video</summary>
+            <p class="hint">
+              Drag the handles below the video to keep a clip. Applying a trim also
+              removes activity, console and network events outside the kept time. A
+              trimmed clip omits DOM replay because its baseline may fall outside the kept
+              interval.
+            </p>
             <details id="precise-trim">
               <summary>Precise adjustments</summary>
               <div class="edit-fields">
@@ -241,6 +259,7 @@
       </div>
     </main>
     <script src="instant-tooltip.js"></script>
+    <script src="appearance-theme.js"></script>
     <script src="webm-duration.js"></script>
     <script type="module" src="video.js"></script>
   </body>

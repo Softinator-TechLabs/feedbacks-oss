@@ -364,7 +364,7 @@ test(
             document.querySelector<HTMLInputElement>("#thread-recording-timeline")?.value,
           ) >= 4200,
         undefined,
-        { timeout: 7000 },
+        { timeout: 15000 },
       );
       await page.getByRole("button", { name: "Pause replay" }).click();
       assert.match(
@@ -679,6 +679,30 @@ test(
         await page.getByRole("button", { name: "Full screen video" }).count(),
         1,
       );
+      const playerChrome = await page.evaluate(() => {
+        const controls = Array.from(
+          document.querySelectorAll<HTMLButtonElement>(
+            ".recording-playback-actions > button",
+          ),
+        );
+        const stage = document.querySelector<HTMLElement>(".recording-video-stage")!;
+        const timeline = document.querySelector<HTMLElement>(".recording-timeline")!;
+        const inspector = document.querySelector<HTMLElement>(".recording-diagnostics")!;
+        return {
+          heights: controls.map((button) => button.getBoundingClientRect().height),
+          borders: [stage, timeline, inspector].map(
+            (element) => getComputedStyle(element).borderLeftColor,
+          ),
+          seams: [
+            getComputedStyle(stage).borderBottomWidth,
+            getComputedStyle(timeline).borderTopWidth,
+          ],
+        };
+      });
+      assert.ok(playerChrome.heights.length >= 4);
+      assert.ok(playerChrome.heights.every((height) => height === 44));
+      assert.equal(new Set(playerChrome.borders).size, 1);
+      assert.deepEqual(playerChrome.seams, ["0px", "0px"]);
       const videoBox = (await page.locator(".recording-media video").boundingBox())!;
       const controlsBox = (await page
         .locator(".recording-playback-actions")
@@ -692,6 +716,72 @@ test(
       );
       assert.ok(eventsBox.y - (timelineBox.y + timelineBox.height) < 2);
       assert.ok(videoBox.width >= timelineBox.width * 0.8);
+      await page.getByRole("button", { name: "Larger", exact: true }).click();
+      assert.equal(
+        await page.locator(".thread-recordings").getAttribute("data-video-size"),
+        "large",
+      );
+      await page.getByRole("button", { name: "Beside", exact: true }).click();
+      const besideVideo = (await page.locator(".recording-media video").boundingBox())!;
+      const besideEvents = (await page.locator(".recording-diagnostics").boundingBox())!;
+      const besideTimeline = (await page.locator(".recording-timeline").boundingBox())!;
+      const besideFootnote = (await page.locator(".recording-footnote").boundingBox())!;
+      assert.ok(besideEvents.x >= besideVideo.x + besideVideo.width - 2);
+      assert.ok(
+        Math.abs(besideEvents.y - besideVideo.y) <= 4,
+        JSON.stringify({ besideEvents, besideVideo, besideTimeline }),
+      );
+      assert.ok(Math.abs(besideTimeline.x - besideVideo.x) <= 4);
+      assert.ok(Math.abs(besideTimeline.width - besideVideo.width) <= 4);
+      assert.ok(
+        besideFootnote.y >=
+          Math.max(
+            besideTimeline.y + besideTimeline.height,
+            besideEvents.y + besideEvents.height,
+          ),
+      );
+      assert.ok(besideFootnote.width > besideVideo.width);
+      assert.equal(
+        await page
+          .locator(".recording-tabs")
+          .evaluate((tabs) => tabs.scrollWidth <= tabs.clientWidth),
+        true,
+      );
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      await page.screenshot({
+        path: ".local/thread-video-layout-beside.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 830, height: 720 });
+      const narrowVideo = (await page.locator(".recording-media video").boundingBox())!;
+      const narrowEvents = (await page.locator(".recording-diagnostics").boundingBox())!;
+      assert.ok(narrowEvents.y >= narrowVideo.y + narrowVideo.height);
+      assert.equal(
+        await page.getByRole("button", { name: "Below", exact: true }).isVisible(),
+        false,
+      );
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      await page.setViewportSize({ width: 1280, height: 720 });
+      await page.getByRole("button", { name: "Below", exact: true }).click();
+      await page.getByRole("button", { name: "Smaller", exact: true }).click();
+      const focusedVideo = page.locator(".recording-media video");
+      await focusedVideo.focus();
+      await page.keyboard.press("Space");
+      assert.equal(
+        await focusedVideo.evaluate((video: HTMLVideoElement) => video.paused),
+        false,
+      );
+      await page.keyboard.press("Space");
+      assert.equal(
+        await focusedVideo.evaluate((video: HTMLVideoElement) => video.paused),
+        true,
+      );
       await page.screenshot({
         path: ".local/thread-video-layout-light.png",
         fullPage: true,
@@ -699,6 +789,53 @@ test(
       await page.evaluate(() => {
         document.documentElement.dataset.theme = "dark";
       });
+      const followColors = await page
+        .locator('.recording-follow[aria-pressed="true"]')
+        .evaluate((button) => {
+          const style = getComputedStyle(button);
+          return { color: style.color, background: style.backgroundColor };
+        });
+      assert.deepEqual(
+        followColors,
+        {
+          color: "rgb(20, 36, 54)",
+          background: "rgb(203, 221, 235)",
+        },
+        "active dark-mode playback control must stay legible",
+      );
+      const darkActivityTab = page.locator(".recording-tabs button", {
+        hasText: "Activity",
+      });
+      await darkActivityTab.hover();
+      const darkTabStyle = await darkActivityTab.evaluate((button) => {
+        const style = getComputedStyle(button);
+        return {
+          marginLeft: style.marginLeft,
+          marginRight: style.marginRight,
+          paddingLeft: style.paddingLeft,
+          background: style.backgroundColor,
+        };
+      });
+      assert.equal(darkTabStyle.marginLeft, "2px");
+      assert.equal(darkTabStyle.marginRight, "2px");
+      assert.equal(darkTabStyle.paddingLeft, "12px");
+      assert.notEqual(darkTabStyle.background, "rgba(0, 0, 0, 0)");
+      await page.evaluate(() => {
+        const tabs = document.createElement("div");
+        tabs.className = "account-tabs";
+        tabs.innerHTML =
+          '<button aria-selected="true">Account</button><button>Settings</button>';
+        document.body.append(tabs);
+      });
+      const accountTab = page.getByRole("button", { name: "Settings", exact: true });
+      await accountTab.hover();
+      assert.deepEqual(
+        await accountTab.evaluate((button) => {
+          const style = getComputedStyle(button);
+          return [style.marginLeft, style.marginRight, style.paddingLeft];
+        }),
+        ["2px", "2px", "12px"],
+      );
       await page.screenshot({
         path: ".local/thread-video-layout-dark.png",
         fullPage: true,

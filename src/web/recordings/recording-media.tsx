@@ -87,7 +87,10 @@ export function RecordingVideoStage({
         src={src}
         aria-label="Linked recording video"
         tabIndex={0}
-        onClick={onTogglePlayback}
+        onClick={(event) => {
+          event.currentTarget.focus({ preventScroll: true });
+          onTogglePlayback();
+        }}
         onKeyDown={(event) => {
           if (event.key === " " || event.key === "Enter") {
             event.preventDefault();

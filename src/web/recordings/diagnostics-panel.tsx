@@ -318,16 +318,50 @@ export function RecordingDiagnostics({
           </button>
         ))}
       </div>
-      {diagnosticTab !== "environment" && (
-        <button
-          type="button"
-          className="recording-follow"
-          aria-pressed={followPlayback}
-          onClick={() => setFollowPlayback(!followPlayback)}
-        >
-          {followPlayback ? "Following playback" : "Follow playback"}
-        </button>
-      )}
+      <div className="recording-event-controls">
+        {diagnosticTab !== "environment" && (
+          <button
+            type="button"
+            className="recording-follow"
+            aria-pressed={followPlayback}
+            onClick={() => setFollowPlayback(!followPlayback)}
+          >
+            {followPlayback ? "Following playback" : "Follow playback"}
+          </button>
+        )}
+        {diagnosticTab === "everything" && maxEverythingPage > 0 && (
+          <div className="recording-event-pages">
+            <button
+              type="button"
+              disabled={shownEverythingPage === 0}
+              onClick={() => {
+                setFollowPlayback(false);
+                setEverythingPage(shownEverythingPage - 1);
+              }}
+            >
+              Earlier
+            </button>
+            <span>
+              {everythingPageStart + 1}–
+              {Math.min(
+                visibleCombinedEvents.length + 1,
+                everythingPageStart + everythingPageSize,
+              )}{" "}
+              of {visibleCombinedEvents.length + 1}
+            </span>
+            <button
+              type="button"
+              disabled={shownEverythingPage === maxEverythingPage}
+              onClick={() => {
+                setFollowPlayback(false);
+                setEverythingPage(shownEverythingPage + 1);
+              }}
+            >
+              Later
+            </button>
+          </div>
+        )}
+      </div>
       {diagnosticTab !== "environment" && (
         <div className="recording-scope">
           <div role="group" aria-label="Event range">
@@ -404,38 +438,6 @@ export function RecordingDiagnostics({
                 </li>
               ))}
             </ol>
-            {maxEverythingPage > 0 && (
-              <div className="recording-event-pages">
-                <button
-                  type="button"
-                  disabled={shownEverythingPage === 0}
-                  onClick={() => {
-                    setFollowPlayback(false);
-                    setEverythingPage(shownEverythingPage - 1);
-                  }}
-                >
-                  Earlier
-                </button>
-                <span>
-                  {everythingPageStart + 1}–
-                  {Math.min(
-                    visibleCombinedEvents.length + 1,
-                    everythingPageStart + everythingPageSize,
-                  )}{" "}
-                  of {visibleCombinedEvents.length + 1}
-                </span>
-                <button
-                  type="button"
-                  disabled={shownEverythingPage === maxEverythingPage}
-                  onClick={() => {
-                    setFollowPlayback(false);
-                    setEverythingPage(shownEverythingPage + 1);
-                  }}
-                >
-                  Later
-                </button>
-              </div>
-            )}
           </div>
         )}
         {eventType &&

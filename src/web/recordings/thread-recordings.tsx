@@ -69,6 +69,8 @@ export function ThreadRecordings({
   const [cursorMs, setCursorMs] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [videoMuted, setVideoMuted] = useState(false);
+  const [videoSize, setVideoSize] = useState<"compact" | "large">("compact");
+  const [inspectorLayout, setInspectorLayout] = useState<"below" | "beside">("below");
   const [replayError, setReplayError] = useState("");
   const [replayReady, setReplayReady] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState("");
@@ -542,6 +544,8 @@ export function ThreadRecordings({
   return (
     <section
       className="thread-recordings"
+      data-video-size={videoSize}
+      data-inspector-layout={inspectorLayout}
       ref={playerShellRef}
       aria-labelledby="thread-recordings-heading"
     >
@@ -672,71 +676,6 @@ export function ThreadRecordings({
                   ? "network bodies included"
                   : "network bodies omitted"}
               </p>
-              <RecordingTimeline
-                recording={recording}
-                marks={timelineMarks}
-                cursorMs={cursorMs}
-                mediaMode={mediaMode}
-                replayReady={replayReady}
-                videoAvailable={!!videoAsset}
-                videoGap={!!videoGap}
-                videoMuted={videoMuted}
-                playing={playing}
-                togglePlayback={() => {
-                  if (mediaMode === "video") {
-                    const video = videoRef.current;
-                    if (!video) return;
-                    if (video.paused) void video.play();
-                    else video.pause();
-                    return;
-                  }
-                  const player = playerRef.current;
-                  if (!player) return;
-                  if (playing) {
-                    player.pause();
-                    replayClockRef.current = null;
-                    setPlaying(false);
-                  } else {
-                    setFocusedEventSeq(null);
-                    setDiagnosticTab("everything");
-                    setEvidenceScope("all");
-                    replayClockRef.current = {
-                      atMs: cursorRef.current,
-                      startedAt: performance.now(),
-                    };
-                    player.play(Math.max(0, cursorRef.current - replayStartRef.current));
-                    setFollowPlayback(true);
-                    setPlaying(true);
-                  }
-                }}
-                toggleMute={() => {
-                  const video = videoRef.current;
-                  if (!video) return;
-                  video.muted = !video.muted;
-                  setVideoMuted(video.muted);
-                }}
-                enterFullscreen={() => void playerShellRef.current?.requestFullscreen()}
-                seek={(atMs) => {
-                  setFocusedEventSeq(null);
-                  seek(atMs);
-                }}
-                selectMark={(mark) => {
-                  setFollowPlayback(false);
-                  setFocusedEventSeq(mark.seq ?? null);
-                  setDiagnosticTab(
-                    mark.type === "network"
-                      ? "network"
-                      : mark.type === "console"
-                        ? "console"
-                        : mark.type === "performance"
-                          ? "performance"
-                          : "activity",
-                  );
-                  if (mark.requestId) setSelectedRequest(mark.requestId);
-                  setEvidenceScope("all");
-                  seek(mark.atMs);
-                }}
-              />
               <div className="recording-workspace">
                 <div
                   className="recording-media"
@@ -756,7 +695,7 @@ export function ThreadRecordings({
                         Replay
                       </button>
                     )}
-                    {recording.video && (
+                    {recording.video && replayEvents.length >= 2 && (
                       <button
                         type="button"
                         aria-pressed={mediaMode === "video"}
@@ -766,6 +705,101 @@ export function ThreadRecordings({
                       </button>
                     )}
                   </div>
+                  <RecordingTimeline
+                    recording={recording}
+                    marks={timelineMarks}
+                    cursorMs={cursorMs}
+                    mediaMode={mediaMode}
+                    replayReady={replayReady}
+                    videoAvailable={!!videoAsset}
+                    videoGap={!!videoGap}
+                    videoMuted={videoMuted}
+                    playing={playing}
+                    togglePlayback={() => {
+                      if (mediaMode === "video") {
+                        const video = videoRef.current;
+                        if (!video) return;
+                        if (video.paused) void video.play();
+                        else video.pause();
+                        return;
+                      }
+                      const player = playerRef.current;
+                      if (!player) return;
+                      if (playing) {
+                        player.pause();
+                        replayClockRef.current = null;
+                        setPlaying(false);
+                      } else {
+                        setFocusedEventSeq(null);
+                        setDiagnosticTab("everything");
+                        setEvidenceScope("all");
+                        replayClockRef.current = {
+                          atMs: cursorRef.current,
+                          startedAt: performance.now(),
+                        };
+                        player.play(
+                          Math.max(0, cursorRef.current - replayStartRef.current),
+                        );
+                        setFollowPlayback(true);
+                        setPlaying(true);
+                      }
+                    }}
+                    toggleMute={() => {
+                      const video = videoRef.current;
+                      if (!video) return;
+                      video.muted = !video.muted;
+                      setVideoMuted(video.muted);
+                    }}
+                    enterFullscreen={() =>
+                      void playerShellRef.current?.requestFullscreen()
+                    }
+                    seek={(atMs) => {
+                      setFocusedEventSeq(null);
+                      seek(atMs);
+                    }}
+                    selectMark={(mark) => {
+                      setFollowPlayback(false);
+                      setFocusedEventSeq(mark.seq ?? null);
+                      setDiagnosticTab(
+                        mark.type === "network"
+                          ? "network"
+                          : mark.type === "console"
+                            ? "console"
+                            : mark.type === "performance"
+                              ? "performance"
+                              : "activity",
+                      );
+                      if (mark.requestId) setSelectedRequest(mark.requestId);
+                      setEvidenceScope("all");
+                      seek(mark.atMs);
+                    }}
+                    videoSize={videoSize}
+                    setVideoSize={setVideoSize}
+                    inspectorLayout={inspectorLayout}
+                    setInspectorLayout={setInspectorLayout}
+                    frameActions={
+                      canWrite && mediaMode === "video" ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={!canSaveFrame}
+                            onClick={() => void saveCurrentFrame()}
+                          >
+                            {frameBusy ? "Saving…" : "Save frame"}
+                          </button>
+                          {onAnnotateFrame && (
+                            <button
+                              type="button"
+                              disabled={!canSaveFrame}
+                              onClick={annotateCurrentFrame}
+                            >
+                              Annotate frame
+                            </button>
+                          )}
+                        </>
+                      ) : undefined
+                    }
+                  />
                   <div className="recording-media-content">
                     {mediaMode === "replay" && (
                       <RecordingReplayStage
@@ -827,18 +861,6 @@ export function ThreadRecordings({
                               else video.pause();
                             }}
                           />
-                          <RecordingFrameControls
-                            canWrite={canWrite}
-                            canSaveFrame={canSaveFrame}
-                            frameBusy={frameBusy}
-                            onSave={() => void saveCurrentFrame()}
-                            onAnnotate={
-                              onAnnotateFrame ? annotateCurrentFrame : undefined
-                            }
-                            error={frameError}
-                            displayedFrame={displayedFrame}
-                            videoGap={!!videoGap}
-                          />
                         </>
                       ) : (
                         <p className="recording-state">
@@ -864,6 +886,18 @@ export function ThreadRecordings({
                   focusedEventSeq={focusedEventSeq}
                   setFocusedEventSeq={setFocusedEventSeq}
                 />
+                {mediaMode === "video" && videoAsset && recording.video && (
+                  <RecordingFrameControls
+                    canWrite={false}
+                    canSaveFrame={canSaveFrame}
+                    frameBusy={frameBusy}
+                    onSave={() => void saveCurrentFrame()}
+                    onAnnotate={onAnnotateFrame ? annotateCurrentFrame : undefined}
+                    error={frameError}
+                    displayedFrame={displayedFrame}
+                    videoGap={!!videoGap}
+                  />
+                )}
               </div>
             </>
           )}
