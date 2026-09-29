@@ -1,83 +1,129 @@
-# Chrome Web Store listing
+# Chrome Web Store update worksheet
 
-This is the listing copy for the server-neutral public extension. Packaging a ZIP does not publish a Store release. Use the same title and summary as `extension/manifest.json`; verify the actual package before submission.
+Use this copy for the public, server-neutral extension. Verify the uploaded ZIP, live privacy page and dashboard fields before submission. Packaging a ZIP does not publish a Store update.
 
-## Title
+## Package identity
 
-Feedbacks: UI Context for AI Agents
+- Existing Store item: `dcpfpkfmegpgbfkeeileabpcbbmnoobo`.
+- Title: **Feedbacks: UI Context for AI Agents** (match `extension/manifest.json`).
+- Short description (match the manifest; below 132 characters):
 
-## Short description
+```text
+Capture website feedback, screenshots and session replay for AI coding agents. Connect to your team's Feedbacks server.
+```
 
-Capture UI feedback and screenshots for AI coding agents. Connect to your team’s self-hosted Feedbacks server first.
+- Category: **Developer Tools**. Language: **English**.
+- Website: `https://feedbacks.softinator.ai/`
+- Support: `https://github.com/Softinator-TechLabs/feedbacks-oss/issues`
+- Privacy: `https://feedbacks.softinator.ai/privacy.html`
 
-## Detailed description
+The title preserves the product's AI-agent context. The summary names the relevant website-review features in natural language. Google recommends a concise title and summary, and prohibits keyword stuffing ([listing advice](https://developer.chrome.com/docs/webstore/best-listing), [listing policy](https://developer.chrome.com/docs/webstore/program-policies/listing-requirements)).
 
-Turn website feedback into context your AI coding agent can use.
+## Store listing → Detailed description
 
-Feedbacks helps clients, colleagues and UI testers show developers exactly what needs to change. Capture the original screenshot, page URL, viewport, selected element details when available, and your note. Developers read that evidence with project guidance through MCP, make the agreed change and record what they verified.
+Paste the text in this block:
 
-YOUR TEAM NEEDS A FEEDBACKS SERVER FIRST
+```text
+Turn website feedback into context your team and AI coding agents can act on.
 
-This extension connects to your team’s Feedbacks installation. It does not include a hosted workspace or create a server. Your company’s DevOps administrator installs Feedbacks once on company infrastructure, then shares the server URL and account access. If your team already has a server, ask the owner for access; you do not need another installation.
+Feedbacks connects a Chrome review to your team's Feedbacks server. Clients and teammates can point to a specific element, comment on a screenshot, or capture a complete page. Developers can inspect the same page context, discussion and approved evidence before making a change.
 
-Server installation: https://feedbacks.softinator.ai/docs/guide/self-host
-Complete setup flow: https://feedbacks.softinator.ai/docs/guide/getting-started
+CAPTURE AND REVIEW
+• Right-click a point on a page to comment, or open the compact popup to capture the current view.
+• Keep several points in a local draft, then review the screenshots before sending.
+• Mark screenshots with pencil, shapes, arrows and text; redact visible private information before sharing.
+• Capture a full page when one view is not enough. Open page comments and resolved points when you need the team's history.
 
-INSTALL, PIN AND CONNECT
+VIDEO AND SESSION CONTEXT
+• Record a short tab video with a synchronized browser session, or choose session-only capture in the recording options.
+• Review activity, console, network and page replay on a shared timeline. Coverage labels show when a channel or part of the session was unavailable.
+• Network request and response bodies are a separate recording option. Page text and input masking can be enabled. Video pixels need their own visual review before sending.
 
-1. Add the extension to Chrome.
-2. Open Chrome’s Extensions menu (the puzzle-piece button), find Feedbacks and click the pin.
-3. Sign in to your team’s Feedbacks web app. Open Setup and choose Copy server URL.
-4. Click the pinned Feedbacks icon and paste the URL into Your Feedbacks server.
-5. Choose Connect to server, allow access to that server, then sign in and approve the connection.
+FOR DEVELOPERS
+Feedbacks keeps submitted comments, screenshots, page URLs and recording evidence in the project on your chosen server. Authorized developers and coding agents can read the relevant thread through Feedbacks MCP or API. Connecting an agent does not automatically make changes or send data to an AI provider.
 
-The owner prepares projects, allowed website origins, project context, optional GitHub App connections and member access. Each developer who resolves feedback connects their own coding agent through MCP. Clients and testers do not need to configure an agent.
+SETUP
+Your organization needs a Feedbacks server and an account first. Self-host the open-source application or ask your team for its server URL and project access. Pin the extension, connect it to that server, open a website, start review, and send only after inspecting the draft.
 
-CAPTURE, FINALIZE AND SEND
+A screenshot review collects point-in-time page diagnostics. You can turn off their inclusion before sending; start diagnostics separately if you need earlier console and network events. Recording starts through an explicit action. Optional all-website access enables right-click review; you can review from the toolbar without granting it. Browser-protected pages cannot be captured. The server operator controls access, storage and retention.
 
-1. Open the website and click the pinned Feedbacks icon to start review.
-2. Hover the element, right-click, write what should change and choose Save point.
-3. Add more points, then choose Review & send to finalize your draft.
-4. Check the screenshots and notes. Redact private information before sharing.
-5. Choose Send feedback to send the reviewed evidence to your team’s server.
-
-Save point keeps a local draft; it does not send feedback. If an upload stops, Retry Send in the same draft resumes the remaining images.
-
-FOR DEVELOPERS AND THEIR AGENTS
-
-Connect Codex, Claude Code, Antigravity or another supported MCP client using a personal Feedbacks key. Ask the agent to read the request, inspect the original images and project guidance, work on the agreed change and report actual checks. Feedbacks does not include an AI subscription or start fixes merely because MCP is connected.
-
-GitHub Issue creation and status sync are optional. Normal feedback capture and MCP reads work without GitHub.
-
-CAPTURE TOOLS
-
-• Point-specific screenshots and comments.
-• Visible-area capture and optional full-page screenshots.
-• Drawing, arrows, text and redaction before sharing.
-• Optional short tab recordings with review before sending.
-• Session replay with activity, console and network evidence, alongside video or on its own.
-• Shared project feedback, discussion and work status.
-
-DATA AND PERMISSIONS
-
-Capture starts when you invoke a review. Chrome asks for access to your selected server. All-site access is optional. Connection information and unfinished drafts are stored locally; submitted comments, screenshots and page context go to the server you choose. Screenshots can contain sensitive page content, so inspect and redact them before sending. Browser-protected pages cannot be captured. Your server operator manages access, storage and retention.
-
-Detailed recording declares the debugger permission and attaches only after an explicit recording action. Session data can include page structure, activity, console messages and network headers; network bodies are an additional option. Recognized credentials are masked, with optional page-text/input masking. Video pixels need separate review. Update the Store permission justifications and data disclosures for this collection before publishing.
-
-Guides: https://feedbacks.softinator.ai/docs/guide/chrome-extension
-Project and member setup: https://feedbacks.softinator.ai/docs/guide/team-setup
-AI agent setup: https://feedbacks.softinator.ai/docs/guide/mcp
+Setup: https://feedbacks.softinator.ai/docs/guide/getting-started
+Extension guide: https://feedbacks.softinator.ai/docs/guide/chrome-extension
 Privacy: https://feedbacks.softinator.ai/privacy.html
 Source: https://github.com/Softinator-TechLabs/feedbacks-oss
+```
 
-## Listing visuals
+This copy describes the current merged recording feature. Add a complete thread-bundle claim only after that separate work has merged and passed the release checks.
 
-Use current product captures with synthetic data. Show these in order: server prerequisite and connection; Chrome pinning; right-click and Save point; Review & send and Send feedback; the submitted thread and agent context. Label illustrations clearly. Never include private server addresses, keys or real customer evidence.
+## Privacy practices → Single purpose
 
-## Publication checks
+```text
+Feedbacks lets a person review a website, annotate screenshots or record a short browser session, and send the chosen evidence to their team's Feedbacks project so teammates and authorized coding agents can understand and resolve the feedback.
+```
 
-Confirm the packaged manifest title and summary, blank default server, version, permissions and bundled code. Keep the privacy questionnaire consistent with actual collection of submitted screenshots, comments and page context. Follow the Store dashboard's current field limits and review requirements at submission time. This document does not claim a Store submission or approval.
+### Permission justifications
 
-## Setup download fallback
+Use these for the actual uploaded manifest. Recheck any permission added or removed before submission.
 
-Setup reads the server's packaged extension release metadata and offers that exact version for manual installation. The Store link remains available. The notice says the Store may lag while an update is under review; it does not claim a live Store review status that the app cannot verify. The manual steps are ZIP extraction, Chrome's Developer mode, and Load unpacked. Existing unpacked installations use Reload after replacing their files.
+| Permission               | Justification                                                                                                                                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `activeTab`              | Temporarily accesses the tab the person explicitly opens for review or capture. It reads page context and captures the selected tab; it does not read Chrome's history database.                                                            |
+| `scripting`              | Injects bundled review controls, point selection and session capture into the selected page or an optionally approved website. No executable script is downloaded from a server.                                                            |
+| `storage`                | Saves the chosen server, scoped connection token, preferences, pending drafts and bounded local recording data so an interrupted review can resume.                                                                                         |
+| `contextMenus`           | Adds an explicit right-click action to start feedback on the current page.                                                                                                                                                                  |
+| `alarms`                 | Continues a short-lived connection approval while the popup is closed and enforces bounded recording and cleanup work. It does not schedule background screenshots.                                                                         |
+| `debugger`               | After an explicit diagnostic or recording action, collects available console and network events for that review. Chrome shows its debugger indicator; capture ends at stop, navigation, review exit or its limit.                           |
+| `tabCapture`             | Captures video and optional tab audio from the tab selected by the user for a short recording.                                                                                                                                              |
+| `offscreen`              | Keeps the user-initiated MediaRecorder stream alive in a bundled offscreen extension document while the MV3 service worker may suspend.                                                                                                     |
+| Optional website origins | Access to the team's selected server is requested when connecting. Broader HTTP/HTTPS website access is optional for automatic right-click review and approved cross-origin capture; the toolbar can start review without that broad grant. |
+
+### Remote code
+
+Select **No, I am not using remote code**.
+
+```text
+All executable JavaScript, including the pinned rrweb recording and replay bundle, ships inside the uploaded ZIP. Feedbacks fetches project data, images and release metadata from the selected server as data; it does not fetch or execute remote scripts or use remote evaluation.
+```
+
+### Data usage and policy
+
+The current public Store listing discloses **personally identifiable information, authentication information, personal communications, web history, user activity and website content**. Keep those categories selected: account identity, comments, page URLs, screenshots, session events, DOM/page text, console output and network evidence can contain them. Website content and URLs also count when handled locally; do not select “no data collected” ([Google's privacy fields](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy), [user-data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq)).
+
+Review **financial/payment, health and location** against the pages your organization permits reviewers to capture and the server's access logs; raw screenshots, DOM and optional network bodies can contain these incidentally. Select any additional category that applies in practice. Publisher certifications about sale, advertising, unrelated transfer, creditworthiness and human access must reflect the actual operator and hosting arrangements.
+
+The [public privacy page](https://feedbacks.softinator.ai/privacy.html) must describe the current screenshot-diagnostic default, raw evidence, optional recording masks, video pixels, project access and retention before submitting. Compare its live content with the dashboard declarations.
+
+## Store listing → Images
+
+Upload current synthetic, browser-rendered 1280 × 800 screenshots in a useful order: review controls, point comment, draft review, screenshot editor, and team thread or recording timeline. Keep screenshots full bleed, with no private server addresses or credentials. Provide the 128 × 128 icon and 440 × 280 promo tile from the same verified package build. Google accepts one to five 1280 × 800 or 640 × 400 screenshots and requires a small promo tile ([image requirements](https://developer.chrome.com/docs/webstore/images)). Leave the optional marquee and promo video blank unless current assets exist.
+
+## Distribution and reviewer instructions
+
+This updates the existing item. Keep its current visibility and region settings unless the publisher intentionally changes them; an upgrade normally stays on the same channel ([update guide](https://developer.chrome.com/docs/webstore/update)). Do not switch to Private merely because an older worksheet described a tester-only submission.
+
+If the dashboard asks for reviewer access, provide a separate non-sensitive demonstration account through Google's private reviewer fields. Do not put credentials in the public listing or this repository. Suggested test instructions:
+
+```text
+1. Sign in to the supplied demonstration Feedbacks server with the private reviewer credentials.
+2. Open its Setup page, copy the server URL, and connect the extension. Approve server access and the connection.
+3. Open the supplied demonstration website. Use the pinned Feedbacks popup to start review, right-click a point, save a comment, then open Review & send.
+4. Inspect or mark the screenshot and send the synthetic feedback. Open the resulting thread to view its page context and discussion.
+5. On the demonstration website, start Record video + session, stop after a few seconds, inspect the event timeline and discard the sample. No payment or real customer data is needed.
+```
+
+## Dashboard update order
+
+1. Confirm the published Store version and this ZIP's higher manifest version. The ZIP must contain `manifest.json` at its root with all extension files ([package guidance](https://developer.chrome.com/docs/webstore/prepare)).
+2. In the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole), open existing Feedbacks item `dcpfpkfmegpgbfkeeileabpcbbmnoobo` → **Package** → **Upload New Package**. Upload the extension ZIP itself, not the outer handoff bundle.
+3. **Store listing**: update description, category/language if needed, URLs, icon, promo tile and ordered screenshots. Verify the uploaded package's manifest title and short description in the dashboard.
+4. **Privacy practices**: review the single purpose, every permission justification, remote-code answer, data categories, certifications and live privacy-policy URL. Resolve every dashboard warning.
+5. **Distribution**: verify existing visibility, countries and rollout setting. **Test instructions**: update demonstration steps and private reviewer access if requested.
+6. Save the draft, inspect its preview and **Submit for Review**. Submission alone does not update the published listing; publication follows review or a deferred publish action ([Google update guide](https://developer.chrome.com/docs/webstore/update)). Verify the published version, listing, screenshots and privacy panel after approval.
+
+## Release gates
+
+- Source revision and local ZIP checksum recorded; ZIP manifest version exceeds the published version.
+- `npm run check`, packaged-extension browser QA, required CI and package content inspection pass.
+- Screenshots, icon and promo meet actual dimensions and contain only synthetic evidence.
+- Live privacy page matches this copy; dashboard privacy categories and permission answers match uploaded code.
+- Reviewer account, dashboard submission, Google approval, publication and Store-installed Chrome behavior are separate receipts.

@@ -90,14 +90,15 @@
       </p>
       <h2>Optional screenshot diagnostics</h2>
       <p>
-        Console and resource timing collection starts only when you choose it in the
-        extension. The editor lets you inspect and select entries before explicitly
-        sharing them with your Feedbacks instance. Collection is bounded to five minutes,
-        25 console entries and 50 resource entries. URL credentials, queries and fragments
-        are removed; headers, bodies and cookies are not collected. Resource URLs are
-        limited to origins. Redaction is best effort, so review messages and resource
-        entries before sharing. Submitted diagnostics follow your instance operator's
-        access and retention policy.
+        A screenshot review can collect a point-in-time page snapshot and related browser
+        evidence. Start diagnostics before reproducing an issue to collect earlier console
+        and network events. The editor shows a bounded preview and includes captured
+        diagnostics by default; you can turn that inclusion off before sending. Raw
+        artifacts can contain page text, complete URLs, headers, cookies, console
+        arguments, request and response bodies, and storage values. They are not
+        automatically masked. Inspect the preview and turn off inclusion if sensitive data
+        should not be shared. Submitted diagnostics follow your instance operator's access
+        and retention policy; downloaded copies need separate deletion.
       </p>
       <h2>Session recordings and video debug context</h2>
       <p>

@@ -5,10 +5,17 @@ import { join } from "node:path";
 import { chromium } from "playwright";
 
 const root = process.cwd();
-await mkdir(join(root, "site/public/media/workflow"), { recursive: true });
+const storeMode = process.argv.includes("--store");
+const captureDir = join(
+  root,
+  storeMode ? "dist/store-submission/screenshots" : "site/public/media/workflow",
+);
+await mkdir(captureDir, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), "feedbacks-extension-browser-"));
 const extension = join(profile, "extension");
-await cp(join(root, "extension"), extension, { recursive: true });
+await cp(join(root, storeMode ? "dist/extension/unpacked" : "extension"), extension, {
+  recursive: true,
+});
 const manifestPath = join(extension, "manifest.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 // Isolated fixture grants let headless Chromium run feature checks; this copy
@@ -24,7 +31,10 @@ let context;
 try {
   let output = "";
   const accessPath = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(Error("Sandbox startup timed out")), 30000);
+    const timer = setTimeout(
+      () => reject(Error("Sandbox startup timed out")),
+      storeMode ? 90000 : 30000,
+    );
     sandbox.stdout.on("data", (chunk) => {
       output += String(chunk);
       const match = output.match(/Local access file: ([^\r\n]+)/);
@@ -60,6 +70,21 @@ try {
     password: access.password,
   });
   const auth = { cookie: login.cookie, csrf: login.data.csrf };
+  if (storeMode) {
+    const projects = (await post("projects.list", {}, auth)).data.items;
+    const project = projects.find((item) => item.name === "Sandbox review");
+    if (!project) throw Error("Synthetic review project is missing");
+    await post(
+      "projects.update",
+      {
+        projectId: project.id,
+        revision: project.revision,
+        name: "Good Form review",
+        origins: ["https://example.com"],
+      },
+      auth,
+    );
+  }
   const request = (await post("pairing.request", { name: "Synthetic browser QA" })).data;
   await post("pairing.approve", { pairingId: request.pairingId }, auth);
   const paired = (
@@ -74,7 +99,7 @@ try {
   context = await chromium.launchPersistentContext(profile, {
     channel: "chromium",
     headless: true,
-    viewport: { width: 900, height: 740 },
+    viewport: { width: storeMode ? 1280 : 900, height: storeMode ? 800 : 740 },
     deviceScaleFactor: 1,
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
@@ -132,6 +157,10 @@ try {
     id,
   );
   await send({ type: "activate", tabId: id });
+  if (storeMode) {
+    await send({ type: "popupAction", tabId: id, action: "show-controls" });
+    await page.screenshot({ path: join(captureDir, "01-review-controls.png") });
+  }
   const target = await page.locator("#target").boundingBox();
   await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2, {
     button: "right",
@@ -163,33 +192,56 @@ try {
       { tabId: id, action },
     );
   await inRoot("fill");
-  await page.screenshot({ path: "site/public/media/workflow/point.png" });
   await page.screenshot({
-    path: "site/public/media/workflow/point-detail.png",
-    clip: { x: 495, y: 385, width: 405, height: 340 },
+    path: join(captureDir, storeMode ? "02-point-comment.png" : "point.png"),
   });
+  if (!storeMode)
+    await page.screenshot({
+      path: join(captureDir, "point-detail.png"),
+      clip: { x: 495, y: 385, width: 405, height: 340 },
+    });
   await inRoot("Save point");
   await page.waitForTimeout(400);
+  if (storeMode) await page.screenshot({ path: join(captureDir, "03-saved-draft.png") });
   await inRoot("Review & send");
   await page.waitForTimeout(1800);
   const editor = context.pages().find((p) => p.url().includes("editor.html"));
   if (!editor) throw Error("Review & send did not open the capture editor");
   if (editor) {
-    await editor.setViewportSize({ width: 1100, height: 760 });
+    await editor.setViewportSize({
+      width: storeMode ? 1280 : 1100,
+      height: storeMode ? 800 : 760,
+    });
+    if (storeMode) {
+      const toolsFit = await editor.locator("#tools").evaluate((tools) => {
+        const workspace = tools.closest(".image-workspace").getBoundingClientRect();
+        return [...tools.children].every(
+          (item) => item.getBoundingClientRect().right <= workspace.right - 8,
+        );
+      });
+      if (!toolsFit) throw Error("Annotation tools overlap the feedback panel");
+    }
     await editor
       .locator("#body")
       .fill("Make the Add to bag button darker so it’s easier to find.");
-    await editor.screenshot({ path: "site/public/media/workflow/review.png" });
+    await editor.screenshot({
+      path: join(captureDir, storeMode ? "04-screenshot-editor.png" : "review.png"),
+    });
     await editor.locator("#send").click();
     await editor.locator("#completion:not([hidden])").waitFor({ timeout: 60000 });
     const url = await editor.locator("#thread").getAttribute("href");
     const [name, ...value] = auth.cookie.split("=");
     await context.addCookies([{ name, value: value.join("="), url: access.url }]);
     const app = await context.newPage();
-    await app.setViewportSize({ width: 1100, height: 760 });
+    await app.setViewportSize({
+      width: storeMode ? 1280 : 1100,
+      height: storeMode ? 800 : 760,
+    });
     await app.goto(url);
     await app.waitForTimeout(2000);
-    await app.screenshot({ path: "site/public/media/workflow/thread.png" });
+    await app.screenshot({
+      path: join(captureDir, storeMode ? "05-team-thread.png" : "thread.png"),
+    });
     console.log(
       "Captured actual extension review and sent server thread using synthetic data.",
     );
