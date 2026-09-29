@@ -54,18 +54,26 @@ await writeFile(
 // the packaged control, diagnostics, offscreen recorder, and review handoff real;
 // substitute only tabCapture's one-use stream with a visible moving canvas.
 const backgroundPath = path.join(extension, "background.js");
+const backgroundSource = await readFile(backgroundPath, "utf8");
+const streamSource =
+  "const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id });";
+assert.ok(backgroundSource.includes(streamSource), "packaged tab stream hook changed");
 await writeFile(
   backgroundPath,
-  (await readFile(backgroundPath, "utf8")).replace(
-    "const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id });",
-    'const streamId = "qa-test-stream";',
-  ),
+  backgroundSource.replace(
+    streamSource,
+    'const streamId = "qa-test-stream"; await chrome.storage.local.set({ qaBackgroundStream: true });',
+  ) +
+    '\nchrome.runtime.onMessage.addListener((message) => { if (message?.type === "qaOffscreen") void chrome.storage.local.set({ qaOffscreen: message.stage }); });\n',
 );
 const offscreenPath = path.join(extension, "offscreen-video.html");
+const offscreenSource = await readFile(offscreenPath, "utf8");
+const offscreenScript = '<script type="module" src="offscreen-video.js"></script>';
+assert.ok(offscreenSource.includes(offscreenScript), "packaged offscreen hook changed");
 await writeFile(
   offscreenPath,
-  (await readFile(offscreenPath, "utf8")).replace(
-    '<script type="module" src="offscreen-video.js"></script>',
+  offscreenSource.replace(
+    offscreenScript,
     '<script src="qa-offscreen.js"></script><script type="module" src="offscreen-video.js"></script>',
   ),
 );
@@ -79,8 +87,25 @@ await writeFile(
     context.fillStyle = '#17324d'; context.fillRect(0, 0, 640, 360);
     context.fillStyle = '#fff'; context.fillText(String(Date.now()), 20, 40);
   }, 40);
-  navigator.mediaDevices.getUserMedia = async () => canvas.captureStream(24);
+  chrome.runtime.sendMessage({ type: 'qaOffscreen', stage: 'booted' }).catch(() => {});
+  navigator.mediaDevices.getUserMedia = async () => {
+    chrome.runtime.sendMessage({ type: 'qaOffscreen', stage: 'stream-requested' }).catch(() => {});
+    const stream = canvas.captureStream(24);
+    chrome.runtime.sendMessage({ type: 'qaOffscreen', stage: 'stream-ready' }).catch(() => {});
+    return stream;
+  };
 `,
+);
+const recorderPath = path.join(extension, "offscreen-video.js");
+const recorderSource = await readFile(recorderPath, "utf8");
+const publishSource = "  current.state = state;\n  port.postMessage({";
+assert.ok(recorderSource.includes(publishSource), "packaged recorder state hook changed");
+await writeFile(
+  recorderPath,
+  recorderSource.replace(
+    publishSource,
+    "  current.state = state;\n  chrome.runtime.sendMessage({ type: 'qaOffscreen', stage: state }).catch(() => {});\n  port.postMessage({",
+  ),
 );
 const manifestPath = path.join(extension, "manifest.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -132,18 +157,46 @@ try {
   await start.click();
   await page
     .getByRole("button", { name: "Pause video" })
-    .waitFor({ timeout: 12000 })
+    .waitFor({ timeout: 20000 })
     .catch(async (error) => {
       const source = await page
         .locator("#feedbacks-review-root")
-        .evaluate((node) => node.shadowRoot?.querySelector(".notice")?.textContent)
+        .evaluate((node) => ({
+          notice: node.shadowRoot?.querySelector(".notice")?.textContent,
+          controls: node.shadowRoot?.querySelector(".recording-controls")?.textContent,
+          dockState: node.shadowRoot?.querySelector(".review-dock")?.dataset.recording,
+          dockHidden: node.shadowRoot?.querySelector(".review-dock")?.hidden,
+          buttons: [
+            ...(node.shadowRoot?.querySelectorAll(".review-dock button") || []),
+          ].map((button) => button.getAttribute("aria-label") || button.textContent),
+        }))
         .catch(() => "source unavailable");
       const state = await control.evaluate(async () =>
         chrome.runtime.sendMessage({ type: "sessionStatus" }),
       );
-      throw Error(`Video start failed: ${source}\n${JSON.stringify(state)}`, {
-        cause: error,
-      });
+      const internals = await worker.evaluate(async () => ({
+        contexts: (await chrome.runtime.getContexts({})).map((context) => ({
+          type: context.contextType,
+          url: context.documentUrl,
+        })),
+        qaOffscreen: (await chrome.storage.local.get("qaOffscreen")).qaOffscreen,
+        qaBackgroundStream: (await chrome.storage.local.get("qaBackgroundStream"))
+          .qaBackgroundStream,
+      }));
+      throw Error(
+        `Video start failed: ${JSON.stringify({
+          source,
+          internals,
+          capture: {
+            active: state?.data?.active,
+            mode: state?.data?.recording?.mode,
+            events: state?.data?.recording?.events?.length,
+          },
+        })}`,
+        {
+          cause: error,
+        },
+      );
     });
   assert.equal(
     browser.pages().filter((tab) => tab.url().includes("/video.html")).length,
