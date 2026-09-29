@@ -9,7 +9,7 @@ import {
   mapVideoToRecordingTime,
   networkExchanges,
   prepareReplayEvents,
-} from "../src/web/recording-model.js";
+} from "../src/web/recordings/model.js";
 
 test("diagnostic rows remain ordered and seek to their recorded time", () => {
   const entries = [
@@ -206,7 +206,7 @@ test("replay preserves event timestamps but removes resource URLs and executable
   );
 });
 test("screenshot comments associate by annotation identity even at the same timestamp", async () => {
-  const { recordingAnnotation } = await import("../src/web/recording-model.js");
+  const { recordingAnnotation } = await import("../src/web/recordings/model.js");
   const events: any[] = [
     {
       seq: 0,

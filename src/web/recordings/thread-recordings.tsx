@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Replayer } from "@rrweb/replay";
 import "@rrweb/replay/dist/style.css";
 import { installReplayResourcePolicy } from "./replay-policy.js";
-import { api, ApiError, errorText, uid, type Thread } from "./api.js";
+import { api, ApiError, errorText, uid, type Thread } from "../api.js";
 import {
   clampTime,
   consoleAt,
@@ -18,7 +18,7 @@ import {
   type RecordingChannel,
   type RecordingSummary,
   type NetworkExchange,
-} from "./recording-model.js";
+} from "./model.js";
 import "./thread-recordings.css";
 
 type MediaMode = "replay" | "video";

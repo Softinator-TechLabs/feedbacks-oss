@@ -10,7 +10,7 @@ test(
     const bundle = await build({
       stdin: {
         contents: `
-import {prepareReplayEvents} from './src/web/recording-model.ts';
+import {prepareReplayEvents} from './src/web/recordings/model.ts';
 import {sanitizeSessionReplay} from './extension/session-replay.js';
 window.sanitize=(events, extension)=>extension?sanitizeSessionReplay(events):prepareReplayEvents(events.map((data,seq)=>({type:'replay',seq,atMs:seq,data})));
 `,

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
-import { api, uid, type Thread } from "./api.js";
-import { ActionState, useAction, useLoad, ErrorNotice, showToast } from "./ui.js";
-import { Icon } from "./icons.js";
+import { api, uid, type Thread } from "../api.js";
+import { ActionState, useAction, useLoad, ErrorNotice, showToast } from "../ui.js";
+import { Icon } from "../icons.js";
 
 type Receipt = {
   id: string;

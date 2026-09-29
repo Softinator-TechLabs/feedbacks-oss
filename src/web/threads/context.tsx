@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
-import { type Context } from "./api.js";
-import { HumanTime } from "./human-time.js";
-import { ActionState, ExternalLink, useAction } from "./ui.js";
+import { type Context } from "../api.js";
+import { HumanTime } from "../human-time.js";
+import { ActionState, ExternalLink, useAction } from "../ui.js";
 
 export function ContextPanel({ context: c }: { context: Context }) {
   const a = useAction();

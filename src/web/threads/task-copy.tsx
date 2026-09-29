@@ -1,8 +1,8 @@
 import React, { useRef, useState } from "react";
-import { buildTaskHandoff, type HandoffAssignments } from "../shared/task-handoff.js";
-import { Icon } from "./icons.js";
-import { api, type Project, type Thread } from "./api.js";
-import { ErrorNotice, showToast, useAction } from "./ui.js";
+import { buildTaskHandoff, type HandoffAssignments } from "../../shared/task-handoff.js";
+import { Icon } from "../icons.js";
+import { api, type Project, type Thread } from "../api.js";
+import { ErrorNotice, showToast, useAction } from "../ui.js";
 
 export function ThreadTaskCopy({
   thread,

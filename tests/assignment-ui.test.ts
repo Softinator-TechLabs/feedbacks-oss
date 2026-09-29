@@ -6,7 +6,7 @@ import {
   writableAssignees,
   assignmentActor,
   assignmentRetry,
-} from "../src/web/assignment-model.js";
+} from "../src/web/assignments/model.js";
 
 const thread = {
   archived: false,

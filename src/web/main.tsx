@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { api, type Actor, type Project } from "./api.js";
 import { AuthScreen, Pairing } from "./auth.js";
 import { Projects, ProjectSettings, ProjectGithub } from "./projects.js";
-import { ThreadList, ThreadDetail } from "./threads.js";
+import { ThreadList, ThreadDetail } from "./threads/index.js";
 import { Members, Instructions, Account } from "./settings.js";
 import { Help, Privacy } from "./help.js";
 import { PasswordReplacement } from "./account-admin.js";
@@ -17,7 +17,7 @@ import {
   useLoad,
 } from "./ui.js";
 import "./styles.css";
-import "./thread-detail.css";
+import "./threads/detail.css";
 import "./theme.css";
 import { ThemeSwitch } from "./theme.js";
 import { usePageLocation } from "./navigation.js";

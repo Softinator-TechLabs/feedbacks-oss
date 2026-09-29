@@ -1,8 +1,8 @@
 import React, { useRef, useState } from "react";
-import { api, labels, type Thread } from "./api.js";
-import { ErrorNotice, Field, Notice, useAction } from "./ui.js";
-import { useUnsavedChanges } from "./navigation.js";
-import { Icon } from "./icons.js";
+import { api, labels, type Thread } from "../api.js";
+import { ErrorNotice, Field, Notice, useAction } from "../ui.js";
+import { useUnsavedChanges } from "../navigation.js";
+import { Icon } from "../icons.js";
 type StatusDraft = {
   state: "open" | "in_progress" | "ready_for_review" | "resolved" | "declined";
   note: string;

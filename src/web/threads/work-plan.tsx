@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { WorkPlan } from "../shared/contracts.js";
-import { api, type Thread } from "./api.js";
-import { ErrorNotice, showToast, useAction } from "./ui.js";
-import { useUnsavedChanges } from "./navigation.js";
+import type { WorkPlan } from "../../shared/contracts.js";
+import { api, type Thread } from "../api.js";
+import { ErrorNotice, showToast, useAction } from "../ui.js";
+import { useUnsavedChanges } from "../navigation.js";
 import {
   defaultWorkPlan,
   localTimeZone,
@@ -15,9 +15,9 @@ import {
   timingLabel,
   timingSelection,
   type PlanField,
-} from "./work-plan-model.js";
-import { Icon } from "./icons.js";
-import "./thread-work-plan.css";
+} from "../work-plan-model.js";
+import { Icon } from "../icons.js";
+import "../thread-work-plan.css";
 
 type PlanDraft = { workPlan: WorkPlan; revision: number; field: PlanField };
 

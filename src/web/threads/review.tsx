@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { api, type Thread } from "./api.js";
-import { HumanTime } from "./human-time.js";
-import { ErrorNotice, useAction } from "./ui.js";
-import { Icon } from "./icons.js";
+import { api, type Thread } from "../api.js";
+import { HumanTime } from "../human-time.js";
+import { ErrorNotice, useAction } from "../ui.js";
+import { Icon } from "../icons.js";
 
 export function ThreadReview({
   thread,

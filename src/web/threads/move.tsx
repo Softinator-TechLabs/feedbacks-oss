@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { api, type Project, type Thread } from "./api.js";
-import { ErrorNotice, Field, showToast, useAction } from "./ui.js";
+import { api, type Project, type Thread } from "../api.js";
+import { ErrorNotice, Field, showToast, useAction } from "../ui.js";
 
 export function ThreadMove({
   thread,

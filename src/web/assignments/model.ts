@@ -1,4 +1,4 @@
-import type { Thread } from "./api.js";
+import type { Thread } from "../api.js";
 
 export type Assignee = {
   id: string;
@@ -24,6 +24,14 @@ export function assignmentPoints(thread: Thread) {
       : [],
   );
 }
+export function canAssignThread(thread: Thread) {
+  return (
+    !thread.archived &&
+    !["resolved", "declined"].includes(thread.work.state) &&
+    (!thread.context.annotations?.length || assignmentPoints(thread).length > 0)
+  );
+}
+
 export function assignmentScope(ids: string[], thread: Thread) {
   if (!ids.length) return "Whole thread";
   const numbers = ids.map((id) => {
