@@ -1,6 +1,6 @@
 @import "./forms.css";
 @import "./review-tools.css";
-@import "./surveys.css";
+@import "./surveys/surveys.css";
 @import "./styles/foundation.css";
 @import "./styles/projects/navigation.css";
 @import "./styles/help/overview.css";

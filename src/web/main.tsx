@@ -8,7 +8,7 @@ import { Members } from "./members/list.js";
 import { Instructions } from "./projects/instructions.js";
 import { Account } from "./account/account.js";
 import { Help, Privacy } from "./help.js";
-import { PasswordReplacement } from "./account-admin.js";
+import { PasswordReplacement } from "./account/password-replacement.js";
 import { OwnerLinkSignIn } from "./owner-links.js";
 import {
   ActionState,
@@ -26,8 +26,8 @@ import { usePageLocation } from "./navigation.js";
 import { officialWebsiteUrl } from "../shared/product-links.js";
 import { GuestReview } from "./guest-review.js";
 import { GuestProjectReview } from "./guest-project-review.js";
-import { Documents, DocumentViewer } from "./documents.js";
-import { Surveys, SurveyPublic } from "./surveys.js";
+import { Documents, DocumentViewer } from "./documents/index.js";
+import { Surveys, SurveyPublic } from "./surveys/index.js";
 function App() {
   const pageLocation = usePageLocation();
   const path = pageLocation.split("?")[0];

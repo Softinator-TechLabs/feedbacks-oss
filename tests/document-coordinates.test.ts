@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pointFromClient, percentPoint } from "../src/web/document-coordinates.js";
+import { pointFromClient, percentPoint } from "../src/web/documents/coordinates.js";
 
 test("document click coordinates remain stable when the viewer is resized", () => {
   assert.deepEqual(
