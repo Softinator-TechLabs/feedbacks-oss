@@ -9,8 +9,8 @@ import {
   prepareDiagnosticArchive,
   prepareDiagnosticFile,
   checkedDiagnosticBytes,
-} from "../diagnostic-evidence.js";
-import { streamDiagnosticArchive } from "../diagnostic-archive.js";
+} from "../diagnostics/read.js";
+import { streamDiagnosticArchive } from "../diagnostics/archive.js";
 
 type RequestAuth = (req: Request) => string | undefined;
 

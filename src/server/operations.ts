@@ -9,11 +9,13 @@ import {
   beginDiagnosticEvidence,
   putDiagnosticChunk,
   finalizeDiagnosticEvidence,
+} from "./diagnostics/evidence.js";
+import {
   listDiagnosticEvidence,
   describeDiagnosticEvidence,
   readDiagnosticPage,
   searchDiagnosticEvents,
-} from "./diagnostic-evidence.js";
+} from "./diagnostics/read.js";
 import { moveThread } from "./thread-move.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";

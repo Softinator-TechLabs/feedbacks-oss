@@ -11,7 +11,7 @@ import { Pool } from "pg";
 import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
-import { drainExpiredDiagnosticEvidence } from "../src/server/diagnostic-evidence.js";
+import { drainExpiredDiagnosticEvidence } from "../src/server/diagnostics/evidence.js";
 import { diagnosticKinds } from "../src/shared/screenshot-diagnostics.js";
 
 const bytes = Buffer.from(

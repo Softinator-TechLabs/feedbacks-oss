@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
-import { drainExpiredDiagnosticEvidence } from "../src/server/diagnostic-evidence.js";
+import { drainExpiredDiagnosticEvidence } from "../src/server/diagnostics/evidence.js";
 import {
   diagnosticKinds,
   splitDiagnosticBytes,

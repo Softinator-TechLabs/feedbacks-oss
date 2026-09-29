@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createDiagnosticEventIndexer } from "../src/server/diagnostic-event-index.js";
+import { createDiagnosticEventIndexer } from "../src/server/diagnostics/event-index.js";
 import { diagnosticFixture } from "./diagnostic-fixture.js";
 
 const event = (method: string, ingressAt: number, requestId: string, payload = "") =>

@@ -5,7 +5,7 @@ import { fail } from "./errors.js";
 import { reviewerContext } from "./accounts.js";
 import { discussionLikes } from "./discussion-likes.js";
 import { viewStats } from "./views.js";
-import { diagnosticSummary } from "./diagnostic-summary.js";
+import { diagnosticSummary } from "./diagnostics/summary.js";
 
 // Legacy human messages had no reliable intent. Treat them as requests on read;
 // preserve agent responses and explicit intent without rewriting work history.
