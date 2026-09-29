@@ -25,12 +25,13 @@ flowchart LR
 - `scheduled-qa.ts`: opt-in daily public-page checks, bounded private image comparison and reviewable run history.
 - `context.ts`, `export-limits.ts`: versioned instructions, stable bounded exports and change cursors.
 - `operations.ts`: transactional operation dispatch. `app.ts` and `mcp.ts` handle transport concerns.
+- `github-operations.ts`: stable GitHub operation dispatch. `src/server/github/` groups connection changes, Issue requests, and status sync while retaining each authorization check and transaction around the external GitHub call.
 - `src/shared/contracts.ts`: stable public import path for operation schemas and scopes. `src/shared/contracts/domains/` owns schemas by domain, and `src/shared/contracts/registry.ts` composes the typed input/output registries.
 - `sdk/ios`, `sdk/android`: optional native app clients using existing paired-device HTTP operations; neither owns authorization or embeds server credentials.
 
 Client state is not authoritative. Database revisions detect stale writes; idempotency keys protect retries. Credentials are checked against current account state. Agents cannot become humans by selecting an input field.
 
-The web application groups thread, project, member, and account views under `src/web/threads/`, `src/web/projects/`, `src/web/members/`, and `src/web/account/`. `src/web/styles.css` imports ordered feature styles so the cascade stays explicit. The extension keeps `background.js`, `content.js`, and `editor.js` as stable Chrome entrypoints; internal capture, submission, session, recording, video, review, connection, and diagnostics code lives in corresponding `extension/` folders. The ZIP allowlist and isolated Chromium checks cover these internal paths. `scripts/qa/extension/` holds shared fixtures and acceptance workflows, while `scripts/extension-browser-qa.mjs` owns the disposable browser and final sequence.
+The web application groups thread, project, member, and account views under `src/web/threads/`, `src/web/projects/`, `src/web/members/`, and `src/web/account/`. `src/web/styles.css` imports ordered feature styles so the cascade stays explicit. The extension keeps `background.js`, `content.js`, and `editor.js` as stable Chrome entrypoints; internal capture, submission, session, recording, video, review, connection, and diagnostics code lives in corresponding `extension/` folders. The ZIP allowlist and isolated Chromium checks cover these internal paths. `scripts/qa/extension/setup/`, `capture/`, and `review/` group browser fixtures and acceptance workflows; `scripts/extension-browser-qa.mjs` owns the disposable browser and final sequence.
 
 ## Deployment model
 
