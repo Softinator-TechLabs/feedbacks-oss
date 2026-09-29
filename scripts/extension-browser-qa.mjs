@@ -1,3 +1,5 @@
+import { verifyThreadReview } from "./qa/extension/thread-review.mjs";
+import { verifyReviewDefaults } from "./qa/extension/review-defaults.mjs";
 import { verifyGithubToolbar } from "./qa/extension/github-toolbar.mjs";
 import { verifyRecordingControls } from "./qa/extension/recording-controls.mjs";
 import { verifyPublicCapture } from "./qa/extension/public-capture.mjs";
@@ -613,8 +615,10 @@ try {
         chrome.runtime.sendMessage = async (message, ...rest) => {
           if (message.type !== "freezeView") return send(message, ...rest);
           globalThis.__captureToken = message.key;
-          await new Promise((resolve) => setTimeout(resolve, 1200));
-          return { ok: false, error: "Synthetic capture failure" };
+          return new Promise((resolve) => {
+            globalThis.__captureFailures ??= new Map();
+            globalThis.__captureFailures.set(message.key, resolve);
+          });
         };
       },
     });
@@ -630,6 +634,32 @@ try {
         )[0].result,
       id,
     );
+  const waitCaptureToken = async (previous = null) => {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const token = await selectedToken();
+      if (token && token !== previous) return token;
+      await page.waitForTimeout(50);
+    }
+    throw Error("Point capture did not start");
+  };
+  const failPointCapture = (token) =>
+    worker.evaluate(
+      async ({ tabId, token }) => {
+        const [entry] = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: (token) => {
+            const resolve = globalThis.__captureFailures?.get(token);
+            if (!resolve) return false;
+            globalThis.__captureFailures.delete(token);
+            resolve({ ok: false, error: "Synthetic capture failure" });
+            return true;
+          },
+          args: [token],
+        });
+        return entry.result;
+      },
+      { tabId: id, token },
+    );
   const cancelPoint = () =>
     worker.evaluate(async (tabId) => {
       await chrome.scripting.executeScript({
@@ -643,18 +673,17 @@ try {
     }, id);
   await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
   await waitReview((state) => state.ready);
-  await page.waitForTimeout(50);
-  const oldToken = await selectedToken();
+  const oldToken = await waitCaptureToken();
   await worker.evaluate(
     async ({ id, token }) =>
       chrome.tabs.sendMessage(id, { type: "preparePointImage", pointToken: token }),
     { id, token: oldToken },
   );
   await cancelPoint();
+  assert.equal(await failPointCapture(oldToken), true);
   await page.getByRole("heading", { name: "Controlled page" }).click({ button: "right" });
   await waitReview((state) => state.ready);
-  await page.waitForTimeout(50);
-  const currentToken = await selectedToken();
+  const currentToken = await waitCaptureToken(oldToken);
   assert.notEqual(oldToken, currentToken);
   const retainedHidden = await worker.evaluate(
     async ({ id, oldToken, currentToken }) => {
@@ -680,6 +709,7 @@ try {
   );
   assert.equal(retainedHidden, "0");
   await page.keyboard.type("Keep my comment after image failure");
+  assert.equal(await failPointCapture(currentToken), true);
   await waitReview((state) => state.tip.includes("Synthetic capture failure"));
   await worker.evaluate(async (tabId) => {
     await chrome.scripting.executeScript({
@@ -2088,198 +2118,15 @@ try {
     submitted: true,
     draftCleared: true,
   });
-  const cookieSplit = auth.cookie.indexOf("=");
-  const cookieName = auth.cookie.slice(0, cookieSplit);
-  const cookieValue = auth.cookie.slice(cookieSplit + 1);
-  await context.addCookies([
-    { name: cookieName, value: cookieValue, url: access.url, sameSite: "Strict" },
-  ]);
-  // Cross-site links must enter the web app first: Strict cookies are omitted
-  // on the top-level navigation, then sent on the app's same-site API requests.
-  const linkedOriginal = inlineThread.assets.find(
-    (asset) => asset.filename === "point-002-original.webp",
-  );
-  assert.ok(linkedOriginal);
-  const crossSite = await context.newPage();
-  await crossSite.goto("https://example.com/");
-  const assetLink = `${access.url}/threads/${inlineThreadId}#asset-${linkedOriginal.id}`;
-  await crossSite.evaluate((href) => {
-    const link = document.createElement("a");
-    link.href = href;
-    link.target = "_blank";
-    link.textContent = "Open feedback image";
-    document.body.prepend(link);
-  }, assetLink);
-  const linkedPagePromise = context.waitForEvent("page");
-  await crossSite.getByRole("link", { name: "Open feedback image" }).click();
-  const linkedPage = await linkedPagePromise;
-  await linkedPage
-    .locator(`.review-point-figure[id="asset-${linkedOriginal.id}"]`)
-    .waitFor();
-  await linkedPage.waitForFunction(() => {
-    const img = document.querySelector(".review-point-figure img");
-    return img?.complete && img.naturalWidth > 0;
+  await verifyThreadReview({
+    context,
+    auth,
+    access,
+    inlineThread,
+    inlineThreadId,
+    root,
+    results,
   });
-  assert.equal(
-    await linkedPage.getByRole("button", { name: "Sign in", exact: true }).count(),
-    0,
-  );
-  results.githubAssetLink = {
-    existingSessionReused: true,
-    selectedOriginal: true,
-    imageLoaded: true,
-  };
-  await linkedPage.close();
-  await crossSite.close();
-  const inlineThreadPage = await context.newPage();
-  await inlineThreadPage.goto(`${access.url}/threads/${inlineThreadId}`);
-  await inlineThreadPage.getByRole("heading", { name: "Review on the page" }).waitFor();
-  await inlineThreadPage.getByRole("combobox", { name: "Assigned member" }).waitFor();
-  await inlineThreadPage.getByRole("group", { name: "Feedback actions" }).waitFor();
-  await inlineThreadPage.getByRole("button", { name: "Archive thread" }).waitFor();
-  await inlineThreadPage.getByRole("combobox", { name: "Status" }).waitFor();
-  await inlineThreadPage.getByRole("button", { name: "Copy task for agent" }).waitFor();
-  await inlineThreadPage
-    .getByRole("button", { name: "Create a guest discussion link" })
-    .waitFor();
-  for (const width of [900, 1200, 1351, 1440]) {
-    await inlineThreadPage.setViewportSize({ width, height: 800 });
-    const headerLayout = await inlineThreadPage
-      .locator(".thread-header-actions")
-      .evaluate((bar) => ({
-        rows: new Set(
-          [...bar.children]
-            .filter((child) => child.getBoundingClientRect().width > 0)
-            .map((child) => Math.round(child.getBoundingClientRect().top)),
-        ).size,
-        overflow: bar.scrollWidth > bar.clientWidth + 1,
-      }));
-    assert.equal(
-      headerLayout.rows,
-      1,
-      `thread actions should occupy one row at ${width}px`,
-    );
-    assert.equal(
-      headerLayout.overflow,
-      false,
-      `thread actions should not overflow at ${width}px`,
-    );
-  }
-  await inlineThreadPage.setViewportSize({ width: 900, height: 650 });
-  const openPoint = inlineThreadPage.locator(".review-point-list li.open").first();
-  await openPoint.getByLabel("Point 2 timing").selectOption("today");
-  await inlineThreadPage
-    .locator('.thread-heading-meta .point-progress-ring[aria-label*="1 urgent"]')
-    .waitFor();
-  await openPoint.getByLabel("Point 2 priority").selectOption("high");
-  await openPoint.getByText("High priority").waitFor();
-  await inlineThreadPage.reload();
-  const plannedPoint = inlineThreadPage.locator(".review-point-list li.open").first();
-  assert.equal(await plannedPoint.getByLabel("Point 2 priority").inputValue(), "high");
-  assert.equal(await plannedPoint.getByLabel("Point 2 timing").inputValue(), "today");
-  const progressList = await context.newPage();
-  await progressList.goto(`${access.url}/projects/${inlineThread.projectId}`);
-  const progressRow = progressList.locator(
-    `.thread-row:has(a[href^="/threads/${inlineThreadId}"])`,
-  );
-  await progressRow.locator('.point-progress-ring[aria-label*="1 urgent"]').waitFor();
-  await progressRow.screenshot({
-    path: join(root, ".local/remaining-todos-qa/thread-progress-list.png"),
-  });
-  await progressList.close();
-  assert.equal(await inlineThreadPage.locator(".review-main-capture").count(), 1);
-  assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
-  const mainImage = inlineThreadPage.locator(".review-main-capture");
-  assert.equal(await mainImage.locator(".review-image-pin").count(), 2);
-  await mainImage.getByRole("button", { name: "Hide pins" }).click();
-  assert.equal(await mainImage.locator(".review-image-pin").count(), 0);
-  assert.equal(
-    await inlineThreadPage.locator(".review-point-figure .review-image-pin").count(),
-    2,
-    "hiding one screenshot must not hide pins in other screenshots",
-  );
-  assert.equal(
-    await inlineThreadPage
-      .locator('.review-point-figure .review-image-pin[data-style="ring"]')
-      .count(),
-    2,
-  );
-  assert.equal(
-    await inlineThreadPage
-      .locator(".review-point-figure .review-image-pin")
-      .first()
-      .textContent(),
-    "",
-    "a point's own screenshot uses an unnumbered target ring",
-  );
-  await mainImage.getByRole("button", { name: "Show pins" }).click();
-  assert.equal(await mainImage.locator(".review-image-pin").count(), 2);
-  assert.equal(
-    await inlineThreadPage.getByRole("button", { name: "Show original view" }).count(),
-    0,
-  );
-  await inlineThreadPage.waitForFunction(() =>
-    [
-      ...document.querySelectorAll(".review-main-capture img, .review-point-figure img"),
-    ].every((image) => image.complete && image.naturalWidth > 0),
-  );
-  await inlineThreadPage.screenshot({
-    path: join(root, ".local/remaining-todos-qa/thread-inline-desktop.png"),
-    fullPage: true,
-  });
-  await inlineThreadPage.getByRole("button", { name: "Switch to dark mode" }).click();
-  await inlineThreadPage.screenshot({
-    path: join(root, ".local/remaining-todos-qa/thread-inline-dark-desktop.png"),
-    fullPage: true,
-  });
-  await inlineThreadPage.setViewportSize({ width: 390, height: 844 });
-  assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
-  await inlineThreadPage.screenshot({
-    path: join(root, ".local/remaining-todos-qa/thread-inline-dark-mobile.png"),
-    fullPage: true,
-  });
-  await inlineThreadPage.getByRole("button", { name: "Switch to light mode" }).click();
-  await inlineThreadPage
-    .getByRole("button", { name: "Resolve point", exact: true })
-    .click();
-  await inlineThreadPage
-    .getByRole("status")
-    .filter({ hasText: "Point resolved." })
-    .waitFor();
-  assert.equal(
-    await inlineThreadPage
-      .getByRole("button", { name: "Reopen point", exact: true })
-      .count(),
-    2,
-  );
-  await inlineThreadPage
-    .getByRole("button", { name: "Remove point", exact: true })
-    .last()
-    .click();
-  await inlineThreadPage
-    .getByRole("status")
-    .filter({ hasText: "Point removed." })
-    .waitFor();
-  await inlineThreadPage.getByLabel("Filter points").selectOption("removed");
-  await inlineThreadPage
-    .getByRole("button", { name: "Restore point", exact: true })
-    .click();
-  await inlineThreadPage
-    .getByRole("status")
-    .filter({ hasText: "Point reopened." })
-    .waitFor();
-  await inlineThreadPage.getByLabel("Filter points").selectOption("all");
-  assert.equal(
-    await inlineThreadPage
-      .getByRole("button", { name: "Resolve point", exact: true })
-      .count(),
-    1,
-  );
-  await inlineThreadPage.screenshot({
-    path: join(root, ".local/remaining-todos-qa/thread-inline-mobile.png"),
-  });
-  results.inlineReview.inlinePointImages = 2;
-  results.inlineReview.mobilePointSelection = true;
   const threadPage = await context.newPage();
   await threadPage.goto(
     `${access.url}/threads/${seriesThreadId}#asset-${seriesThread.assets[2].id}`,
@@ -2313,79 +2160,7 @@ try {
     worker,
   });
 
-  // A recorder retiring after a project switch cannot restore the prior review's state.
-  await page.bringToFront();
-  const switchTabId = await tabId();
-  await send({ type: "activate", tabId: switchTabId });
-  await worker.evaluate(
-    (tabId) =>
-      chrome.tabs.sendMessage(tabId, { type: "recordingState", state: "recording" }),
-    switchTabId,
-  );
-  await send({
-    type: "saveReviewPreferences",
-    reviewDefaults: {
-      navigationLocked: false,
-      highlightEnabled: false,
-      clickIndicators: false,
-    },
-  });
-  const switchLogin = await post("auth.login", {
-    email: access.email,
-    password: access.password,
-  });
-  const switchAuth = { cookie: switchLogin.cookie, csrf: switchLogin.data.csrf };
-  const alternateProject = (
-    await post(
-      "projects.create",
-      {
-        name: "Alternate synthetic review",
-        origins: [new URL(page.url()).origin],
-      },
-      switchAuth,
-    )
-  ).data;
-  // Pairing keys intentionally snapshot project access; refresh the synthetic key
-  // so this test can actually switch to the newly created project.
-  const switchPair = (await post("pairing.request", { name: "Project switch QA" })).data;
-  await post("pairing.approve", { pairingId: switchPair.pairingId }, switchAuth);
-  const switchToken = (
-    await post("pairing.poll", {
-      pairingId: switchPair.pairingId,
-      deviceSecret: switchPair.deviceSecret,
-    })
-  ).data;
-  await worker.evaluate(
-    ({ server, token }) =>
-      chrome.storage.local.set({
-        accounts: { [server]: { token } },
-      }),
-    { server: access.url, token: switchToken.token },
-  );
-  const switchedReview = await send({
-    type: "activate",
-    tabId: switchTabId,
-    projectId: alternateProject.id,
-  });
-  assert.equal(switchedReview.project.id, alternateProject.id);
-  await worker.evaluate(
-    (tabId) => chrome.tabs.sendMessage(tabId, { type: "recordingState", state: "idle" }),
-    switchTabId,
-  );
-  const switchedControls = await send({
-    type: "popupAction",
-    tabId: switchTabId,
-    action: "state",
-  });
-  assert.equal(switchedControls.navigationLocked, false);
-  assert.equal(switchedControls.highlightEnabled, false);
-  assert.equal(switchedControls.clickIndicators, false);
-  results.reviewDefaults = {
-    persisted: true,
-    keyboardFocus: true,
-    recordingRestored: true,
-    projectSwitch: true,
-  };
+  await verifyReviewDefaults({ page, tabId, send, worker, post, access, results });
   console.log(JSON.stringify(results));
 } finally {
   if (context) await context.close();
