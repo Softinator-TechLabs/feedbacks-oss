@@ -20,12 +20,12 @@ function harness({
   let attached = recordingAttached;
   let detachCount = 0;
   const source = {
-    isAttached: async () => attached,
     attach: async () => {
       if (attachFails) throw new Error("debugger unavailable");
       attached = true;
     },
     detach: async () => {
+      if (recordingAttached) return;
       attached = false;
       detachCount++;
     },

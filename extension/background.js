@@ -1,6 +1,12 @@
 import { reviewDefaults, updateReviewDefaults } from "./review/review-preferences.js";
 import { diagnosticCollector } from "./diagnostics/diagnostics.js";
 import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
+import { createDebuggerLease } from "./diagnostics/debugger-lease.js";
+import { retireObsoleteEvidence } from "./diagnostics/cleanup.js";
+import {
+  cleanupPrivateDiagnosticArchives,
+  PRIVATE_ARCHIVE_CLEANUP_ALARM,
+} from "./diagnostics/archive.js";
 import { accountFingerprint, sameDiagnosticBinding } from "./diagnostics/identity.js";
 import { createRawDiagnosticCapture } from "./diagnostics/raw-debug.js";
 import { capturePreparedDom } from "./capture/dom-stream.js";
@@ -62,14 +68,17 @@ const serverSetup = createServerSetup({
   probe: (tabId) => probeFeedbacksServer(chrome, tabId),
 });
 const recordings = createRecordingControls({ chrome, sessionFor: recordingSessionFor });
+const debuggerLease = createDebuggerLease(chrome);
 const sessionCapture = createSessionCoordinator({
   chrome,
   sessionFor,
   authenticated,
   ready,
   annotationImage: getRecordingPointImage,
+  debuggerLease,
 });
 const diagnosticEvidenceStore = createDiagnosticEvidenceStore();
+void cleanupPrivateDiagnosticArchives().catch(() => {});
 const rawDiagnostics = new Map();
 async function retireRawDiagnostics(tabId) {
   const raw = rawDiagnostics.get(tabId);
@@ -79,9 +88,8 @@ async function retireRawDiagnostics(tabId) {
   rawDiagnostics.delete(tabId);
 }
 const rawDebuggerSource = {
-  isAttached: (tabId) => sessionCapture.isRecordingDebuggerAttached(tabId),
-  attach: (tabId) => chrome.debugger.attach({ tabId }, "1.3"),
-  detach: (tabId) => chrome.debugger.detach({ tabId }),
+  attach: (tabId) => debuggerLease.acquire(tabId, "screenshot-diagnostics"),
+  detach: (tabId) => debuggerLease.release(tabId, "screenshot-diagnostics"),
   subscribeRawDebugger: (tabId, subscriber) =>
     sessionCapture.subscribeRawDebugger(tabId, subscriber),
   sendCommand: (tabId, method, params = {}, sessionId) =>
@@ -443,6 +451,8 @@ async function pollPair() {
 }
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === "pair") pollPair();
+  if (a.name === PRIVATE_ARCHIVE_CLEANUP_ALARM)
+    void cleanupPrivateDiagnosticArchives().catch(() => {});
 });
 setInterval(pollPair, 3000);
 async function sessionFor(sender) {
@@ -1791,6 +1801,12 @@ async function route(message, sender) {
         if (draft?.diagnosticEvidence?.evidenceId)
           await diagnosticEvidenceStore.deleteEvidence(
             draft.diagnosticEvidence.evidenceId,
+          );
+        if (draft)
+          await retireObsoleteEvidence(
+            draft,
+            (id) => diagnosticEvidenceStore.deleteEvidence(id),
+            async () => set({ draft }),
           );
         if (draft?.capturePages?.length) await deleteDraftPages(draft.id);
         if (draft?.sourceTabId) {

@@ -17,6 +17,7 @@ import {
   combinedSections,
 } from "../capture/markings.js";
 import { uploadDraftDiagnostics } from "../diagnostics/upload.js";
+import { retireObsoleteEvidence } from "../diagnostics/cleanup.js";
 
 export function createSubmissionWorkflow({
   get,
@@ -463,6 +464,11 @@ export function createSubmissionWorkflow({
         });
         await set({ draft });
       }
+      await retireObsoleteEvidence(
+        draft,
+        (id) => diagnosticEvidenceStore.deleteEvidence(id),
+        async () => set({ draft }),
+      );
       const url = `${draft.server}/threads/${draft.thread.id}`;
       if (draft.capturePages?.length) await deleteDraftPages(draft.id);
       await deleteDraftPages(`point-${draft.sourceTabId}`);

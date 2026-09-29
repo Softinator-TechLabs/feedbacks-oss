@@ -66,9 +66,9 @@ test("thread diagnostics render only small summaries before a user selects evide
   assert.match(html, /Console 4/);
   assert.match(html, /2 errors/);
   assert.match(html, /HTTP requests 7/);
-  assert.match(html, /Response bodies 5 of 6/);
+  assert.match(html, /Response bodies captured 5 · HTTP responses observed 6/);
   assert.match(html, /DOM 5 MiB/);
-  assert.match(html, /Response bodies unavailable/);
+  assert.match(html, /Response bodies captured unavailable/);
   assert.match(html, /Capture window/);
   assert.doesNotMatch(html, /Download captured diagnostics/);
   assert.doesNotMatch(html, /<script>window\.pwned/);
@@ -232,7 +232,7 @@ test(
       assert.deepEqual(calls, [], "initial render must use thread summaries only");
       assert.match(
         await page.locator(".diagnostic-evidence-facts").first().innerText(),
-        /HTTP requests 7 · Response bodies 5 of 6/,
+        /HTTP requests 7 · Response bodies captured 5 · HTTP responses observed 6/,
       );
       assert.match(await page.locator("#root").innerText(), /Pending/);
       assert.match(await page.locator("#root").innerText(), /Partial/);

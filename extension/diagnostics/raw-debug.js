@@ -354,10 +354,8 @@ export function createRawDiagnosticCapture({
       if (startedAt) return view();
       startedAt = new Date().toISOString();
       try {
-        if (!(await debuggerSource.isAttached(tabId))) {
-          await debuggerSource.attach(tabId);
-          attachedHere = true;
-        }
+        await debuggerSource.attach(tabId);
+        attachedHere = true;
       } catch {
         setCoverage("console", "unavailable", "debugger_attach_failed");
         setCoverage("network", "unavailable", "debugger_attach_failed");

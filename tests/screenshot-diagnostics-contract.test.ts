@@ -146,5 +146,5 @@ test("manifest rejects oversized evidence and client archive paths", () => {
     }).success,
     false,
   );
-  assert.equal(diagnosticArchiveName("dom", fileId), `dom/${fileId}.html`);
+  assert.equal(diagnosticArchiveName("dom", fileId), `dom/${fileId}.html.txt`);
 });

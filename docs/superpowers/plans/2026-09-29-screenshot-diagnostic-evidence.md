@@ -156,3 +156,16 @@
 ## Execution order
 
 Tasks 1-3 establish the shared contract and authorized storage/read path. Tasks 4-6 add browser capture and review without changing recording v1 behavior. Tasks 7-8 consume the committed manifest independently; Task 9 is the exact-revision integration gate. Rebase this plan and the spec onto merged PR #117 before Task 1, then update any moved paths in this plan before implementation.
+
+## Implementation record · 2026-09-29
+
+Tasks 1-8 are implemented on `codex/screenshot-diagnostics`, based on merged modular refactors #117, #119, #121 and #122. The browser collector shares the debugger with recording in either start order, streams DOM and other page state to local evidence, and keeps failed-cleanup IDs in the draft until deletion succeeds. Review uses one default-checked diagnostic choice. Server migration v25 stores private chunks and v26 indexes bounded diagnostic event searches. Thread UI and MCP expose compact summaries first, then authorized previews, search, archive download and local materialization. The detailed checkboxes above preserve the intended implementation sequence; the following receipts are the evidence for the implemented behavior.
+
+- Node 22 `npm run check`: 415 tests, 391 passed, 24 intentionally skipped, 0 failed; formatting, import and documentation checks, types, builds, isolated smoke and release checks passed.
+- Node 22 `npm run test:postgres`: 3 native PostgreSQL tests passed, including concurrent migration/finalize, expiry, thread move and deletion receipts.
+- Node 22 `npm run qa:extension-browser`: packaged Chrome capture, editor review, local archive and send passed. The synthetic prepared DOM was 5,408,239 bytes in six chunks with SHA-256 `db0ed5c4e5d84bed56634169f427e2181069ec8569b60c21d3252762a53228cf`. Session replay, redirect origins and navigation scenarios also passed.
+- Node 22 `npm run qa:recording-browser`: 22 tests passed.
+- Node 22 `npm run qa:app-visual -- --baseline-dir=.local/visual-baseline-stable --output-dir=.local/visual-first-stable --init-baseline=true`, followed by comparison to `.local/visual-compare-stable` with `--max-change=0.5`: 56 synthetic desktop, medium, tablet and mobile views across light and dark themes; maximum image change was 0.09%, with zero blocked external requests. This baseline is from this branch, so it checks render stability rather than comparison to a previous release. The diagnostic panel itself was inspected separately at desktop and compact widths with a 5 MiB item and escaped 4 KiB preview.
+- Impeccable's detector ran on the changed UI. It reported existing arrow-border styling as a side-tab heuristic and typography/token advisories; the generated UI screenshots and focused accessible-control tests were inspected in context.
+
+Required PR CI, a Store-installed extension, deployment and live-server behavior remain separate gates. They are not established by the local checks above.

@@ -200,7 +200,7 @@ export function diagnosticArchiveName(kind: DiagnosticChannel, fileId: string): 
   if (!diagnosticKinds.includes(kind) || !uuid.safeParse(fileId).success)
     throw new TypeError("Invalid diagnostic file identifier");
   const suffix: Record<DiagnosticChannel, string> = {
-    dom: ".html",
+    dom: ".html.txt",
     console: ".jsonl",
     network: ".jsonl",
     body: ".bin",

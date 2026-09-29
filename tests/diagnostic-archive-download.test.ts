@@ -1,9 +1,61 @@
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID, createHash } from "node:crypto";
 import { test } from "node:test";
-import { downloadDraftDiagnostics } from "../extension/diagnostics/archive.js";
+import {
+  downloadDraftDiagnostics,
+  cleanupPrivateDiagnosticArchives,
+  PRIVATE_ARCHIVE_CLEANUP_ALARM,
+} from "../extension/diagnostics/archive.js";
 
 const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+
+test("private archive cleanup runs after restart and schedules remaining files", async () => {
+  const now = Date.now();
+  const expired = `feedbacks-diag-export-${now - 2 * 3600_000}-${randomUUID()}.tar.gz`;
+  const pending = `feedbacks-diag-export-${now - 10 * 60_000}-${randomUUID()}.tar.gz`;
+  const removed: string[] = [];
+  const alarms: { name: string; when: number }[] = [];
+  const oldNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  const oldChrome = Object.getOwnPropertyDescriptor(globalThis, "chrome");
+  try {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: {
+        storage: {
+          getDirectory: async () => ({
+            entries: async function* () {
+              yield [expired, {}];
+              yield [pending, {}];
+            },
+            removeEntry: async (name: string) => {
+              removed.push(name);
+            },
+          }),
+        },
+      },
+    });
+    Object.defineProperty(globalThis, "chrome", {
+      configurable: true,
+      value: {
+        alarms: {
+          create: async (name: string, options: { when: number }) => {
+            alarms.push({ name, when: options.when });
+          },
+        },
+      },
+    });
+    await cleanupPrivateDiagnosticArchives();
+    assert.deepEqual(removed, [expired]);
+    assert.equal(alarms[0].name, PRIVATE_ARCHIVE_CLEANUP_ALARM);
+    assert.ok(alarms[0].when > now + 45 * 60_000);
+    assert.ok(alarms[0].when <= now + 51 * 60_000);
+  } finally {
+    if (oldNavigator) Object.defineProperty(globalThis, "navigator", oldNavigator);
+    else Reflect.deleteProperty(globalThis, "navigator");
+    if (oldChrome) Object.defineProperty(globalThis, "chrome", oldChrome);
+    else Reflect.deleteProperty(globalThis, "chrome");
+  }
+});
 
 test("large draft archive without a picker streams through private disk before download", async () => {
   const evidenceId = randomUUID(),

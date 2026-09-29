@@ -8,11 +8,16 @@ import {
 } from "./capture/screenshot-render.js";
 import { buildExportBlob, screenshotSurface } from "./capture/editor-export.js";
 import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
-import { diagnosticPreview, downloadDraftDiagnostics } from "./diagnostics/archive.js";
+import {
+  diagnosticPreview,
+  downloadDraftDiagnostics,
+  cleanupPrivateDiagnosticArchives,
+} from "./diagnostics/archive.js";
 import { summarizeLocalDiagnostics } from "./diagnostics/summary.js";
 
 const $ = (id) => document.getElementById(id);
 const diagnosticStore = createDiagnosticEvidenceStore();
+void cleanupPrivateDiagnosticArchives().catch(() => {});
 const send = async (message) => {
   const r = await chrome.runtime.sendMessage(message);
   if (!r.ok) throw Object.assign(Error(r.error), { code: r.code });
@@ -1226,7 +1231,7 @@ function renderDiagnostics() {
           "Response bodies",
           metrics.responseBodyCount === null || metrics.responseCount === null
             ? unavailable
-            : `${count(metrics.responseBodyCount)} of ${count(metrics.responseCount)} responses${coverage("body")}`,
+            : `${count(metrics.responseBodyCount)} captured · ${count(metrics.responseCount)} HTTP responses observed${coverage("body")}`,
         );
       })
       .catch(() => {

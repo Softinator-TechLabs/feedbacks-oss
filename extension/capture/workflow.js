@@ -2,6 +2,7 @@ import { diagnosticCollector, cleanDiagnostics } from "../diagnostics/diagnostic
 import { fullPagePlan, verifyFullPageStep } from "./full-page.js";
 import { putPage, getPage, deletePage, deleteDraftPages } from "./page-store.js";
 import { pointShapes, attachPointEvidence } from "./markings.js";
+import { queueObsoleteEvidence, retireObsoleteEvidence } from "../diagnostics/cleanup.js";
 
 export function createCaptureWorkflow({
   get,
@@ -31,17 +32,11 @@ export function createCaptureWorkflow({
     let retainedAnnotations;
     let previousDiagnosticEvidence;
     let replacedEvidenceId;
-    let replacedEvidenceDeleted = false;
     let unattachedEvidenceId;
     async function clearReplacedEvidence() {
-      if (
-        replacedEvidenceId &&
-        !replacedEvidenceDeleted &&
-        pending?.diagnosticEvidence?.evidenceId !== replacedEvidenceId
-      ) {
-        await deleteDiagnosticEvidence(replacedEvidenceId);
-        replacedEvidenceDeleted = true;
-      }
+      await retireObsoleteEvidence(pending, deleteDiagnosticEvidence, async () =>
+        set({ draft: pending }),
+      ).catch(() => {}); // The draft retains the cleanup ID for retry or discard.
     }
     let pending,
       captured = false;
@@ -178,6 +173,8 @@ export function createCaptureWorkflow({
           throw Error("The page moved while collecting point diagnostics.");
         pending.captureError = null;
         await attachPointEvidence(pending);
+        if (replacedEvidenceId && replacedEvidenceId !== unattachedEvidenceId)
+          queueObsoleteEvidence(pending, replacedEvidenceId);
         await set({ draft: pending });
         unattachedEvidenceId = null;
         await clearReplacedEvidence();
@@ -223,6 +220,8 @@ export function createCaptureWorkflow({
         throw Error("The page moved while collecting diagnostics. Retry capture.");
       guard.assert();
       pending.diagnosticEvidence = diagnosticEvidence;
+      if (replacedEvidenceId && replacedEvidenceId !== unattachedEvidenceId)
+        queueObsoleteEvidence(pending, replacedEvidenceId);
       await set({ draft: pending });
       unattachedEvidenceId = null;
       await clearReplacedEvidence();
@@ -562,7 +561,11 @@ export function createCaptureWorkflow({
       return { captured: true };
     } catch (error) {
       if (unattachedEvidenceId) {
-        await deleteDiagnosticEvidence(unattachedEvidenceId).catch(() => {});
+        try {
+          await deleteDiagnosticEvidence(unattachedEvidenceId);
+        } catch {
+          queueObsoleteEvidence(pending, unattachedEvidenceId);
+        }
         if (pending?.diagnosticEvidence?.evidenceId === unattachedEvidenceId)
           pending.diagnosticEvidence = previousDiagnosticEvidence || null;
       }

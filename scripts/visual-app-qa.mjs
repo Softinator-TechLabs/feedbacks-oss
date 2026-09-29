@@ -141,9 +141,8 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
           });
           await page.getByRole("heading", { name: "Feedback" }).waitFor();
           await page
-            .getByRole("navigation", { name: "Project navigation" })
-            .getByRole("link", { name: "GitHub" })
-            .waitFor();
+            .locator('nav[aria-label="Project navigation"]')
+            .waitFor({ state: "attached" });
           const threadLink = page.locator('a[href^="/threads/"]').first();
           await threadLink.waitFor();
           const href = await threadLink.getAttribute("href");
@@ -194,8 +193,11 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
           });
           await page.goto(`${access.url}${href}`, { waitUntil: "load" });
           await page.getByRole("heading", { name: /Feedback/ }).waitFor();
+          await page
+            .locator('nav[aria-label="Project navigation"]')
+            .waitFor({ state: "attached" });
           await page.locator("#thread-discussion").waitFor();
-          assert.equal(await page.locator("#thread-github").count(), 0);
+          assert.equal(await page.locator("#thread-github").isVisible(), false);
           await page.evaluate(() => scrollTo(0, 0));
           images[`thread-${device}-${theme}`] = await page.screenshot({
             type: "png",
@@ -205,6 +207,11 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
             waitUntil: "load",
           });
           await page.getByRole("heading", { name: "GitHub", exact: true }).waitFor();
+          await page
+            .getByRole("navigation", { name: "Project navigation" })
+            .getByRole("link", { name: "GitHub" })
+            .waitFor();
+          await page.getByRole("link", { name: "Setup guide" }).waitFor();
           await page.evaluate(() => scrollTo(0, 0));
           images[`github-${device}-${theme}`] = await page.screenshot({
             type: "png",
@@ -212,6 +219,9 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
           });
           await page.goto(`${access.url}/help`, { waitUntil: "load" });
           await page.getByRole("heading", { name: "Let’s get you connected" }).waitFor();
+          await page
+            .getByText("Checking teammates and project context…")
+            .waitFor({ state: "hidden" });
           await page.evaluate(() => scrollTo(0, 0));
           images[`help-${device}-${theme}`] = await page.screenshot({
             type: "png",
@@ -235,6 +245,11 @@ export async function captureSyntheticApp({ launchOptions = {} } = {}) {
               waitUntil: "load",
             });
             await page.getByRole("heading", { name: heading, exact: true }).waitFor();
+            await page
+              .locator('nav[aria-label="Project navigation"]')
+              .waitFor({ state: "attached" });
+            if (route === "members")
+              await page.getByPlaceholder("Search name, email or expertise").waitFor();
             assert.equal(
               await page.evaluate(
                 () => document.documentElement.scrollWidth <= innerWidth,
@@ -310,6 +325,6 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
   main().catch((error) => {
-    process.stderr.write(`${error.message}\n`);
+    process.stderr.write(`${error.stack || error.message}\n`);
     process.exitCode = 2;
   });

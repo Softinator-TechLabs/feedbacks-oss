@@ -4,7 +4,7 @@ const encoder = new TextEncoder();
 const archiveName = (manifest) =>
   `feedbacks-diagnostics-${manifest.id}-${manifest.startedAt.slice(0, 10)}.tar.gz`;
 const fileName = (file) =>
-  `${file.kind}/${file.fileId}.${file.kind === "dom" ? "html" : "bin"}`;
+  `${file.kind}/${file.fileId}.${file.kind === "dom" ? "html.txt" : "bin"}`;
 
 function header(name, size) {
   const bytes = new Uint8Array(512);
@@ -87,19 +87,37 @@ export async function diagnosticArchiveStream(store, evidenceId) {
 
 const SMALL_BLOB_LIMIT = 8 * 1024 * 1024;
 const PRIVATE_FILE_PREFIX = "feedbacks-diag-export-";
-const PRIVATE_FILE_LIFETIME = 24 * 60 * 60 * 1000;
+const PRIVATE_FILE_LIFETIME = 60 * 60 * 1000;
+export const PRIVATE_ARCHIVE_CLEANUP_ALARM = "feedbacks-diagnostic-archive-cleanup";
 
 async function clearOldPrivateArchives(root) {
   if (typeof root.entries !== "function") return;
   try {
+    let nextCleanup = Infinity;
     for await (const [name] of root.entries()) {
       const match = /^feedbacks-diag-export-(\d{13})-[0-9a-f-]{36}\.tar\.gz$/.exec(name);
-      if (match && Date.now() - Number(match[1]) > PRIVATE_FILE_LIFETIME)
-        await root.removeEntry(name).catch(() => {});
+      if (!match) continue;
+      const expiresAt = Number(match[1]) + PRIVATE_FILE_LIFETIME;
+      if (Date.now() >= expiresAt) {
+        try {
+          await root.removeEntry(name);
+        } catch {
+          nextCleanup = Math.min(nextCleanup, Date.now() + PRIVATE_FILE_LIFETIME);
+        }
+      } else nextCleanup = Math.min(nextCleanup, expiresAt);
     }
+    if (Number.isFinite(nextCleanup))
+      await globalThis.chrome?.alarms?.create(PRIVATE_ARCHIVE_CLEANUP_ALARM, {
+        when: Math.max(Date.now() + 60_000, nextCleanup),
+      });
   } catch {
     // Cleanup is best-effort; a storage enumeration error must not block export.
   }
+}
+
+export async function cleanupPrivateDiagnosticArchives() {
+  const root = await globalThis.navigator?.storage?.getDirectory?.();
+  if (root) await clearOldPrivateArchives(root);
 }
 
 async function downloadFromPrivateFile(stream, filename, root) {
@@ -115,6 +133,9 @@ async function downloadFromPrivateFile(stream, filename, root) {
     link.href = url;
     link.download = filename;
     link.click();
+    await globalThis.chrome?.alarms?.create(PRIVATE_ARCHIVE_CLEANUP_ALARM, {
+      when: Date.now() + PRIVATE_FILE_LIFETIME,
+    });
     setTimeout(
       () => {
         URL.revokeObjectURL(url);

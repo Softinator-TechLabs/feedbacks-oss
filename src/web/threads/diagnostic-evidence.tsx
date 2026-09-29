@@ -61,7 +61,7 @@ function captureFacts(item: DiagnosticEvidenceSummary) {
       ? `Console ${stats.consoleCount.toLocaleString()} (${stats.errorCount.toLocaleString()} errors)`
       : `Console / errors ${unknown}`,
     `HTTP requests ${stats ? stats.httpRequestCount.toLocaleString() : unknown}`,
-    `Response bodies ${stats ? `${stats.responseBodyCount.toLocaleString()} of ${stats.responseCount.toLocaleString()} responses` : unknown}`,
+    `Response bodies captured ${stats ? stats.responseBodyCount.toLocaleString() : unknown} · HTTP responses observed ${stats ? stats.responseCount.toLocaleString() : unknown}`,
   ].join(" · ");
 }
 

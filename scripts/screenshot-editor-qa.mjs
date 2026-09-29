@@ -244,7 +244,10 @@ try {
   const diagnosticFacts = await page.locator(".diagnostic-facts").innerText();
   assert.match(diagnosticFacts, /Console \/ errors\s+4 messages · 2 errors/);
   assert.match(diagnosticFacts, /HTTP requests\s+7 observed/);
-  assert.match(diagnosticFacts, /Response bodies\s+5 of 6 responses/);
+  assert.match(
+    diagnosticFacts,
+    /Response bodies\s+5 captured · 6 HTTP responses observed/,
+  );
   assert.match(diagnosticFacts, /DOM snapshot\s+26 bytes/);
   assert.doesNotMatch(diagnosticFacts, /38 (?:requests|observed)/);
   await mkdir(join(root, ".local/screenshot-editor-qa"), { recursive: true });

@@ -44,7 +44,7 @@ test("authorized tar.gz download preserves full DOM and uses only generated safe
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type") ?? "", /application\/gzip/);
     const files = untar(gunzipSync(Buffer.from(await response.arrayBuffer())));
-    const domName = `dom/${f.fileId}.html`;
+    const domName = `dom/${f.fileId}.html.txt`;
     assert.equal(hashDiagnostic(files.get(domName)!), hashDiagnostic(raw));
     assert.ok(
       [...files.keys()].every((name) => !name.includes("..") && !name.startsWith("/")),
