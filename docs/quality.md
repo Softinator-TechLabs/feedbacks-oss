@@ -22,3 +22,5 @@ Baseline reviewed 2026-09-26. This is an evidence inventory, not a certification
 Prioritize new work from actual failure evidence. For material gaps, create a scoped [plan](plans/README.md) with acceptance criteria, compatibility and recovery. Do not turn this list into promises about unimplemented enterprise features.
 
 Agent workflow evidence: [compact adapter tests](../tests/agent-workflow.test.ts), [MCP SDK tests](../tests/agent-mcp.test.ts), [503-thread selection and crop tests](../tests/agent-selection.test.ts), [skill installer tests](../tests/skill-install.test.ts) and the [implementation receipt](plans/agent-workflow.md). Model behavior, fresh-chat client installation and live rollout remain separate acceptance gates.
+
+GitHub operation evidence: [connection and Issue tests](../tests/github-app.test.ts), [quick Issue tests](../tests/github-quick-issue.test.ts), and [status sync tests](../tests/github-status-sync.test.ts) cover the grouped server handlers. These tests use controlled GitHub responses; they do not establish live GitHub App installation or external failure behavior in production.
