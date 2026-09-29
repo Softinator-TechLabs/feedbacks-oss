@@ -6,6 +6,7 @@ export const scopedAgentOperations = [
   "projects.get",
   "threads.list",
   "threads.get",
+  "threads.activity",
   "threads.reply",
   "threads.status",
   "threads.linkIssue",
@@ -120,6 +121,17 @@ export const ownerTokenScopes = [
   ),
   "context.policy",
 ];
+// Human-selected optional reads on newly issued owner keys. Existing keys stay unchanged.
+export const ownerEvidenceReadScopes = [
+  "recordings.list",
+  "recordings.get",
+  "recordings.events",
+  "recordings.export",
+  "diagnostics.list",
+  "diagnostics.describe",
+  "diagnostics.read",
+  "diagnostics.search",
+] as const;
 const readOperations = new Set<string>([
   "assignments.delegations",
   "assignments.history",
@@ -153,6 +165,7 @@ const readOperations = new Set<string>([
   "tokens.list",
   "threads.list",
   "threads.get",
+  "threads.activity",
   "threads.issueDraft",
   "threads.neighbors",
   "reviewViews.list",
@@ -181,3 +194,22 @@ export const operationRegistry = Object.fromEntries(
     },
   ]),
 ) as Record<string, { input: z.ZodType; output: z.ZodObject<any>; readOnly: boolean }>;
+
+// A group lists alternative scopes; every group must be satisfied. These are
+// operation-scope checks only: project roles and domain checks still apply.
+export function operationScopeRequirements(name: string): string[][] {
+  if (name === "assets.uploadVideo") return [[name, "assets.upload"]];
+  if (name === "threads.activity") return [[name, "threads.get"]];
+  if (name === "recordings.export") return [[name], ["threads.get"]];
+  if (name === "diagnostics.search") return [[name], ["diagnostics.read"]];
+  return [[name]];
+}
+export function missingOperationScopes(
+  scopes: readonly string[] | undefined,
+  name: string,
+): string[] {
+  if (!scopes) return [];
+  return operationScopeRequirements(name)
+    .filter((group) => !group.some((scope) => scopes.includes(scope)))
+    .map((group) => group[0]);
+}

@@ -1,9 +1,5 @@
 import React, { useRef, useState } from "react";
-import {
-  buildTaskHandoff,
-  type HandoffAssignments,
-  type HandoffRecordings,
-} from "../../shared/task-handoff.js";
+import { buildTaskHandoff, readHandoffExtras } from "../../shared/task-handoff.js";
 import { Icon } from "../icons.js";
 import { api, type Project, type Thread } from "../api.js";
 import { ErrorNotice, showToast, useAction } from "../ui.js";
@@ -24,17 +20,15 @@ export function ThreadTaskCopy({
     pending.current = true;
     try {
       await action.run(async () => {
-        const [fresh, assignments, recordings] = await Promise.all([
-          api<Thread>("threads.get", { threadId: thread.id }),
-          api<HandoffAssignments>("assignments.delegations", {
-            projectId: project.id,
-            threadId: thread.id,
-            state: "active",
-            limit: 50,
-            offset: 0,
-          }),
-          api<HandoffRecordings>("recordings.list", { threadId: thread.id }),
-        ]);
+        const fresh = await api<Thread>("threads.get", { threadId: thread.id });
+        if (fresh.projectId !== project.id)
+          throw new Error(
+            "This task moved to another project. Reload it before copying.",
+          );
+        const { assignments, recordings } = await readHandoffExtras(api, {
+          threadId: fresh.id,
+          projectId: fresh.projectId,
+        });
         const result = buildTaskHandoff({
           thread: fresh,
           project,
@@ -48,7 +42,7 @@ export function ThreadTaskCopy({
           showToast(
             result.truncated
               ? "Task copied. Long sections have explicit MCP continuation instructions."
-              : "Task copied. Paste it into your coding agent.",
+              : "Task copied. Paste it to authorize work and progress replies in this thread.",
           );
         } catch {
           setManual(result.text);
@@ -65,7 +59,11 @@ export function ThreadTaskCopy({
         type="button"
         className="thread-icon-button"
         aria-label={action.busy ? "Preparing task…" : "Copy task for agent"}
-        data-tooltip={action.busy ? "Preparing task…" : "Copy task for agent"}
+        data-tooltip={
+          action.busy
+            ? "Preparing task…"
+            : "Copy task: authorize work and progress replies"
+        }
         disabled={action.busy}
         onClick={() => void copy()}
       >
@@ -74,7 +72,10 @@ export function ThreadTaskCopy({
       <ErrorNotice error={action.error} />
       <dialog ref={dialog} className="task-copy-dialog" aria-labelledby="task-copy-title">
         <h2 id="task-copy-title">Copy task for agent</h2>
-        <p>Your browser blocked clipboard access. Select and copy this task text.</p>
+        <p>
+          Your browser blocked clipboard access. Select and copy this task text. Pasting
+          it into your agent authorizes work and progress replies in this thread.
+        </p>
         <textarea
           aria-label="Task prompt"
           readOnly

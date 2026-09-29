@@ -48,9 +48,18 @@ function toolError(error: unknown) {
     error instanceof DomainError || error instanceof AgentWorkflowError
       ? error
       : new DomainError("INTERNAL", "Operation failed", 500);
+  const details = {
+    code: e.code,
+    message: e.message,
+    ...(e instanceof DomainError ? e.details : {}),
+  };
+  // Legacy clients validate structuredContent against the SUCCESS schema even
+  // for isError. Keep errors machine-readable in content/metadata without
+  // weakening every operation's output contract or hiding the recovery text.
   return {
     isError: true,
-    content: [{ type: "text" as const, text: `${e.code}: ${e.message}` }],
+    _meta: { error: details },
+    content: [{ type: "text" as const, text: JSON.stringify({ error: details }) }],
   };
 }
 export function mcpServer(
@@ -134,7 +143,8 @@ export function mcpServer(
         ],
       }),
     );
-  if (profile === "compact") {
+  {
+    // Entry tools are stable in both profiles; full retains direct operations.
     for (const tool of Object.keys(agentToolSchemas) as AgentTool[])
       server.registerTool(
         `feedbacks_${tool}`,

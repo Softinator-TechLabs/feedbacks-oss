@@ -168,7 +168,7 @@ test("full-profile image preview validates against its advertised output schema"
   }
 });
 
-test("compact MCP offers seven tools, native images, text fallback, guides and scoped failures", async () => {
+test("compact MCP offers eight tools, native images, text fallback, guides and scoped failures", async () => {
   const execute = async (name: string) => {
     if (name === "assets.get")
       return {
@@ -193,7 +193,7 @@ test("compact MCP offers seven tools, native images, text fallback, guides and s
     await server.connect(a);
     await client.connect(b);
     const tools = await client.listTools();
-    assert.equal(tools.tools.length, 7);
+    assert.equal(tools.tools.length, 8);
     assert.ok(client.getInstructions()?.includes("Feedbacks"));
     const guide = await client.callTool({
       name: "feedbacks_guide",
@@ -219,6 +219,65 @@ test("compact MCP offers seven tools, native images, text fallback, guides and s
     assert.equal((await client.listPrompts()).prompts[0].name, "review-feedback");
     const resource = await client.readResource({ uri: "feedbacks://guide/start" });
     assert.ok((resource.contents[0] as any).text.includes("createdAfter"));
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});
+
+for (const profile of ["full", "compact"] as const)
+  test(`${profile} exposes the same task entry tools without repeated workflow text`, async () => {
+    const server = mcpServer(async () => ({}), profile);
+    const client = new Client({ name: "task-entry", version: "1" });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    try {
+      await server.connect(a);
+      await client.connect(b);
+      const names = (await client.listTools()).tools.map((t) => t.name);
+      for (const name of [
+        "feedbacks_start",
+        "feedbacks_thread",
+        "feedbacks_asset",
+        "feedbacks_describe",
+        "feedbacks_guide",
+      ])
+        assert.ok(names.includes(name), name);
+      if (profile === "full") assert.ok(names.includes("threads.get"));
+      assert.ok((client.getInstructions() ?? "").length < 1000);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+test("MCP errors preserve actionable scope information", async () => {
+  const server = mcpServer(async () => {
+    throw new DomainError("FORBIDDEN", "Missing scope: recordings.list", 403, {
+      operation: "recordings.list",
+      requiredScopes: ["recordings.list"],
+      recovery: "Create a replacement key in Account.",
+    });
+  }, "compact");
+  const client = new Client({ name: "scope-errors", version: "1" });
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  try {
+    await server.connect(a);
+    await client.connect(b);
+    await client.listTools();
+    const result = await client.callTool({
+      name: "feedbacks_execute",
+      arguments: {
+        operation: "recordings.list",
+        input: { threadId: "8c06f94d-fca6-4333-84b7-671e560812bc" },
+      },
+    });
+    assert.equal(result.isError, true);
+    assert.deepEqual((result._meta as any).error.requiredScopes, ["recordings.list"]);
+    assert.match((result.content[0] as any).text, /replacement key/);
+    assert.equal(
+      JSON.parse((result.content[0] as any).text).error.operation,
+      "recordings.list",
+    );
   } finally {
     await client.close();
     await server.close();

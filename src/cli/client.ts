@@ -73,6 +73,7 @@ export async function apiClient() {
         body.error?.code ?? "HTTP_ERROR",
         body.error?.message ?? "Request failed",
         response.status,
+        body.error?.details,
       );
     return body.data;
   };

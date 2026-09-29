@@ -235,6 +235,10 @@
   position: relative;
   max-width: 100%;
 }
+.thread-header-actions .thread-task-copy [data-tooltip]::after {
+  left: 0;
+  right: auto;
+}
 .thread-task-copy .error {
   max-width: 380px;
 }

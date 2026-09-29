@@ -4,7 +4,7 @@ Exact schemas and callable operation names are in the [API reference](api.md). T
 
 ## Independent status dimensions
 
-The optional compact profile (`/mcp?profile=compact`, or stdio `FEEDBACKS_MCP_PROFILE=compact`) provides progressive project/queue/thread/media access over these same operation scopes. See [compact tools and CLI](agents.md#compact-profile-and-cli). Both profiles expose the same static skill resources and prompt. Compact calls do not mint scopes or bypass authorization. Read `expectedRevision`, `expectedContentVersion`, `nextOffset` and `nextTextOffset` before continuing section reads. Native image metadata includes preview dimensions and optional original-pixel crop.
+The optional compact profile (`/mcp?profile=compact`, or stdio `FEEDBACKS_MCP_PROFILE=compact`) provides progressive project/queue/thread/media access over these same operation scopes. See [compact tools and CLI](agents.md#compact-profile-and-cli). Both profiles expose the same compact entry tools, static skill resources and prompt; full also retains direct operations. `feedbacks_start` is read-only and composes permitted task, identity, instruction and coordination reads. Compact calls do not mint scopes or bypass authorization. Read `expectedRevision`, `expectedContentVersion`, `nextOffset` and `nextTextOffset` before continuing section reads. Native image metadata includes preview dimensions and optional original-pixel crop.
 
 | Dimension      | States / data                                                                                                   | Changes pin visibility?                     |
 | -------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
@@ -15,6 +15,12 @@ The optional compact profile (`/mcp?profile=compact`, or stdio `FEEDBACKS_MCP_PR
 | Fix evidence   | Attributed commit/PR/variant/incorporated-in URL and note                                                       | Only an authorized resolution hides the pin |
 
 An Issue being closed is not proof that a deployed UI is fixed. A reply is not a fix. A failed write never changes either status or pin visibility optimistically without a recoverable pending/error state.
+
+## Identity and denied operations
+
+`auth.me` adds `member`, `serverOrigin` and `credential` information. The credential identifies token versus session scope mode, granted scopes, effective operation-scope grants, selected projects and resolution grant. These are not a bypass of current project or domain authorization. Missing operation scopes return `FORBIDDEN` with `operation`, `requiredScopes`, `reason` and `recovery` in HTTP error details and MCP JSON error text/metadata. MCP errors omit success `structuredContent`, preserving legacy clients that validate that field even when `isError` is true. CLI errors retain the same details. Clients should not repeat an unchanged denied call.
+
+`threads.activity` accepts `threadId`, optional `before` cursor and bounded `limit`; it requires current thread access and either `threads.get` or `threads.activity`. It returns whitelisted event metadata, current revision, coverage limits and `nextBefore`. It excludes raw payloads, actors, historical message bodies and failed attempts.
 
 ## Structured result
 

@@ -35,5 +35,7 @@ export {
   businessOperations,
   agentOperations,
   ownerTokenScopes,
+  ownerEvidenceReadScopes,
   operationRegistry,
+  missingOperationScopes,
 } from "./contracts/scopes.js";

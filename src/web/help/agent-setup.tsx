@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   ownerTokenScopes,
+  ownerEvidenceReadScopes,
   selfAgentTokenScopes,
   profileOnlyAgentScopes,
 } from "../../shared/contracts.js";
@@ -22,6 +23,7 @@ export function HelpAgentSetup({
   const [issued, setIssued] = useState<AgentIssuance>();
   const [prompt, setPrompt] = useState("");
   const [showPrompt, setShowPrompt] = useState(false);
+  const [evidenceAccess, setEvidenceAccess] = useState(false);
 
   if (!actor)
     return (
@@ -32,7 +34,7 @@ export function HelpAgentSetup({
     );
 
   const scopes = actor.owner
-    ? ownerTokenScopes
+    ? [...ownerTokenScopes, ...(evidenceAccess ? ownerEvidenceReadScopes : [])]
     : projects.length
       ? selfAgentTokenScopes
       : profileOnlyAgentScopes;
@@ -84,11 +86,30 @@ export function HelpAgentSetup({
         <p className="help-key-warning">
           Private 90-day key.{" "}
           {actor.owner
-            ? `Full owner access to current and future projects${actor.primaryOwner ? ", including private member notes" : ""}.`
+            ? `Owner administration for current and future projects${actor.primaryOwner ? ", including private member notes" : ""}.`
             : `Your existing access to ${projects.length ? "current projects and profile" : "your profile only"}.`}{" "}
           Only share with your own agent.
         </p>
       </div>
+      {actor.owner && (
+        <div>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={evidenceAccess}
+              disabled={!!issued || action.busy}
+              onChange={(event) => setEvidenceAccess(event.target.checked)}
+              aria-describedby="agent-evidence-help"
+            />
+            Read shared recordings and diagnostics
+          </label>
+          <p className="muted" id="agent-evidence-help">
+            Allows your agent to inspect captured page content, console and network
+            evidence. Applies to this new key only. Existing keys keep their permissions;
+            create a replacement and reconnect your agent if access is missing.
+          </p>
+        </div>
+      )}
       <div className="help-agent-actions">
         <button
           className="primary"

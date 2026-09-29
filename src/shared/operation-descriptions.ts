@@ -98,6 +98,8 @@ export const operationDescriptions: Record<string, string> = {
     "Permanently remove only your own human or extension-authored discussion reply and its likes with a signed-in human session and current project write access. Requires current thread revision and stable idempotencyKey. Rebuilds response state from remaining discussion. Existing immutable export snapshots retain their captured content until expiry.",
   "threads.organize":
     "Replace optional category and tags using the current revision. Read existing tags first to preserve relevant labels. Does not change workflow status.",
+  "threads.activity":
+    "Read paginated saved lifecycle metadata (creation, attachment, move, reply and status). Requires threads.activity or threads.get plus current project access. No raw event payloads. Follow nextBefore; missing events cannot establish whether an upload was attempted.",
   "threads.move":
     "Move a thread only on explicit human request using its current revision and destination projectId. Requires maintain access and token scope in both projects. Preserves ID, discussion, assets and work plans; revokes guest links and invalidates export snapshots. Shared documents, active external sync and assignees/workers missing destination access can block it. GitHub links remain with automatic sync paused. Never connect GitHub or widen membership to force a move. Read back projectId and revision.",
   "threads.plan":

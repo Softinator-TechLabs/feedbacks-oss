@@ -259,6 +259,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
     res.status(status).json({
       ok: false,
       error: {
+        ...(known && error.details ? { details: error.details } : {}),
         code: known
           ? error.code
           : status === 413
