@@ -20,7 +20,7 @@ Use incremental feature folders and extraction. Keep browser and server entrypoi
 - [x] Split thread list, composer, detail, and related UI into `src/web/threads/`; keep imports and CSS working. Move assignment and recording helpers into their own feature folders.
 - [x] Group project, member, and account settings by feature.
 - [x] Split broad web CSS by ownership boundaries without changing cascade order.
-- [ ] Divide shared operation schemas into domain modules under `src/shared/contracts/`, preserving the single typed operation registry and generated catalog.
+- [x] Divide shared operation schemas into domain modules under `src/shared/contracts/`, preserving the single typed operation registry and generated catalog.
 - [ ] Extract extension capture, editing, and session concerns into focused folders while keeping manifest entrypoints, Chrome message behavior, and ZIP contents compatible.
 - [ ] Split extension browser QA into a common fixture and independently identifiable workflow scenarios.
 - [ ] Reassess server transport and dispatch for focused extraction; preserve transaction and authorization boundaries.
@@ -37,6 +37,7 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: The first web stage passed the full Node 22 check and three Chromium recording-viewer scenarios. No product behavior was changed.
 - 2026-09-29: Project, member, and account views now have feature folders. The full Node 22 check and filter UI browser QA pass; a Node test caught and resolved the split JSX runtime import requirement.
 - 2026-09-29: Split the global stylesheet into ordered feature files and the thread detail stylesheet into core, header, evidence, and assignment files. The production CSS asset remained byte-identical after formatting.
+- 2026-09-29: Split all 137 input and output schemas across ten domain modules. Kept the original `contracts.ts` import path, every public export, both operation key orders, scopes, and registry composition. The full Node 22 check passed.
 
 ## Completion receipt
 
