@@ -38,6 +38,7 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Project, member, and account views now have feature folders. The full Node 22 check and filter UI browser QA pass; a Node test caught and resolved the split JSX runtime import requirement.
 - 2026-09-29: Split the global stylesheet into ordered feature files and the thread detail stylesheet into core, header, evidence, and assignment files. The production CSS asset remained byte-identical after formatting.
 - 2026-09-29: Split all 137 input and output schemas across ten domain modules. Kept the original `contracts.ts` import path, every public export, both operation key orders, scopes, and registry composition. The full Node 22 check passed.
+- 2026-09-29: Moved screenshot, page storage, redaction, export, and full-page helpers into `extension/capture/`. Kept manifest entrypoints and allowed only that explicit nested directory in packaging and synthetic browser serving. Nine focused tests and the extension Chromium QA scenarios passed.
 
 ## Completion receipt
 

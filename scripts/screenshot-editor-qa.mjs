@@ -11,8 +11,8 @@ const redactionFunction = backgroundSource.slice(
   backgroundSource.indexOf("async function redactDraft("),
   backgroundSource.indexOf("async function redactDiagnostic("),
 );
-const redactionFixture = `import {getPage,putPage,deletePage,deleteDraftPages} from "/extension/page-store.js";
-import {redactInsertedImages} from "/extension/screenshot-redaction.js";
+const redactionFixture = `import {getPage,putPage,deletePage,deleteDraftPages} from "/extension/capture/page-store.js";
+import {redactInsertedImages} from "/extension/capture/screenshot-redaction.js";
 const get = async () => ({draft:window.qaDraft});
 const set = async value => { Object.assign(window.qaDraft,value.draft); window.qaPersist(); };
 ${redactionFunction}
@@ -30,7 +30,8 @@ const server = createServer(async (req, res) => {
   }
   try {
     const name = path.slice(1);
-    if (!/^extension\/[a-z-]+\.(js|css|html)$/.test(name)) throw Error();
+    if (!/^extension\/(?:[a-z-]+\.(?:js|css|html)|capture\/[a-z-]+\.js)$/.test(name))
+      throw Error();
     res.setHeader(
       "Content-Type",
       name.endsWith("js")
@@ -82,7 +83,7 @@ try {
       runtime: {
         onMessage: { addListener() {} },
         async sendMessage(message) {
-          const store = await import("/extension/page-store.js");
+          const store = await import("/extension/capture/page-store.js");
           if (message.type === "draft") return { ok: true, data: structuredClone(draft) };
           if (message.type === "draftProjects")
             return {
@@ -141,7 +142,7 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${origin}/fixture`);
   await page.evaluate(async () => {
-    const { putPage } = await import("/extension/page-store.js");
+    const { putPage } = await import("/extension/capture/page-store.js");
     const canvas = new OffscreenCanvas(433, 1000),
       ctx = canvas.getContext("2d");
     ctx.fillStyle = "white";
@@ -404,7 +405,7 @@ try {
     "the hideable image removes the drawn pin",
   );
   const markerPixels = await page.evaluate(async () => {
-    const { drawShape } = await import("/extension/screenshot-render.js");
+    const { drawShape } = await import("/extension/capture/screenshot-render.js");
     const result = {};
     for (const style of ["none", "ring", "dot", "arrow", "pin"]) {
       const canvas = document.createElement("canvas");
@@ -521,7 +522,7 @@ try {
   await page.waitForTimeout(350);
   // The viewport (non-series) path must replace its persisted source as well.
   const viewportSource = await page.evaluate(async (originalImage) => {
-    const store = await import("/extension/page-store.js");
+    const store = await import("/extension/capture/page-store.js");
     Object.assign(window.qaDraft, {
       capturePages: [],
       image: await store.pageDataUrl(await store.getPage("synthetic-editor", 0)),

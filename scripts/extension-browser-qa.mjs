@@ -2236,7 +2236,7 @@ try {
     interruptedCombined?.frozen &&
     interruptedCombined.uploadIndex === interruptedCombined.capturePages.length;
   await removableEditor.evaluate(async (draftId) => {
-    const { putPage } = await import(chrome.runtime.getURL("page-store.js"));
+    const { putPage } = await import(chrome.runtime.getURL("capture/page-store.js"));
     const oversized = new OffscreenCanvas(1920, 15000);
     const context = oversized.getContext("2d");
     context.fillStyle = "#f6f7f8";

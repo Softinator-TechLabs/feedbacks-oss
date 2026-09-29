@@ -1,12 +1,12 @@
-import { getPage } from "./page-store.js";
+import { getPage } from "./capture/page-store.js";
 import {
   drawShape,
   paintScreenshot,
   prepareShapes,
   clearPreparedShapes,
   shapeRectangle,
-} from "./screenshot-render.js";
-import { exportDimensions, screenshotsPdf } from "./screenshot-export.js";
+} from "./capture/screenshot-render.js";
+import { exportDimensions, screenshotsPdf } from "./capture/screenshot-export.js";
 
 const $ = (id) => document.getElementById(id);
 const send = async (message) => {

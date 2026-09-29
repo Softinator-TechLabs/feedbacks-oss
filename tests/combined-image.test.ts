@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   combinedImageNeedsResize,
   combinedImageSize,
-} from "../extension/combined-image.js";
+} from "../extension/capture/combined-image.js";
 
 test("combined overview stays inside upload decoder limits on long and Retina pages", () => {
   for (const [width, height] of [

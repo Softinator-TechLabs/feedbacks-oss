@@ -1,4 +1,4 @@
-import "./utils.js";
+import "../utils.js";
 
 export function pageOverviewTarget(server, projectId, pageUrl, width, scope = "page") {
   const url = globalThis.FeedbacksUtil.safeUrl(pageUrl);
