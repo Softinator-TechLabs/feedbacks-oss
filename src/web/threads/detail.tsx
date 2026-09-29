@@ -276,6 +276,15 @@ export function ThreadDetail({
                 canWrite={project.permissions.canWrite}
               />
               <ThreadTaskCopy thread={t} project={project} />
+              <a
+                className="thread-icon-button"
+                href={`/api/threads/${encodeURIComponent(t.id)}/archive`}
+                aria-label="Download complete thread bundle"
+                data-tooltip="Download complete thread bundle"
+                title="Download complete thread bundle"
+              >
+                <Icon name="download" />
+              </a>
             </>
           )}
           {project?.reviewEnabled && (

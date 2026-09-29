@@ -2,6 +2,7 @@ import React from "react";
 
 const paths = {
   copy: "M9 9h12v12H9zM5 15H3V3h12v2",
+  download: "M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4",
   calendar: "M3 5h18v16H3zM7 3v4M17 3v4M3 11h18",
   flag: "M5 21V3l7 2 7-2v11l-7 2-7-2",
   attachment:

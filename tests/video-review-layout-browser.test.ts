@@ -33,26 +33,34 @@ test(
           "preview",
           "capture-inspector",
           "editing",
+          "video-edit-tools",
           "review",
           "saved-frames",
         ])
           document.getElementById(id)!.hidden = false;
         document.getElementById("capture-inspector")!.innerHTML =
-          '<h2>Recorded moments</h2><div class="review-events">Activity · Console · Network</div>';
+          '<div class="review-tabs"><button aria-selected="true">Everything (3)</button><button>Activity</button><button>Console</button><button>Network</button></div><button class="review-follow" aria-pressed="true">Following playback</button><div class="review-events"><button class="review-event"><time>0:01.2</time><span class="review-event-tag">Activity</span>Clicked Submit</button><button class="review-event"><time>0:02.1</time><span class="review-event-tag">Console</span>Warning in form</button><button class="review-event"><time>0:02.4</time><span class="review-event-tag">Network</span>POST /submit · 500</button></div>';
         document.getElementById("capture-inspector")!.classList.add("session-review");
         document
-          .querySelector("#editing .timeline")!
+          .querySelector("#editing .timeline-rail")!
           .insertAdjacentHTML(
             "beforeend",
-            '<div class="review-timeline-events">Click · Console · Network</div>',
+            '<div class="review-timeline-events"><button class="review-timeline-mark" data-channel="activity" style="left:20%"></button><button class="review-timeline-mark" data-channel="console" style="left:55%"></button><button class="review-timeline-mark" data-channel="network" style="left:70%"></button></div><div class="review-timeline-playhead" style="left:55%"></div>',
           );
       });
       const video = (await page.locator("#preview").boundingBox())!;
       const inspector = (await page.locator("#capture-inspector").boundingBox())!;
       const editor = (await page.locator("#editing").boundingBox())!;
+      const tools = (await page.locator("#video-edit-tools").boundingBox())!;
       const review = (await page.locator("#review").boundingBox())!;
       assert.ok(video.width >= 1050 && inspector.width >= 1050);
-      assert.ok(video.y < editor.y && editor.y < inspector.y && inspector.y < review.y);
+      assert.ok(
+        video.y < editor.y &&
+          editor.y < inspector.y &&
+          inspector.y < tools.y &&
+          tools.y < review.y,
+      );
+      assert.ok(inspector.y - (editor.y + editor.height) <= 8);
       const marks = (await page.locator(".review-timeline-events").boundingBox())!;
       const events = (await page.locator(".review-events").boundingBox())!;
       assert.ok(video.y < marks.y && marks.y < events.y);
@@ -74,12 +82,14 @@ test(
       const mobileVideo = (await page.locator("#preview").boundingBox())!;
       const mobileInspector = (await page.locator("#capture-inspector").boundingBox())!;
       const mobileEditor = (await page.locator("#editing").boundingBox())!;
+      const mobileTools = (await page.locator("#video-edit-tools").boundingBox())!;
       const mobileReview = (await page.locator("#review").boundingBox())!;
       assert.ok(mobileVideo.width <= 390 && mobileReview.width <= 390);
       assert.ok(
         mobileVideo.y < mobileEditor.y &&
           mobileEditor.y < mobileInspector.y &&
-          mobileInspector.y < mobileReview.y,
+          mobileInspector.y < mobileTools.y &&
+          mobileTools.y < mobileReview.y,
       );
       await page.screenshot({
         path: "output/playwright/video-review-layout/mobile.png",

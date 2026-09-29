@@ -87,47 +87,44 @@
         <div class="review-primary">
           <video id="preview" playsinline hidden aria-label="Recording preview"></video>
           <section id="editing" hidden aria-label="Video editor">
-            <div class="timeline-heading">
-              <strong>Trim video</strong><span id="trim-duration"></span>
-            </div>
-            <p class="hint timeline-hint">
-              Drag either end to trim. Play to preview your selection.
-            </p>
+            <span id="trim-duration" class="sr-only"></span>
             <div class="timeline">
-              <div id="trim-track">
-                <canvas id="trim-thumbnails" aria-hidden="true"></canvas>
-                <div id="trim-selection" aria-hidden="true"></div>
-                <div id="trim-playhead" aria-hidden="true"></div>
-                <button
-                  id="trim-start-handle"
-                  class="trim-handle"
-                  role="slider"
-                  aria-label="Trim start"
-                  aria-orientation="horizontal"
-                  title="Drag to trim the beginning"
-                >
-                  <span></span>
-                </button>
-                <button
-                  id="trim-end-handle"
-                  class="trim-handle"
-                  role="slider"
-                  aria-label="Trim end"
-                  aria-orientation="horizontal"
-                  title="Drag to trim the end"
-                >
-                  <span></span>
-                </button>
+              <div class="timeline-rail">
+                <div id="trim-track">
+                  <canvas id="trim-thumbnails" aria-hidden="true"></canvas>
+                  <div id="trim-selection" aria-hidden="true"></div>
+                  <div id="trim-playhead" aria-hidden="true"></div>
+                  <button
+                    id="trim-start-handle"
+                    class="trim-handle"
+                    role="slider"
+                    aria-label="Trim start"
+                    aria-orientation="horizontal"
+                    title="Drag to trim the beginning"
+                  >
+                    <span></span>
+                  </button>
+                  <button
+                    id="trim-end-handle"
+                    class="trim-handle"
+                    role="slider"
+                    aria-label="Trim end"
+                    aria-orientation="horizontal"
+                    title="Drag to trim the end"
+                  >
+                    <span></span>
+                  </button>
+                </div>
+                <input
+                  id="trim-seek"
+                  type="range"
+                  min="0"
+                  max="300"
+                  step="0.01"
+                  value="0"
+                  aria-label="Seek preview"
+                />
               </div>
-              <input
-                id="trim-seek"
-                type="range"
-                min="0"
-                max="300"
-                step="0.01"
-                value="0"
-                aria-label="Seek preview"
-              />
               <div class="timeline-playback">
                 <button id="trim-play" aria-label="Play selection" title="Play selection">
                   <svg id="trim-play-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -148,6 +145,12 @@
                 ></span>
               </div>
             </div>
+          </section>
+        </div>
+        <div class="review-secondary">
+          <section id="capture-inspector" hidden></section>
+          <details id="video-edit-tools" hidden>
+            <summary>Edit video</summary>
             <details id="precise-trim">
               <summary>Precise adjustments</summary>
               <div class="edit-fields">
@@ -212,10 +215,7 @@
               <button id="cancel-edit" hidden>Cancel export</button>
               <button id="reset-edit">Restore original</button>
             </div>
-          </section>
-        </div>
-        <div class="review-secondary">
-          <section id="capture-inspector" hidden></section>
+          </details>
           <div id="saved-frames" hidden></div>
           <section id="review" hidden>
             <label for="comment">Comment for this project</label>

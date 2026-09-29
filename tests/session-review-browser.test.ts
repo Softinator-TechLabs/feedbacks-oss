@@ -130,6 +130,53 @@ test(
     );
 
     await t.test(
+      "a late timeline dot opens and centers its exact event row",
+      async () => {
+        await page.evaluate(() =>
+          (window as any).mount(
+            {
+              durationMs: 26000,
+              environment: { browser: "Synthetic" },
+              events: [
+                ...Array.from({ length: 225 }, (_, seq) => ({
+                  seq,
+                  atMs: (seq + 1) * 100,
+                  type: "activity",
+                  data: { action: "click", label: `Step ${seq + 1}` },
+                })),
+                {
+                  seq: 225,
+                  atMs: 23000,
+                  type: "activity",
+                  data: { action: "click", label: "Target action" },
+                },
+              ],
+            },
+            { offsetMs: 0 },
+          ),
+        );
+        await page.getByRole("button", { name: /Click at 0:23\.0/ }).click();
+        const row = page.locator('.review-event[data-seq="225"]');
+        assert.equal(
+          await row.count(),
+          1,
+          "the selected event must change the event page",
+        );
+        assert.equal(await row.getAttribute("aria-current"), "true");
+        assert.equal(
+          await page.locator(".review-events").evaluate((list) => {
+            const row = list.querySelector('[data-seq="225"]')!;
+            const listRect = list.getBoundingClientRect();
+            const rowRect = row.getBoundingClientRect();
+            return rowRect.top >= listRect.top && rowRect.bottom <= listRect.bottom;
+          }),
+          true,
+          "the inner event list must scroll to the selected row",
+        );
+      },
+    );
+
+    await t.test(
       "screenshot comments show literal authored text and seek their source moment",
       async () => {
         await page.evaluate(() =>
@@ -332,7 +379,7 @@ test(
         await page.evaluate(() => {
           document.body.insertAdjacentHTML(
             "beforeend",
-            '<section id="editing"><div class="timeline"><input id="trim-seek" type="range" /><div class="timeline-playback"></div></div></section>',
+            '<section id="editing"><div class="timeline"><div class="timeline-rail"><input id="trim-seek" type="range" /></div><div class="timeline-playback"></div></div></section>',
           );
           (window as any).mount(
             {
@@ -378,6 +425,21 @@ test(
         );
         await page.getByRole("button", { name: /Click at 0:02.5/ }).click();
         assert.equal(await page.evaluate(() => (window as any).media.currentTime), 1.5);
+        assert.equal(
+          await page
+            .locator("#editing .review-timeline-playhead")
+            .evaluate((line) => (line as HTMLElement).style.left),
+          "75%",
+          "the selected event and playhead share the editor rail",
+        );
+        await page.evaluate(() =>
+          (window as any).media.dispatchEvent(new Event("click")),
+        );
+        assert.equal(await page.evaluate(() => (window as any).media.paused), false);
+        await page.evaluate(() =>
+          (window as any).media.dispatchEvent(new Event("click")),
+        );
+        assert.equal(await page.evaluate(() => (window as any).media.paused), true);
         await page.evaluate(() =>
           (window as any).mount(
             {

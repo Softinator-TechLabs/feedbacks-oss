@@ -1,8 +1,8 @@
 .session-review {
-  margin: 24px 0;
+  margin: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 18px;
+  padding: 12px 18px 18px;
 }
 .session-review h2 {
   margin: 0 0 8px;
@@ -30,7 +30,17 @@
   border-bottom: 1px solid var(--line);
 }
 .timeline .review-timeline-events {
-  margin: 4px 20px 8px;
+  margin: 4px 0 4px;
+}
+.review-timeline-playhead {
+  position: absolute;
+  z-index: 2;
+  top: 72px;
+  bottom: 4px;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--text);
+  pointer-events: none;
 }
 .review-timeline-mark {
   position: absolute;
@@ -144,7 +154,8 @@
 .review-events {
   max-height: 360px;
   overflow: auto;
-  margin-top: 12px;
+  margin-top: 2px;
+  overscroll-behavior: contain;
 }
 .review-event {
   display: flex;
@@ -215,7 +226,7 @@
   overflow-wrap: anywhere;
 }
 .review-guide {
-  margin: 8px 0;
+  margin: 16px 0 0;
   color: var(--muted);
   font-size: 12px;
 }
@@ -312,9 +323,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 12px 0;
+  margin: 4px 0 8px;
   font-size: 13px;
   font-weight: 400;
+}
+.review-follow {
+  margin-top: 8px;
+  min-height: 32px;
+  padding: 4px 10px;
+  color: var(--text);
+  font-size: 12px;
+}
+.review-follow[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 14%, var(--canvas));
 }
 .review-mode input {
   width: 18px;
@@ -353,7 +374,7 @@
 .review-workspace {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 0;
   margin: 24px 0;
 }
 .review-primary,
@@ -375,18 +396,30 @@
   order: 2;
   margin-top: 0;
 }
-.review-workspace #saved-frames {
+.review-workspace #video-edit-tools {
   order: 4;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.review-workspace #video-edit-tools > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.review-workspace #saved-frames {
+  order: 5;
+  margin-top: 16px;
 }
 .review-workspace #review {
-  order: 5;
-  margin-top: 0;
+  order: 6;
+  margin-top: 16px;
 }
 .review-workspace #status {
-  order: 6;
+  order: 7;
 }
 .review-workspace #thread {
-  order: 7;
+  order: 8;
 }
 .has-recording #editing,
 .has-recording #review,

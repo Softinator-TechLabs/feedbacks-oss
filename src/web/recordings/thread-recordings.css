@@ -99,11 +99,11 @@
 }
 .recording-timeline {
   display: grid;
-  grid-template-columns: auto minmax(80px, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 10px;
   align-items: center;
-  margin: 8px 0 0;
-  padding: 10px 12px 8px;
+  margin: 0;
+  padding: 8px 12px 6px;
   border: 1px solid var(--border);
   border-radius: 9px 9px 0 0;
   background: var(--soft-surface);
@@ -116,6 +116,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 .recording-icon-button {
   display: grid;
@@ -123,11 +124,6 @@
   width: 40px;
   min-width: 40px;
   padding: 0;
-}
-.recording-timeline input {
-  width: 100%;
-  min-width: 0;
-  accent-color: var(--accent);
 }
 .recording-timeline > label.sr-only {
   position: absolute;
@@ -146,12 +142,68 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.recording-timeline-marks {
+.recording-timeline-lane {
   position: relative;
   grid-column: 1 / -1;
-  grid-row: 2;
+  height: 76px;
+  margin-inline: 8px;
+}
+.recording-timeline-rail {
+  position: absolute;
+  inset: 10px 0 auto;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--border);
+}
+.recording-timeline-lane input {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: -8px;
+  width: calc(100% + 16px);
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.recording-timeline-lane input::-webkit-slider-runnable-track {
+  height: 3px;
+  background: transparent;
+}
+.recording-timeline-lane input::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -7px;
+  appearance: none;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent);
+}
+.recording-timeline-lane input::-moz-range-track {
+  height: 3px;
+  background: transparent;
+}
+.recording-timeline-lane input::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent);
+}
+.recording-timeline-playhead {
+  position: absolute;
+  z-index: 1;
+  top: 1px;
+  bottom: 0;
+  width: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.recording-timeline-marks {
+  position: absolute;
+  inset: 26px 0 0;
   height: 49px;
-  margin: -6px 4px 0;
   border-bottom: 1px solid var(--border);
 }
 .recording-timeline-mark {
@@ -265,7 +317,7 @@
 .recording-diagnostics {
   order: 3;
   margin-top: -1px;
-  padding: 0 12px 12px;
+  padding: 0 12px 10px;
   border: 1px solid var(--border);
   border-radius: 0 0 9px 9px;
   background: var(--soft-surface);
@@ -407,6 +459,11 @@
   max-height: 520px;
   border-radius: 8px;
   background: #111;
+  cursor: pointer;
+}
+.recording-media-content video:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 .recording-video-stage {
   position: relative;
@@ -477,6 +534,7 @@
   max-height: 270px;
   overflow: auto;
   scrollbar-color: var(--border) var(--surface);
+  overscroll-behavior: contain;
 }
 .recording-event-pages {
   display: flex;
@@ -630,13 +688,6 @@
   .recording-tabs button {
     min-height: 36px;
     padding: 6px 9px;
-  }
-  .recording-timeline {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .recording-timeline output {
-    grid-column: 1 / -1;
-    justify-self: end;
   }
   .recording-payload-grid {
     grid-template-columns: 1fr;

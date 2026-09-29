@@ -232,6 +232,7 @@ async function showReview() {
   $("preview").hidden = false;
   $("review").hidden = false;
   $("editing").hidden = false;
+  $("video-edit-tools").hidden = false;
   document.body?.classList.add("has-recording");
   $("start").hidden = !!draftId;
   $("start").textContent = "Record again";
@@ -450,6 +451,7 @@ function clearPreview() {
   cropControls.resetFrame();
   timeline.clear();
   $("editing").hidden = true;
+  $("video-edit-tools").hidden = true;
   document.body?.classList.remove("has-recording");
   $("start").textContent = "Start recording";
 }
@@ -794,6 +796,7 @@ $("send").onclick = async () => {
         );
     }
     $("editing").hidden = true;
+    $("video-edit-tools").hidden = true;
     $("start").hidden = true;
     $("discard").hidden = true;
     if (!thread) {
