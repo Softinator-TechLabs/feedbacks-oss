@@ -1,6 +1,6 @@
 # Screenshot diagnostic evidence
 
-Status: written spec awaiting review. The design direction was approved in conversation on 2026-09-29. This is not implemented behavior.
+Status: approved in conversation on 2026-09-29; implementation is pending. This is not implemented behavior.
 
 ## Outcome
 
