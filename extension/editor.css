@@ -233,6 +233,7 @@ canvas {
   display: block;
   max-width: 100%;
   height: auto;
+  margin-inline: auto;
   touch-action: none;
   cursor: crosshair;
   background: white;
@@ -613,6 +614,12 @@ aside .hint {
   flex: none;
   white-space: nowrap;
 }
+.export-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+}
 .zoom-control {
   position: relative;
   flex: none;
@@ -667,8 +674,10 @@ aside .hint {
   padding-left: 35px;
 }
 #export-scope {
-  width: 120px;
-  margin-left: 6px;
+  width: 150px;
+}
+#export-scope[hidden] {
+  display: none;
 }
 .tool-options span {
   color: var(--muted);
@@ -795,8 +804,7 @@ aside .hint {
     width: 128px;
   }
   #export-scope {
-    width: 120px;
-    margin-left: 0;
+    width: 150px;
   }
 }
 @media (max-width: 360px) {
