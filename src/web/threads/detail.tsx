@@ -11,10 +11,11 @@ import { ContextPanel } from "./context.js";
 import { ReviewEvidence } from "../review-evidence.js";
 import { ThreadRecordings } from "../recordings/thread-recordings.js";
 import { ScreenshotMarkup, type MarkupTarget } from "../screenshot-markup.js";
+import { ThreadAttachments, RecordingFrames } from "./attachments.js";
+import { ThreadLinks } from "./links.js";
 import { PointProgressRing } from "../point-progress-ring.js";
 import { navigate, useUnsavedChanges } from "../navigation.js";
 import {
-
   ThreadNavigation,
   ThreadOrganization,
   ScreenshotComparison,
@@ -217,16 +218,6 @@ export function ThreadDetail({
         )}
       </>
     );
-  const capturePages = t.assets.filter((asset) =>
-    /^full-page-\d+-of-\d+\.webp$/.test(asset.filename || ""),
-  );
-  const recordingFrames = t.assets.filter((asset) => asset.recordingFrame);
-  const otherAssets = t.assets.filter(
-    (asset) =>
-      !capturePages.includes(asset) &&
-      !recordingFrames.includes(asset) &&
-      !(recordingAssets.threadId === t.id && recordingAssets.ids.includes(asset.id)),
-  );
   return (
     <>
       <div className="page-heading thread-page-heading">
@@ -502,87 +493,17 @@ export function ThreadDetail({
                 onAnnotate={(asset) => setMarkupTarget({ kind: "asset", asset })}
               />
             )}
-            {(otherAssets.length > 0 || capturePages.length > 0) &&
-              !t.context.annotations?.length && (
-                <section className="attachments">
-                  <h2 className="sr-only">Attachments</h2>
-                  {otherAssets.map((asset, index) => (
-                    <figure id={`asset-${asset.id}`} key={asset.id}>
-                      {asset.contentType === "video/webm" ? (
-                        <video
-                          controls
-                          preload="metadata"
-                          src={asset.url}
-                          aria-label="Tab video feedback"
-                        />
-                      ) : (
-                        <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                          <img
-                            src={asset.url}
-                            alt={
-                              asset.filename || `${asset.rendition} attached to feedback`
-                            }
-                            width={asset.width}
-                            height={asset.height}
-                            loading={index === 0 ? "eager" : "lazy"}
-                          />
-                        </a>
-                      )}
-                      <figcaption>
-                        {asset.contentType === "video/webm"
-                          ? `Tab video · ${Math.ceil((asset.durationMs || 0) / 1000)} seconds`
-                          : `${asset.filename ? `${asset.filename} · ` : ""}${asset.width} × ${asset.height} · Open full image`}
-                        {asset.contentType.startsWith("image/") &&
-                          project?.permissions.canWrite && (
-                            <button
-                              type="button"
-                              onClick={() => setMarkupTarget({ kind: "asset", asset })}
-                            >
-                              Add or revise marks
-                            </button>
-                          )}
-                      </figcaption>
-                    </figure>
-                  ))}
-                  {capturePages.length > 0 && (
-                    <details className="capture-page-set" open={capturePages.length <= 4}>
-                      <summary>
-                        Full-page capture · {capturePages.length} numbered
-                        {capturePages.length === 1 ? " image" : " images"}
-                      </summary>
-                      <div className="capture-page-grid">
-                        {capturePages.map((asset) => (
-                          <figure id={`asset-${asset.id}`} key={asset.id}>
-                            <a
-                              href={asset.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              aria-label={`Open ${asset.filename}`}
-                            >
-                              <img
-                                src={asset.url}
-                                alt={asset.filename}
-                                width={asset.width}
-                                height={asset.height}
-                                loading="lazy"
-                              />
-                            </a>
-                            <figcaption>{asset.filename}</figcaption>
-                            {project?.permissions.canWrite && (
-                              <button
-                                type="button"
-                                onClick={() => setMarkupTarget({ kind: "asset", asset })}
-                              >
-                                Add or revise marks
-                              </button>
-                            )}
-                          </figure>
-                        ))}
-                      </div>
-                    </details>
-                  )}
-                </section>
-              )}
+            <ThreadAttachments
+              thread={t}
+              recordingAssetIds={
+                recordingAssets.threadId === t.id ? recordingAssets.ids : []
+              }
+              onAnnotate={
+                project?.permissions.canWrite
+                  ? (asset) => setMarkupTarget({ kind: "asset", asset })
+                  : undefined
+              }
+            />
             <ThreadRecordings
               key={t.id}
               thread={t}
@@ -595,35 +516,14 @@ export function ThreadDetail({
                   : undefined
               }
             />
-            {recordingFrames.length > 0 && (
-              <details className="capture-page-set recording-frame-gallery">
-                <summary>Saved video frames · {recordingFrames.length}</summary>
-                <div className="capture-page-grid">
-                  {recordingFrames.map((asset) => (
-                    <figure id={`asset-${asset.id}`} key={asset.id}>
-                      <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                        <img
-                          src={asset.url}
-                          alt={`Video frame at ${(asset.recordingFrame!.atMs / 1000).toFixed(1)} seconds`}
-                          loading="lazy"
-                        />
-                      </a>
-                      <figcaption>
-                        {(asset.recordingFrame!.atMs / 1000).toFixed(1)}s in recording
-                      </figcaption>
-                      {project?.permissions.canWrite && (
-                        <button
-                          type="button"
-                          onClick={() => setMarkupTarget({ kind: "asset", asset })}
-                        >
-                          Add or revise marks
-                        </button>
-                      )}
-                    </figure>
-                  ))}
-                </div>
-              </details>
-            )}
+            <RecordingFrames
+              thread={t}
+              onAnnotate={
+                project?.permissions.canWrite
+                  ? (asset) => setMarkupTarget({ kind: "asset", asset })
+                  : undefined
+              }
+            />
             {markupTarget && project?.permissions.canWrite && (
               <ScreenshotMarkup
                 key={
@@ -936,161 +836,13 @@ export function ThreadDetail({
                     </button>
                   )}
                 </details>
-                <details className="section compact-details" id="thread-issues">
-                  <summary>Linked issues</summary>
-                  {t.externalIssues?.length ? (
-                    t.externalIssues.map((issue) => (
-                      <p key={issue.url}>
-                        <strong>
-                          {issue.provider === "jira"
-                            ? "Jira"
-                            : issue.provider === "linear"
-                              ? "Linear"
-                              : "GitHub"}
-                        </strong>{" "}
-                        <ExternalLink href={issue.url}>{issue.url}</ExternalLink>
-                        <small>
-                          {issue.verification === "github_verified"
-                            ? "Verified by GitHub"
-                            : "Reported · not remotely verified"}
-                          {issue.state ? ` · ${issue.state}` : ""}
-                          {issue.linkedBy ? ` · ${issue.linkedBy.name}` : ""}
-                        </small>
-                      </p>
-                    ))
-                  ) : (
-                    <p className="muted">No Issue registered.</p>
-                  )}
-                  {project?.permissions.canWrite && (
-                    <>
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const f = new FormData(e.currentTarget);
-                          void mutate("threads.linkIssue", { url: f.get("url") });
-                        }}
-                      >
-                        <Field label="GitHub, Jira Cloud or Linear Issue URL">
-                          <input
-                            name="url"
-                            type="url"
-                            required
-                            placeholder="https://linear.app/team/issue/ENG-123"
-                          />
-                        </Field>
-                        <button disabled={a.busy}>Register Issue</button>
-                      </form>
-                    </>
-                  )}
-                </details>
-                <details className="section compact-details" id="thread-figma-reference">
-                  <summary>Figma design reference</summary>
-                  {t.figmaReference ? (
-                    <p>
-                      <ExternalLink href={t.figmaReference.url}>
-                        Open Figma file
-                      </ExternalLink>
-                      <small>
-                        Linked by {t.figmaReference.linkedBy.name} ·{" "}
-                        <HumanTime at={t.figmaReference.linkedAt} />
-                      </small>
-                    </p>
-                  ) : (
-                    <p className="muted">No Figma file linked.</p>
-                  )}
-                  {project?.permissions.canMaintain && (
-                    <>
-                      <p className="muted">
-                        Register a Figma file after agreeing on design work. This saves
-                        the file link here; it does not copy feedback or screenshots to
-                        Figma. Check access in Figma before sharing the file.
-                      </p>
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const f = new FormData(e.currentTarget);
-                          void mutate("threads.figmaReference", { url: f.get("url") });
-                        }}
-                      >
-                        <Field label="Figma file URL">
-                          <input
-                            key={t.figmaReference?.url ?? "empty"}
-                            name="url"
-                            type="url"
-                            defaultValue={t.figmaReference?.url ?? ""}
-                            required
-                            placeholder="https://www.figma.com/design/..."
-                          />
-                        </Field>
-                        <div className="figma-reference-actions">
-                          <button disabled={a.busy}>
-                            {t.figmaReference ? "Replace reference" : "Link Figma file"}
-                          </button>
-                          {t.figmaReference && (
-                            <button
-                              type="button"
-                              disabled={a.busy}
-                              onClick={() =>
-                                void mutate("threads.figmaReference", { url: null })
-                              }
-                            >
-                              Remove reference
-                            </button>
-                          )}
-                        </div>
-                      </form>
-                    </>
-                  )}
-                </details>
-                <details className="section compact-details">
-                  <summary>Delivery evidence</summary>
-                  {t.fixEvidence?.length ? (
-                    t.fixEvidence.map((item, n) => (
-                      <div key={n}>
-                        <ExternalLink href={item.url}>
-                          {item.kind.replaceAll("_", " ")}
-                        </ExternalLink>
-                        <p className="message">{item.note}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="muted">No delivery evidence recorded.</p>
-                  )}
-                  {project?.permissions.canWrite && (
-                    <>
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const f = new FormData(e.currentTarget);
-                          void mutate("threads.evidence", {
-                            url: f.get("url"),
-                            note: f.get("note"),
-                            kind: f.get("kind"),
-                          });
-                        }}
-                      >
-                        <Field label="Evidence type">
-                          <select name="kind">
-                            {["commit", "pull_request", "variant", "incorporated_in"].map(
-                              (k) => (
-                                <option key={k} value={k}>
-                                  {k.replaceAll("_", " ")}
-                                </option>
-                              ),
-                            )}
-                          </select>
-                        </Field>
-                        <Field label="Evidence URL">
-                          <input name="url" type="url" required />
-                        </Field>
-                        <Field label="What does this demonstrate?">
-                          <textarea name="note" required maxLength={12000} />
-                        </Field>
-                        <button disabled={a.busy}>Add evidence</button>
-                      </form>
-                    </>
-                  )}
-                </details>
+                <ThreadLinks
+                  thread={t}
+                  canWrite={!!project?.permissions.canWrite}
+                  canMaintain={!!project?.permissions.canMaintain}
+                  busy={a.busy}
+                  mutate={mutate}
+                />
                 <details className="section" id="thread-history">
                   <summary>Activity history</summary>
                   <p>

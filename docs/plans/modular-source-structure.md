@@ -42,6 +42,7 @@ No migration, object-key, token, permission, or public operation name change is 
 - 2026-09-29: Extracted worker point-evidence and marking projection into `extension/capture/markings.js`. The full Node 22 check and Chromium capture workflow pass; `background.js` is 187 lines shorter.
 - 2026-09-29: Grouped internal extension session, recording, video, review, connection, and diagnostic modules by responsibility. Kept all manifest, HTML, and script-injection entrypoint filenames stable. Updated test fixtures and the explicit ZIP allowlist. The full Node 22 check and all extension Chromium QA scenarios pass.
 - 2026-09-29: Extracted recording diagnostics rendering and event selection into a focused web component; the recording viewer fell from 1,104 to 813 lines. Three Chromium viewer scenarios, filter UI QA, and the full Node 22 check pass.
+- 2026-09-29: Extracted thread attachments and linked issue, Figma, and delivery forms into focused components. The detail view fell from 1,075 to 841 lines; the full Node 22 check passes.
 
 ## Completion receipt
 
