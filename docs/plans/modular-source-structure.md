@@ -1,6 +1,6 @@
 # Modular source structure
 
-Status: five reviewed stages merged; HTTP route and extension runtime follow-ups in progress. Owner: Feedbacks maintainers. Date: 2026-09-29.
+Status: six reviewed stages merged; thread-list and extension runtime follow-ups in progress. Owner: Feedbacks maintainers. Date: 2026-09-29.
 
 ## Outcome and scope
 
@@ -91,7 +91,9 @@ Branch: `codex/modular-web-features`, based on merged PR #121. Document and surv
 
 ## Remaining runtime seams
 
-The HTTP route stage starts from merged PR #123 and places operation dispatch plus authorized asset and document downloads under `src/server/http/`. `app.ts` keeps middleware and registration order and falls from 628 to 271 lines. This is a source move with no intended HTTP, rate-limit, authorization, or range behavior change. Twelve focused HTTP, widget, survey, guest, login, mobile, preview, and video tests pass. The full Node 22 `npm run check` passes, including harness, tests, builds, smoke, and release checks; native PostgreSQL concurrency tests pass 2/2. Independent review and exact-head CI remain required.
+The HTTP route stage started from merged PR #123 and placed operation dispatch plus authorized asset and document downloads under `src/server/http/`. `app.ts` keeps middleware and registration order and fell from 628 to 271 lines. This was a source move with no intended HTTP, rate-limit, authorization, or range behavior change. Twelve focused HTTP, widget, survey, guest, login, mobile, preview, and video tests passed. The full Node 22 `npm run check` passed, including harness, tests, builds, smoke, and release checks; native PostgreSQL concurrency tests passed 2/2. Independent review found no critical or important issues. All six exact-head CI checks passed, and PR #124 merged at `14f1c40`.
+
+The thread-list stage starts from merged PR #124 and separates filter controls and per-thread row rendering under `src/web/threads/`. The list entrypoint falls from 769 to 373 lines; its `ThreadList` and `threadAttachmentLabels` exports remain stable. Filter browser QA passes, the full Node 22 `npm run check` passes, and synthetic Chromium QA captures 56 viewport/theme screenshots with zero blocked requests. Independent review and exact-head CI are still required.
 
 The next substantive extraction candidates are `extension/content.js` (2,645 lines of shared injected UI state), `extension/background.js` (1,713 lines with a large message dispatcher), `extension/editor.js` (1,358 lines), `extension/session/session-coordinator.js` (1,316 lines of capture lifecycle), `extension/video.js` (1,107 lines), and `src/web/recordings/thread-recordings.tsx` (947 lines). Recording PR #120 touches most of these paths, and separate screenshot diagnostics work also touches injected capture and diagnostics. Rebase those changes first, then split state and message boundaries with packaged Chrome QA and exact-head CI. Preserve manifest entrypoints, message contracts, permissions, transaction guards, and ZIP contents.
 
