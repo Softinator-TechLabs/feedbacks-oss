@@ -34,7 +34,7 @@ import {
 } from "../mention-ranges.js";
 import { Icon } from "../icons.js";
 import { GuestLinks } from "../guest-review.js";
-import { GithubIssue } from "../github-issue.js";
+import { GithubIssue } from "../github/issue.js";
 import { api, uid, date, labels, type Project, type Thread } from "../api.js";
 import {
   builtInCategories,
