@@ -2,13 +2,20 @@ import type { Actor } from "../../shared/contracts.js";
 import type { Database } from "../db.js";
 import type { Config } from "../config.js";
 import { accountLock } from "../auth.js";
-import { access, event } from "../access.js";
+import { access, event, ownerOnly } from "../access.js";
 import { GithubApp, githubRepo } from "../github-app.js";
 import { connectedGithubRepos, hasConnectedGithubRepo } from "../github-repositories.js";
 import { DomainError, fail } from "../errors.js";
-import { human, requireApp } from "./operation-common.js";
+import {
+  configuredGithubApps,
+  projectGithubAppId,
+  requireGithubApp,
+} from "../github-app-config.js";
+import { human } from "./operation-common.js";
 
 export const connectionOperationNames = new Set([
+  "github.apps",
+  "github.appSelect",
   "github.connection",
   "github.connect",
   "github.disconnect",
@@ -25,26 +32,91 @@ export async function githubConnectionOperation(
   config: Config,
   client: GithubApp,
 ) {
+  if (name === "github.apps")
+    return db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await human(tx, actor);
+      ownerOnly(a);
+      return {
+        defaultAppId: config.githubAppId ?? null,
+        apps: configuredGithubApps(config).map(({ id, name, slug, owners }) => ({
+          id,
+          name,
+          slug,
+          owners,
+        })),
+      };
+    });
+  if (name === "github.appSelect")
+    return db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await human(tx, actor);
+      ownerOnly(a);
+      const project = await access(tx, a, i.projectId, "maintain");
+      if (project.revision !== i.revision)
+        fail("CONFLICT", "Project changed; reload first", 409);
+      if (i.appId !== null) requireGithubApp(config, i.appId);
+      if (project.githubAppId !== undefined && project.githubAppId === i.appId)
+        return project;
+      const identityChanged = projectGithubAppId(config, project) !== i.appId;
+      if (identityChanged) {
+        const pending = await tx.one(
+          `SELECT 1 FROM github_issue_requests WHERE project_id=$1 AND status='pending'
+        UNION ALL SELECT 1 FROM github_status_sync s JOIN threads t ON t.id=s.thread_id
+        WHERE t.project_id=$1 AND (s.status='uncertain' OR s.lease_until>clock_timestamp()) LIMIT 1`,
+          [project.id],
+        );
+        if (pending)
+          fail(
+            "GITHUB_PENDING",
+            "Reconcile pending GitHub writes or wait for active sync before changing the App.",
+            409,
+          );
+        await tx.query(
+          `UPDATE projects SET data=data || jsonb_build_object('githubAppId',$2::text,
+        'githubConnected',false,'githubStatusSync',false,'githubRepositories','[]'::jsonb),revision=revision+1 WHERE id=$1`,
+          [project.id, i.appId],
+        );
+        await tx.query(
+          "DELETE FROM github_status_sync WHERE thread_id IN (SELECT id FROM threads WHERE project_id=$1)",
+          [project.id],
+        );
+      } else {
+        await tx.query(
+          "UPDATE projects SET data=data || jsonb_build_object('githubAppId',$2::text),revision=revision+1 WHERE id=$1",
+          [project.id, i.appId],
+        );
+      }
+      await event(tx, a, project.id, project.id, name, {
+        appId: i.appId,
+        previousAppId: projectGithubAppId(config, project),
+      });
+      return access(tx, a, project.id);
+    });
   if (name === "github.connection") {
     const connection = await db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
       const project = await access(tx, a, i.projectId);
+      const appId = projectGithubAppId(config, project);
+      const apps = configuredGithubApps(config);
+      const app = apps.find((app) => app.id === appId);
       return {
-        configured: !!(
-          config.githubAppId &&
-          config.githubAppSlug &&
-          config.githubAppPrivateKey
-        ),
+        appId,
+        appName: app?.name ?? null,
+        approvedAccounts: app?.owners ?? [],
+        canSelectApp: a.owner === true,
+        apps: a.owner
+          ? apps.map(({ id, name, slug, owners }) => ({ id, name, slug, owners }))
+          : [],
+        configured: !!app,
         connected: project.githubConnected === true,
         statusSyncEnabled: project.githubStatusSync === true,
         repositoryUrl: project.repositoryUrl ?? null,
         connectedRepositories: connectedGithubRepos(project).map(
           (repo) => `https://github.com/${repo.fullName}`,
         ),
-        installUrl: config.githubAppSlug
-          ? `https://github.com/apps/${config.githubAppSlug}/installations/new`
-          : null,
+        installUrl: app ? `https://github.com/apps/${app.slug}/installations/new` : null,
       };
     });
     let installation:
@@ -69,7 +141,7 @@ export async function githubConnectionOperation(
         let state: "installed" | "not_installed" | "unavailable" = "unavailable";
         if (connection.configured) {
           try {
-            await client.check(githubRepo(repositoryUrl));
+            await client.forApp(connection.appId).check(githubRepo(repositoryUrl));
             state = "installed";
           } catch (error) {
             if (error instanceof DomainError && error.code === "GITHUB_NOT_INSTALLED")
@@ -95,22 +167,25 @@ export async function githubConnectionOperation(
     return { ...summary, installation, repositories };
   }
   if (name === "github.connect") {
-    requireApp(config);
-    const repo = await db.transaction(async (tx) => {
+    const target = await db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
       const project = await access(tx, a, i.projectId, "maintain");
       if (project.revision !== i.revision)
         fail("CONFLICT", "Project changed; reload first", 409);
-      return githubRepo(project.repositoryUrl);
+      const appId = projectGithubAppId(config, project);
+      requireGithubApp(config, appId);
+      return { repo: githubRepo(project.repositoryUrl), appId };
     });
-    await client.check(repo);
+    const { repo, appId } = target;
+    await client.forApp(appId).check(repo);
     return db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
       const project = await access(tx, a, i.projectId, "maintain");
       if (
         project.revision !== i.revision ||
+        projectGithubAppId(config, project) !== appId ||
         githubRepo(project.repositoryUrl).fullName.toLowerCase() !==
           repo.fullName.toLowerCase()
       )
@@ -153,9 +228,8 @@ export async function githubConnectionOperation(
       return access(tx, a, project.id);
     });
   if (name === "github.repositoryConnect") {
-    requireApp(config);
     const repo = githubRepo(i.repositoryUrl);
-    await db.transaction(async (tx) => {
+    const appId = await db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
       const project = await access(tx, a, i.projectId, "maintain");
@@ -166,13 +240,19 @@ export async function githubConnectionOperation(
         connectedGithubRepos(project).length >= 20
       )
         fail("LIMIT", "A project can connect up to 20 GitHub repositories", 400);
+      const appId = projectGithubAppId(config, project);
+      requireGithubApp(config, appId);
+      return appId;
     });
-    await client.check(repo);
+    await client.forApp(appId).check(repo);
     return db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
       const project = await access(tx, a, i.projectId, "maintain");
-      if (project.revision !== i.revision)
+      if (
+        project.revision !== i.revision ||
+        projectGithubAppId(config, project) !== appId
+      )
         fail("CONFLICT", "Project changed while checking GitHub", 409);
       const urls = connectedGithubRepos(project).map(
         (connected) => `https://github.com/${connected.fullName}`,
@@ -219,7 +299,7 @@ export async function githubConnectionOperation(
         fail("CONFLICT", "Project changed; reload first", 409);
       if (i.enabled && !project.githubConnected)
         fail("GITHUB_NOT_CONNECTED", "Connect the GitHub App first", 409);
-      if (i.enabled) requireApp(config);
+      if (i.enabled) requireGithubApp(config, projectGithubAppId(config, project));
       if (project.githubStatusSync === i.enabled) return project;
       if (i.enabled)
         await tx.query(

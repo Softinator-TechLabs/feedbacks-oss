@@ -1,12 +1,26 @@
+@font-face {
+  font-family: Manrope;
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/manrope-400.ttf") format("truetype");
+}
+@font-face {
+  font-family: Manrope;
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url("/fonts/manrope-800.ttf") format("truetype");
+}
 :root {
-  --vp-c-brand-1: #136d91;
-  --vp-c-brand-2: #0d799f;
-  --vp-c-brand-3: #088db5;
-  --vp-c-brand-soft: rgb(19 109 145 / 10%);
-  --vp-c-bg: #f8fafc;
-  --vp-c-bg-soft: #eef4f7;
-  --vp-c-text-1: #172739;
-  --vp-font-family-base: "Inter", "Avenir Next", "Segoe UI", sans-serif;
+  --vp-c-brand-1: #a43e17;
+  --vp-c-brand-2: #8b321b;
+  --vp-c-brand-3: #a43e17;
+  --vp-c-brand-soft: rgb(164 62 23 / 8%);
+  --vp-c-bg: #fffdfa;
+  --vp-c-bg-soft: #f3f4ef;
+  --vp-c-text-1: #20241e;
+  --vp-font-family-base: Manrope, "Segoe UI", sans-serif;
 }
 .dark {
   --vp-c-brand-1: #76cce7;
@@ -18,10 +32,10 @@
   --vp-c-text-1: #e8f0f4;
 }
 .VPNavBar {
-  backdrop-filter: blur(18px);
+  background: var(--vp-c-bg);
 }
 .VPHomeHero .name {
-  letter-spacing: -0.045em;
+  letter-spacing: -0.04em;
 }
 .VPHomeHero .text {
   letter-spacing: -0.035em;
@@ -32,4 +46,22 @@
 .vp-doc h1,
 .vp-doc h2 {
   letter-spacing: -0.025em;
+}
+
+.vp-doc feedbacks-evidence {
+  margin: 28px 0;
+}
+.vp-doc .evidence-demo p {
+  margin: 12px 0 20px;
+  line-height: 1.6;
+}
+.vp-doc .evidence-demo button {
+  font-family: inherit;
+}
+.vp-doc img[src*="/media/story/"] {
+  border-radius: 8px;
+  margin: 24px 0;
+}
+.vp-doc :not(.evidence-demo) > img {
+  max-width: 100%;
 }

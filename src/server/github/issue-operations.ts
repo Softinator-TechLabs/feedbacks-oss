@@ -10,7 +10,13 @@ import { requireConnectedGithubRepo } from "../github-repositories.js";
 import { fail } from "../errors.js";
 import { quickIssueDraft } from "../issue-draft.js";
 import type { AssetStore } from "../assets.js";
-import { human, issueNumber, requireApp } from "./operation-common.js";
+import {
+  projectGithubAppId,
+  requireGithubApp,
+  historicalGithubAppId,
+  assertGithubOwner,
+} from "../github-app-config.js";
+import { human, issueNumber } from "./operation-common.js";
 
 async function issueAuthor(db: Database, actor: Actor) {
   const current = await new Auth(db).current(actor);
@@ -44,6 +50,7 @@ async function linkedThread(
   const links = row.data.externalIssues ?? [];
   const priorLink = links.find((link: any) => link.url === issue.url);
   if (priorLink) {
+    priorLink.githubAppId = request.github_app_id ?? null;
     priorLink.verification = "github_verified";
     priorLink.state = issue.state;
     priorLink.checkedAt = new Date().toISOString();
@@ -53,6 +60,7 @@ async function linkedThread(
     links.push({
       url: issue.url,
       repository: repo.fullName,
+      githubAppId: request.github_app_id ?? null,
       number: issue.number,
       verification: "github_verified",
       state: issue.state,
@@ -105,7 +113,6 @@ export async function githubIssueOperation(
       };
     });
   if (name === "github.issueCreate") {
-    requireApp(config);
     const reservation = await db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await issueAuthor(tx, actor);
@@ -155,19 +162,32 @@ export async function githubIssueOperation(
           409,
         );
       checkRevision(row, i.revision);
+      const appId = projectGithubAppId(config, project);
+      const app = requireGithubApp(config, appId);
+      assertGithubOwner(app, repo.owner);
       const requestId = randomUUID();
       await tx.query(
-        "INSERT INTO github_issue_requests(id,thread_id,project_id,request_key,input_hash,repository,status) VALUES($1,$2,$3,$4,$5,$6,'pending')",
-        [requestId, row.id, row.project_id, i.idempotencyKey, inputHash, repo.fullName],
+        "INSERT INTO github_issue_requests(id,thread_id,project_id,request_key,input_hash,repository,github_app_id,status) VALUES($1,$2,$3,$4,$5,$6,$7,'pending')",
+        [
+          requestId,
+          row.id,
+          row.project_id,
+          i.idempotencyKey,
+          inputHash,
+          repo.fullName,
+          appId,
+        ],
       );
       await event(tx, a, row.project_id, row.id, "github.issueReserved", {
         repository: repo.fullName,
       });
-      return { repo, requestId };
+      return { repo, requestId, appId };
     });
     if ("prior" in reservation) return reservation.prior;
     const body = `${i.body}\n\n<!-- feedbacks-request:${reservation.requestId} -->`;
-    const issue = await client.createIssue(reservation.repo, i.title, body);
+    const issue = await client
+      .forApp(reservation.appId)
+      .createIssue(reservation.repo, i.title, body);
     if (!issue.body.includes(`feedbacks-request:${reservation.requestId}`))
       fail(
         "GITHUB_UNCERTAIN",
@@ -181,7 +201,6 @@ export async function githubIssueOperation(
     });
   }
   if (name === "github.issueCreateQuick") {
-    requireApp(config);
     const prepared = await db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
@@ -235,15 +254,19 @@ export async function githubIssueOperation(
       db,
       actor,
       "github.issueCreate",
-      { ...i, ...draft, reviewed: true },
+      {
+        ...i,
+        ...draft,
+        repositoryUrl: `https://github.com/${prepared.repo.fullName}`,
+        reviewed: true,
+      },
       config,
       client,
       store,
     );
   }
   if (name === "github.issueReconcile") {
-    requireApp(config);
-    const repo = await db.transaction(async (tx) => {
+    const target = await db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
       const row = await threadRow(tx, a, i.threadId, "maintain");
@@ -254,9 +277,15 @@ export async function githubIssueOperation(
       );
       if (!request || request.status !== "pending")
         fail("NOT_FOUND", "No pending GitHub Issue request", 404);
-      return githubRepo(`https://github.com/${request.repository}`);
+      return {
+        repo: githubRepo(`https://github.com/${request.repository}`),
+        appId: request.github_app_id ?? config.githubAppId ?? null,
+      };
     });
-    const issue = await client.readIssue(repo, issueNumber(i.issueUrl, repo));
+    const { repo, appId } = target;
+    const issue = await client
+      .forApp(appId)
+      .readIssue(repo, issueNumber(i.issueUrl, repo));
     return db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
@@ -299,8 +328,7 @@ export async function githubIssueOperation(
       return { abandoned: true };
     });
   if (name === "github.issueRefresh") {
-    requireApp(config);
-    const repo = await db.transaction(async (tx) => {
+    const target = await db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);
       const row = await threadRow(tx, a, i.threadId, "maintain");
@@ -310,9 +338,15 @@ export async function githubIssueOperation(
           entry.url === i.issueUrl && entry.verification === "github_verified",
       );
       if (!link) fail("NOT_FOUND", "No verified Issue link to refresh", 404);
-      return githubRepo(`https://github.com/${link.repository}`);
+      return {
+        repo: githubRepo(`https://github.com/${link.repository}`),
+        appId: historicalGithubAppId(config, link),
+      };
     });
-    const issue = await client.readIssue(repo, issueNumber(i.issueUrl, repo));
+    const { repo, appId } = target;
+    const issue = await client
+      .forApp(appId)
+      .readIssue(repo, issueNumber(i.issueUrl, repo));
     return db.transaction(async (tx) => {
       await accountLock(tx);
       const a = await human(tx, actor);

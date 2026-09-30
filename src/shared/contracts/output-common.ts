@@ -193,6 +193,7 @@ export const projectOutput = z.object({
   captureMode: captureMode.optional(),
   repositoryUrl: z.string().nullable(),
   githubRepositories: z.array(z.string().url()).max(20).optional(),
+  githubAppId: z.string().nullable().optional(),
   githubConnected: z.boolean().optional(),
   githubStatusSync: z.boolean().optional(),
   reviewEnabled: z.boolean().default(false),

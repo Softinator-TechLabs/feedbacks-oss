@@ -150,6 +150,7 @@ const readOperations = new Set<string>([
   "documents.list",
   "documents.get",
   "documents.threads",
+  "github.apps",
   "github.connection",
   "github.issueState",
   "github.statusSyncState",

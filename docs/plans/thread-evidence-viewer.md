@@ -43,7 +43,7 @@ application change restores the previous presentation without data conversion.
 
 ## Verification
 
-- `npm run check`: passed (433 passed, 28 opt-in tests skipped); includes formatting,
+- `npm run check`: passed; includes formatting,
   boundaries/docs, types, tests, all builds, isolated app smoke and release checks.
 - Explicit Chromium tests: expanded-image layers/zoom/focus on desktop and mobile,
   empty recording sections, replay diagnostics and video frame saving passed.

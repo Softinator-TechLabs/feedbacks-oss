@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createPrivateKey } from "node:crypto";
+import { parseGithubApps, type GithubAppConfig } from "./github-app-config.js";
 
 export interface Config {
   appOrigin: string;
@@ -18,6 +19,7 @@ export interface Config {
   databasePoolMax: number;
   turnstileSiteKey?: string;
   turnstileSecretKey?: string;
+  githubApps?: GithubAppConfig[];
   githubAppId?: string;
   githubAppSlug?: string;
   githubAppPrivateKey?: string;
@@ -104,7 +106,15 @@ export function configFromEnv(env = process.env): Config {
     if (createPrivateKey(githubAppPrivateKey).asymmetricKeyType !== "rsa")
       throw new Error("GITHUB_APP_PRIVATE_KEY_BASE64 must contain an RSA private key");
   }
+  const githubApps = parseGithubApps(env.GITHUB_APPS_JSON);
+  if (
+    githubApps.some((app) => app.id === githubFields[0] || app.slug === githubFields[1])
+  )
+    throw new Error(
+      "GITHUB_APPS_JSON must not duplicate the legacy GitHub App ID or slug",
+    );
   return {
+    githubApps,
     appOrigin,
     production,
     port: integer(env.PORT, 3000, 65535),

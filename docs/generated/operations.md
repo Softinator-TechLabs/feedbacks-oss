@@ -36,6 +36,8 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `documents.list`              | Yes                  | Yes                            |
 | `documents.threads`           | Yes                  | Yes                            |
 | `documents.upload`            | No                   | No                             |
+| `github.apps`                 | Yes                  | No                             |
+| `github.appSelect`            | No                   | No                             |
 | `github.connect`              | No                   | No                             |
 | `github.connection`           | Yes                  | No                             |
 | `github.disconnect`           | No                   | No                             |

@@ -26,7 +26,10 @@ const server = createServer(async (request, response) => {
             : "image/webp",
       );
       response.end(await readFile(new URL(`../public${path}`, import.meta.url)));
-    } else if (path === "/landing" || /^\/(assets|fonts)\/[a-zA-Z0-9_.-]+$/.test(path)) {
+    } else if (
+      path === "/landing" ||
+      /^\/(assets|fonts|media)\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+$/.test(path)
+    ) {
       const file = path === "/landing" ? "/index.html" : path;
       response.setHeader(
         "Content-Type",
@@ -36,7 +39,13 @@ const server = createServer(async (request, response) => {
             ? "text/javascript"
             : file.endsWith(".css")
               ? "text/css"
-              : "font/ttf",
+              : file.endsWith(".svg")
+                ? "image/svg+xml"
+                : file.endsWith(".webp")
+                  ? "image/webp"
+                  : file.endsWith(".png")
+                    ? "image/png"
+                    : "font/ttf",
       );
       response.end(await readFile(new URL(`../dist/site${file}`, import.meta.url)));
     } else {
@@ -62,6 +71,7 @@ try {
   const demo = page.locator("feedbacks-demo");
   for (const step of [
     "server",
+    "github",
     "install",
     "pin",
     "connect",
@@ -72,6 +82,8 @@ try {
   ]) {
     await demo.evaluate((element, value) => element.setAttribute("step", value), step);
     await demo.locator(".frame > *").waitFor();
+    if (step === "github")
+      assert.match(await demo.locator(".caption").innerText(), /GitHub/);
     await page.waitForFunction(
       () =>
         getComputedStyle(
@@ -257,20 +269,37 @@ try {
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto(`http://127.0.0.1:${server.address().port}/landing`);
-    await page.locator("feedbacks-demo .frame > *").waitFor();
+    await page.locator("feedbacks-evidence .evidence-play").waitFor();
     await page.evaluate(() => document.fonts.ready);
+    const heroBottom = await page
+      .locator(".product-hero")
+      .evaluate((el) => el.getBoundingClientRect().bottom + scrollY);
+    if (width > 900)
+      assert(
+        heroBottom <= height,
+        `${width}x${height}: complete product hero must fit, got ${heroBottom}`,
+      );
+    await page.locator("#story-demo").scrollIntoViewIfNeeded();
+    await page.locator("feedbacks-demo .frame > *").waitFor();
     for (const button of await page.locator("[data-scene]").all()) {
       await button.click();
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(
+            document.querySelector("feedbacks-demo").shadowRoot.querySelector(".screen"),
+          ).position === "relative",
+      );
+
       const bounds = await page.evaluate(() => ({
-        heroBottom:
-          document.querySelector(".hero").getBoundingClientRect().bottom + scrollY,
+        walkthroughHeight: document.querySelector(".story").getBoundingClientRect()
+          .height,
         overflow: document.documentElement.scrollWidth > innerWidth,
       }));
       assert.equal(bounds.overflow, false, `${width}: no horizontal overflow`);
       if (width > 900)
         assert(
-          bounds.heroBottom <= height,
-          `${width}x${height}: complete hero must fit, got ${bounds.heroBottom}`,
+          bounds.walkthroughHeight <= height,
+          `${width}x${height}: walkthrough choices and controls must fit together, got ${bounds.walkthroughHeight}`,
         );
     }
     assert.equal(await page.locator("#comparisons a").count(), 16);
@@ -281,7 +310,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    "Walkthroughs passed: eight scenes including pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds and complete laptop hero.",
+    "Walkthroughs passed: nine scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",
   );
 } finally {
   await browser.close();
