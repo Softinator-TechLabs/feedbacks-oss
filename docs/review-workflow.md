@@ -128,26 +128,28 @@ recording loading failures still offer their existing recovery information.
 
 Choose **Expand image** beside a screenshot, or click the screenshot, to inspect it
 in a larger viewer. Points, element outlines and text selection use the same
-visibility state as the inline image. Layer controls live in the expanded viewer,
-keeping each point preview compact.
+visibility state as the inline image. Show/hide controls sit above the inline image
+and are also available in the expanded viewer.
 **Fit width**, **100%** and **200%** control zoom; large captures scroll inside the
 viewer. **Close** or Escape returns to the review. **Open original file** opens only
 the saved image, without browser-rendered evidence layers. Legacy annotations saved
 into image pixels remain part of that image.
 
-Choose **Edit annotations** inside that viewer to draw or revise marks without
-opening another dialog. The layer controls and zoom remain available while editing.
+Choose **Edit annotations** above the inline image to open the viewer in editing
+mode, or choose it inside the viewer to draw or revise marks without another dialog. The layer controls and zoom remain available while editing.
 **Save annotations** updates the image and returns to viewing; **Cancel** (or Escape)
 discards the draft and stays in the viewer. A failed save preserves the draft for
 retry. Editing requires the existing thread write permission.
 
-Numbered points show a compact preview, status and any non-normal priority. A
+Numbered points show a compact preview and **Expand / Collapse** to describe the
+accordion action. Resolved, closed or removed states and any non-normal priority
+appear beside the preview; the disclosure action is separate from work status. A
 single-point thread starts expanded; multiple points start collapsed and can be opened independently.
-**Expand all** and **Collapse all** affect the filtered points across pages. Subtle
+Counts, the point filter, **Expand all** and **Collapse all** sit directly above the
+point list, after the page captures. Bulk actions affect filtered points across pages. Subtle
 open/close transitions respect the system reduced-motion preference. Lists show five points per page with Previous/Next controls
 and retain their original numbering when filtered. Direct links reveal the target
-point's page. Each opened point groups feedback and its **Priority / Schedule**
-controls together, places the screenshot alongside them on wide panels (below them
-on narrow screens), and keeps resolve/remove actions in a separate footer. Technical
-element details stay collapsed. Screenshot expansion sits directly below its preview;
-annotation editing is available inside the expanded viewer.
+point's page. Each expanded point shows feedback, a compact **Priority / Schedule**
+row and its screenshot using the available panel width. Image visibility, expansion
+and editing controls sit above that image. Resolve/remove actions stay in a separate
+footer, and technical element details stay collapsed.

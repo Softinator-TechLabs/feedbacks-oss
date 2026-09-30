@@ -298,7 +298,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 8px;
+  margin-bottom: 8px;
 }
 .review-image-actions button,
 .evidence-image-dialog button,
@@ -772,6 +772,7 @@ button.review-image-open:enabled:hover {
   gap: 2px;
 }
 .review-point-preview strong,
+.review-point-disclosure,
 .review-point-state {
   font-size: 0.82rem;
 }
@@ -809,7 +810,7 @@ button.review-image-open:enabled:hover {
 .review-point-detail .review-point-figure {
   margin: 0;
   width: 100%;
-  max-width: 280px;
+  max-width: none;
 }
 .review-point-detail .review-image-caption {
   justify-content: space-between;
@@ -912,7 +913,7 @@ button.review-image-open:enabled:hover {
 }
 .review-point-layout {
   display: grid;
-  gap: 20px;
+  gap: 12px;
   align-items: start;
 }
 .review-point-body {
@@ -924,23 +925,26 @@ button.review-image-open:enabled:hover {
   grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
-.review-point-planning {
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-}
 .review-point-planning .review-point-plan {
-  max-width: 420px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
   margin: 0;
 }
-.review-point-planning .review-point-plan > :not(label) {
-  grid-column: 1 / -1;
-}
 .review-point-planning label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
+.review-point-planning select {
+  width: auto;
+}
+.review-point-planning .review-point-plan-summary {
+  flex-basis: 100%;
+}
+
 .review-point-media {
   min-width: 0;
 }
@@ -949,10 +953,6 @@ button.review-image-open:enabled:hover {
 }
 .review-point-figure .review-image-open {
   margin-inline: auto;
-}
-.review-point-figure .review-image-actions button {
-  width: 100%;
-  justify-content: center;
 }
 .review-point-footer {
   display: flex;
@@ -968,12 +968,24 @@ button.review-image-open:enabled:hover {
   min-width: min(100%, 200px);
 }
 @container (min-width: 580px) {
-  .review-point-layout.has-evidence {
-    grid-template-columns: minmax(0, 1fr) 240px;
-    gap: 24px;
+  .review-point-body .review-text-edit {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .review-point-media {
-    padding-left: 16px;
-    border-left: 1px solid var(--border);
+}
+@container (max-width: 420px) {
+  .review-point-planning .review-point-plan {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .review-point-planning label {
+    display: grid;
+    gap: 4px;
+  }
+  .review-point-planning select {
+    width: 100%;
+  }
+  .review-point-planning .review-point-plan > :not(label) {
+    grid-column: 1 / -1;
   }
 }

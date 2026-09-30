@@ -71,3 +71,19 @@ application change restores the previous presentation without data conversion.
   resolve/remove/restore and same-dialog editing checks. `npm run qa:extension-browser`
   passed after updating these navigation steps.
 - CI, merge, deployment and production verification remain pending.
+
+## Inline review follow-up
+
+The point filter, counts and bulk disclosure controls now follow the page captures,
+next to the point list. Each summary names its action **Expand / Collapse**;
+resolved, closed and removed states remain separate preview metadata.
+
+Expanded points use the panel width for screenshots, with compact planning controls
+above the evidence. Inline image controls expose the same layer visibility as the
+larger viewer, and **Edit annotations** opens that viewer directly in edit mode.
+
+The five Chromium viewer regressions cover these controls, shared layer state,
+keyboard disclosure, 20-point pagination, editing recovery and widths of 1440, 900
+and 390 pixels. Synthetic [desktop](../screenshots/thread-evidence-viewer/inline-controls-desktop.png)
+and [mobile](../screenshots/thread-evidence-viewer/inline-controls-mobile.png) captures
+show the revised layout. This follow-up does not establish production deployment.
