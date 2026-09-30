@@ -329,7 +329,7 @@ export async function verifySelectedText({
   await viewer.getByText("Remove selected text", { exact: true }).waitFor();
   const image = viewer.locator(".review-point-figure").first();
   const preview = image.locator(".review-image-open");
-  await image.getByRole("button", { name: "Expand image", exact: true }).click();
+  await image.getByRole("button", { name: "Review image", exact: true }).click();
   const expanded = viewer.getByRole("dialog");
   assert.equal((await preview.locator(".review-text-selection").count()) > 0, true);
   assert.equal(await preview.locator(".review-element-outline").count(), 0);
@@ -370,9 +370,8 @@ export async function verifySelectedText({
     path: join(root, ".local/remaining-todos-qa/text-edit-thread-mobile.png"),
   });
   await viewer.setViewportSize({ width: 1200, height: 900 });
-  await image.getByRole("button", { name: "Expand image", exact: true }).click();
+  await image.getByRole("button", { name: "Review image", exact: true }).click();
   const markup = viewer.getByRole("dialog");
-  await markup.getByRole("button", { name: "Edit annotations", exact: true }).click();
   assert.equal(await viewer.locator("dialog[open]").count(), 1);
   await markup.getByRole("button", { name: "Hide text selection", exact: true }).click();
   await markup.getByRole("button", { name: "Show text selection", exact: true }).click();
@@ -381,7 +380,8 @@ export async function verifySelectedText({
   await markup.getByRole("button", { name: "Show points", exact: true }).click();
   await markup.getByRole("button", { name: "Hide points", exact: true }).click();
   await markup.getByRole("button", { name: "Cancel", exact: true }).click();
-  await markup.getByRole("button", { name: "Close", exact: true }).click();
+  await markup.waitFor({ state: "hidden" });
+  assert.equal(await viewer.locator("dialog[open]").count(), 0);
   await viewer.goto(
     `${access.url}/projects/${thread.projectId}?search=Clearer%20reviewed%20page`,
   );

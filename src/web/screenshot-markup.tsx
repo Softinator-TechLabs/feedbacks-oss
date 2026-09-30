@@ -53,12 +53,16 @@ export function ScreenshotMarkup({
     zoom: number;
     hiddenLayers: { points: boolean; element: boolean; text: boolean };
     onBusyChange: (busy: boolean) => void;
+    evidenceOverlays?: React.ReactNode;
   };
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const image = useRef<HTMLImageElement | null>(null);
   const drawing = useRef<Stroke | null>(null);
+  const panning = useRef<{ x: number; y: number; left: number; top: number } | null>(
+    null,
+  );
   const pending = useRef<{
     rawKey: string;
     editKey: string;
@@ -71,8 +75,8 @@ export function ScreenshotMarkup({
     editKey: uid(),
     pointId: uid(),
   });
-  const [tool, setTool] = useState<"pin" | "pencil" | "ellipse">(
-    target.kind === "frame" ? "pin" : "pencil",
+  const [tool, setTool] = useState<"pan" | "pin" | "pencil" | "ellipse">(
+    target.kind === "frame" ? "pin" : embedded ? "pan" : "pencil",
   );
   const [strokes, setStrokes] = useState<Stroke[]>(
     target.kind === "asset" ? (target.asset.markup ?? []) : [],
@@ -153,7 +157,7 @@ export function ScreenshotMarkup({
     ctx.drawImage(base, 0, 0, surface.width, surface.height);
     for (const stroke of strokes) drawStroke(ctx, stroke, surface.width, surface.height);
     if (drawing.current) drawStroke(ctx, drawing.current, surface.width, surface.height);
-    for (const mark of evidence) {
+    for (const mark of embedded ? [] : evidence) {
       const layer =
         mark.origin === "element"
           ? "element"
@@ -182,6 +186,7 @@ export function ScreenshotMarkup({
       }
     }
     const pins =
+      !embedded &&
       target.kind === "asset" &&
       !hiddenLayers.points &&
       thread.context.captureMarker?.style !== "none"
@@ -295,6 +300,100 @@ export function ScreenshotMarkup({
     }
   }
 
+  const markingCanvas = (
+    <canvas
+      ref={canvas}
+      aria-label="Screenshot marking canvas"
+      style={{
+        cursor: tool === "pan" ? "grab" : tool === "pin" ? "crosshair" : "cell",
+        touchAction: tool === "pan" ? "auto" : "none",
+      }}
+      onPointerDown={(event) => {
+        if (!ready || busy) return;
+        if (tool === "pan") {
+          // Touch uses native scrolling; mouse users can drag the image to pan.
+          if (event.pointerType === "touch") return;
+          const surface = event.currentTarget.closest(".screenshot-markup-surface")!;
+          panning.current = {
+            x: event.clientX,
+            y: event.clientY,
+            left: surface.scrollLeft,
+            top: surface.scrollTop,
+          };
+          event.currentTarget.setPointerCapture(event.pointerId);
+          return;
+        }
+        event.currentTarget.setPointerCapture(event.pointerId);
+        const point = normalized(event);
+        if (tool === "pin") {
+          setPin(point);
+          changed();
+          return;
+        }
+        drawing.current = { tool, points: [point, point] };
+      }}
+      onPointerMove={(event) => {
+        if (panning.current) {
+          const surface = event.currentTarget.closest(".screenshot-markup-surface")!;
+          surface.scrollLeft = panning.current.left - (event.clientX - panning.current.x);
+          surface.scrollTop = panning.current.top - (event.clientY - panning.current.y);
+          return;
+        }
+        if (!drawing.current || !event.currentTarget.hasPointerCapture(event.pointerId))
+          return;
+        const point = normalized(event);
+        drawing.current = {
+          ...drawing.current,
+          points:
+            drawing.current.tool === "ellipse"
+              ? [drawing.current.points[0], point]
+              : [...drawing.current.points.slice(-1999), point],
+        };
+        const ctx = event.currentTarget.getContext("2d");
+        const base = image.current;
+        if (ctx && base) {
+          ctx.drawImage(
+            base,
+            0,
+            0,
+            event.currentTarget.width,
+            event.currentTarget.height,
+          );
+          for (const stroke of strokes)
+            drawStroke(
+              ctx,
+              stroke,
+              event.currentTarget.width,
+              event.currentTarget.height,
+            );
+          drawStroke(
+            ctx,
+            drawing.current,
+            event.currentTarget.width,
+            event.currentTarget.height,
+          );
+        }
+      }}
+      onPointerCancel={() => {
+        panning.current = null;
+        drawing.current = null;
+      }}
+      onPointerUp={(event) => {
+        if (panning.current) {
+          panning.current = null;
+          event.currentTarget.releasePointerCapture(event.pointerId);
+          return;
+        }
+        if (!drawing.current) return;
+        event.currentTarget.releasePointerCapture(event.pointerId);
+        const stroke = drawing.current;
+        setStrokes((old) => [...old, stroke]);
+        drawing.current = null;
+        changed();
+      }}
+    />
+  );
+
   const content = (
     <>
       {!embedded && (
@@ -318,6 +417,15 @@ export function ScreenshotMarkup({
         </div>
       )}
       <div className="screenshot-markup-tools" role="group" aria-label="Marking tools">
+        {embedded && (
+          <button
+            type="button"
+            aria-pressed={tool === "pan"}
+            onClick={() => setTool("pan")}
+          >
+            Pan
+          </button>
+        )}
         {target.kind === "frame" && (
           <button
             type="button"
@@ -388,79 +496,23 @@ export function ScreenshotMarkup({
         </div>
       )}
       <div className="screenshot-markup-surface">
-        <canvas
-          ref={canvas}
-          aria-label="Screenshot marking canvas"
-          style={{
-            cursor: tool === "pin" ? "crosshair" : "cell",
-            ...(embedded && target.kind === "asset"
-              ? {
-                  width: target.asset.width
-                    ? `${target.asset.width * (embedded.zoom || 1)}px`
-                    : "100%",
-                  maxWidth: embedded.zoom ? "none" : "100%",
-                }
-              : {}),
-          }}
-          onPointerDown={(event) => {
-            if (!ready || busy) return;
-            event.currentTarget.setPointerCapture(event.pointerId);
-            const point = normalized(event);
-            if (tool === "pin") {
-              setPin(point);
-              changed();
-              return;
-            }
-            drawing.current = { tool, points: [point, point] };
-          }}
-          onPointerMove={(event) => {
-            if (
-              !drawing.current ||
-              !event.currentTarget.hasPointerCapture(event.pointerId)
-            )
-              return;
-            const point = normalized(event);
-            drawing.current = {
-              ...drawing.current,
-              points:
-                drawing.current.tool === "ellipse"
-                  ? [drawing.current.points[0], point]
-                  : [...drawing.current.points.slice(-1999), point],
-            };
-            const ctx = event.currentTarget.getContext("2d");
-            const base = image.current;
-            if (ctx && base) {
-              ctx.drawImage(
-                base,
-                0,
-                0,
-                event.currentTarget.width,
-                event.currentTarget.height,
-              );
-              for (const stroke of strokes)
-                drawStroke(
-                  ctx,
-                  stroke,
-                  event.currentTarget.width,
-                  event.currentTarget.height,
-                );
-              drawStroke(
-                ctx,
-                drawing.current,
-                event.currentTarget.width,
-                event.currentTarget.height,
-              );
-            }
-          }}
-          onPointerUp={(event) => {
-            if (!drawing.current) return;
-            event.currentTarget.releasePointerCapture(event.pointerId);
-            const stroke = drawing.current;
-            setStrokes((old) => [...old, stroke]);
-            drawing.current = null;
-            changed();
-          }}
-        />
+        {embedded && target.kind === "asset" ? (
+          <div
+            className="review-image-frame"
+            style={{
+              width: target.asset.width
+                ? `${target.asset.width * (embedded.zoom || 1)}px`
+                : "100%",
+              maxWidth: embedded.zoom ? "none" : "100%",
+              marginInline: "auto",
+            }}
+          >
+            {markingCanvas}
+            {embedded.evidenceOverlays}
+          </div>
+        ) : (
+          markingCanvas
+        )}
       </div>
       {target.kind === "frame" && (
         <label className="screenshot-markup-comment">

@@ -125,10 +125,11 @@ test("recording frames and the linked video are shown once in the recording play
   assert.match(html, /First request/);
 });
 
-test("screenshot review offers an expanded viewer instead of opening a raw asset", () => {
+test("screenshot review offers a single image review action", () => {
   const html = renderToStaticMarkup(
     React.createElement(ReviewEvidence, { thread: thread() }),
   );
-  assert.match(html, /Expand image/);
+  assert.match(html, /Review image/);
+  assert.doesNotMatch(html, /Expand image|Edit annotations/);
   assert.doesNotMatch(html, />Open full image</);
 });

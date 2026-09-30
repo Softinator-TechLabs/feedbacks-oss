@@ -174,7 +174,7 @@ export async function verifyPendingPoints({
     .getByRole("button", { name: "Expand all", exact: true })
     .click();
   await noMarkerThreadPage
-    .getByRole("button", { name: "Expand image", exact: true })
+    .getByRole("button", { name: "Review image", exact: true })
     .first()
     .click();
   assert.equal(

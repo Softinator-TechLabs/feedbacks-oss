@@ -48,10 +48,11 @@ test(
         path: ".local/evidence-qa/list-desktop.png",
         fullPage: true,
       });
-      const expand = page.getByRole("button", { name: "Expand image", exact: true });
+      const expand = page.getByRole("button", { name: "Review image", exact: true });
       await expand.click();
       const dialog = page.getByRole("dialog");
       await dialog.waitFor();
+      assert.equal(await dialog.getByRole("group", { name: "Marking tools" }).count(), 0);
       assert.equal(await dialog.locator(".review-image-pin").count(), 1);
       assert.equal(await dialog.locator(".review-text-selection").count(), 1);
       assert.equal(await dialog.locator(".review-element-outline").count(), 0);
@@ -111,7 +112,7 @@ test(
       await page.getByRole("button", { name: "Switch capture example" }).click();
       await page
         .locator(".review-main-capture")
-        .getByRole("button", { name: "Expand image: Full page · combined", exact: true })
+        .getByRole("button", { name: "Review image: Full page · combined", exact: true })
         .click();
       await page.getByRole("dialog").getByLabel("Image zoom").selectOption("1");
       assert.equal(
@@ -131,7 +132,7 @@ test(
 );
 
 test(
-  "image editing stays in the expanded viewer and preserves drafts on save failure",
+  "image review closes after saving and preserves drafts on save failure",
   { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
   async () => {
     const f = await evidenceViewerFixture({ writable: true, failFirstUpload: true });
@@ -143,9 +144,8 @@ test(
         await page.getByRole("button", { name: "Add annotations", exact: true }).count(),
         0,
       );
-      await page.getByRole("button", { name: "Expand image", exact: true }).click();
+      await page.getByRole("button", { name: "Review image", exact: true }).click();
       const dialog = page.getByRole("dialog");
-      await dialog.getByRole("button", { name: "Edit annotations", exact: true }).click();
       assert.equal(await page.locator("dialog[open]").count(), 1);
       await dialog.getByRole("button", { name: "Circle", exact: true }).click();
       const canvas = dialog.getByLabel("Screenshot marking canvas");
@@ -165,25 +165,26 @@ test(
       );
       assert.equal(await page.locator("dialog[open]").count(), 1);
       await dialog.getByRole("button", { name: "Save annotations", exact: true }).click();
-      await dialog
-        .getByRole("button", { name: "Edit annotations", exact: true })
-        .waitFor();
+      await dialog.waitFor({ state: "hidden" });
       assert.equal(
         await page.locator("dialog[open]").count(),
-        1,
-        "save returns to the same viewer",
+        0,
+        "save closes the single review dialog",
       );
       assert.equal(f.uploads.length, 2);
       assert.equal(f.uploads[0].idempotencyKey, f.uploads[1].idempotencyKey);
       assert.equal(f.uploads[1].replacesAssetId, "capture");
       assert.equal(f.uploads[1].markup[0].tool, "ellipse");
-      assert.equal(await dialog.locator("img").getAttribute("src"), "/saved.webp");
-      await dialog.getByRole("button", { name: "Edit annotations", exact: true }).click();
+      assert.equal(
+        await page.locator(".review-image-open img").getAttribute("src"),
+        "/saved.webp",
+      );
+      await page.getByRole("button", { name: "Review image", exact: true }).click();
       await dialog.getByRole("button", { name: "Clear marks" }).click();
       await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
       assert.equal(f.uploads.length, 2);
-      assert.equal(await dialog.isVisible(), true);
-      await dialog.getByRole("button", { name: "Edit annotations", exact: true }).click();
+      await dialog.waitFor({ state: "hidden" });
+      await page.getByRole("button", { name: "Review image", exact: true }).click();
       assert.equal(
         await dialog.getByRole("button", { name: "Undo mark" }).isEnabled(),
         true,
@@ -197,8 +198,8 @@ test(
       await page.keyboard.press("Escape");
       assert.equal(
         await dialog.isVisible(),
-        true,
-        "Escape cancels editing before closing the viewer",
+        false,
+        "Escape closes the single review dialog",
       );
     } finally {
       await browser.close();
@@ -297,25 +298,22 @@ test(
       for (let i = 0; i < 3; i++)
         await page.getByRole("button", { name: "Previous points" }).click();
       await list.locator("summary.review-point-summary").first().click();
-      await list.getByRole("button", { name: "Expand image", exact: true }).click();
+      await list.getByRole("button", { name: "Review image", exact: true }).click();
       const viewer = page.getByRole("dialog");
-      await viewer.getByRole("button", { name: "Edit annotations", exact: true }).click();
       const canvas = viewer.locator("canvas");
       await page.waitForFunction(() => {
         const el = document.querySelector("canvas");
         return el && el.width === 1200;
       });
+      await viewer.getByRole("button", { name: "Pencil", exact: true }).click();
       const box = (await canvas.boundingBox())!;
       await page.mouse.move(box.x + 30, box.y + 30);
       await page.mouse.down();
       await page.mouse.move(box.x + 60, box.y + 60);
       await page.mouse.up();
       await viewer.getByRole("button", { name: "Save annotations", exact: true }).click();
-      await viewer
-        .getByRole("button", { name: "Edit annotations", exact: true })
-        .waitFor();
-      assert.equal(await viewer.isVisible(), true);
-      await viewer.getByRole("button", { name: "Close", exact: true }).click();
+      await viewer.waitFor({ state: "hidden" });
+      assert.equal(await viewer.isVisible(), false);
       await page.emulateMedia({ reducedMotion: "reduce" });
       assert.equal(
         await list
@@ -363,20 +361,18 @@ test(
       assert.equal(await point.getByLabel("Point 6 priority").inputValue(), "high");
       await point.getByLabel("Point 6 timing").selectOption("later");
       await point.getByText("High priority · Later", { exact: true }).waitFor();
-      await point.getByRole("button", { name: "Expand image", exact: true }).click();
+      await point.getByRole("button", { name: "Review image", exact: true }).click();
       const dialog = page.getByRole("dialog");
-      await dialog.getByRole("button", { name: "Edit annotations", exact: true }).click();
       await page.waitForFunction(() => document.querySelector("canvas")?.width === 1200);
+      await dialog.getByRole("button", { name: "Pencil", exact: true }).click();
       const box = (await dialog.locator("canvas").boundingBox())!;
       await page.mouse.move(box.x + 40, box.y + 40);
       await page.mouse.down();
       await page.mouse.move(box.x + 90, box.y + 90);
       await page.mouse.up();
       await dialog.getByRole("button", { name: "Save annotations", exact: true }).click();
-      await dialog
-        .getByRole("button", { name: "Edit annotations", exact: true })
-        .waitFor();
-      assert.equal(await dialog.isVisible(), true);
+      await dialog.waitFor({ state: "hidden" });
+      assert.equal(await dialog.isVisible(), false);
       assert.equal(await point.getAttribute("open"), "");
       assert.equal(f.uploads.length, 1);
     } finally {
@@ -441,19 +437,28 @@ test(
         );
         await point.screenshot({ path: `.local/evidence-qa/inline-point-${width}.png` });
       }
-      await figure.getByRole("button", { name: "Expand image", exact: true }).click();
+      await figure.getByRole("button", { name: "Review image", exact: true }).click();
       const dialog = page.getByRole("dialog");
-      assert.equal(await dialog.locator(".review-element-outline").count(), 1);
-      assert.equal(await dialog.locator(".review-text-selection").count(), 0);
+      assert.equal(
+        await dialog
+          .getByRole("button", { name: "Hide element outline" })
+          .getAttribute("aria-pressed"),
+        "true",
+      );
+      assert.equal(
+        await dialog
+          .getByRole("button", { name: "Show text selection" })
+          .getAttribute("aria-pressed"),
+        "false",
+      );
       await dialog.getByRole("button", { name: "Show text selection" }).click();
       await dialog.getByRole("button", { name: "Close", exact: true }).click();
       assert.equal(
         await figure.locator(".review-image-open .review-text-selection").count(),
         1,
       );
-      await figure.getByRole("button", { name: "Edit annotations", exact: true }).click();
+      await figure.getByRole("button", { name: "Review image", exact: true }).click();
       await page.getByRole("dialog").getByLabel("Screenshot marking canvas").waitFor();
-      await page.keyboard.press("Escape");
       await page.keyboard.press("Escape");
       await page.getByRole("button", { name: "Switch capture example" }).click();
       const main = page.locator(".review-main-capture");
@@ -463,6 +468,113 @@ test(
           (await main.boundingBox())!.y + (await main.boundingBox())!.height,
         "point controls follow the image",
       );
+    } finally {
+      await browser.close();
+      await f.close();
+    }
+  },
+);
+
+test(
+  "one image review action closes the entire editor on cancel, close or Escape",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const f = await evidenceViewerFixture({ writable: true });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.goto(f.url, { waitUntil: "domcontentloaded" });
+      const review = page.getByRole("button", { name: "Review image", exact: true });
+      assert.equal(await review.count(), 1);
+      assert.equal(
+        await page.getByRole("button", { name: /Expand image|Edit annotations/ }).count(),
+        0,
+      );
+      for (const exit of ["Cancel", "Close", "Escape"]) {
+        await review.click();
+        const dialog = page.getByRole("dialog");
+        await dialog.getByLabel("Screenshot marking canvas").waitFor();
+        await page.waitForFunction(
+          () => document.querySelector("canvas")?.width === 1200,
+        );
+        assert.equal(await page.locator("dialog[open]").count(), 1);
+        assert.equal(
+          await dialog.getByRole("button", { name: "Undo mark" }).isDisabled(),
+          true,
+        );
+        await dialog.getByRole("button", { name: "Pencil", exact: true }).click();
+        const box = (await dialog.locator("canvas").boundingBox())!;
+        await page.mouse.move(box.x + 30, box.y + 30);
+        await page.mouse.down();
+        await page.mouse.move(box.x + 60, box.y + 60);
+        await page.mouse.up();
+        if (exit === "Escape") await page.keyboard.press("Escape");
+        else await dialog.getByRole("button", { name: exit, exact: true }).click();
+        await dialog.waitFor({ state: "hidden" });
+        assert.equal(await page.locator("dialog[open]").count(), 0);
+        assert.equal(await review.evaluate((el) => document.activeElement === el), true);
+      }
+      assert.equal(f.uploads.length, 0, "discarding never saves marks");
+    } finally {
+      await browser.close();
+      await f.close();
+    }
+  },
+);
+
+test(
+  "writable image review preserves numbered markers and supports touch navigation without drawing",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const f = await evidenceViewerFixture({ writable: true });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+      });
+      await page.goto(f.url, { waitUntil: "domcontentloaded" });
+      await page.getByRole("button", { name: "Switch capture example" }).click();
+      await page
+        .locator(".review-main-capture")
+        .getByRole("button", { name: "Review image", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      assert.equal(
+        await dialog.getByRole("button", { name: "Pan", exact: true }).count(),
+        1,
+      );
+      assert.equal(
+        await dialog.locator('.review-image-pin[data-style="pin"]').textContent(),
+        "1",
+      );
+      await dialog.getByLabel("Image zoom").selectOption("1");
+      const surface = dialog.locator(".screenshot-markup-surface");
+      const box = (await surface.boundingBox())!;
+      const cdp = await page.context().newCDPSession(page);
+      const x = box.x + 100,
+        y = box.y + Math.min(220, box.height - 30);
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x, y }],
+      });
+      for (let i = 1; i <= 8; i++) {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x, y: y - i * 16 }],
+        });
+        await page.waitForTimeout(16);
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForFunction(
+        () => document.querySelector(".screenshot-markup-surface")!.scrollTop > 50,
+      );
+      assert.equal(
+        await dialog.getByRole("button", { name: "Undo mark" }).isDisabled(),
+        true,
+      );
+      assert.equal(f.uploads.length, 0);
+      await dialog.getByRole("button", { name: "Close", exact: true }).click();
     } finally {
       await browser.close();
       await f.close();

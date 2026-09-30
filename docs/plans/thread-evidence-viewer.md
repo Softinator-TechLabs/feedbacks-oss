@@ -87,3 +87,21 @@ keyboard disclosure, 20-point pagination, editing recovery and widths of 1440, 9
 and 390 pixels. Synthetic [desktop](../screenshots/thread-evidence-viewer/inline-controls-desktop.png)
 and [mobile](../screenshots/thread-evidence-viewer/inline-controls-mobile.png) captures
 show the revised layout. This follow-up does not establish production deployment.
+
+## Unified image review follow-up
+
+**Review image**, with an image icon, replaces the separate expansion and annotation
+actions. Writable review opens the existing marking surface directly; read-only
+review retains the image viewer. Cancel, Close and Escape dismiss the entire dialog
+and discard the current draft. Successful saves close it after updating the thread;
+failed saves preserve marks and retry identity. Saving still blocks dismissal.
+
+The seven browser regressions cover single-action entry, each dismissal path, restored
+focus, discarded drafts, saved-mark persistence and failed-save recovery, alongside
+the existing layer, zoom, pagination and mobile checks. Packaged extension acceptance
+uses this same entry point and verifies that Cancel leaves no dialog open.
+
+Review starts in Pan mode for native touch scrolling and mouse dragging; drawing
+requires choosing Pencil or Circle. The embedded canvas reuses the inline DOM evidence
+layer, retaining point numbers, marker styles/sizes and aligned highlights. A touch
+gesture regression verifies scrolling without drawing, alongside numbered pin readback.

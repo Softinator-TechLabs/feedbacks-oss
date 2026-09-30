@@ -126,20 +126,21 @@ relevant labels. Recording frames and thumbnails do not count as separate screen
 captures. The recording section is absent when no session recording or video exists;
 recording loading failures still offer their existing recovery information.
 
-Choose **Expand image** beside a screenshot, or click the screenshot, to inspect it
-in a larger viewer. Points, element outlines and text selection use the same
-visibility state as the inline image. Show/hide controls sit above the inline image
-and are also available in the expanded viewer.
-**Fit width**, **100%** and **200%** control zoom; large captures scroll inside the
-viewer. **Close** or Escape returns to the review. **Open original file** opens only
-the saved image, without browser-rendered evidence layers. Legacy annotations saved
-into image pixels remain part of that image.
+Choose **Review image** beside a screenshot, or click the screenshot, to open one
+image review dialog. Reviewers with thread write permission can draw or revise
+annotations with the visible tools; read-only reviewers see the image without editing tools.
+Writable review starts in **Pan** so dragging or swiping navigates the image; choose
+**Pencil** or **Circle** to draw.
+Points, element outlines and text selection share visibility with the inline image.
+Show/hide controls are available in both places. **Fit width**, **100%** and **200%**
+control zoom; large captures scroll inside the dialog. **Open original file** opens
+only the saved image, without browser-rendered evidence layers. Legacy annotations
+saved into image pixels remain part of that image.
 
-Choose **Edit annotations** above the inline image to open the viewer in editing
-mode, or choose it inside the viewer to draw or revise marks without another dialog. The layer controls and zoom remain available while editing.
-**Save annotations** updates the image and returns to viewing; **Cancel** (or Escape)
-discards the draft and stays in the viewer. A failed save preserves the draft for
-retry. Editing requires the existing thread write permission.
+**Save annotations** updates the image and closes the dialog. **Cancel**, **Close**
+and Escape discard unsaved marks and return directly to the thread, with no viewer
+left underneath. A failed save preserves the draft for retry. Closing is disabled
+while a save is in progress.
 
 Numbered points show a compact preview and **Expand / Collapse** to describe the
 accordion action. Resolved, closed or removed states and any non-normal priority
@@ -150,6 +151,6 @@ point list, after the page captures. Bulk actions affect filtered points across 
 open/close transitions respect the system reduced-motion preference. Lists show five points per page with Previous/Next controls
 and retain their original numbering when filtered. Direct links reveal the target
 point's page. Each expanded point shows feedback, a compact **Priority / Schedule**
-row and its screenshot using the available panel width. Image visibility, expansion
-and editing controls sit above that image. Resolve/remove actions stay in a separate
+row and its screenshot using the available panel width. Visibility controls and
+**Review image** sit above that image. Resolve/remove actions stay in a separate
 footer, and technical element details stay collapsed.
