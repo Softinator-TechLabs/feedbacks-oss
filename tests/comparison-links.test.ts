@@ -42,46 +42,64 @@ test("Feedbacks comparison describes current optional video and GitHub workflows
   assert.match(matrixRows.feedbacks.github.url, /docs\/api\.md$/);
   const page = await readFile(resolve(compareDirectory, "bugpin.html"), "utf8");
   assert.doesNotMatch(page, /does not automatically create or synchronize Issues/);
-  assert.ok(page.includes("optional GitHub App"));
-  assert.ok(page.includes("video + session"));
+  assert.match(page, /Optional GitHub App/i);
+  assert.equal(matrixRows.feedbacks.sessionOnly.status, "yes");
   assert.doesNotMatch(page, /Recording is not session replay/);
 });
 
-test("comparison evidence separates unknown, replay and recording capabilities", async () => {
-  const { matrixFeatures, matrixGroups } = await import("../site/comparison-matrix.mjs");
-  assert.equal(matrixGroups.length, 5);
-  assert.ok(matrixFeatures.length >= 36);
-  assert.equal(new Set(matrixFeatures.map(([key]) => key)).size, matrixFeatures.length);
-  for (const [key] of matrixFeatures)
-    assert.ok(matrixRows.feedbacks[key], `Feedbacks: ${key}`);
-  assert.equal(matrixRows.feedbacks.replay.status, "yes");
-  assert.match(matrixRows.feedbacks.replay.url, /session-replay/);
-  assert.equal(matrixRows["marker-io"].replay.status, "yes");
-  assert.equal(matrixRows["marker-io"].video, undefined);
+test("every comparison verdict has dated, qualified evidence", async () => {
+  const { matrixFeatures, matrixGroups, vendorAudits } = await import(
+    "../site/comparison-matrix.mjs"
+  );
+  assert.equal(matrixFeatures.length, 49);
+  assert.equal(new Set(matrixFeatures.map(([key]) => key)).size, 49);
+  assert.equal(matrixGroups[0].id, "highlights");
+  assert.equal(Object.keys(vendorAudits).length, 15);
   for (const [slug, row] of Object.entries(matrixRows)) {
-    for (const [key, evidence] of Object.entries(row)) {
+    assert.equal(Object.keys(row).length, 49, slug);
+    for (const [key] of matrixFeatures) {
+      const evidence = row[key];
+      assert.ok(evidence, `${slug}.${key}`);
       assert.match(evidence.url, /^https:\/\//, `${slug}.${key}`);
-      assert.match(evidence.reviewed, /^\d{1,2} September 2026$/, `${slug}.${key}`);
-      if (slug !== "feedbacks") assert.notEqual(evidence.status, "no", `${slug}.${key}`);
+      assert.equal(evidence.reviewed, "30 September 2026", `${slug}.${key}`);
+      assert.ok(evidence.detail.length > 15, `${slug}.${key}: qualification`);
+      assert.ok(
+        ["source", "documentation", "explicit", "scope"].includes(evidence.basis),
+        `${slug}.${key}: basis`,
+      );
     }
   }
+  assert.equal(matrixRows["marker-io"].video.status, "no");
+  assert.equal(matrixRows["marker-io"].replay.status, "paid");
+  assert.equal(matrixRows.superflow.mcp.status, "yes");
+  assert.equal(matrixRows.feedbacks.nativeClients.status, "yes");
+  assert.equal(matrixRows.feedbacks.threadBundle.status, "yes");
+});
+
+test("the index puts all tools in one comprehensive table with accessible evidence", async () => {
+  const { matrixGroups, vendorAudits } = await import("../site/comparison-matrix.mjs");
   const page = await readFile(resolve(compareDirectory, "index.html"), "utf8");
-  assert.equal((page.match(/<table\b/g) ?? []).length, matrixGroups.length);
+  assert.equal((page.match(/<table\b/g) ?? []).length, 1);
+  assert.equal((page.match(/class="matrix-evidence"/g) ?? []).length, 49 * 16);
   for (const group of matrixGroups) {
     assert.ok(page.includes(`id="matrix-${group.id}"`));
     assert.ok(page.includes(`href="#matrix-${group.id}"`));
   }
-  assert.ok(page.includes("Not verified"));
-  assert.ok(page.includes("does not mean the tool lacks it"));
+  for (const slug of Object.keys(vendorAudits))
+    assert.ok(page.includes(`data-tool="${slug}"`));
+  assert.ok(page.includes("❌"));
+  assert.ok(page.includes("popover"));
+  assert.ok(page.includes("Read source"));
+  assert.ok(page.includes("2026-09-30"));
 });
 
 test("comparison widths remain available under the public site's strict style policy", async () => {
-  const { matrixGroups } = await import("../site/comparison-matrix.mjs");
   const css = await readFile(resolve(compareDirectory, "../comparison.css"), "utf8");
   const page = await readFile(resolve(compareDirectory, "openreplay.html"), "utf8");
-  assert.doesNotMatch(page, /style="--matrix-columns/);
-  for (const group of matrixGroups) {
-    assert.ok(page.includes(`class="matrix-columns-${group.features.length}"`));
-    assert.ok(css.includes(`.matrix-columns-${group.features.length}`));
-  }
+  const index = await readFile(resolve(compareDirectory, "index.html"), "utf8");
+  assert.doesNotMatch(page, /style="/);
+  assert.ok(page.includes('class="matrix-tools-2"'));
+  assert.ok(index.includes('class="matrix-tools-16"'));
+  assert.ok(css.includes(".matrix-tools-2"));
+  assert.ok(css.includes(".matrix-tools-16"));
 });

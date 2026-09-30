@@ -1,12 +1,13 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import prettier from "prettier";
-import { comparisons, reviewed } from "../site/comparison-data.mjs";
+import { comparisons } from "../site/comparison-data.mjs";
 import {
   matrixFeatures,
   matrixGroups,
   matrixReviewed,
   matrixRows,
+  vendorAudits,
 } from "../site/comparison-matrix.mjs";
 
 const site = resolve(import.meta.dirname, "../site");
@@ -44,7 +45,7 @@ function shell({ title, description, canonical, content }) {
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/comparison.css" />
-    <script src="/comparison.js" defer></script>
+    <script src="/comparison.js?v=20260930-audit" defer></script>
     <title>${escape(title)}</title>
   </head>
   <body>
@@ -63,89 +64,73 @@ function shell({ title, description, canonical, content }) {
 </html>`;
 }
 
-const ours = {
-  editing:
-    "Pencil, shapes, text, highlighter, numbered steps, blur, redaction, stickers and movable local images. Copy annotated PNG pixels or download PNG, JPEG, WebP and multi-page PDF. Crop export changes local outputs only.",
-  recording:
-    "Record video + session, or a session without video, for up to five minutes. DOM replay, activity, console, network and performance share a timeline. Preview, trim or crop video and annotate frames. Edited clips omit DOM replay. Tab audio and microphone are separate opt-ins.",
-  capture:
-    "Capture visible or full-page screenshots, keep original evidence per point and suggest exact text replacements. Review local drafts before Send; published pins and individual point progress stay linked to the thread.",
-  hosting:
-    "Free Apache-2.0 server, web app, extension, MCP and CLI, with no feature paywall. Run them with your PostgreSQL and private S3-compatible storage; infrastructure is your responsibility.",
-  agents:
-    "Scoped MCP, API and CLI access to discussion, screenshots, recording events and approved project guidance. Export a complete thread bundle or materialize recording evidence through the local MCP adapter. Reviewer weights are advisory.",
-  handoff:
-    "An optional GitHub App connects multiple repositories across installations and organizations. Choose a destination and create a linked Issue, directly or after editing a draft. Verified open/closed sync is a separate project opt-in.",
-};
-
 const statusLabels = {
-  yes: "✓",
-  no: "No",
+  yes: "✓ Yes",
+  no: "❌ No",
   unknown: "Not verified",
-  paid: "Paid",
+  paid: "✓ Paid",
   partial: "Partial",
-  required: "External",
-  components: "Parts",
-  manual: "Manual",
-  agent: "Agent",
+  external: "External",
+  parts: "Parts",
 };
-
-function matrixGroup(group, activeSlug) {
-  const features = group.features;
+const basisLabels = {
+  source: "Public source audit",
+  documentation: "Official documentation",
+  explicit: "Explicit published limit",
+  scope: "Documented product/tool inventory",
+};
+function evidenceCell(entry, key, label) {
+  const evidence = matrixRows[entry.slug][key];
+  const iso = new Date(`${evidence.reviewed} UTC`).toISOString().slice(0, 10);
+  const shortDate = new Date(`${evidence.reviewed} UTC`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const title = `${entry.name} · ${label}`;
+  const scope =
+    vendorAudits[entry.slug]?.scope ??
+    "Feedbacks public source b9b7df4; installed versions may differ.";
+  return `<td class="matrix-${evidence.status}${entry.slug === "feedbacks" ? " matrix-ours" : ""}"><details class="matrix-evidence" name="comparison-evidence"><summary aria-label="${escape(title)}: ${escape(statusLabels[evidence.status])}. Checked ${escape(evidence.reviewed)}. Show evidence." data-evidence-title="${escape(title)}"><span class="matrix-verdict">${escape(statusLabels[evidence.status])}</span><time datetime="${iso}">${escape(shortDate)}</time></summary><div class="matrix-evidence-body"><p class="evidence-verdict"><strong>${escape(statusLabels[evidence.status])}</strong> · Checked ${escape(evidence.reviewed)}</p><p>${escape(evidence.detail)}</p><p class="evidence-basis">${escape(basisLabels[evidence.basis])}</p><p class="evidence-scope">${escape(scope)}</p><a href="${escape(evidence.url)}" ${externalLink}>Read source <span aria-hidden="true">↗</span></a></div></details></td>`;
+}
+function matrix(activeSlug) {
   const entries = [
     { slug: "feedbacks", name: "Feedbacks" },
     ...comparisons.filter((entry) => !activeSlug || entry.slug === activeSlug),
   ];
-  const header = features
-    .map(([, label]) => `<th scope="col">${escape(label)}</th>`)
+  const vendorCount = entries.length - 1;
+  const unknownCount = entries.reduce(
+    (sum, entry) =>
+      sum +
+      Object.values(matrixRows[entry.slug]).filter((cell) => cell.status === "unknown")
+        .length,
+    0,
+  );
+  const headers = entries
+    .map(
+      (entry) =>
+        `<th scope="col" data-tool="${entry.slug}"${entry.slug === "feedbacks" ? ' class="matrix-ours"' : ""}><a href="${entry.slug === "feedbacks" ? "/" : `/compare/${entry.slug}.html`}">${escape(entry.name)}</a>${entry.slug === "bugpin" ? "<small>Community + noted EE</small>" : entry.slug === "openreplay" ? "<small>Core + Spot</small>" : ""}</th>`,
+    )
     .join("");
-  const rows = entries
-    .map((entry) => {
-      const cells = features
-        .map(([key, label]) => {
-          const evidence = matrixRows[entry.slug]?.[key];
-          if (!evidence) {
-            return `<td class="matrix-unknown"><span aria-label="${escape(entry.name)}: ${escape(label)} not verified">Not verified</span></td>`;
-          }
-          const symbol = statusLabels[evidence.status];
-          const value = evidence.status === "yes" ? "Confirmed" : symbol;
-          const explanation = `${value}. Checked ${evidence.reviewed}.${evidence.detail ? ` ${evidence.detail}` : ""}`;
-          return `<td class="matrix-${evidence.status}"><a href="${escape(evidence.url)}" ${externalLink} aria-label="${escape(entry.name)}: ${escape(label)}. ${escape(explanation)} Read source." title="${escape(explanation)} Read source for ${escape(entry.name)}: ${escape(label)}">${escape(symbol)}</a></td>`;
-        })
-        .join("");
-      const name =
-        entry.slug === "feedbacks"
-          ? `<a href="/">Feedbacks</a>`
-          : `<a href="/compare/${entry.slug}.html">${escape(entry.name)}</a>`;
-      return `<tr${entry.slug === activeSlug ? ' class="matrix-active"' : ""}><th scope="row">${name}</th>${cells}</tr>`;
-    })
+  const bodies = matrixGroups
+    .map(
+      (group) =>
+        `<tbody><tr class="matrix-group-row" id="matrix-${group.id}"><th scope="rowgroup" colspan="${entries.length + 1}"><span>${escape(group.title)}</span></th></tr>${group.features.map(([key, label]) => `<tr data-feature="${key}"><th scope="row">${escape(label)}</th>${entries.map((entry) => evidenceCell(entry, key, label)).join("")}</tr>`).join("")}</tbody>`,
+    )
     .join("");
-  return `<section class="compare-matrix" id="matrix-${group.id}" aria-labelledby="matrix-${group.id}-heading">
-    <div class="matrix-intro"><h2 id="matrix-${group.id}-heading">${escape(group.title)}</h2><p>${escape(group.description)}</p></div>
-    <div class="matrix-controls" aria-label="Comparison table navigation"><p>Swipe or use the arrows to see every feature.</p><div><button type="button" class="matrix-prev" aria-label="Previous comparison columns" disabled>←</button><span class="matrix-position" aria-live="polite">Feature 1 of ${features.length}</span><button type="button" class="matrix-next" aria-label="Next comparison columns">→</button></div></div>
-    <div class="matrix-scroll" role="region" aria-label="${escape(group.title)} comparison table" tabindex="0">
-      <table class="matrix-columns-${features.length}"><caption>${escape(group.title)}: Feedbacks and ${activeSlug ? escape(comparisons.find((entry) => entry.slug === activeSlug).name) : `${comparisons.length} website feedback tools`}, compared by documented capability</caption><thead><tr><th scope="col">Tool</th>${header}</tr></thead><tbody>${rows}</tbody></table>
-    </div>
-
-  </section>`;
-}
-
-function matrix(activeSlug) {
-  return `<div class="comparison-overview">
-    <h2>Compare the details that matter.</h2>
-    <p>${matrixFeatures.length} capabilities across ${matrixGroups.length} tables. Open a confirmed mark for its source and review date. “Not verified” means the available evidence does not establish that capability; it does not mean the tool lacks it.</p>
-    <nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape(group.title)}</a>`).join("")}</nav>
-    <p class="matrix-key"><strong>✓</strong> Confirmed <span>·</span> <strong>No</strong> Explicitly unavailable <span>·</span> <strong>Not verified</strong> Evidence insufficient <span>·</span> <strong>Parts</strong> Components to assemble <span>·</span> <strong>External</strong> Required account <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Some named formats confirmed</p>
-    <p class="matrix-date">Feedbacks source reviewed ${matrixReviewed}; vendor documentation reviewed ${reviewed}. Each sourced cell keeps its own date. Vendor documentation describes available capabilities, which can depend on plan or setup. This is not a hands-on certification. Feedbacks describes the current source; installed and Store versions may differ. A tick does not imply identical workflows.</p>
-    </div>${matrixGroups.map((group) => matrixGroup(group, activeSlug)).join("")}`;
+  return `<section class="compare-matrix" aria-labelledby="matrix-heading">
+    <div class="comparison-overview"><h2 id="matrix-heading">${matrixFeatures.length} capabilities · ${activeSlug ? `Feedbacks + ${escape(entries[1].name)}` : `${entries.length} tools`}</h2>
+    <nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape({ highlights: "Highlights", capture: "Capture", annotation: "Image tools", recording: "Recordings", collaboration: "Team & agents", hosting: "Self-hosting" }[group.id] ?? group.title)}</a>`).join("")}</nav>
+    <p class="matrix-key"><strong>✓ Yes</strong> <span>·</span> <strong>❌ No</strong> In the reviewed scope <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Related support <span>·</span> <strong>External / Parts</strong> Requires another tool</p>
+    <p class="matrix-date">Reviewed ${matrixReviewed}. ${unknownCount}/${matrixFeatures.length * entries.length} verdicts remain <strong>Not verified</strong>; each explains the evidence gap. <a href="/docs/reference/comparison-method">How we audit</a>.</p></div>
+    <div class="matrix-controls" aria-label="Comparison table navigation" hidden><p>Swipe or scroll. Feature labels and Feedbacks stay visible.</p><div><button type="button" class="matrix-prev" aria-label="Previous comparison tools" disabled>←</button><span class="matrix-position" aria-live="polite">Tool 1 of ${vendorCount}</span><button type="button" class="matrix-next" aria-label="Next comparison tools">→</button></div></div>
+    <div class="matrix-scroll" role="region" aria-label="Comprehensive capability comparison" tabindex="0"><table class="matrix-tools-${entries.length}"><caption>All ${matrixFeatures.length} capabilities: Feedbacks and ${activeSlug ? escape(entries[1].name) : `${vendorCount} website feedback tools`}, with dated evidence</caption><colgroup><col class="matrix-feature-column"/>${entries.map(() => '<col class="matrix-tool-column"/>').join("")}</colgroup><thead><tr><th scope="col">Capability</th>${headers}</tr></thead>${bodies}</table></div>
+    <aside id="evidence-popover" class="evidence-popover" popover role="dialog" aria-labelledby="evidence-title"><button type="button" class="evidence-close">Close evidence <span aria-hidden="true">×</span></button><h3 id="evidence-title"></h3><div class="evidence-content"></div></aside>
+    </section>`;
 }
 
 function detail(entry, index) {
-  const row = (name, us, them) => `<div class="compare-row">
-    <h3>${name}</h3>
-    <p><strong>Feedbacks</strong>${escape(us)}</p>
-    <p><strong>${escape(entry.name)}</strong>${escape(them)}</p>
-  </div>`;
   const siblings = [
     comparisons[(index + comparisons.length - 1) % comparisons.length],
     comparisons[(index + 1) % comparisons.length],
@@ -153,28 +138,15 @@ function detail(entry, index) {
   const canonical = `${home}/compare/${entry.slug}.html`;
   return shell({
     title: `Feedbacks vs ${entry.name} | Website feedback comparison`,
-    description: `${entry.summary} Compare capture, hosting, agent context and handoff using the official sources.`,
+    description: `${vendorAudits[entry.slug].summary} Dated evidence for all 49 capabilities.`,
     canonical,
     content: `<div class="compare-page wrap">
       <p class="compare-return"><a href="/compare/">All comparisons</a> / ${escape(entry.name)}</p>
       <div class="compare-hero">
         <h1>Feedbacks <span>or</span> ${escape(entry.name)}?</h1>
-        <p>${escape(entry.summary)}</p>
-      </div>
-      <div class="compare-choices" aria-label="When to choose each tool">
-        <p><strong>${escape(entry.name)}</strong>${escape(entry.bestFor)}</p>
-        <p><strong>Feedbacks</strong>${escape(entry.feedbacksBest)}</p>
+        <p>${escape(vendorAudits[entry.slug].summary)}</p>
       </div>
       ${matrix(entry.slug)}
-      <section class="compare-facts" aria-labelledby="compare-facts-heading">
-        <h2 id="compare-facts-heading">How the work moves.</h2>
-        ${row("Capture", ours.capture, entry.theirCapture)}
-        ${row("Editing & exports", ours.editing, entry.theirEditing ?? "See the annotation table above for confirmed tools and formats. Specific capabilities without supporting documentation are marked Not verified.")}
-        ${row("Recording", ours.recording, entry.theirRecording ?? "See the recording table above. Video review, session replay, audio sources and recording edits are assessed separately; undocumented capabilities are Not verified.")}
-        ${row("Hosting & source", ours.hosting, entry.theirHosting)}
-        ${row("Coding agents", ours.agents, entry.theirAI)}
-        ${row("Next step", ours.handoff, entry.theirHandoff)}
-      </section>
       <aside class="compare-limits">
         <h2>What Feedbacks does today.</h2>
         <p>Recording starts explicitly and is bounded to five minutes; video has a 40 MiB limit. Optional audio, network bodies and masking have separate controls. Edited video omits DOM replay. Screenshot diagnostic artifacts can contain raw browser values and do not inherit session masking. Check capture coverage and review evidence before sharing.</p>
@@ -184,15 +156,15 @@ function detail(entry, index) {
       <div class="compare-actions"><a class="button primary" href="/docs/guide/getting-started">Set up Feedbacks</a><a href="/docs/guide/session-replay">Explore recordings and replay</a></div>
       <section class="compare-sources" aria-labelledby="compare-sources-heading">
         <h2 id="compare-sources-heading">Sources and scope.</h2>
-        <p>Vendor documentation checked ${reviewed}; Feedbacks source updated ${matrixReviewed}. This is a comparison of published product documentation, not a hands-on certification of every plan or deployment. Features and plans can change.</p>
-        ${entry.scopeNote ? `<p>${escape(entry.scopeNote)}</p>` : ""}
+        <p>All feature verdicts reviewed ${matrixReviewed}. ${escape(vendorAudits[entry.slug].scope)}</p>
+
         <ul>
           <li><a href="${source}/blob/HEAD/docs/why-feedbacks.md" ${externalLink}>Feedbacks product boundaries</a></li>
           <li><a href="${source}/blob/HEAD/docs/extension.md" ${externalLink}>Feedbacks capture, editing and recording</a></li>
           <li><a href="${source}/blob/HEAD/docs/session-replay.md" ${externalLink}>Feedbacks session replay and debug bundles</a></li>
           <li><a href="${source}/blob/HEAD/docs/agents.md" ${externalLink}>Feedbacks agent context</a></li>
           <li><a href="${source}/blob/HEAD/docs/self-hosting.md" ${externalLink}>Feedbacks self-hosting</a></li>
-          ${entry.sources.map(([label, url]) => `<li><a href="${escape(url)}" ${externalLink}>${escape(label)}</a></li>`).join("")}
+          ${vendorAudits[entry.slug].sources.map(({ title, url, reviewed: date }) => `<li><a href="${escape(url)}" ${externalLink}>${escape(title)}</a> <span>— checked ${escape(date)}</span></li>`).join("")}
         </ul>
       </section>
       <nav class="compare-next" aria-label="Other comparisons"><a href="/compare/${siblings[0].slug}.html">← ${escape(siblings[0].name)}</a><a href="/compare/${siblings[1].slug}.html">${escape(siblings[1].name)} →</a></nav>
@@ -206,12 +178,12 @@ function indexPage() {
   return shell({
     title: "Compare Feedbacks with website feedback tools",
     description:
-      "A clear look at Feedbacks and other visual feedback tools. Compare capture, self-hosting, agent context and handoff with direct sources.",
+      "Compare Feedbacks and 15 alternatives across 49 features: visual review, video, session replay, debugging, MCP and self-hosting. Every verdict has dated evidence.",
     canonical,
     content: `<div class="compare-index wrap">
-      <h1>Choose where your feedback lives.</h1>
-      <p class="compare-index-intro">Some tools start with a widget. Some start with a recording or a canvas. Feedbacks combines screenshots, original evidence for each page pin, annotation and local exports, video and session replay, a shared diagnostic timeline and portable debugging bundles on your own server. The whole product is free and Apache-2.0.</p>
-      <p class="compare-index-note">Several tools here also offer MCP, self-hosting or both. Each page links to the vendor's own description, and makes the tradeoffs clear.</p>
+      <h1>Website feedback tools, compared.</h1>
+      <p class="compare-index-intro">Visual review, video, replay, debugging and agent handoff. Open a verdict for dated evidence.</p>
+
       ${matrix()}
       ${groups
         .map(
@@ -220,7 +192,7 @@ function indexPage() {
               .filter((entry) => entry.group === group)
               .map(
                 (entry) =>
-                  `<a href="/compare/${entry.slug}.html"><strong>${escape(entry.name)}</strong><span>${escape(entry.summary)}</span><span aria-hidden="true">↗</span></a>`,
+                  `<a href="/compare/${entry.slug}.html"><strong>${escape(entry.name)}</strong><span>${escape(vendorAudits[entry.slug].summary)}</span><span aria-hidden="true">↗</span></a>`,
               )
               .join("")}</div></section>`,
         )
@@ -246,7 +218,7 @@ if (new Set(comparisons.map((entry) => entry.slug)).size !== comparisons.length)
   throw new Error("Duplicate comparison slug");
 }
 for (const entry of comparisons) {
-  if (!/^[a-z0-9-]+$/.test(entry.slug) || entry.sources.length === 0) {
+  if (!/^[a-z0-9-]+$/.test(entry.slug) || !vendorAudits[entry.slug]?.sources.length) {
     throw new Error(`Invalid comparison entry: ${entry.slug}`);
   }
 }
@@ -257,10 +229,18 @@ if (
   throw new Error("Comparison matrix rows do not match comparison pages");
 }
 for (const [slug, row] of Object.entries(matrixRows)) {
+  if (
+    Object.keys(row).length !== matrixFeatures.length ||
+    matrixFeatures.some(([key]) => !row[key])
+  )
+    throw new Error(`Incomplete audit: ${slug}`);
   for (const [key, evidence] of Object.entries(row)) {
     if (
       !matrixFeatures.some(([feature]) => feature === key) ||
       !statusLabels[evidence.status] ||
+      !basisLabels[evidence.basis] ||
+      !evidence.detail ||
+      evidence.detail.length < 15 ||
       !/^https:\/\//.test(evidence.url) ||
       !/^\d{1,2} [A-Za-z]+ \d{4}$/.test(evidence.reviewed)
     ) {

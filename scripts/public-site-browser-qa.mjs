@@ -117,20 +117,92 @@ try {
       if (path.startsWith("/compare/") && width === 390) {
         for (const section of await page.locator(".compare-matrix").all()) {
           const scroller = section.locator(".matrix-scroll");
-          assert.ok(
-            await scroller.evaluate((el) => el.scrollWidth > el.clientWidth + 100),
-            "Feature columns must remain readable under CSP",
+          const overflows = await scroller.evaluate(
+            (el) => el.scrollWidth > el.clientWidth + 1,
           );
-          await section.locator(".matrix-next").click();
-          await page.waitForTimeout(200);
-          assert.ok(
-            await scroller.evaluate((el) => el.scrollLeft > 0),
-            "Next must reveal the next columns",
-          );
+          if (path === "/compare/")
+            assert.ok(overflows, "All-tool matrix must scroll under CSP");
+          if (overflows) {
+            await section.locator(".matrix-next").click();
+            await page.waitForTimeout(200);
+            assert.ok(
+              await scroller.evaluate((el) => el.scrollLeft > 0),
+              "Next must reveal the next tools",
+            );
+          }
           await scroller.evaluate((el) => {
             el.scrollLeft = 0;
           });
         }
+        await page.evaluate(() => window.scrollTo(0, 0));
+      }
+      if (path.startsWith("/compare/")) {
+        assert.equal(await page.locator(".compare-matrix table").count(), 1);
+        const evidence = page.locator(
+          'tr[data-feature="apacheLicense"] td.matrix-ours summary',
+        );
+        await evidence.click();
+        await page.locator("#evidence-popover").waitFor({ state: "visible" });
+        assert.ok(
+          (await page.locator(".evidence-content").textContent()).includes(
+            "30 September 2026",
+          ),
+        );
+        assert.equal(await page.locator(".evidence-content a").count(), 1);
+        const secondEvidence = page.locator(
+          'tr[data-feature="allFeaturesFree"] td.matrix-ours summary',
+        );
+        await secondEvidence.focus();
+        await page.keyboard.press("Enter");
+        assert.equal(
+          await page.locator('.matrix-evidence summary[aria-expanded="true"]').count(),
+          1,
+        );
+        await page.keyboard.press("Escape");
+        await page.locator("#evidence-popover").waitFor({ state: "hidden" });
+        // Native toggle events are queued after the popover becomes hidden.
+        await page.waitForFunction(
+          () => !document.querySelector('.matrix-evidence summary[aria-expanded="true"]'),
+        );
+        assert.equal(
+          await page.locator('.matrix-evidence summary[aria-expanded="true"]').count(),
+          0,
+        );
+        assert.ok(
+          await secondEvidence.evaluate((el) => el === document.activeElement),
+          "Evidence dismissal returns focus",
+        );
+        if (path === "/compare/") {
+          const keyboardCells = page.locator(
+            'tr[data-feature="apacheLicense"] td:not(.matrix-ours) summary',
+          );
+          for (let index = 0; index < (await keyboardCells.count()); index++) {
+            const cell = keyboardCells.nth(index);
+            await cell.focus();
+            await page.waitForTimeout(30);
+            assert.ok(
+              await cell.evaluate((el) => {
+                const scroller = el.closest(".matrix-scroll").getBoundingClientRect();
+                const row = el.closest("tr");
+                const ours = row.querySelector(".matrix-ours").getBoundingClientRect();
+                const target = el.getBoundingClientRect();
+                return (
+                  target.left >= ours.right - 1 && target.right <= scroller.right + 1
+                );
+              }),
+              "Focused competitor must not hide under sticky columns",
+            );
+          }
+        }
+        await page.locator('.matrix-jump a[href="#matrix-recording"]').click();
+        assert.ok(
+          await page.locator(".matrix-scroll").evaluate((el) => el.scrollTop > 200),
+          "Category navigation reaches grouped rows",
+        );
+        await page.locator(".matrix-scroll").evaluate((el) => {
+          el.scrollTop = 0;
+          el.scrollLeft = 0;
+        });
         await page.evaluate(() => window.scrollTo(0, 0));
       }
       if (path === "/docs/" || path === "/docs/guide/session-replay") {
@@ -222,6 +294,8 @@ try {
           1,
         );
       }
+      if (path === "/compare/")
+        await page.screenshot({ path: `.impeccable/review/matrix-${width}.png` });
       if (path === "/docs/guide/session-replay" || path === "/compare/openreplay.html")
         await page.screenshot({
           path: `.impeccable/review/${path.includes("docs") ? "docs" : "compare"}-${width}.png`,
@@ -238,7 +312,44 @@ try {
   assert.match(await nojs.locator("main").innerText(), /Apache-2.0/);
   assert.equal(await nojs.locator("feedbacks-evidence img").count(), 1);
   assert.ok(await nojs.locator("#recordings").isVisible());
+  await nojs.goto(origin + "/compare/");
+  const fallback = nojs.locator(
+    'tr[data-feature="apacheLicense"] td.matrix-ours details',
+  );
+  await fallback.locator("summary").click();
+  assert.ok(
+    await fallback.evaluate((el) => el.open),
+    "Comparison evidence works without JavaScript",
+  );
+  assert.match(await fallback.innerText(), /30 September 2026/);
+  assert.ok(await fallback.getByRole("link", { name: /Read source/ }).isVisible());
   await nojs.close();
+  for (const width of [320, 768]) {
+    const narrow = await browser.newPage({ viewport: { width, height: 900 } });
+    await narrow.goto(origin + "/compare/");
+    assert.ok(
+      await narrow.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+    );
+    const cell = narrow
+      .locator('tr[data-feature="apacheLicense"] td:not(.matrix-ours) summary')
+      .first();
+    await cell.focus();
+    await narrow.waitForTimeout(40);
+    assert.ok(
+      await cell.evaluate((el) => {
+        const row = el.closest("tr");
+        const ours = row.querySelector(".matrix-ours").getBoundingClientRect();
+        const box = el.getBoundingClientRect();
+        const viewport = el.closest(".matrix-scroll").getBoundingClientRect();
+        return box.left >= ours.right - 1 && box.right <= viewport.right + 1;
+      }),
+      `Comparison focus visible at ${width}`,
+    );
+    await cell.click();
+    const box = await narrow.locator("#evidence-popover").boundingBox();
+    assert.ok(box.x >= 0 && box.x + box.width <= width + 1, "Evidence stays in viewport");
+    await narrow.close();
+  }
   assert.deepEqual([...new Set(failures)], []);
   console.log(
     "Public site browser QA passed: 10 routes at desktop/mobile, same-origin links/assets, timeline mouse/keyboard/playback/offscreen, reduced-motion start and no-JavaScript fallback.",

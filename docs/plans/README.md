@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Comprehensive competitor evidence and comparison](comprehensive-comparison-audit.md)
+
 - [Thread evidence types and expanded screenshot review](thread-evidence-viewer.md)
 - [Public product story and current feature guides](public-product-story.md)
 - [GitHub Apps managed from Feedbacks](github-app-management.md)

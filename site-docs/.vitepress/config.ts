@@ -79,6 +79,7 @@ export default defineConfig({
           { text: "Developers: AI agents and MCP", link: "/guide/mcp" },
           { text: "GitHub Issues", link: "/guide/github" },
           { text: "API and CLI", link: "/reference/api-cli" },
+          { text: "Comparison audit method", link: "/reference/comparison-method" },
         ],
       },
       {
