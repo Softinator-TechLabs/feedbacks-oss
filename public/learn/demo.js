@@ -833,7 +833,7 @@
         stylesReady = false,
         recordingRuntime;
       const template = document.createElement("template");
-      template.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-10"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
+      template.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-11"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
       // Keep loaded styles connected across scene changes. Replacing the link
       // would briefly expose the fallback and reflow the page on every tab click.
       for (const node of [...this.shadowRoot.childNodes]) {
@@ -866,16 +866,16 @@
           });
       };
       const stylesheets = [
-        this.shadowRoot.querySelector(`link[href="${base}demo.css?v=20260930-10"]`),
+        this.shadowRoot.querySelector(`link[href="${base}demo.css?v=20260930-11"]`),
       ];
       if (this.getAttribute("step") === "recording") {
         let reviewStyle = this.shadowRoot.querySelector(
-          `link[href="${base}recording-review.css?v=20260930-10"]`,
+          `link[href="${base}recording-review.css?v=20260930-11"]`,
         );
         if (!reviewStyle) {
           reviewStyle = document.createElement("link");
           reviewStyle.rel = "stylesheet";
-          reviewStyle.href = base + "recording-review.css?v=20260930-10";
+          reviewStyle.href = base + "recording-review.css?v=20260930-11";
           this.shadowRoot.prepend(reviewStyle);
         }
         stylesheets.push(reviewStyle);
@@ -994,7 +994,7 @@
         if (f.kind === "recording") {
           screen.dataset.kind = "recording";
           const generation = this.index;
-          import(base + "recording-runtime.js?v=20260930-10")
+          import(base + "recording-runtime.js?v=20260930-11")
             .then(async ({ mountRecording }) => {
               if (disposed || this.index !== generation) return;
               recordingRuntime = mountRecording(frameBox, {
@@ -1009,10 +1009,9 @@
                 },
                 onPause: holdInteraction,
               });
-              const [ready] = await Promise.all([
-                recordingRuntime.ready,
-                document.fonts.ready,
-              ]);
+              // The inspector uses system fonts. Unrelated page fonts must not
+              // hold the complete player behind a blank loading surface.
+              const ready = await recordingRuntime.ready;
               if (disposed || this.index !== generation) return;
               if (!ready) {
                 loadFailed();
