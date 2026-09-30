@@ -164,6 +164,15 @@ try {
           1,
         );
         await demo.getByRole("button", { name: "00:04 Request fails" }).click();
+        assert.deepEqual(
+          await demo
+            .locator("button[data-moment]")
+            .evaluateAll((buttons) =>
+              buttons.map((button) => button.getAttribute("aria-pressed")),
+            ),
+          ["false", "true", "false"],
+          "Selected moment must match the actual screen",
+        );
         assert.match(await demo.locator(".evidence-event").innerText(), /500/);
         assert.match(
           await demo.locator(".evidence-screen").getAttribute("src"),
@@ -172,6 +181,14 @@ try {
         await demo.getByRole("button", { name: "00:05 Console error" }).focus();
         await page.keyboard.press("Enter");
         assert.match(await demo.locator(".evidence-event").innerText(), /Console/);
+        assert.deepEqual(
+          await demo
+            .locator("button[data-moment]")
+            .evaluateAll((buttons) =>
+              buttons.map((button) => button.getAttribute("aria-pressed")),
+            ),
+          ["false", "false", "true"],
+        );
         await demo.getByRole("button", { name: "00:02 Click", exact: true }).click();
         await demo.locator(".evidence-screen").evaluate((img) => img.decode());
         await page.evaluate(() => window.scrollTo(0, 0));
