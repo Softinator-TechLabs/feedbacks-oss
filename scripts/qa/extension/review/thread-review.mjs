@@ -113,7 +113,7 @@ export async function verifyThreadReview({
   assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
   const mainImage = inlineThreadPage.locator(".review-main-capture");
   assert.equal(await mainImage.locator(".review-image-pin").count(), 2);
-  await mainImage.getByRole("button", { name: "Hide pins" }).click();
+  await mainImage.getByRole("button", { name: "Hide points" }).click();
   assert.equal(await mainImage.locator(".review-image-pin").count(), 0);
   assert.equal(
     await inlineThreadPage.locator(".review-point-figure .review-image-pin").count(),
@@ -134,7 +134,7 @@ export async function verifyThreadReview({
     "",
     "a point's own screenshot uses an unnumbered target ring",
   );
-  await mainImage.getByRole("button", { name: "Show pins" }).click();
+  await mainImage.getByRole("button", { name: "Show points" }).click();
   assert.equal(await mainImage.locator(".review-image-pin").count(), 2);
   assert.equal(
     await inlineThreadPage.getByRole("button", { name: "Show original view" }).count(),

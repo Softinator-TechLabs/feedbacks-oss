@@ -303,7 +303,7 @@ export async function prepareAssetUpload(
   }
   const id = randomUUID(),
     captureId = randomUUID();
-  const rendition = i.point ? "annotated" : (source?.data.rendition ?? i.rendition);
+  const rendition = i.point ? i.rendition : (source?.data.rendition ?? i.rendition);
   const key = `feedbacks/${config.production ? "production" : "development"}/organizations/${config.organizationId}/projects/${projectId}/feedback/${i.threadId}/captures/${captureId}/${rendition}.webp`;
   const recordingFrame = source?.data.recordingFrame ?? i.recordingFrame;
   const pointMark = i.point

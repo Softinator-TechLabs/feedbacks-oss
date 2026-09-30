@@ -896,3 +896,32 @@ aside .hint {
     transition: none;
   }
 }
+
+.evidence-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.evidence-layers button {
+  font-size: 12px;
+  padding: 6px 9px;
+}
+.evidence-layers button[aria-pressed="true"] {
+  border-color: var(--accent, #2370b5);
+}
+.text-edit-original {
+  margin: 0 0 8px;
+  padding: 8px 0;
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.text-edit-original::before {
+  content: "Original text";
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}

@@ -1,3 +1,8 @@
+import {
+  evidenceLayer,
+  visibleShapes,
+  withoutEvidenceLayers,
+} from "./capture/evidence-layers.js";
 import { getPage } from "./capture/page-store.js";
 import {
   drawShape,
@@ -44,6 +49,25 @@ let exporting = false;
 let importing = false;
 let previewBuild = 0;
 const thumbnailCache = new Map();
+const hiddenLayers = new Set(["element"]);
+function layerControls() {
+  const controls = $("evidence-layers");
+  controls.hidden = !shapes.some(evidenceLayer);
+  for (const button of controls.querySelectorAll("[data-layer]")) {
+    const layer = button.dataset.layer;
+    button.hidden = !shapes.some((shape) => evidenceLayer(shape) === layer);
+    button.setAttribute("aria-pressed", String(!hiddenLayers.has(layer)));
+    button.textContent = `${hiddenLayers.has(layer) ? "Show" : "Hide"} ${button.dataset.label}`;
+  }
+}
+for (const button of $("evidence-layers").querySelectorAll("[data-layer]"))
+  button.onclick = () => {
+    const layer = button.dataset.layer;
+    if (hiddenLayers.has(layer)) hiddenLayers.delete(layer);
+    else hiddenLayers.add(layer);
+    render();
+    if (!$("preview-slot").hidden) void showFullPagePreview();
+  };
 function hideFullPagePreview() {
   previewBuild++;
   for (const url of previewUrls) URL.revokeObjectURL(url);
@@ -88,7 +112,7 @@ function setSendState(disabled, label) {
 }
 function uploadProgress(completed, total) {
   if (!Number.isInteger(total) || total < 1) return;
-  const count = Math.min(total, Math.max(0, completed));
+  const count = Math.min(total, Math.max(0, Number.isFinite(completed) ? completed : 0));
   const percent = Math.round((count / total) * 100);
   $("upload-progress").hidden = false;
   $("upload-meter").value = percent;
@@ -153,7 +177,14 @@ chrome.runtime.onMessage.addListener((message) => {
 });
 function render(clean = false) {
   if (!base) return;
-  paintScreenshot(ctx, base, shapes, canvas.width, canvas.height);
+  layerControls();
+  paintScreenshot(
+    ctx,
+    base,
+    visibleShapes(shapes, hiddenLayers),
+    canvas.width,
+    canvas.height,
+  );
   if (current)
     drawShape(
       current.tool === "crop" ? { ...current, tool: "rectangle" } : current,
@@ -180,14 +211,14 @@ function render(clean = false) {
   }
 }
 function imageWithoutPins(type) {
-  if (!base || !shapes.some((shape) => shape.tool === "point")) return null;
+  if (!base || !shapes.some(evidenceLayer)) return null;
   const output = document.createElement("canvas");
   output.width = canvas.width;
   output.height = canvas.height;
   paintScreenshot(
     output.getContext("2d"),
     base,
-    shapes.filter((shape) => shape.tool !== "point"),
+    withoutEvidenceLayers(shapes),
     output.width,
     output.height,
   );
@@ -215,7 +246,7 @@ async function showFullPagePreview() {
     const fragment = document.createDocumentFragment();
     for (const index of pageIndices) {
       if (request !== previewBuild) return;
-      const output = await screenshotSurface(fresh, index, kind);
+      const output = await screenshotSurface(fresh, index, kind, hiddenLayers);
       const blob = await output.convertToBlob({ type: "image/png" });
       if (request !== previewBuild) return;
       const url = URL.createObjectURL(blob);
@@ -284,7 +315,7 @@ async function exportPlan() {
       pages.push({
         width: bitmap.width,
         height: bitmap.height,
-        render: () => screenshotSurface(fresh, index, kind),
+        render: () => screenshotSurface(fresh, index, kind, hiddenLayers),
       });
       bitmap.close();
     }
@@ -300,7 +331,7 @@ async function exportPlan() {
         paintScreenshot(
           output.getContext("2d"),
           base,
-          shapes,
+          visibleShapes(shapes, hiddenLayers),
           canvas.width,
           canvas.height,
         );
@@ -468,12 +499,35 @@ $("image-file").onchange = async () => {
   }
 };
 function payload() {
+  if (shapes.length > 2000)
+    throw Error(
+      "This image has too many marks. Remove drawings or split this review before sending.",
+    );
   const annotations = (draft.context.annotations || []).map((item, index) => ({
     id: item.id,
-    body: $("point-notes").querySelectorAll("textarea")[index]?.value.trim() || "",
+    body: item.textEdit
+      ? item.body
+      : $("point-notes").querySelectorAll("textarea")[index]?.value.trim() || "",
+    ...(item.textEdit
+      ? {
+          replacement:
+            $("point-notes").querySelectorAll("textarea")[index]?.value ??
+            item.textEdit.replacement,
+        }
+      : {}),
   }));
   if (annotations.some((item) => !item.body))
     throw Error("Each point needs a comment before this draft can be saved.");
+  if (
+    annotations.some(
+      (item, index) =>
+        item.replacement !== undefined &&
+        item.replacement === draft.context.annotations[index].textEdit.original,
+    )
+  )
+    throw Error(
+      "Change the replacement text, or leave it empty to remove the selection.",
+    );
   return {
     type: "saveDraft",
     id: draft.id,
@@ -697,9 +751,10 @@ async function loadBase(fresh) {
     completed();
     return;
   }
-  const pixels = pages.length
-    ? (await send({ type: "capturePage", id: fresh.id, index: pageIndex })).image
-    : fresh.approvedImage || fresh.image;
+  const capturedPage = pages.length
+    ? await send({ type: "capturePage", id: fresh.id, index: pageIndex })
+    : null;
+  const pixels = capturedPage ? capturedPage.image : fresh.approvedImage || fresh.image;
   if (pixels) {
     const decoded = new Image();
     decoded.src = pixels;
@@ -715,7 +770,7 @@ async function loadBase(fresh) {
   $("crop-options").hidden = true;
   shapes = pages.length
     ? fresh.frozen
-      ? []
+      ? capturedPage.evidenceLayers || []
       : fresh.pageToolStates?.[pageIndex] || []
     : fresh.toolState || [];
   clearPreparedShapes();
@@ -975,14 +1030,16 @@ for (const b of document.querySelectorAll("[data-tool]"))
 $("undo").onclick = () => {
   if (!draft?.frozen && !redacting) {
     selectedImage = null;
-    shapes.pop();
+    const index = shapes.findLastIndex((shape) => !evidenceLayer(shape));
+    if (index >= 0) shapes.splice(index, 1);
     render();
     schedule();
   }
 };
 $("reset").onclick = () => {
   if (!draft?.frozen && !redacting) {
-    shapes = [];
+    shapes = shapes.filter(evidenceLayer);
+    $("tools").querySelector(".more-tools").open = false;
     render();
     schedule();
   }
@@ -1161,7 +1218,7 @@ $("send").onclick = $("send-header").onclick = async () => {
     showPublishedThread(fresh);
     if (fresh?.capturePages?.length && fresh.frozen && !fresh.noImage)
       uploadProgress(
-        fresh.uploadIndex + (fresh.combinedUploaded ? 1 : 0),
+        (fresh.uploadIndex || 0) + (fresh.combinedUploaded ? 1 : 0),
         fresh.capturePages.length + (fresh.includeCombined ? 1 : 0),
       );
     else $("upload-progress").hidden = true;
@@ -1250,7 +1307,7 @@ async function init() {
     heading.className = "point-note-heading";
     const label = document.createElement("label");
     label.htmlFor = `point-note-${index}`;
-    label.textContent = `Point ${index + 1}`;
+    label.textContent = `Point ${index + 1}${item.textEdit ? " · Suggested replacement" : ""}`;
     heading.append(label);
     const imageIndex = (draft.capturePages || []).findIndex(
       (page) => page.annotationId === item.id,
@@ -1267,14 +1324,23 @@ async function init() {
       };
       heading.append(original);
     }
+    row.append(heading);
     const note = document.createElement("textarea");
     note.id = `point-note-${index}`;
-    note.value = item.body;
+    note.value = item.textEdit ? item.textEdit.replacement : item.body;
+    if (item.textEdit) {
+      const original = document.createElement("blockquote");
+      original.className = "text-edit-original";
+      original.setAttribute("aria-label", "Original text");
+      original.textContent = item.textEdit.original;
+      row.append(original);
+      note.placeholder = "Empty replacement removes the selected text";
+    }
     note.rows = 2;
     note.maxLength = 4000;
-    note.required = true;
+    note.required = !item.textEdit;
     note.addEventListener("input", schedule);
-    row.append(heading, note);
+    row.append(note);
     pointNotes.append(row);
   });
   $("body-label").textContent = comments.length

@@ -4,16 +4,44 @@ const unit = (value, size) => Math.max(0, Math.min(1, value / Math.max(1, size))
 export function pointShapes(item, index, region, sx, sy, marker = {}) {
   const anchor = item.anchor || {};
   const point = anchor.pagePoint;
-  if (!point || point.y < region.startY || point.y >= region.endY) return [];
-  return [
-    {
-      tool: "point",
+  if (!point) return [];
+  const shapes =
+    point.y < region.startY || point.y >= region.endY
+      ? []
+      : [
+          {
+            tool: "point",
+            number: index + 1,
+            markerStyle: marker.style || "ring",
+            markerSize: marker.size || "small",
+            points: [{ x: point.x * sx, y: (point.y - region.startY) * sy }],
+          },
+        ];
+  const scroll = {
+    x: point.x - (anchor.screenshotPoint?.x ?? point.x),
+    y: point.y - (anchor.screenshotPoint?.y ?? point.y),
+  };
+  const rectangle = (rect, tool, origin) => {
+    if (!rect) return;
+    const left = Math.max(0, rect.x + scroll.x);
+    const top = Math.max(region.startY, rect.y + scroll.y);
+    const right = Math.min(region.width || Infinity, rect.x + scroll.x + rect.width);
+    const bottom = Math.min(region.endY, rect.y + scroll.y + rect.height);
+    if (right <= left || bottom <= top) return;
+    shapes.push({
+      tool,
+      origin,
       number: index + 1,
-      markerStyle: marker.style || "ring",
-      markerSize: marker.size || "small",
-      points: [{ x: point.x * sx, y: (point.y - region.startY) * sy }],
-    },
-  ];
+      points: [
+        { x: left * sx, y: (top - region.startY) * sy },
+        { x: right * sx, y: (bottom - region.startY) * sy },
+      ],
+    });
+  };
+  rectangle(anchor.rect, "rectangle", "element");
+  for (const rect of item.textEdit?.rects || [])
+    rectangle(rect, "highlighter", "text-selection");
+  return shapes;
 }
 export function summarizeMarkings(shapes, width, height, annotations = []) {
   return (shapes || []).flatMap((shape) => {
@@ -55,11 +83,12 @@ export function summarizeMarkings(shapes, width, height, annotations = []) {
         })),
         ...(number ? { number } : {}),
         ...(number &&
-        (shape.tool === "point" || shape.origin === "element") &&
+        (shape.tool === "point" ||
+          ["element", "text-selection"].includes(shape.origin)) &&
         annotations[number - 1]
           ? { annotationId: annotations[number - 1].id }
           : {}),
-        ...(shape.origin === "element" ? { origin: "element" } : {}),
+        ...(shape.origin ? { origin: shape.origin } : {}),
         ...(["text", "sticker"].includes(shape.tool) && shape.text
           ? { text: String(shape.text).slice(0, 200) }
           : {}),
@@ -118,7 +147,8 @@ export async function attachPointEvidence(draft, retainedPointStates = new Map()
     draft.capturePages.push(page);
     draft.pageToolStates.push([
       ...(retainedPointStates.get(item.id) || []).filter(
-        (shape) => shape.origin !== "element" && shape.tool !== "point",
+        (shape) =>
+          !["element", "text-selection"].includes(shape.origin) && shape.tool !== "point",
       ),
       ...pointShapes(
         {

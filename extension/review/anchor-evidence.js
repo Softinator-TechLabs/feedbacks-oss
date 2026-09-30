@@ -128,7 +128,12 @@
           targetEvidence(el, chosen.point, chosen.evidence.fingerprint),
         );
     }
-    const saved = annotations.map(({ id, body, anchor }) => ({ id, body, anchor }));
+    const saved = annotations.map(({ id, body, anchor, textEdit }) => ({
+      id,
+      body,
+      anchor,
+      ...(textEdit ? { textEdit } : {}),
+    }));
     return {
       url: U.safeUrl(location.href),
       viewport: { width: innerWidth, height: innerHeight },
@@ -149,6 +154,19 @@
                 (location.visible || location.reason === "Outside visible area")
                 ? {
                     ...saved.find((entry) => entry.id === item.id),
+                    // Only a still-identical live Range can project a text selection.
+                    textEdit:
+                      item.textEdit &&
+                      item.textRange?.toString() === item.textEdit.original
+                        ? {
+                            ...item.textEdit,
+                            rects: globalThis.FeedbacksTextSelection.rectangles(
+                              item.textRange,
+                              location.element,
+                              false,
+                            ),
+                          }
+                        : undefined,
                     anchor: {
                       ...targetEvidence(
                         location.element,

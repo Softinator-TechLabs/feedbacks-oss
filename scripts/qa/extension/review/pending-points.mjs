@@ -173,7 +173,7 @@ export async function verifyPendingPoints({
   assert.equal(await noMarkerThreadPage.locator(".review-point-figure img").count(), 2);
   assert.equal(await noMarkerThreadPage.locator(".review-image-pin").count(), 0);
   assert.equal(
-    await noMarkerThreadPage.getByRole("button", { name: "Hide pins" }).count(),
+    await noMarkerThreadPage.getByRole("button", { name: "Hide points" }).count(),
     0,
   );
   await noMarkerThreadPage.close();

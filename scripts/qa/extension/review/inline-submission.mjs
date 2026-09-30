@@ -310,7 +310,7 @@ export async function verifyInlineSubmission({
   assert.equal(inlineThread.context.captureMarker.style, "ring");
   assert.equal(
     inlineThread.assets[0].markings.some((mark) => mark.origin === "element"),
-    false,
+    true,
   );
   assert.equal(inlineThread.assets[0].captureRegion.pageWidth, 900);
   results.inlineReview = {

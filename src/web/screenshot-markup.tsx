@@ -75,6 +75,34 @@ export function ScreenshotMarkup({
   const [edited, setEdited] = useState(false);
   const [pin, setPin] = useState<Point | null>(null);
   const [body, setBody] = useState("");
+  const [hiddenLayers, setHiddenLayers] = useState({
+    points: false,
+    element: true,
+    text: false,
+  });
+  const evidence =
+    target.kind === "asset" && target.asset.rendition === "screenshot"
+      ? target.asset.markings || []
+      : [];
+  const layers = [
+    {
+      key: "points" as const,
+      label: "points",
+      present:
+        evidence.some((mark) => mark.tool === "point") &&
+        thread.context.captureMarker?.style !== "none",
+    },
+    {
+      key: "element" as const,
+      label: "element outline",
+      present: evidence.some((mark) => mark.origin === "element"),
+    },
+    {
+      key: "text" as const,
+      label: "text selection",
+      present: evidence.some((mark) => mark.origin === "text-selection"),
+    },
+  ];
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -119,8 +147,38 @@ export function ScreenshotMarkup({
     ctx.drawImage(base, 0, 0, surface.width, surface.height);
     for (const stroke of strokes) drawStroke(ctx, stroke, surface.width, surface.height);
     if (drawing.current) drawStroke(ctx, drawing.current, surface.width, surface.height);
+    for (const mark of evidence) {
+      const layer =
+        mark.origin === "element"
+          ? "element"
+          : mark.origin === "text-selection"
+            ? "text"
+            : null;
+      if (!layer || hiddenLayers[layer]) continue;
+      const { x, y, width, height } = mark.bounds;
+      if (layer === "text") {
+        ctx.fillStyle = "rgba(245, 197, 61, 0.3)";
+        ctx.fillRect(
+          x * surface.width,
+          y * surface.height,
+          width * surface.width,
+          height * surface.height,
+        );
+      } else {
+        ctx.strokeStyle = "#2370b5";
+        ctx.lineWidth = Math.max(2, surface.width / 700);
+        ctx.strokeRect(
+          x * surface.width,
+          y * surface.height,
+          width * surface.width,
+          height * surface.height,
+        );
+      }
+    }
     const pins =
-      target.kind === "asset"
+      target.kind === "asset" &&
+      !hiddenLayers.points &&
+      thread.context.captureMarker?.style !== "none"
         ? (target.asset.markings || [])
             .filter((mark) => mark.tool === "point" && mark.endpoints[0])
             .map((mark) => mark.endpoints[0])
@@ -143,7 +201,7 @@ export function ScreenshotMarkup({
       ctx.strokeStyle = "#e36355";
       ctx.stroke();
     }
-  }, [ready, strokes, pin, target]);
+  }, [ready, strokes, pin, target, hiddenLayers, thread.context.captureMarker?.style]);
 
   const normalized = (event: React.PointerEvent<HTMLCanvasElement>): Point => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -168,7 +226,13 @@ export function ScreenshotMarkup({
       setError("Draw or revise a mark before saving this screenshot.");
       return;
     }
-    const surface = canvas.current!;
+    const surface = document.createElement("canvas");
+    surface.width = canvas.current!.width;
+    surface.height = canvas.current!.height;
+    const ctx = surface.getContext("2d")!;
+    ctx.drawImage(image.current!, 0, 0, surface.width, surface.height);
+    for (const stroke of strokes) drawStroke(ctx, stroke, surface.width, surface.height);
+    // Evidence is stored as geometry. Saving a reply must not bake the preview overlays.
     let imageBase64 = surface.toDataURL("image/png");
     if (imageBase64.length > 13_982_000)
       imageBase64 = surface.toDataURL("image/jpeg", 0.9);
@@ -201,6 +265,12 @@ export function ScreenshotMarkup({
         threadId: thread.id,
         revision: pending.current.editRevision,
         replacesAssetId: source.id,
+        rendition:
+          target.kind === "frame"
+            ? "screenshot"
+            : source.rendition === "screenshot"
+              ? "screenshot"
+              : "annotated",
         imageBase64,
         markup: strokes,
         ...(target.kind === "frame" && pin
@@ -290,6 +360,31 @@ export function ScreenshotMarkup({
           Clear marks
         </button>
       </div>
+      {layers.some((layer) => layer.present) && (
+        <div
+          className="screenshot-markup-tools"
+          role="group"
+          aria-label="Screenshot evidence visibility"
+        >
+          {layers
+            .filter((layer) => layer.present)
+            .map((layer) => (
+              <button
+                type="button"
+                key={layer.key}
+                aria-pressed={!hiddenLayers[layer.key]}
+                onClick={() =>
+                  setHiddenLayers((current) => ({
+                    ...current,
+                    [layer.key]: !current[layer.key],
+                  }))
+                }
+              >
+                {hiddenLayers[layer.key] ? "Show" : "Hide"} {layer.label}
+              </button>
+            ))}
+        </div>
+      )}
       <div className="screenshot-markup-surface">
         <canvas
           ref={canvas}

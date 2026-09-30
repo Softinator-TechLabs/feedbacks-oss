@@ -126,6 +126,7 @@ test("recording navigation restores its original project on an explicitly approv
         "utils.js",
         "frame-dom.js",
         "review/anchor-evidence.js",
+        "review/text-selection.js",
         "instant-tooltip.js",
         "content.js",
       ],
