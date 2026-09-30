@@ -135,6 +135,8 @@ try {
         const evidence = page.locator(
           '#matrix-highlights tr[data-tool="feedbacks"] td[data-feature="apacheLicense"] summary',
         );
+        assert.equal(await evidence.getAttribute("title"), "Checked 30 September 2026");
+        assert.equal((await evidence.innerText()).trim(), "✓");
         await evidence.click();
         await page.locator("#evidence-popover").waitFor({ state: "visible" });
         assert.match(

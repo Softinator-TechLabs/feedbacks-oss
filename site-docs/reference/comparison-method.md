@@ -5,14 +5,14 @@ description: Dated primary-source evidence, precise feature definitions and hone
 
 # How we audit comparisons
 
-The [complete comparison](https://feedbacks.softinator.ai/compare/) groups all 16 tools into category tables, with products as rows and capabilities as columns. All 49 capabilities have a dated verdict, source and qualification for every tool. The current audit was reviewed on **30 September 2026**.
+The [complete comparison](https://feedbacks.softinator.ai/compare/) groups all 16 tools into category tables, with products as rows and capabilities as columns. All 49 capabilities have a dated verdict, source and qualification for every tool. Hover over a mark for its review date; open it for its source and qualifications. On touch screens, opening a mark also shows the date. The current audit was reviewed on **30 September 2026**.
 
 ## What the marks mean
 
 | Mark             | Meaning                                                                                                                       |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| ✓ Yes            | The named capability is available in the reviewed product surface.                                                            |
-| ❌ No            | An explicit limitation, complete tool/workflow inventory or inspected implementation establishes absence in the stated scope. |
+| ✓                | The named capability is available in the reviewed product surface.                                                            |
+| ×                | An explicit limitation, complete tool/workflow inventory or inspected implementation establishes absence in the stated scope. |
 | Paid             | Available in a paid edition.                                                                                                  |
 | Partial          | Related support exists, but does not cover every part of the named capability.                                                |
 | External / Parts | Requires another product, connector or components to assemble.                                                                |

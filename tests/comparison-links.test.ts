@@ -92,7 +92,7 @@ test("categories include every tool without a nested table scroll region", async
         (page.match(new RegExp(`data-tool="${slug}"`, "g")) ?? []).length,
         matrixGroups.length,
       );
-    assert.ok(page.includes("❌"));
+    assert.ok(page.includes("×"));
     assert.ok(page.includes("popover"));
     assert.ok(page.includes("2026-09-30"));
   }
@@ -106,4 +106,14 @@ test("category tables fit the page and preserve selected comparison context", as
   assert.doesNotMatch(css, /matrix-scroll|--feature-width|--matrix-tools/);
   assert.match(css, /\.compare-matrix table\s*\{[^}]*width:\s*100%/);
   assert.ok(page.includes("matrix-product-toggle"));
+});
+
+test("verdicts use simple marks with review dates available on hover", async () => {
+  const page = await readFile(resolve(compareDirectory, "bugherd.html"), "utf8");
+  assert.doesNotMatch(page, /✓ Yes|❌ No|<time/);
+  assert.match(page, /title="Checked 30 September 2026"/);
+  assert.match(page, /data-reviewed="2026-09-30"/);
+  assert.match(page, /class="matrix-verdict">×</);
+  assert.match(page, /class="matrix-verdict">✓</);
+  assert.match(page, /aria-label="[^"]*Unavailable/);
 });

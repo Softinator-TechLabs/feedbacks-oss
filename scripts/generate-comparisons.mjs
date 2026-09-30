@@ -45,7 +45,7 @@ function shell({ title, description, canonical, content }) {
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/comparison.css" />
-    <script src="/comparison.js?v=20260930-categories" defer></script>
+    <script src="/comparison.js?v=20260930-simple" defer></script>
     <title>${escape(title)}</title>
   </head>
   <body>
@@ -65,13 +65,22 @@ function shell({ title, description, canonical, content }) {
 }
 
 const statusLabels = {
-  yes: "✓ Yes",
-  no: "❌ No",
-  unknown: "Not verified",
+  yes: "✓",
+  no: "×",
+  unknown: "?",
   paid: "✓ Paid",
   partial: "Partial",
   external: "External",
   parts: "Parts",
+};
+const accessibleStatus = {
+  yes: "Available",
+  no: "Unavailable",
+  unknown: "Not verified",
+  paid: "Paid edition",
+  partial: "Partial support",
+  external: "Requires another tool",
+  parts: "Components to assemble",
 };
 const basisLabels = {
   source: "Public source audit",
@@ -82,17 +91,11 @@ const basisLabels = {
 function evidenceCell(entry, key, label) {
   const evidence = matrixRows[entry.slug][key];
   const iso = new Date(`${evidence.reviewed} UTC`).toISOString().slice(0, 10);
-  const shortDate = new Date(`${evidence.reviewed} UTC`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
   const title = `${entry.name} · ${label}`;
   const scope =
     vendorAudits[entry.slug]?.scope ??
     "Feedbacks public source b9b7df4; installed versions may differ.";
-  return `<td id="cell-${entry.slug}-${key}" data-feature="${key}" class="matrix-${evidence.status}${entry.slug === "feedbacks" ? " matrix-ours" : ""}"><span class="matrix-mobile-label">${escape(label)}</span><details class="matrix-evidence" name="comparison-evidence"><summary aria-label="${escape(title)}: ${escape(statusLabels[evidence.status])}. Checked ${escape(evidence.reviewed)}. Show evidence." data-evidence-title="${escape(title)}"><span class="matrix-verdict">${escape(statusLabels[evidence.status])}</span><time datetime="${iso}">${escape(shortDate)}</time></summary><div class="matrix-evidence-body"><p class="evidence-verdict"><strong>${escape(statusLabels[evidence.status])}</strong> · Checked ${escape(evidence.reviewed)}</p><p>${escape(evidence.detail)}</p><p class="evidence-basis">${escape(basisLabels[evidence.basis])}</p><p class="evidence-scope">${escape(scope)}</p><a href="${escape(evidence.url)}" ${externalLink}>Read source <span aria-hidden="true">↗</span></a></div></details></td>`;
+  return `<td id="cell-${entry.slug}-${key}" data-feature="${key}" class="matrix-${evidence.status}${entry.slug === "feedbacks" ? " matrix-ours" : ""}"><span class="matrix-mobile-label">${escape(label)}</span><details class="matrix-evidence" name="comparison-evidence"><summary data-reviewed="${iso}" title="Checked ${escape(evidence.reviewed)}" aria-label="${escape(title)}: ${escape(accessibleStatus[evidence.status])}. Checked ${escape(evidence.reviewed)}. Show evidence." data-evidence-title="${escape(title)}"><span class="matrix-verdict">${escape(statusLabels[evidence.status])}</span></summary><div class="matrix-evidence-body"><p class="evidence-verdict"><strong>${escape(accessibleStatus[evidence.status])}</strong> · Checked ${escape(evidence.reviewed)}</p><p>${escape(evidence.detail)}</p><p class="evidence-basis">${escape(basisLabels[evidence.basis])}</p><p class="evidence-scope">${escape(scope)}</p><a href="${escape(evidence.url)}" ${externalLink}>Read source <span aria-hidden="true">↗</span></a></div></details></td>`;
 }
 const shortLabels = {
   apacheLicense: "Apache-2.0",
@@ -184,7 +187,7 @@ function matrix(activeSlug) {
       return `<section class="compare-matrix" id="matrix-${group.id}" aria-labelledby="matrix-${group.id}-heading"><h2 id="matrix-${group.id}-heading">${escape(group.title)}</h2><table><caption>${escape(group.title)}: all 16 tools, dated capability evidence</caption><colgroup><col class="matrix-name-column"/>${group.features.map(() => "<col/>").join("")}</colgroup><thead><tr><th scope="col">Tool</th>${headers}</tr></thead><tbody>${rows}</tbody></table></section>`;
     })
     .join("");
-  return `<div class="comparison-overview"><h2>49 capabilities · 16 tools</h2><nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape({ highlights: "Highlights", capture: "Capture", annotation: "Image tools", recording: "Recordings", collaboration: "Team & agents", hosting: "Self-hosting" }[group.id])}</a>`).join("")}</nav><p class="matrix-key"><strong>✓ Yes</strong> <span>·</span> <strong>❌ No</strong> In the reviewed scope <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Related support <span>·</span> <strong>External / Parts</strong> Requires another tool</p><p class="matrix-date">Reviewed ${matrixReviewed}. ${unknownCount}/784 verdicts remain <strong>Not verified</strong>; each explains the evidence gap. <a href="/docs/reference/comparison-method">How we audit</a>.</p></div>${categories}<aside id="evidence-popover" class="evidence-popover" popover role="dialog" aria-labelledby="evidence-title"><button type="button" class="evidence-close">Close evidence <span aria-hidden="true">×</span></button><h3 id="evidence-title"></h3><div class="evidence-content"></div></aside>`;
+  return `<div class="comparison-overview"><h2>49 capabilities · 16 tools</h2><nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape({ highlights: "Highlights", capture: "Capture", annotation: "Image tools", recording: "Recordings", collaboration: "Team & agents", hosting: "Self-hosting" }[group.id])}</a>`).join("")}</nav><p class="matrix-key"><strong>✓</strong> Available <span>·</span> <strong>×</strong> Unavailable in the reviewed scope <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Related support <span>·</span> <strong>External / Parts</strong> Requires another tool</p><p class="matrix-date">Reviewed ${matrixReviewed}. ${unknownCount}/784 verdicts remain <strong>Not verified</strong>; each explains the evidence gap. <a href="/docs/reference/comparison-method">How we audit</a>.</p></div>${categories}<aside id="evidence-popover" class="evidence-popover" popover role="dialog" aria-labelledby="evidence-title"><button type="button" class="evidence-close">Close evidence <span aria-hidden="true">×</span></button><h3 id="evidence-title"></h3><div class="evidence-content"></div></aside>`;
 }
 
 function detail(entry, index) {
@@ -239,7 +242,7 @@ function indexPage() {
     canonical,
     content: `<div class="compare-index wrap">
       <h1>Website feedback tools, compared.</h1>
-      <p class="compare-index-intro">Visual review, video, replay, debugging and agent handoff. Open a verdict for dated evidence.</p>
+      <p class="compare-index-intro">Visual review, video, replay, debugging and agent handoff. Hover for review dates. Open a mark for its evidence.</p>
 
       ${matrix()}
       ${groups

@@ -410,26 +410,29 @@
   display: none;
 }
 .matrix-verdict {
-  font-weight: 750;
-  text-decoration: underline;
-  text-decoration-color: #a6a097;
-  text-underline-offset: 4px;
+  font-weight: 600;
+  font-size: 17px;
 }
 .matrix-yes .matrix-verdict,
 .matrix-paid .matrix-verdict {
-  color: #27552e;
+  color: #3d6146;
 }
 .matrix-no .matrix-verdict {
-  color: #a23e31;
+  color: #926d66;
 }
 .matrix-unknown .matrix-verdict {
   font-weight: 400;
   color: #625c55;
 }
-.matrix-evidence time {
-  color: #625c55;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
+.matrix-paid .matrix-verdict,
+.matrix-partial .matrix-verdict,
+.matrix-external .matrix-verdict,
+.matrix-parts .matrix-verdict {
+  font-size: 12px;
+}
+.matrix-evidence summary:hover .matrix-verdict {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .matrix-evidence-body {
   margin-top: 16px;
