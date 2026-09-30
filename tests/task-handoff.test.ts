@@ -113,26 +113,23 @@ test("copy is a short task request, not a section inventory or workflow manual",
   ])
     assert.ok(text.includes(value), value);
   for (const value of [
-    "recording-id",
-    "Fix contrast",
     "0 replies",
     "workPlan",
     "Manager",
     "wasabi.test",
     "SECRET",
     "not available",
-    "Discussion",
   ])
     assert.ok(!text.includes(value), value);
   assert.equal(truncated, false);
-  assert.ok(text.length < 650);
+  assert.ok(text.length < 5500);
 });
 test("large or escaped task text remains a bounded quoted summary", () => {
   const f = fixture();
   f.thread.body = '\u0000"\\'.repeat(4000);
   const { text, truncated } = buildTaskHandoff(f);
   assert.equal(truncated, true);
-  assert.ok(text.length < 900);
+  assert.ok(text.length < 6500);
   assert.match(text, /feedbacks_start/);
 });
 test("copied evidence never supplies private metadata or nested instructions", () => {
@@ -153,4 +150,62 @@ test("no feedback body means no empty body placeholder", () => {
   assert.ok(!text.includes("Feedback (quoted"));
   assert.ok(!text.includes("0 replies"));
   assert.ok(!text.includes("not available"));
+});
+
+test("copied snapshot includes discussion, point anchors and authenticated image links", () => {
+  const f = fixture();
+  const r = buildTaskHandoff(f);
+  assert.match(r.text, /Keep keyboard navigation/);
+  assert.match(r.text, /Developer/);
+  assert.match(r.text, /Fix contrast/);
+  assert.match(r.text, /#save/);
+  assert.match(r.text, /screenshotPoint/);
+  assert.match(r.text, /https:\/\/feedback.example.test\/api\/assets\/asset/);
+  assert.match(r.text, /revision 7/);
+  assert.match(r.text, /Feedbacks discussion/);
+  assert.doesNotMatch(r.text, /wasabi|SECRET/);
+});
+
+test("small discussion retains both exact clarifications and newer copies reflect changes", () => {
+  const f = fixture();
+  f.thread.replies = [
+    { ...f.thread.replies[0], id: "first", body: "The resume dialog" },
+    {
+      ...f.thread.replies[0],
+      id: "second",
+      body: "Only after more than seven minutes away; not every tab switch.",
+    },
+  ];
+  const first = buildTaskHandoff(f).text;
+  for (const reply of f.thread.replies) assert.ok(first.includes(reply.body));
+  f.thread.replies[1].body = "Correction: keep the unload warning unchanged.";
+  f.thread.revision++;
+  const second = buildTaskHandoff(f).text;
+  assert.match(second, /revision 8/);
+  assert.match(second, /keep the unload warning unchanged/);
+  assert.ok(!second.includes("seven minutes"));
+});
+
+test("media pins use normalized geometry and project links cannot leak URL credentials", () => {
+  const f = fixture();
+  f.project.repositoryUrl = "https://user:pass@example.test/repo?access_token=secret";
+  f.thread.context.url = "https://user:pass@example.test/form?session=secret";
+  (f.thread.assets[0].markings[0] as any).bounds = {
+    x: 0.2,
+    y: 0.3,
+    width: 0.1,
+    height: 0.1,
+  };
+  const text = buildTaskHandoff(f).text;
+  assert.match(
+    text,
+    /!\[Screenshot\]\(https:\/\/feedback.example.test\/api\/assets\/asset\)/,
+  );
+  assert.match(text, /normalized-image/);
+  assert.match(text, /"bounds":\{"x":0.2/);
+  assert.ok(
+    !text.includes("user:pass") &&
+      !text.includes("access_token") &&
+      !text.includes("session=secret"),
+  );
 });

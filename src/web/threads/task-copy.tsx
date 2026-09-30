@@ -25,7 +25,11 @@ export function ThreadTaskCopy({
           throw new Error(
             "This task moved to another project. Reload it before copying.",
           );
-        const result = buildTaskHandoff({ thread: fresh, origin: location.origin });
+        const result = buildTaskHandoff({
+          thread: fresh,
+          origin: location.origin,
+          project,
+        });
         try {
           await navigator.clipboard.writeText(result.text);
           showToast(
