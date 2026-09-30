@@ -28,6 +28,7 @@ export const agentToolSchemas = {
     threadId: z.string().uuid(),
     snapshotRevision: z.number().int().positive().optional(),
     includeImage: z.boolean().default(false),
+    includeRecordings: z.boolean().default(false),
     annotationIds: z.array(z.string().uuid()).max(100).default([]),
   }),
   guide: z.object({
@@ -75,6 +76,7 @@ export const agentToolSchemas = {
   asset: inputSchemas["assets.get"],
   describe: z.object({
     operation: z.string().max(100).optional(),
+    includeOutputSchema: z.boolean().default(false),
     search: z.string().max(100).default(""),
     ...page,
   }),
@@ -86,7 +88,7 @@ export const agentToolSchemas = {
 export type AgentTool = keyof typeof agentToolSchemas;
 export const agentToolDescriptions: Record<AgentTool, string> = {
   start:
-    "Read one task: feedback text, relevant points, access/coordination and one next step. includeImage:true also returns one relevant screenshot or saved video frame. Empty sections are omitted; denied reads remain explicit. Read-only; no claims or status changes.",
+    "Read one task: feedback text, relevant points, access/coordination and one next step. includeImage:true also returns one relevant screenshot or saved video frame. Small discussions are complete. includeRecordings:true adds bounded session metadata. Empty sections are omitted unless requested; denied reads remain explicit. Read-only; no claims or status changes.",
   guide:
     "Read a guide only when needed: start, glossary, media, workflow, install or manage-context.",
   workspace:
@@ -98,7 +100,7 @@ export const agentToolDescriptions: Record<AgentTool, string> = {
   asset:
     "Inspect one authorized image with includeImage:true as a native MCP image, optionally cropped in ORIGINAL pixels. Default metadata only. For video, read metadata and use its authenticated same-server URL with a media-capable client; never claim a filename proves playback.",
   describe:
-    "Discover exact schemas for one existing operation, or search its catalog. Use before execute for statuses, replies, instructions, members, documents or other advanced actions. Availability is not authorization.",
+    "Discover the exact input schema for one operation, or search its catalog. Full output schemas need includeOutputSchema:true. Use before execute for statuses, replies, instructions, members, documents or other advanced actions. Availability is not authorization.",
   execute:
     "Run an authorized operation. Use a returned next call or discover its exact schema first. Current revisions and server scopes apply. Resolve only verified selected work; external messages and Issues need explicit user intent.",
 };
@@ -187,7 +189,7 @@ export async function runAgentTool(
         description: operationDescriptions[i.operation] ?? i.operation,
         readOnly: entry.readOnly,
         inputSchema: z.toJSONSchema(entry.input, { io: "input" }),
-        outputSchema: z.toJSONSchema(entry.output),
+        ...(i.includeOutputSchema ? { outputSchema: z.toJSONSchema(entry.output) } : {}),
       };
     }
     const term = i.search.toLowerCase();

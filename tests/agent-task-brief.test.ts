@@ -398,3 +398,147 @@ test("start carries short text replacements and requires a points read for long 
   assert.equal(long.next.tool, "feedbacks_thread");
   assert.equal(long.next.input.section, "points");
 });
+
+test("small clarification discussion is complete in one call with provenance", async () => {
+  const f: any = base();
+  f.replies = [
+    {
+      id: randomUUID(),
+      body: "The resume dialog",
+      author: { name: "Reviewer" },
+      createdAt: "2026-01-01T10:00:00Z",
+    },
+    {
+      id: randomUUID(),
+      body: "Only after more than seven minutes away; not every tab switch.",
+      author: { name: "Owner" },
+      createdAt: "2026-01-01T10:01:00Z",
+    },
+  ];
+  const calls: any[] = [];
+  const r = await runAgentTool(executor(f, calls), "start", {
+    threadId: id,
+    includeImage: true,
+  });
+  assert.equal(r.discussion.complete, true);
+  assert.deepEqual(
+    r.discussion.items.map((x: any) => x.body),
+    f.replies.map((x: any) => x.body),
+  );
+  assert.equal(r.discussion.items[0].author, "Reviewer");
+  assert.equal(r.task.incomplete, undefined);
+  assert.equal(r.media.state, "no_assets");
+  assert.ok(!calls.some((c) => c.op === "assets.get"));
+});
+test("large discussion keeps exact bounded recent comments and stable continuation", async () => {
+  const f: any = base();
+  f.replies = Array.from({ length: 30 }, (_, n) => ({
+    id: randomUUID(),
+    body: `Comment ${n} ` + "x".repeat(300),
+    author: { name: "Reviewer" },
+  }));
+  const r = await runAgentTool(executor(f, []), "start", { threadId: id });
+  assert.equal(r.discussion.complete, false);
+  assert.ok(JSON.stringify(r.discussion).length < 5000);
+  assert.equal(r.discussion.items.at(-1).body, f.replies.at(-1).body);
+  assert.equal(r.discussion.next.input.expectedRevision, 3);
+});
+test("describe defaults to input contract and full output schema is opt-in", async () => {
+  const r = await runAgentTool(
+    async () => {
+      throw Error("No business reads");
+    },
+    "describe",
+    { operation: "threads.status" },
+  );
+  assert.ok(r.inputSchema.properties.revision);
+  assert.equal(r.outputSchema, undefined);
+  const full = await runAgentTool(async () => ({}), "describe", {
+    operation: "threads.status",
+    includeOutputSchema: true,
+  });
+  assert.ok(full.outputSchema);
+});
+
+test("requested session context arrives with start without raw recording exports", async () => {
+  const calls: any[] = [],
+    original = executor(base(), calls),
+    recordingId = randomUUID();
+  const r = await runAgentTool(
+    async (op, input) => {
+      if (op === "auth.me") {
+        const me = await original(op, input);
+        me.credential.operationScopes.push("recordings.list");
+        return me;
+      }
+      if (op === "recordings.list") {
+        calls.push({ op, input });
+        return {
+          items: [
+            {
+              id: recordingId,
+              mode: "session",
+              durationMs: 14000,
+              eventCount: 22,
+              url: "https://example.test/?token=private",
+              coverage: [{ channel: "dom", status: "complete" }],
+            },
+          ],
+        };
+      }
+      return original(op, input);
+    },
+    "start",
+    { threadId: id, includeRecordings: true },
+  );
+  assert.equal(r.recordings.items[0].id, recordingId);
+  assert.equal(r.recordings.items[0].durationMs, 14000);
+  assert.equal(r.recordings.complete, true);
+  assert.ok(!JSON.stringify(r).includes("token=private"));
+  assert.ok(
+    !calls.some((c) => c.op === "recordings.export" || c.op === "recordings.get"),
+  );
+});
+
+test("start preserves long element selectors and page coordinates", async () => {
+  const f: any = base(),
+    selector = "#container ".repeat(40) + "#target";
+  f.context.annotations = [
+    {
+      id: pointId,
+      body: "Move this control",
+      anchor: { selector, pagePoint: { x: 120, y: 3200 } },
+    },
+  ];
+  const r = await runAgentTool(executor(f, []), "start", { threadId: id });
+  assert.equal(r.task.points[0].anchor.selector, selector);
+  assert.deepEqual(r.task.points[0].anchor.pagePoint, { x: 120, y: 3200 });
+});
+test("recording preview preserves edit timeline mapping instead of assuming offset only", async () => {
+  const original = executor(base(), []),
+    segments = [{ sourceStartMs: 2000, sourceEndMs: 4000, outputStartMs: 0 }];
+  const r = await runAgentTool(
+    async (op, input) => {
+      if (op === "auth.me") {
+        const me = await original(op, input);
+        me.credential.operationScopes.push("recordings.list");
+        return me;
+      }
+      if (op === "recordings.list")
+        return {
+          items: [
+            {
+              id: randomUUID(),
+              mode: "video",
+              video: { assetId: randomUUID(), offsetMs: 0, segments },
+              coverage: [],
+            },
+          ],
+        };
+      return original(op, input);
+    },
+    "start",
+    { threadId: id, includeRecordings: true },
+  );
+  assert.deepEqual(r.recordings.items[0].video.segments, segments);
+});
