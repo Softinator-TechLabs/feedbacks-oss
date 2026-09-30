@@ -27,7 +27,7 @@ Recordings are limited to five minutes and bounded local storage. Tab audio and 
 | What loaded slowly      | Captured performance and loading events      |
 | What is missing         | Coverage and environment details             |
 
-The **Everything** feed brings the channels together. Select an event or timeline marker to seek to that moment. Use **Larger** for more video space or **Beside** for a wide-screen inspector. The playhead keeps events in context; an empty channel is not proof that nothing happened.
+The **Everything** feed brings the channels together. Select an event or timeline marker to seek to that moment. Use **Larger** for more video space or **Beside** for a wide-screen inspector. In both the capture review and thread player, the timeline stays attached directly beneath the video, even with a taller inspector beside it. The playhead keeps events in context; an empty channel is not proof that nothing happened.
 
 ![Actual Feedbacks recording inspector showing synthetic activity, network, console and performance events.](/media/story/recording-inspector.webp)
 
