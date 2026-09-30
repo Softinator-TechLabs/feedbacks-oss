@@ -124,3 +124,11 @@ test("recording frames and the linked video are shown once in the recording play
   assert.equal((html.match(/src="\/api\/assets\/frame"/g) || []).length, 1);
   assert.match(html, /First request/);
 });
+
+test("screenshot review offers an expanded viewer instead of opening a raw asset", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(ReviewEvidence, { thread: thread() }),
+  );
+  assert.match(html, /Expand image/);
+  assert.doesNotMatch(html, />Open full image</);
+});

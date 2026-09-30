@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Thread evidence types and expanded screenshot review](thread-evidence-viewer.md)
+
 - [Reliable agent task intake and completion](agent-task-flow.md)
 
 - [Discussion comment edit and delete](discussion-comment-management.md)

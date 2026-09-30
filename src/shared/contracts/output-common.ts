@@ -113,6 +113,8 @@ export const threadOutput = z
     topPriority: z.boolean().optional(),
     // Older immutable snapshots may predate attachment metadata.
     assets: z.array(assetMetadataOutput).optional(),
+    // Capture kinds only; recording payloads still require explicit recording reads.
+    recordingModes: z.array(z.enum(["session", "video"])).optional(),
     // Pre-migration immutable export snapshots have no discussion-like fields.
     likes: discussionLikesOutput.optional(),
     replies: z.array(
