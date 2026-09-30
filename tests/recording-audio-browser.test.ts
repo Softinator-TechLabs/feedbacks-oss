@@ -47,7 +47,7 @@ test(
           runtime: {
             id: "test",
             getURL: (path: string) => `chrome-extension://test/${path}`,
-            getManifest: () => ({ version: "0.1.51" }),
+            getManifest: () => ({ version: "0.1.52" }),
             sendMessage: async () => ({
               ok: true,
               data: { reviewDefaults: {}, connected: false },
