@@ -45,7 +45,7 @@ function shell({ title, description, canonical, content }) {
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/comparison.css" />
-    <script src="/comparison.js?v=20260930-audit" defer></script>
+    <script src="/comparison.js?v=20260930-categories" defer></script>
     <title>${escape(title)}</title>
   </head>
   <body>
@@ -92,14 +92,61 @@ function evidenceCell(entry, key, label) {
   const scope =
     vendorAudits[entry.slug]?.scope ??
     "Feedbacks public source b9b7df4; installed versions may differ.";
-  return `<td class="matrix-${evidence.status}${entry.slug === "feedbacks" ? " matrix-ours" : ""}"><details class="matrix-evidence" name="comparison-evidence"><summary aria-label="${escape(title)}: ${escape(statusLabels[evidence.status])}. Checked ${escape(evidence.reviewed)}. Show evidence." data-evidence-title="${escape(title)}"><span class="matrix-verdict">${escape(statusLabels[evidence.status])}</span><time datetime="${iso}">${escape(shortDate)}</time></summary><div class="matrix-evidence-body"><p class="evidence-verdict"><strong>${escape(statusLabels[evidence.status])}</strong> · Checked ${escape(evidence.reviewed)}</p><p>${escape(evidence.detail)}</p><p class="evidence-basis">${escape(basisLabels[evidence.basis])}</p><p class="evidence-scope">${escape(scope)}</p><a href="${escape(evidence.url)}" ${externalLink}>Read source <span aria-hidden="true">↗</span></a></div></details></td>`;
+  return `<td id="cell-${entry.slug}-${key}" data-feature="${key}" class="matrix-${evidence.status}${entry.slug === "feedbacks" ? " matrix-ours" : ""}"><span class="matrix-mobile-label">${escape(label)}</span><details class="matrix-evidence" name="comparison-evidence"><summary aria-label="${escape(title)}: ${escape(statusLabels[evidence.status])}. Checked ${escape(evidence.reviewed)}. Show evidence." data-evidence-title="${escape(title)}"><span class="matrix-verdict">${escape(statusLabels[evidence.status])}</span><time datetime="${iso}">${escape(shortDate)}</time></summary><div class="matrix-evidence-body"><p class="evidence-verdict"><strong>${escape(statusLabels[evidence.status])}</strong> · Checked ${escape(evidence.reviewed)}</p><p>${escape(evidence.detail)}</p><p class="evidence-basis">${escape(basisLabels[evidence.basis])}</p><p class="evidence-scope">${escape(scope)}</p><a href="${escape(evidence.url)}" ${externalLink}>Read source <span aria-hidden="true">↗</span></a></div></details></td>`;
 }
+const shortLabels = {
+  apacheLicense: "Apache-2.0",
+  allFeaturesFree: "No license fee",
+  threadBundle: "Thread archive",
+  expertise: "Reviewer weights",
+  projectContext: "Project guidance",
+  multiApps: "Multiple GitHub Apps",
+  agentQueue: "Assigned / priority queue",
+  sessionOnly: "Session only",
+  screenshotDiagnostics: "Screenshot debug bundle",
+  textSuggestions: "Text replacements",
+  timeline: "Debug timeline",
+  frameAnnotations: "Frame annotations",
+  extension: "Extension",
+  screenshots: "Screenshots",
+  fullPage: "Full-page",
+  pins: "Element pins",
+  originals: "Original per point",
+  drafts: "Review & send drafts",
+  resolved: "Resolve points",
+  reviewDefaults: "Saved controls",
+  drawing: "Drawing & text",
+  highlighter: "Highlighter",
+  steps: "Numbered steps",
+  blur: "Blur",
+  redact: "Masking",
+  stickers: "Stickers",
+  localImages: "Image layers",
+  rasterExport: "Image export",
+  pdfExport: "PDF export",
+  clipboard: "Image clipboard",
+  cropExport: "Crop export",
+  video: "Record video",
+  microphone: "Microphone",
+  tabAudio: "Tab audio",
+  pauseVideo: "Pause / resume",
+  trimVideo: "Trim video",
+  cropVideo: "Crop video",
+  replay: "DOM replay",
+  diagnostics: "Console / network",
+  discussion: "Discussion",
+  mcp: "MCP",
+  agentContext: "Agent context",
+  github: "GitHub Issues",
+  multiRepo: "GitHub repositories",
+  nativeClients: "Mobile SDKs",
+  source: "Server source",
+  selfHost: "Self-hosted",
+  independent: "Local accounts",
+  storage: "S3 storage",
+};
 function matrix(activeSlug) {
-  const entries = [
-    { slug: "feedbacks", name: "Feedbacks" },
-    ...comparisons.filter((entry) => !activeSlug || entry.slug === activeSlug),
-  ];
-  const vendorCount = entries.length - 1;
+  const entries = [{ slug: "feedbacks", name: "Feedbacks" }, ...comparisons];
   const unknownCount = entries.reduce(
     (sum, entry) =>
       sum +
@@ -107,27 +154,37 @@ function matrix(activeSlug) {
         .length,
     0,
   );
-  const headers = entries
-    .map(
-      (entry) =>
-        `<th scope="col" data-tool="${entry.slug}"${entry.slug === "feedbacks" ? ' class="matrix-ours"' : ""}><a href="${entry.slug === "feedbacks" ? "/" : `/compare/${entry.slug}.html`}">${escape(entry.name)}</a>${entry.slug === "bugpin" ? "<small>Community + noted EE</small>" : entry.slug === "openreplay" ? "<small>Core + Spot</small>" : ""}</th>`,
-    )
+  const categories = matrixGroups
+    .map((group) => {
+      const headers = group.features
+        .map(
+          ([key, label]) =>
+            `<th scope="col" title="${escape(label)}">${escape(shortLabels[key] ?? label)}</th>`,
+        )
+        .join("");
+      const rows = entries
+        .map((entry) => {
+          const url = entry.slug === "feedbacks" ? "/" : `/compare/${entry.slug}.html`;
+          const scope =
+            entry.slug === "bugpin"
+              ? "Community + noted EE"
+              : entry.slug === "openreplay"
+                ? "Core + Spot"
+                : "";
+          const expanded = entry.slug === "feedbacks" || entry.slug === activeSlug;
+          const cells = group.features
+            .map(([key, label]) => evidenceCell(entry, key, label))
+            .join("");
+          const controls = group.features
+            .map(([key]) => `cell-${entry.slug}-${key}`)
+            .join(" ");
+          return `<tr data-tool="${entry.slug}"${entry.slug === "feedbacks" ? ' class="matrix-feedbacks"' : entry.slug === activeSlug ? ' class="matrix-active"' : ""}><th scope="row"><a class="matrix-product-link" href="${url}">${escape(entry.name)}</a><button class="matrix-product-toggle" type="button" aria-expanded="${expanded}" aria-controls="${controls}" hidden><span>${escape(entry.name)}</span><span class="matrix-product-sign" aria-hidden="true">${expanded ? "−" : "+"}</span></button>${scope ? `<small>${scope}</small>` : ""}</th>${cells}</tr>`;
+        })
+        .join("");
+      return `<section class="compare-matrix" id="matrix-${group.id}" aria-labelledby="matrix-${group.id}-heading"><h2 id="matrix-${group.id}-heading">${escape(group.title)}</h2><table><caption>${escape(group.title)}: all 16 tools, dated capability evidence</caption><colgroup><col class="matrix-name-column"/>${group.features.map(() => "<col/>").join("")}</colgroup><thead><tr><th scope="col">Tool</th>${headers}</tr></thead><tbody>${rows}</tbody></table></section>`;
+    })
     .join("");
-  const bodies = matrixGroups
-    .map(
-      (group) =>
-        `<tbody><tr class="matrix-group-row" id="matrix-${group.id}"><th scope="rowgroup" colspan="${entries.length + 1}"><span>${escape(group.title)}</span></th></tr>${group.features.map(([key, label]) => `<tr data-feature="${key}"><th scope="row">${escape(label)}</th>${entries.map((entry) => evidenceCell(entry, key, label)).join("")}</tr>`).join("")}</tbody>`,
-    )
-    .join("");
-  return `<section class="compare-matrix" aria-labelledby="matrix-heading">
-    <div class="comparison-overview"><h2 id="matrix-heading">${matrixFeatures.length} capabilities · ${activeSlug ? `Feedbacks + ${escape(entries[1].name)}` : `${entries.length} tools`}</h2>
-    <nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape({ highlights: "Highlights", capture: "Capture", annotation: "Image tools", recording: "Recordings", collaboration: "Team & agents", hosting: "Self-hosting" }[group.id] ?? group.title)}</a>`).join("")}</nav>
-    <p class="matrix-key"><strong>✓ Yes</strong> <span>·</span> <strong>❌ No</strong> In the reviewed scope <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Related support <span>·</span> <strong>External / Parts</strong> Requires another tool</p>
-    <p class="matrix-date">Reviewed ${matrixReviewed}. ${unknownCount}/${matrixFeatures.length * entries.length} verdicts remain <strong>Not verified</strong>; each explains the evidence gap. <a href="/docs/reference/comparison-method">How we audit</a>.</p></div>
-    <div class="matrix-controls" aria-label="Comparison table navigation" hidden><p>Swipe or scroll. Feature labels and Feedbacks stay visible.</p><div><button type="button" class="matrix-prev" aria-label="Previous comparison tools" disabled>←</button><span class="matrix-position" aria-live="polite">Tool 1 of ${vendorCount}</span><button type="button" class="matrix-next" aria-label="Next comparison tools">→</button></div></div>
-    <div class="matrix-scroll" role="region" aria-label="Comprehensive capability comparison" tabindex="0"><table class="matrix-tools-${entries.length}"><caption>All ${matrixFeatures.length} capabilities: Feedbacks and ${activeSlug ? escape(entries[1].name) : `${vendorCount} website feedback tools`}, with dated evidence</caption><colgroup><col class="matrix-feature-column"/>${entries.map(() => '<col class="matrix-tool-column"/>').join("")}</colgroup><thead><tr><th scope="col">Capability</th>${headers}</tr></thead>${bodies}</table></div>
-    <aside id="evidence-popover" class="evidence-popover" popover role="dialog" aria-labelledby="evidence-title"><button type="button" class="evidence-close">Close evidence <span aria-hidden="true">×</span></button><h3 id="evidence-title"></h3><div class="evidence-content"></div></aside>
-    </section>`;
+  return `<div class="comparison-overview"><h2>49 capabilities · 16 tools</h2><nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape({ highlights: "Highlights", capture: "Capture", annotation: "Image tools", recording: "Recordings", collaboration: "Team & agents", hosting: "Self-hosting" }[group.id])}</a>`).join("")}</nav><p class="matrix-key"><strong>✓ Yes</strong> <span>·</span> <strong>❌ No</strong> In the reviewed scope <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Related support <span>·</span> <strong>External / Parts</strong> Requires another tool</p><p class="matrix-date">Reviewed ${matrixReviewed}. ${unknownCount}/784 verdicts remain <strong>Not verified</strong>; each explains the evidence gap. <a href="/docs/reference/comparison-method">How we audit</a>.</p></div>${categories}<aside id="evidence-popover" class="evidence-popover" popover role="dialog" aria-labelledby="evidence-title"><button type="button" class="evidence-close">Close evidence <span aria-hidden="true">×</span></button><h3 id="evidence-title"></h3><div class="evidence-content"></div></aside>`;
 }
 
 function detail(entry, index) {

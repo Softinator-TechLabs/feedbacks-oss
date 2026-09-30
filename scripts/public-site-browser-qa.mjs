@@ -114,96 +114,67 @@ try {
         if (!(await localFile(link))) failures.push(`broken link ${path} → ${link}`);
       const canonical = await page.locator("link[rel=canonical]").getAttribute("href");
       assert.ok(canonical.startsWith("https://feedbacks.softinator.ai/"), path);
-      if (path.startsWith("/compare/") && width === 390) {
-        for (const section of await page.locator(".compare-matrix").all()) {
-          const scroller = section.locator(".matrix-scroll");
-          const overflows = await scroller.evaluate(
-            (el) => el.scrollWidth > el.clientWidth + 1,
-          );
-          if (path === "/compare/")
-            assert.ok(overflows, "All-tool matrix must scroll under CSP");
-          if (overflows) {
-            await section.locator(".matrix-next").click();
-            await page.waitForTimeout(200);
-            assert.ok(
-              await scroller.evaluate((el) => el.scrollLeft > 0),
-              "Next must reveal the next tools",
-            );
-          }
-          await scroller.evaluate((el) => {
-            el.scrollLeft = 0;
-          });
-        }
-        await page.evaluate(() => window.scrollTo(0, 0));
-      }
       if (path.startsWith("/compare/")) {
-        assert.equal(await page.locator(".compare-matrix table").count(), 1);
+        assert.equal(await page.getByRole("table").count(), 6);
+        assert.equal(await page.locator(".matrix-scroll, .matrix-controls").count(), 0);
+        for (const section of await page.locator(".compare-matrix").all()) {
+          assert.equal(await section.locator("tr[data-tool]").count(), 16);
+          assert.ok(
+            await section.locator("table").evaluate((el) => {
+              const style = getComputedStyle(el);
+              const section = el.closest(".compare-matrix").getBoundingClientRect();
+              const box = el.getBoundingClientRect();
+              return (
+                box.width >= section.width - 2 &&
+                !["auto", "scroll"].includes(style.overflowY)
+              );
+            }),
+            "Category table fills the section without a scrolling viewport",
+          );
+        }
         const evidence = page.locator(
-          'tr[data-feature="apacheLicense"] td.matrix-ours summary',
+          '#matrix-highlights tr[data-tool="feedbacks"] td[data-feature="apacheLicense"] summary',
         );
         await evidence.click();
         await page.locator("#evidence-popover").waitFor({ state: "visible" });
-        assert.ok(
-          (await page.locator(".evidence-content").textContent()).includes(
-            "30 September 2026",
-          ),
-        );
-        assert.equal(await page.locator(".evidence-content a").count(), 1);
-        const secondEvidence = page.locator(
-          'tr[data-feature="allFeaturesFree"] td.matrix-ours summary',
-        );
-        await secondEvidence.focus();
-        await page.keyboard.press("Enter");
-        assert.equal(
-          await page.locator('.matrix-evidence summary[aria-expanded="true"]').count(),
-          1,
+        assert.match(
+          await page.locator(".evidence-content").innerText(),
+          /30 September 2026/,
         );
         await page.keyboard.press("Escape");
-        await page.locator("#evidence-popover").waitFor({ state: "hidden" });
-        // Native toggle events are queued after the popover becomes hidden.
         await page.waitForFunction(
           () => !document.querySelector('.matrix-evidence summary[aria-expanded="true"]'),
         );
-        assert.equal(
-          await page.locator('.matrix-evidence summary[aria-expanded="true"]').count(),
-          0,
-        );
-        assert.ok(
-          await secondEvidence.evaluate((el) => el === document.activeElement),
-          "Evidence dismissal returns focus",
-        );
-        if (path === "/compare/") {
-          const keyboardCells = page.locator(
-            'tr[data-feature="apacheLicense"] td:not(.matrix-ours) summary',
-          );
-          for (let index = 0; index < (await keyboardCells.count()); index++) {
-            const cell = keyboardCells.nth(index);
-            await cell.focus();
-            await page.waitForTimeout(30);
-            assert.ok(
-              await cell.evaluate((el) => {
-                const scroller = el.closest(".matrix-scroll").getBoundingClientRect();
-                const row = el.closest("tr");
-                const ours = row.querySelector(".matrix-ours").getBoundingClientRect();
-                const target = el.getBoundingClientRect();
-                return (
-                  target.left >= ours.right - 1 && target.right <= scroller.right + 1
-                );
-              }),
-              "Focused competitor must not hide under sticky columns",
+        assert.ok(await evidence.evaluate((el) => el === document.activeElement));
+        if (width <= 900) {
+          const row = page.locator('#matrix-highlights tr[data-tool="pastel"]');
+          const toggle = row.locator(".matrix-product-toggle");
+          assert.equal(await toggle.getAttribute("aria-expanded"), "false");
+          await toggle.focus();
+          await page.keyboard.press("Enter");
+          assert.equal(await toggle.getAttribute("aria-expanded"), "true");
+          assert.ok(await row.locator('td[data-feature="apacheLicense"]').isVisible());
+          await row.locator('td[data-feature="apacheLicense"] summary').click();
+          await page.locator("#evidence-popover").waitFor({ state: "visible" });
+          await page.keyboard.press("Escape");
+          await toggle.click();
+          assert.equal(await toggle.getAttribute("aria-expanded"), "false");
+          if (path.endsWith("openreplay.html"))
+            assert.equal(
+              await page
+                .locator(
+                  '#matrix-highlights tr[data-tool="openreplay"] .matrix-product-toggle',
+                )
+                .getAttribute("aria-expanded"),
+              "true",
             );
-          }
         }
         await page.locator('.matrix-jump a[href="#matrix-recording"]').click();
         assert.ok(
-          await page.locator(".matrix-scroll").evaluate((el) => el.scrollTop > 200),
-          "Category navigation reaches grouped rows",
+          await page.evaluate(() => scrollY > 500),
+          "Category links use normal page scrolling",
         );
-        await page.locator(".matrix-scroll").evaluate((el) => {
-          el.scrollTop = 0;
-          el.scrollLeft = 0;
-        });
-        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.evaluate(() => scrollTo(0, 0));
       }
       if (path === "/docs/" || path === "/docs/guide/session-replay") {
         assert.equal(
@@ -314,7 +285,7 @@ try {
   assert.ok(await nojs.locator("#recordings").isVisible());
   await nojs.goto(origin + "/compare/");
   const fallback = nojs.locator(
-    'tr[data-feature="apacheLicense"] td.matrix-ours details',
+    '#matrix-highlights tr[data-tool="feedbacks"] td[data-feature="apacheLicense"] details',
   );
   await fallback.locator("summary").click();
   assert.ok(
@@ -324,26 +295,14 @@ try {
   assert.match(await fallback.innerText(), /30 September 2026/);
   assert.ok(await fallback.getByRole("link", { name: /Read source/ }).isVisible());
   await nojs.close();
-  for (const width of [320, 768]) {
+  for (const width of [320, 768, 1024]) {
     const narrow = await browser.newPage({ viewport: { width, height: 900 } });
-    await narrow.goto(origin + "/compare/");
+    await narrow.goto(origin + "/compare/bugherd.html");
     assert.ok(
       await narrow.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
     );
-    const cell = narrow
-      .locator('tr[data-feature="apacheLicense"] td:not(.matrix-ours) summary')
-      .first();
-    await cell.focus();
-    await narrow.waitForTimeout(40);
-    assert.ok(
-      await cell.evaluate((el) => {
-        const row = el.closest("tr");
-        const ours = row.querySelector(".matrix-ours").getBoundingClientRect();
-        const box = el.getBoundingClientRect();
-        const viewport = el.closest(".matrix-scroll").getBoundingClientRect();
-        return box.left >= ours.right - 1 && box.right <= viewport.right + 1;
-      }),
-      `Comparison focus visible at ${width}`,
+    const cell = narrow.locator(
+      '#matrix-highlights tr[data-tool="bugherd"] td[data-feature="apacheLicense"] summary',
     );
     await cell.click();
     const box = await narrow.locator("#evidence-popover").boundingBox();

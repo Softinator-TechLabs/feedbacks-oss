@@ -1,6 +1,6 @@
 # Plan: comprehensive competitor evidence and comparison
 
-Status: implementation verified; CI and release in progress. Date: 2026-09-30.
+Status: original audit delivered; category layout correction in release review. Date: 2026-09-30.
 
 ## Outcome and scope
 
@@ -19,7 +19,7 @@ Use the existing comparison generator and CSS/JavaScript. One semantic matrix gr
 - [x] Verify current Feedbacks source and identify distinctive workflows.
 - [x] Generate one comprehensive matrix and synchronized individual comparisons.
 - [x] Validate evidence completeness, sourced negatives, external links and desktop/mobile accessibility.
-- [ ] Review, pass required CI, deploy and verify live assets and content.
+- [x] Review, pass required CI, deploy and verify the original audited content (PR #172).
 
 ## Decision log
 
@@ -31,4 +31,10 @@ Static website data and presentation only. No application permissions or persist
 
 ## Completion receipt
 
-Research covers all 15 alternatives and 49 features per tool. Official documentation, pinned open-source code and current public editor/recorder clients were reviewed. Independent review corrected native SDKs, image exports, recording controls, full-page capture, scope definitions and keyboard focus. `npm run check` passed (463 tests passed; 33 opt-in browser/native checks skipped locally), including builds, documentation, sandbox and release checks. `npm run qa:public-site` passed across 10 routes, desktop/mobile, narrow table boundaries, keyboard evidence and no-JavaScript comparison disclosure. Layout detector returned no findings. The 784 dated verdicts contain 41 precisely scoped evidence gaps. Required CI, deployment and live verification remain pending and are recorded with the pull request and delivery receipt.
+Research covers all 15 alternatives and 49 features per tool. Official documentation, pinned open-source code and current public editor/recorder clients were reviewed. Independent review corrected native SDKs, image exports, recording controls, full-page capture, scope definitions and keyboard focus. `npm run check` passed (463 tests passed; 33 opt-in browser/native checks skipped locally), including builds, documentation, sandbox and release checks. `npm run qa:public-site` passed across 10 routes, desktop/mobile, narrow table boundaries, keyboard evidence and no-JavaScript comparison disclosure. Layout detector returned no findings. The 784 dated verdicts contain 41 precisely scoped evidence gaps. The original audit was delivered in [PR #172](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/172), with all six CI jobs and deployment/live checks passing.
+
+## Layout correction after user review
+
+The user rejected the enclosed vertical/horizontal scrolling matrix and requested categories with all products together. Restore product rows and feature columns in six full-width category tables on every comparison page, with Feedbacks and the named alternative highlighted. Remove table scroll containers and arrow navigation. On narrow screens, keep every product visible with expandable feature details. Preserve all 784 dated verdicts and primary-source audit results. Regression acceptance covers every product in every category, ordinary page anchors, full section width, no nested table scrolling, keyboard/mobile evidence and no-JavaScript disclosure. Follow-up checks and release receipt are recorded in the delivery PR.
+
+The layout correction passed `npm run check`, the five comparison regressions, `npm run qa:public-site`, independent responsive/keyboard review and the layout detector. All primary-source verdicts remain unchanged. Required CI and live verification for this follow-up are recorded in its delivery PR.

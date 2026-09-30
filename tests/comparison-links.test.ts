@@ -76,30 +76,34 @@ test("every comparison verdict has dated, qualified evidence", async () => {
   assert.equal(matrixRows.feedbacks.threadBundle.status, "yes");
 });
 
-test("the index puts all tools in one comprehensive table with accessible evidence", async () => {
+test("categories include every tool without a nested table scroll region", async () => {
   const { matrixGroups, vendorAudits } = await import("../site/comparison-matrix.mjs");
-  const page = await readFile(resolve(compareDirectory, "index.html"), "utf8");
-  assert.equal((page.match(/<table\b/g) ?? []).length, 1);
-  assert.equal((page.match(/class="matrix-evidence"/g) ?? []).length, 49 * 16);
-  for (const group of matrixGroups) {
-    assert.ok(page.includes(`id="matrix-${group.id}"`));
-    assert.ok(page.includes(`href="#matrix-${group.id}"`));
+  for (const name of ["index.html", "bugherd.html"]) {
+    const page = await readFile(resolve(compareDirectory, name), "utf8");
+    assert.equal((page.match(/<table\b/g) ?? []).length, matrixGroups.length);
+    assert.equal((page.match(/class="matrix-evidence"/g) ?? []).length, 49 * 16);
+    assert.doesNotMatch(page, /matrix-scroll|matrix-controls|matrix-next/);
+    for (const group of matrixGroups) {
+      assert.ok(page.includes(`id="matrix-${group.id}"`));
+      assert.ok(page.includes(`href="#matrix-${group.id}"`));
+    }
+    for (const slug of ["feedbacks", ...Object.keys(vendorAudits)])
+      assert.equal(
+        (page.match(new RegExp(`data-tool="${slug}"`, "g")) ?? []).length,
+        matrixGroups.length,
+      );
+    assert.ok(page.includes("❌"));
+    assert.ok(page.includes("popover"));
+    assert.ok(page.includes("2026-09-30"));
   }
-  for (const slug of Object.keys(vendorAudits))
-    assert.ok(page.includes(`data-tool="${slug}"`));
-  assert.ok(page.includes("❌"));
-  assert.ok(page.includes("popover"));
-  assert.ok(page.includes("Read source"));
-  assert.ok(page.includes("2026-09-30"));
 });
 
-test("comparison widths remain available under the public site's strict style policy", async () => {
+test("category tables fit the page and preserve selected comparison context", async () => {
   const css = await readFile(resolve(compareDirectory, "../comparison.css"), "utf8");
-  const page = await readFile(resolve(compareDirectory, "openreplay.html"), "utf8");
-  const index = await readFile(resolve(compareDirectory, "index.html"), "utf8");
+  const page = await readFile(resolve(compareDirectory, "bugherd.html"), "utf8");
   assert.doesNotMatch(page, /style="/);
-  assert.ok(page.includes('class="matrix-tools-2"'));
-  assert.ok(index.includes('class="matrix-tools-16"'));
-  assert.ok(css.includes(".matrix-tools-2"));
-  assert.ok(css.includes(".matrix-tools-16"));
+  assert.equal((page.match(/class="matrix-active"/g) ?? []).length, 6);
+  assert.doesNotMatch(css, /matrix-scroll|--feature-width|--matrix-tools/);
+  assert.match(css, /\.compare-matrix table\s*\{[^}]*width:\s*100%/);
+  assert.ok(page.includes("matrix-product-toggle"));
 });

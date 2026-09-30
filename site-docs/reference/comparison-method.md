@@ -5,7 +5,7 @@ description: Dated primary-source evidence, precise feature definitions and hone
 
 # How we audit comparisons
 
-The [complete comparison](https://feedbacks.softinator.ai/compare/) puts Feedbacks and 15 alternatives in one table. Each of the 49 capability rows has a dated verdict, source and qualification for every tool. The current audit was reviewed on **30 September 2026**.
+The [complete comparison](https://feedbacks.softinator.ai/compare/) groups all 16 tools into category tables, with products as rows and capabilities as columns. All 49 capabilities have a dated verdict, source and qualification for every tool. The current audit was reviewed on **30 September 2026**.
 
 ## What the marks mean
 
