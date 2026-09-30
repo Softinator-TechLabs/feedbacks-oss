@@ -216,6 +216,13 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
           )}
         </li>
       </ol>
+      {actor?.owner && (
+        <section className="help-github-apps">
+          <h2>GitHub integration · optional</h2>
+          <p>Manage the Apps configured on this server and their project assignments.</p>
+          <a href="/github-apps">Manage GitHub Apps</a>
+        </section>
+      )}
       <p className="muted help-footer">
         <a href="https://feedbacks.softinator.ai/docs/guide/chrome-extension">
           How to capture &amp; send feedback

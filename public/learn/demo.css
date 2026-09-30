@@ -35,6 +35,7 @@ figure {
   min-height: 300px;
 }
 :host([step="install"]) .screen,
+:host([step="github"]) .screen,
 :host([step="server"]) .screen {
   min-height: 340px;
 }
