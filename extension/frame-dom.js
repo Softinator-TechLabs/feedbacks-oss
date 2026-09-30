@@ -104,10 +104,12 @@
     }
   }
   const liveDocs = new Set();
+  const documentObservers = [];
   function watch(doc) {
     if (documents.has(doc)) return;
     documents.add(doc);
     liveDocs.add(doc);
+    for (const handler of documentObservers) handler(doc);
     for (const spec of listeners) attach(doc, spec);
     const observer = new MutationObserver((records) => {
       for (const r of records) for (const node of r.addedNodes) scan(node);
@@ -194,6 +196,13 @@
     path,
     find,
     holdPointView,
+    observeDocuments(handler) {
+      documentObservers.push(handler);
+      for (const doc of liveDocs) handler(doc);
+    },
+    visitDocuments(handler) {
+      for (const doc of liveDocs) handler(doc);
+    },
     listen(type, handler, options) {
       const spec = { type, handler, options };
       listeners.push(spec);

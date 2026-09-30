@@ -235,10 +235,10 @@ try {
         `Draft preview actions must fit on one row: ${JSON.stringify(draftPreviewLayout)}`,
       );
   }
+  const editorPromise = context.waitForEvent("page");
   await inRoot("Review & send");
-  await page.waitForTimeout(1800);
-  const editor = context.pages().find((p) => p.url().includes("editor.html"));
-  if (!editor) throw Error("Review & send did not open the capture editor");
+  const editor = await editorPromise;
+  await editor.waitForURL(/editor\.html/);
   if (editor) {
     await editor.setViewportSize({
       width: storeMode ? 1280 : 1100,
