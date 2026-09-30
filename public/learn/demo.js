@@ -851,12 +851,22 @@
           continue;
         this.shadowRoot.append(node);
       }
-      // Keep the server-rendered picture visible until shadow styles are ready.
+      // Retain the server-rendered footprint until shadow styles are ready.
       // A shadow-root stylesheet does not block painting like a head stylesheet.
       const fallback = document.createElement("slot");
       this.shadowRoot.prepend(fallback);
       const stage = this.shadowRoot.querySelector(".depth-stage");
       stage.hidden = true;
+      const loadFailed = () => this.setAttribute("data-load-failed", "");
+      const reveal = () => {
+        stage.hidden = false;
+        fallback.remove();
+        if (this.hasAttribute("reveal") && !this.motion.matches)
+          stage.animate([{ opacity: 0 }, { opacity: 1 }], {
+            duration: 280,
+            easing: "ease-out",
+          });
+      };
       const stylesheets = [
         this.shadowRoot.querySelector(`link[href="${base}demo.css?v=20260930-9"]`),
       ];
@@ -999,17 +1009,24 @@
                 },
                 onPause: () => setPaused(true),
               });
-              const ready = await recordingRuntime.ready;
-              if (!ready || disposed || this.index !== generation) return;
+              const [ready] = await Promise.all([
+                recordingRuntime.ready,
+                document.fonts.ready,
+              ]);
+              if (disposed || this.index !== generation) return;
+              if (!ready) {
+                loadFailed();
+                return;
+              }
               // Reveal the preview, inspector and footer together, only after the
               // real first frame has decoded. No intermediate poster or raw controls.
-              stage.hidden = false;
-              fallback.remove();
+              reveal();
               refreshMotion();
               schedule();
             })
             .catch(() => {
               if (!disposed) {
+                loadFailed();
                 caption.dataset.error = "true";
                 caption.setAttribute("role", "alert");
                 caption.textContent =
@@ -1151,7 +1168,8 @@
           schedule();
         })
         .catch(() => {
-          // The original readable picture remains usable if styles cannot load.
+          // Keep a readable fallback for failed assets; never expose raw controls.
+          loadFailed();
         });
       const visibility = () => schedule();
       document.addEventListener("visibilitychange", visibility);

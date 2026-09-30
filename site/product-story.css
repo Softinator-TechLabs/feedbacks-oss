@@ -369,3 +369,11 @@ feedbacks-demo > picture > img {
     --recording-preview-height: 134px;
   }
 }
+
+/* Reserve the complete footprint, but reveal no partial UI during loading.
+   A static picture remains available without JavaScript or after a load error. */
+@media (scripting: enabled) {
+  .product-hero-demo feedbacks-demo[reveal]:not([data-load-failed]) > picture {
+    visibility: hidden;
+  }
+}

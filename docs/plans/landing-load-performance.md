@@ -12,7 +12,7 @@ Landing links to other pages open a new tab with `noopener noreferrer`, includin
 
 ## Evidence and approach
 
-Delayed browser loading reproduced large shifts when the custom element replaced its static image, then rendered the recording canvas before its shadow styles arrived. Keep the original picture until both player stylesheets are ready, reserve the hero footprint and reveal the fully decoded first frame and controls together. Retain the existing Google Fonts families with self-hosted WOFF2 subsets and serve a smaller WebP fallback for the capture scene.
+Delayed browser loading reproduced large shifts when the custom element replaced its static image, then rendered the recording canvas before its shadow styles arrived. Reserve the hero footprint as white space until both player stylesheets, fonts and artwork are ready, then fade in the fully decoded first frame and controls together. Retain the existing Google Fonts families with self-hosted WOFF2 subsets and serve a smaller WebP fallback for the capture scene.
 
 ## Steps and progress
 
@@ -42,4 +42,4 @@ The delayed cold-load regression must keep accumulated layout shifts below 0.1 a
 
 The first Linux CI run exposed a remaining tab-wrap jump: selected labels became bold and changed the row count at some widths. The demo now retains constant label weight, with selection shown by color/underline. A 280–640px width sweep with alternate font metrics reproduces and guards the failure.
 
-The loading experience now keeps a responsive still of the current first frame, rather than the previous full-editor screenshot, until the whole recording player is ready. Styles, decoded artwork, inspector and footer become visible together; image-delivery failure retains the still. Existing motion resumes from the beginning. User-visible smoothness takes priority over a synthetic score.
+The landing hero reserves blank white space until the whole recording player is ready, then fades in the card and controls together over 280 ms. Reduced motion reveals it immediately. A responsive still of the current first frame remains available without JavaScript or after an asset-loading failure. Styles, fonts and decoded artwork are ready before the reveal; playback begins from the first frame. User-visible smoothness takes priority over a synthetic score.

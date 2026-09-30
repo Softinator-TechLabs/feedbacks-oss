@@ -140,11 +140,12 @@ try {
     await loadingPage
       .locator(".product-hero-demo .recording-demo")
       .waitFor({ state: "attached" });
-    assert.ok(
+    assert.equal(
       await loadingPage
         .locator(".product-hero-demo feedbacks-demo > picture img")
         .isVisible(),
-      "keep the stable preview until the complete player is ready",
+      false,
+      "keep the reserved area blank until the complete player is ready",
     );
     assert.equal(
       await loadingPage.locator(".product-hero-demo .depth-stage").isVisible(),
