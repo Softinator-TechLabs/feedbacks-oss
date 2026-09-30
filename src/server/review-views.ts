@@ -30,7 +30,7 @@ export function threadQuery(projectId: string, i: ReviewFilters) {
   let filter = `project_id=$1 AND COALESCE((data->>'archived')::boolean,false)=${i.archived === true ? "true" : "false"}`;
   if (i.search) {
     args.push(`%${i.search}%`);
-    filter += ` AND (data->>'body' ILIKE $${args.length} OR EXISTS(SELECT 1 FROM replies r WHERE r.thread_id=threads.id AND r.data->>'body' ILIKE $${args.length}) OR EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(data->'context'->'annotations','[]'::jsonb)) point WHERE point->>'body' ILIKE $${args.length}))`;
+    filter += ` AND (data->>'body' ILIKE $${args.length} OR EXISTS(SELECT 1 FROM replies r WHERE r.thread_id=threads.id AND r.data->>'body' ILIKE $${args.length}) OR EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(data->'context'->'annotations','[]'::jsonb)) point WHERE point->>'body' ILIKE $${args.length} OR point->'textEdit'->>'original' ILIKE $${args.length} OR point->'textEdit'->>'replacement' ILIKE $${args.length}))`;
   }
   if (!i.showResolved && !i.workState)
     filter += " AND data->'work'->>'state' NOT IN ('resolved','declined')";

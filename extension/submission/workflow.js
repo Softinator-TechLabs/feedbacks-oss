@@ -127,6 +127,26 @@ export function createSubmissionWorkflow({
           throw Error(
             "The annotated image is too large. Use Send without screenshot, or discard and capture a smaller window.",
           );
+        if (!draft.noImage && series) {
+          for (const [index, page] of draft.capturePages.entries()) {
+            const size = pagePixelSize(draft, page);
+            if (
+              summarizeMarkings(
+                draft.pageToolStates?.[index],
+                size.width,
+                size.height,
+                draft.context.annotations,
+              ).length > 2000
+            )
+              throw Error(
+                `Screenshot ${index + 1} has too many marks. Remove drawings or remove this screenshot before sending.`,
+              );
+          }
+          if (draft.includeCombined && combinedMarkings(draft).length > 2000)
+            throw Error(
+              "The combined image has too many marks. Turn off the combined image and send the ordered screenshots instead.",
+            );
+        }
         if (message.imageWithoutPins && !series && !draft.noImage) {
           if (!/^data:image\/(?:png|jpeg|webp);base64,/.test(message.imageWithoutPins))
             throw Error("The pin-free screenshot is invalid.");

@@ -194,12 +194,37 @@ export const contextSchema = z.object({
         id: z.string().uuid(),
         body: z.string().trim().min(1).max(4000),
         anchor: anchorSchema,
+        textEdit: z
+          .object({
+            original: z
+              .string()
+              .max(4000)
+              .refine((text) => !!text.trim(), "Select nonempty text"),
+            replacement: z.string().max(4000),
+            rects: z
+              .array(
+                z.object({
+                  x: z.number().finite().min(-20000).max(20000),
+                  y: z.number().finite().min(-20000).max(20000),
+                  width: z.number().finite().positive().max(20000),
+                  height: z.number().finite().positive().max(20000),
+                }),
+              )
+              .min(1)
+              .max(100),
+          })
+          .optional(),
       }),
     )
     .max(100)
     .refine(
       (items) => new Set(items.map((item) => item.id)).size === items.length,
       "Point IDs must be distinct",
+    )
+    .refine(
+      (items) =>
+        items.reduce((sum, item) => sum + (item.textEdit?.rects.length || 0), 0) <= 1800,
+      "Send this review before adding more text selections",
     )
     .optional(),
 });
@@ -237,7 +262,7 @@ export const screenshotMarkSchema = z.object({
   endpoints: z.array(normalizedPointSchema).min(1).max(2),
   number: z.number().int().positive().max(100).optional(),
   annotationId: id.optional(),
-  origin: z.enum(["element"]).optional(),
+  origin: z.enum(["element", "text-selection"]).optional(),
   text: z.string().max(200).optional(),
 });
 export const recordingFrameSchema = z.object({

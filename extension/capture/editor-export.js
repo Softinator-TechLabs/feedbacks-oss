@@ -1,3 +1,4 @@
+import { visibleShapes, evidenceLayer } from "./evidence-layers.js";
 import { getPage } from "./page-store.js";
 import { paintScreenshot, prepareShapes } from "./screenshot-render.js";
 import { exportDimensions, screenshotsPdf } from "./screenshot-export.js";
@@ -6,15 +7,30 @@ export async function screenshotSurface(
   fresh,
   index,
   kind = fresh.frozen ? "approved" : "source",
+  hiddenLayers,
 ) {
-  const blob = await getPage(fresh.id, index, kind);
+  const raw =
+    fresh.frozen &&
+    kind === "approved" &&
+    (await getPage(fresh.id, index, "without-pins"));
+  const blob = raw || (await getPage(fresh.id, index, kind));
   if (!blob) throw Error(`Screenshot ${index + 1} is missing from this browser.`);
   const bitmap = await createImageBitmap(blob);
   try {
     const output = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const marks = fresh.frozen ? [] : fresh.pageToolStates?.[index] || [];
+    const marks = fresh.frozen
+      ? raw
+        ? (fresh.pageToolStates?.[index] || []).filter(evidenceLayer)
+        : []
+      : fresh.pageToolStates?.[index] || [];
     await prepareShapes(marks);
-    paintScreenshot(output.getContext("2d"), bitmap, marks, bitmap.width, bitmap.height);
+    paintScreenshot(
+      output.getContext("2d"),
+      bitmap,
+      visibleShapes(marks, hiddenLayers),
+      bitmap.width,
+      bitmap.height,
+    );
     return output;
   } finally {
     bitmap.close();

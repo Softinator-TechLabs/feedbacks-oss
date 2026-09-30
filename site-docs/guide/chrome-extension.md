@@ -24,13 +24,15 @@ In the team app: **Setup → Copy server URL**. Paste it into the extension, cho
 
 Open your website and click the pinned extension. **Right-click** the element, write the change, then **Save point**.
 
+For a wording change, select the page text and choose **Suggest edit**. Check the original, enter its replacement, then **Save suggestion**. Leave the replacement empty to request deletion. The website stays unchanged.
+
 <Demo step="capture" />
 
 **Default shortcut:** Mac **⌘ Shift Y** · Windows **Ctrl Shift Y** starts or resumes review. Change it in extension **Settings → Keyboard shortcuts**. If another extension uses that combination, choose a different one there.
 
 ## 4. Check and send {#finalize-and-send-to-feedbacks}
 
-Choose **Review & send**, check the screenshots, then **Send feedback**. Your developer receives the context for the fix.
+Choose **Review & send**, check the screenshots, then **Send feedback**. Your developer receives the context for the fix. **Points**, **Element outline** and **Text selection** can each be shown or hidden in the editor and the thread images.
 
 New screenshot reviews include captured page diagnostics by default. The review panel shows a short preview, channel coverage and a **Download diagnostics** archive; uncheck **Include captured diagnostics** to send only the feedback and screenshots. Change the default in extension **Settings → Review defaults**. To include earlier console and network activity, use **Start diagnostics** before reproducing the issue. The complete artifact stays private to the project; an interrupted send can be resumed with **Retry Send**.
 

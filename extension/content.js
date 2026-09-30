@@ -20,6 +20,12 @@
     draftPin,
     draftPoints,
     pointText,
+    pointHeading,
+    pointOriginal,
+    pointSave,
+    selectionAction,
+    textCandidate,
+    selectionTimer,
     pointThumbnail,
     reviewButton,
     finalizeButton,
@@ -679,6 +685,38 @@
     if (restoreFocus && chosen?.element?.isConnected)
       chosen.element.focus({ preventScroll: true });
   }
+  function hideSelectionAction() {
+    clearTimeout(selectionTimer);
+    textCandidate = null;
+    selectionAction?.classList.add("hidden");
+  }
+  function selectionChanged(event) {
+    if (
+      !active ||
+      !selectionAction ||
+      recordingOnly ||
+      recordingBusy() ||
+      captureActive ||
+      chosen ||
+      pendingReview ||
+      event.composedPath().includes(host)
+    )
+      return;
+    clearTimeout(selectionTimer);
+    const doc =
+      event.target.ownerDocument ||
+      (event.target.nodeType === 9 ? event.target : document);
+    selectionTimer = setTimeout(() => {
+      if (!active || chosen || captureActive) return;
+      textCandidate = globalThis.FeedbacksTextSelection.read(doc, host);
+      selectionAction.classList.toggle("hidden", !textCandidate);
+      if (!textCandidate) return;
+      const rect = textCandidate.actionRect;
+      const width = selectionAction.offsetWidth;
+      selectionAction.style.left = `${Math.max(8, Math.min(rect.x, innerWidth - width - 8))}px`;
+      selectionAction.style.top = `${Math.max(8, Math.min(rect.y + rect.height + 6, innerHeight - 44))}px`;
+    }, 80);
+  }
   function clearChosenPoint(token) {
     if (token && chosen?.token !== token) return;
     chosen?.releaseView?.();
@@ -759,6 +797,7 @@
       annotations.map((item, index) => [
         item.id,
         item.body,
+        item.textEdit?.replacement,
         !!item.snapshot,
         locations[index].visible,
         locations[index].reason,
@@ -778,7 +817,9 @@
       if (!location.visible) outside++;
       const row = document.createElement("li");
       const label = document.createElement("span");
-      label.textContent = item.body;
+      label.textContent = item.textEdit
+        ? `${item.textEdit.original} → ${item.textEdit.replacement || "Remove selected text"}`
+        : item.body;
       row.append(label);
       const state = document.createElement("small");
       state.className = "draft-state";
@@ -792,7 +833,7 @@
           draftEditing = true;
           row.replaceChildren();
           const edit = document.createElement("textarea");
-          edit.value = item.body;
+          edit.value = item.textEdit ? item.textEdit.replacement : item.body;
           edit.maxLength = 4000;
           edit.rows = 2;
           edit.setAttribute("aria-label", `Edit point ${index + 1}`);
@@ -800,11 +841,15 @@
           button(
             "Save",
             () => {
-              if (!edit.value.trim()) {
+              if (
+                (!item.textEdit && !edit.value.trim()) ||
+                (item.textEdit && edit.value === item.textEdit.original)
+              ) {
                 edit.focus();
                 return;
               }
-              item.body = edit.value.trim();
+              if (item.textEdit) item.textEdit.replacement = edit.value;
+              else item.body = edit.value.trim();
               draftEditing = false;
               draftRenderSignature = "";
               renderDraftPoints();
@@ -873,7 +918,9 @@
         state.textContent = `Point ${index + 1} · Draft, not sent`;
         const note = document.createElement("p");
         note.className = "preview-note";
-        note.textContent = item.body;
+        note.textContent = item.textEdit
+          ? `${item.textEdit.original} → ${item.textEdit.replacement || "Remove selected text"}`
+          : item.body;
         const actions = document.createElement("div");
         actions.className = "draft-preview-actions";
         preview.append(state, note, actions);
@@ -1031,10 +1078,11 @@
     // geometry and selector were recorded at the right-click, before editing.
     if (pointSignature !== signature() && !selection.recordingAnnotation)
       throw Error("The page moved. Right-click the point again.");
-    const body = pointText.value.trim();
-    if (!body) {
-      pointMenu.querySelector(".point-tip").textContent =
-        "Write a comment for this point first.";
+    const body = chosen.textEdit ? "Suggested text edit" : pointText.value.trim();
+    if (!body || (chosen.textEdit && pointText.value === chosen.textEdit.original)) {
+      pointMenu.querySelector(".point-tip").textContent = chosen.textEdit
+        ? "Change the suggested text, or leave it empty to remove the selection."
+        : "Write a comment for this point first.";
       pointText.focus();
       return;
     }
@@ -1075,6 +1123,14 @@
       clearChosenPoint();
       return;
     }
+    if (
+      selection.textEdit &&
+      annotations.reduce(
+        (sum, item) => sum + (item.textEdit?.rects.length || 0),
+        selection.textEdit.rects.length,
+      ) > 1800
+    )
+      throw Error("Send this review before adding more text selections.");
     if (annotations.length >= 100)
       throw Error("Send this review before adding more points.");
     annotations.push({
@@ -1083,6 +1139,12 @@
       element: chosen.element,
       snapshot: chosen.snapshot,
       anchor,
+      ...(selection.textEdit
+        ? {
+            textEdit: { ...selection.textEdit, replacement: pointText.value },
+            textRange: selection.textRange,
+          }
+        : {}),
     });
     pointText.value = "";
     pointMenu.querySelector(".point-tip").textContent =
@@ -1097,8 +1159,10 @@
     if (pointRequest) return;
     if (draftEditing)
       throw Error("Save or cancel the point edit before reviewing screenshots.");
-    if (chosen && pointText.value.trim()) await savePoint();
-    else if (chosen) {
+    if (chosen && (chosen.textEdit || pointText.value.trim())) {
+      await savePoint();
+      if (chosen) return;
+    } else if (chosen) {
       pointText.value = "";
       clearChosenPoint();
     }
@@ -1162,16 +1226,38 @@
     clearChosenPoint();
     renderPins();
   }
-  async function openPointMenu(el, x, y) {
+  async function openPointMenu(el, x, y, textSelection) {
     hoverTarget = null;
     hoverBox?.classList.add("hidden");
     if (pointRequest || captureActive || freezePending) return;
+    if (textSelection) {
+      const currentSelection = globalThis.FeedbacksTextSelection.read(
+        el.ownerDocument,
+        host,
+      );
+      if (
+        !currentSelection ||
+        currentSelection.original !== textSelection.original ||
+        textSelection.range.toString() !== textSelection.original ||
+        !textSelection.element.isConnected
+      ) {
+        hideSelectionAction();
+        throw Error("The selected text changed. Select it again.");
+      }
+      textSelection = currentSelection;
+      el = currentSelection.element;
+      x = currentSelection.actionRect.x + currentSelection.actionRect.width / 2;
+      y = currentSelection.actionRect.y + currentSelection.actionRect.height / 2;
+    }
     const recordingPoint = recordingPointAllowed();
     if (pendingReview && !recordingPoint) {
       await send({ type: "openCapturedReview" });
       return;
     }
-    if (chosen && (chosen.recordingAnnotation || pointText.value.trim())) {
+    if (
+      chosen &&
+      (chosen.recordingAnnotation || chosen.textEdit || pointText.value.trim())
+    ) {
       pointMenu.classList.remove("hidden");
       pointMenu.querySelector(".point-tip").textContent =
         "Save or cancel your current point before selecting another.";
@@ -1180,6 +1266,35 @@
     }
     if (!choosePoint(el, x, y, recordingPoint)) return;
     const selection = chosen;
+    selectionAction.classList.add("hidden");
+    textCandidate = null;
+    pointHeading.textContent = textSelection
+      ? "Suggest a text edit"
+      : "Comment on this element";
+    pointMenu.setAttribute(
+      "aria-label",
+      textSelection ? "Suggest a text edit" : "Feedback at this point",
+    );
+    pointOriginal.hidden = !textSelection;
+    pointOriginal.textContent = textSelection?.original || "";
+    pointText.setAttribute(
+      "aria-label",
+      textSelection ? "Suggested replacement" : "Comment on selected element",
+    );
+    pointText.placeholder = textSelection
+      ? "Replacement text (empty removes selected text)"
+      : "What should change here?";
+    pointSave.textContent = textSelection ? "Save suggestion" : "Save point";
+    if (textSelection) {
+      selection.textEdit = {
+        original: textSelection.original,
+        replacement: "",
+        rects: textSelection.rects,
+      };
+      selection.textRange = textSelection.range;
+      pointText.value = textSelection.original;
+      el.ownerDocument.getSelection()?.removeAllRanges();
+    }
     const token = selection.token;
     if (recordingPoint) {
       freezePending = true;
@@ -1623,16 +1738,22 @@
     pointMenu.setAttribute("role", "dialog");
     pointMenu.setAttribute("aria-label", "Feedback at this point");
     root.append(pointMenu);
-    const pointHeading = document.createElement("strong");
+    pointHeading = document.createElement("strong");
     pointHeading.textContent = "Comment on this element";
     pointMenu.append(pointHeading);
+    pointOriginal = document.createElement("blockquote");
+    pointOriginal.className = "text-edit-original";
+    pointOriginal.hidden = true;
+    pointOriginal.setAttribute("aria-label", "Original text");
+    pointMenu.append(pointOriginal);
     pointText = document.createElement("textarea");
     pointText.rows = 3;
     pointText.maxLength = 4000;
     pointText.placeholder = "What should change here?";
     pointText.setAttribute("aria-label", "Comment on selected element");
     pointMenu.append(pointText);
-    button("Save point", savePoint, pointMenu).className = "primary";
+    pointSave = button("Save point", savePoint, pointMenu);
+    pointSave.className = "primary";
     button("Cancel", cancelPoint, pointMenu);
     const tip = document.createElement("p");
     tip.className = "point-tip";
@@ -1646,6 +1767,23 @@
     pointThumbnail.hidden = true;
     evidenceRow.append(pointThumbnail, tip);
     pointMenu.append(evidenceRow);
+    selectionAction = button(
+      "Suggest edit",
+      async () => {
+        const candidate = textCandidate;
+        if (!candidate) return;
+        const rect = candidate.actionRect;
+        await openPointMenu(
+          candidate.element,
+          rect.x + rect.width / 2,
+          rect.y + rect.height / 2,
+          candidate,
+        );
+      },
+      root,
+    );
+    selectionAction.className = "text-selection-action hidden";
+    selectionAction.onpointerdown = (event) => event.preventDefault();
     draftPoints = document.createElement("div");
     root.append(draftPoints);
     const draftSection = document.createElement("section");
@@ -1826,7 +1964,9 @@
           byline.title = new Date(thread.createdAt).toLocaleString();
           const note = document.createElement("p");
           note.className = "preview-note";
-          note.textContent = item.body;
+          note.textContent = item.textEdit
+            ? `${item.textEdit.original} → ${item.textEdit.replacement || "Remove selected text"}`
+            : item.body;
           const actions = document.createElement("div");
           actions.className = "preview-actions";
           const link = document.createElement("a");
@@ -1983,10 +2123,17 @@
         event.preventDefault();
         event.stopImmediatePropagation();
         openPointMenu(event.target, event.clientX, event.clientY);
-      } else if (!chosen?.recordingAnnotation) closePointMenu();
+      } else if (!chosen?.recordingAnnotation) {
+        hideSelectionAction();
+        if (chosen && !chosen.textEdit && !pointText.value.trim()) clearChosenPoint();
+        closePointMenu();
+      }
     },
     true,
   );
+  F.listen("pointerup", selectionChanged, true);
+  F.listen("keyup", selectionChanged, true);
+  F.listen("selectionchange", selectionChanged, true);
   F.listen(
     "contextmenu",
     (event) => {
@@ -2221,6 +2368,7 @@
     "scroll",
     (event) => {
       if (event.composedPath().includes(host)) return;
+      hideSelectionAction();
       if (event.target !== document && event.target !== window) {
         repaint();
         return;
@@ -2236,6 +2384,7 @@
   );
   F.listen("resize", (event) => {
     if (event.target !== window) return;
+    hideSelectionAction();
     positionControls();
     if (!chosen?.recordingAnnotation) closePointMenu();
     else {
@@ -2495,6 +2644,7 @@
       }
       if (message.type === "deactivate") {
         activationGeneration++;
+        hideSelectionAction();
         clearChosenPoint();
         draftEditing = false;
         active = false;

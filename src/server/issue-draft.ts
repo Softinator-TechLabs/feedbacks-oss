@@ -1,3 +1,17 @@
+function textEditSections(thread: any, quote: (value: string) => string) {
+  return (thread.context?.annotations || []).flatMap((point: any, index: number) =>
+    point.textEdit
+      ? [
+          `## Point ${index + 1}: Suggested text edit`,
+          `Original text:\n\n${quote(point.textEdit.original)}`,
+          point.textEdit.replacement
+            ? `Suggested replacement:\n\n${quote(point.textEdit.replacement)}`
+            : "Suggested replacement: Remove selected text",
+        ]
+      : [],
+  );
+}
+
 // An Issue draft is only a transcription aid. It never authorizes an external
 // write, and deliberately excludes attachments, diagnostics and reviewer policy.
 export function issueDraft(thread: any, repositoryUrl: string | null) {
@@ -17,6 +31,7 @@ export function issueDraft(thread: any, repositoryUrl: string | null) {
   const firstLine = safe(thread.body).split("\n")[0].replace(/\s+/g, " ");
   const title = `Feedback: ${firstLine}`.slice(0, 120);
   const sections = ["## Request", quote(thread.body)];
+  sections.push(...textEditSections(thread, quote));
   for (const reply of thread.replies ?? []) {
     if (sections.join("\n\n").length > 7000) break;
     sections.push(
@@ -68,7 +83,13 @@ export function quickIssueDraft(
     .join("\n");
   const excerpt = quote.length > 6000 ? `${quote.slice(0, 5999)}…` : quote;
   const source = `${origin}/threads/${thread.id}`;
-  let body = `## Feedback\n\n${excerpt}\n\n## Source\n\n${source}`;
+  const suggestions = textEditSections(thread, (value) =>
+    safe(value)
+      .split("\n")
+      .map((line) => `> ${line}`)
+      .join("\n"),
+  ).join("\n\n");
+  let body = `## Feedback\n\n${excerpt}${suggestions ? `\n\n${suggestions.slice(0, Math.max(0, 7400 - excerpt.length))}` : ""}\n\n## Source\n\n${source}`;
   const capturePages = attachments.filter((item) =>
     /^full-page-\d+-of-\d+\.webp$/.test(item.filename || ""),
   );

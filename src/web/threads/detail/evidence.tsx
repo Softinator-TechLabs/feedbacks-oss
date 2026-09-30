@@ -9,6 +9,13 @@ import { pointProgress } from "../../point-progress.js";
 import { planPriorities, timingLabel } from "../../work-plan-model.js";
 
 type Asset = Thread["assets"][number];
+type EvidenceLayer = "points" | "element" | "text";
+const layerLabels: Record<EvidenceLayer, string> = {
+  points: "points",
+  element: "element outline",
+  text: "text selection",
+};
+
 type Annotation = NonNullable<Thread["context"]["annotations"]>[number];
 
 function imageLabel(asset: Asset) {
@@ -24,8 +31,8 @@ function EvidenceScreenshot({
   className,
   id,
   loading,
-  hiddenPins,
-  onTogglePins,
+  hiddenLayers,
+  onToggleLayer,
   captureMarker,
   onAnnotate,
 }: {
@@ -33,8 +40,8 @@ function EvidenceScreenshot({
   className?: string;
   id?: string;
   loading: "eager" | "lazy";
-  hiddenPins: boolean;
-  onTogglePins: (assetId: string) => void;
+  hiddenLayers: Record<EvidenceLayer, boolean>;
+  onToggleLayer: (assetId: string, layer: EvidenceLayer) => void;
   captureMarker?: Thread["context"]["captureMarker"];
   onAnnotate?: (asset: Asset) => void;
 }) {
@@ -44,10 +51,20 @@ function EvidenceScreenshot({
           (mark) => mark.tool === "point" && mark.endpoints[0],
         )
       : [];
+  const overlays =
+    asset.rendition === "screenshot"
+      ? (asset.markings || []).filter((mark) =>
+          ["element", "text-selection"].includes(mark.origin || ""),
+        )
+      : [];
+  const layers: EvidenceLayer[] = [];
   const pointOriginal = /^point-\d+-original\.webp$/.test(asset.filename || "");
   const markerStyle = captureMarker?.style || (pointOriginal ? "ring" : "pin");
   const markerSize = captureMarker?.size || "small";
   const visibleMarkers = markerStyle !== "none" && points.length > 0;
+  if (visibleMarkers) layers.push("points");
+  if (overlays.some((mark) => mark.origin === "element")) layers.push("element");
+  if (overlays.some((mark) => mark.origin === "text-selection")) layers.push("text");
   const embeddedPins =
     asset.rendition === "annotated" &&
     asset.markings?.some((mark) => mark.tool === "point");
@@ -57,15 +74,24 @@ function EvidenceScreenshot({
     <figure id={id} className={className}>
       <figcaption className="review-image-caption">
         <span>{imageLabel(asset)}</span>
-        {visibleMarkers && (
-          <button
-            type="button"
-            className="review-pin-toggle"
-            aria-pressed={!hiddenPins}
-            onClick={() => onTogglePins(asset.id)}
+        {layers.length > 0 && (
+          <span
+            className="review-layer-controls"
+            role="group"
+            aria-label="Screenshot evidence visibility"
           >
-            {hiddenPins ? "Show pins" : "Hide pins"}
-          </button>
+            {layers.map((layer) => (
+              <button
+                type="button"
+                className="review-pin-toggle"
+                key={layer}
+                aria-pressed={!hiddenLayers[layer]}
+                onClick={() => onToggleLayer(asset.id, layer)}
+              >
+                {hiddenLayers[layer] ? "Show" : "Hide"} {layerLabels[layer]}
+              </button>
+            ))}
+          </span>
         )}
         {embeddedPins && <span className="review-legacy-pins">Pins saved in image</span>}
         <a href={asset.url} target="_blank" rel="noopener noreferrer">
@@ -95,7 +121,22 @@ function EvidenceScreenshot({
           height={asset.height}
           loading={loading}
         />
-        {!hiddenPins && visibleMarkers && (
+        {overlays
+          .filter((mark) => !hiddenLayers[mark.origin === "element" ? "element" : "text"])
+          .map((mark, index) => (
+            <span
+              key={`${mark.origin}-${index}`}
+              className={`review-image-overlay ${mark.origin === "element" ? "review-element-outline" : "review-text-selection"}`}
+              aria-hidden="true"
+              style={{
+                left: `${mark.bounds.x * 100}%`,
+                top: `${mark.bounds.y * 100}%`,
+                width: `${mark.bounds.width * 100}%`,
+                height: `${mark.bounds.height * 100}%`,
+              }}
+            />
+          ))}
+        {!hiddenLayers.points && visibleMarkers && (
           <span className="review-image-pins" aria-hidden="true">
             {points.map((mark, index) => (
               <span
@@ -194,15 +235,18 @@ export function ReviewEvidence({
   const action = useAction();
   const pending = useRef(false);
   const [filter, setFilter] = useState("all");
-  const [hiddenPins, setHiddenPins] = useState<Set<string>>(() => new Set());
-  const togglePins = (assetId: string) =>
-    setHiddenPins((current) => {
-      const next = new Set(current);
-      if (next.has(assetId)) next.delete(assetId);
-      else next.add(assetId);
-      return next;
-    });
-  useEffect(() => setHiddenPins(new Set()), [thread.id]);
+  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
+  const hiddenLayers = (assetId: string): Record<EvidenceLayer, boolean> => ({
+    points: layerVisibility[`${assetId}:points`] ?? false,
+    element: layerVisibility[`${assetId}:element`] ?? true,
+    text: layerVisibility[`${assetId}:text`] ?? false,
+  });
+  const toggleLayer = (assetId: string, layer: EvidenceLayer) =>
+    setLayerVisibility((current) => ({
+      ...current,
+      [`${assetId}:${layer}`]: !(current[`${assetId}:${layer}`] ?? layer === "element"),
+    }));
+  useEffect(() => setLayerVisibility({}), [thread.id]);
   const threadClosed = ["resolved", "declined"].includes(thread.work.state);
   const stateOf = (item: Annotation) => {
     const state = thread.annotationStates?.[item.id]?.state || "open";
@@ -360,8 +404,8 @@ export function ReviewEvidence({
           id={`asset-${asset.id}`}
           className="review-main-capture"
           loading="eager"
-          hiddenPins={hiddenPins.has(asset.id)}
-          onTogglePins={togglePins}
+          hiddenLayers={hiddenLayers(asset.id)}
+          onToggleLayer={toggleLayer}
           captureMarker={thread.context.captureMarker}
           onAnnotate={canWrite ? onAnnotate : undefined}
           key={asset.id}
@@ -375,8 +419,8 @@ export function ReviewEvidence({
               asset={asset}
               id={`asset-${asset.id}`}
               loading="lazy"
-              hiddenPins={hiddenPins.has(asset.id)}
-              onTogglePins={togglePins}
+              hiddenLayers={hiddenLayers(asset.id)}
+              onToggleLayer={toggleLayer}
               captureMarker={thread.context.captureMarker}
               onAnnotate={canWrite ? onAnnotate : undefined}
               key={asset.id}
@@ -418,7 +462,24 @@ export function ReviewEvidence({
                     </span>
                   )}
                 </div>
-                <MarkdownText body={item.body} />
+                {item.textEdit ? (
+                  <div className="review-text-edit" aria-label="Suggested text edit">
+                    <div>
+                      <strong>Original text</strong>
+                      <blockquote>{item.textEdit.original}</blockquote>
+                    </div>
+                    <div>
+                      <strong>Suggested replacement</strong>
+                      {item.textEdit.replacement ? (
+                        <blockquote>{item.textEdit.replacement}</blockquote>
+                      ) : (
+                        <p className="muted">Remove selected text</p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <MarkdownText body={item.body} />
+                )}
                 <span className="review-point-kind">
                   {asset?.recordingFrame
                     ? `Video frame · ${(asset.recordingFrame.atMs / 1000).toFixed(1)}s`
@@ -516,8 +577,8 @@ export function ReviewEvidence({
                     }
                     className="review-point-figure"
                     loading="lazy"
-                    hiddenPins={hiddenPins.has(asset.id)}
-                    onTogglePins={togglePins}
+                    hiddenLayers={hiddenLayers(asset.id)}
+                    onToggleLayer={toggleLayer}
                     captureMarker={thread.context.captureMarker}
                     onAnnotate={canWrite ? onAnnotate : undefined}
                   />

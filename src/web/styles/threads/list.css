@@ -120,6 +120,13 @@
 .thread-row .thread-summary h2 {
   margin: 0 0 4px;
 }
+.thread-text-edit-preview {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
 .thread-row .thread-summary .meta {
   gap: 2px 12px;
 }

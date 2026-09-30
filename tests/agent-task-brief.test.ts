@@ -373,3 +373,28 @@ test("mixed open and closed points narrow the next start instead of suggesting a
   const next = await runAgentTool(executor(f, calls), "start", r.next.input);
   assert.deepEqual(next.next.input.input.annotationIds, [pointId]);
 });
+
+test("start carries short text replacements and requires a points read for long copy", async () => {
+  const thread: any = base();
+  thread.context.annotations = [
+    {
+      id: pointId,
+      body: "Suggested text edit",
+      anchor: {},
+      textEdit: { original: "Old page copy", replacement: "", rects: [] },
+    },
+  ];
+  const calls: Array<{ op: string; input: any }> = [];
+  const short = await runAgentTool(executor(thread, calls), "start", { threadId: id });
+  assert.deepEqual(short.task.points[0].textEdit, {
+    original: "Old page copy",
+    replacement: "",
+  });
+  assert.equal(short.task.incomplete, undefined);
+  thread.context.annotations[0].textEdit.replacement = "Long replacement ".repeat(50);
+  const long = await runAgentTool(executor(thread, calls), "start", { threadId: id });
+  assert.ok(long.task.incomplete.includes("points"));
+  assert.equal(long.task.points[0].textEdit.replacement.length, 240);
+  assert.equal(long.next.tool, "feedbacks_thread");
+  assert.equal(long.next.input.section, "points");
+});

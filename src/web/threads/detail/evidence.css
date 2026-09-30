@@ -580,3 +580,44 @@
 .github-issue-dialog .github-issue-control > .text-button {
   margin-top: 12px;
 }
+
+.review-layer-controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.review-image-overlay {
+  position: absolute;
+  pointer-events: none;
+}
+.review-element-outline {
+  border: 2px solid #2370b5;
+}
+.review-text-selection {
+  background: rgba(245, 197, 61, 0.3);
+  border-bottom: 1px solid #ae7812;
+}
+.review-text-edit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 10px 0;
+}
+.review-text-edit strong {
+  font-size: 0.8rem;
+}
+.review-text-edit blockquote {
+  margin: 5px 0 0;
+  padding: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.review-text-edit p {
+  margin: 5px 0;
+}
+@media (max-width: 600px) {
+  .review-text-edit {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+}
