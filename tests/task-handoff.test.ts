@@ -152,14 +152,13 @@ test("no feedback body means no empty body placeholder", () => {
   assert.ok(!text.includes("not available"));
 });
 
-test("copied snapshot includes discussion, point anchors and authenticated image links", () => {
+test("copied snapshot includes discussion, point summaries and authenticated marked-image links", () => {
   const f = fixture();
   const r = buildTaskHandoff(f);
   assert.match(r.text, /Keep keyboard navigation/);
   assert.match(r.text, /Developer/);
   assert.match(r.text, /Fix contrast/);
-  assert.match(r.text, /#save/);
-  assert.match(r.text, /screenshotPoint/);
+  assert.doesNotMatch(r.text, /#save|screenshotPoint/);
   assert.match(r.text, /https:\/\/feedback.example.test\/api\/assets\/asset/);
   assert.match(r.text, /revision 7/);
   assert.match(r.text, /Feedbacks discussion/);
@@ -186,7 +185,7 @@ test("small discussion retains both exact clarifications and newer copies reflec
   assert.ok(!second.includes("seven minutes"));
 });
 
-test("media pins use normalized geometry and project links cannot leak URL credentials", () => {
+test("marked media links omit geometry and project URL credentials", () => {
   const f = fixture();
   f.project.repositoryUrl = "https://user:pass@example.test/repo?access_token=secret";
   f.thread.context.url = "https://user:pass@example.test/form?session=secret";
@@ -199,13 +198,30 @@ test("media pins use normalized geometry and project links cannot leak URL crede
   const text = buildTaskHandoff(f).text;
   assert.match(
     text,
-    /!\[Screenshot\]\(https:\/\/feedback.example.test\/api\/assets\/asset\)/,
+    /!\[Saved video frame\]\(https:\/\/feedback.example.test\/api\/assets\/asset\?preview=agent\)/,
   );
-  assert.match(text, /normalized-image/);
-  assert.match(text, /"bounds":\{"x":0.2/);
+  assert.doesNotMatch(text, /normalized-image|"bounds"/);
   assert.ok(
     !text.includes("user:pass") &&
       !text.includes("access_token") &&
       !text.includes("session=secret"),
   );
+});
+
+test("handoff includes explicit reproduction identity and exact deferred-tool fallback", () => {
+  const f: any = fixture();
+  f.thread.context.reproduction = {
+    source: "app",
+    objectId: "demo-42",
+    file: "sections/method.tex",
+    section: "Method",
+    version: "demo-v2",
+  };
+  f.thread.assets = [{ id: "video", contentType: "video/webm", durationMs: 28000 }];
+  const { text } = buildTaskHandoff(f);
+  assert.match(text, /demo-42/);
+  assert.match(text, /sections\/method.tex/);
+  assert.match(text, /\[Video\]/);
+  assert.match(text, /discover only feedbacks_start once/);
+  assert.doesNotMatch(text, /mcp__feedbacks__/);
 });

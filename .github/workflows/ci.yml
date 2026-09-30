@@ -31,6 +31,8 @@ jobs:
           cache: npm
       - run: npm install --global npm@11.6.2
       - run: npm ci
+      - name: Install video preview decoder
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: npm run check
       - name: Native PostgreSQL transaction checks
         run: |

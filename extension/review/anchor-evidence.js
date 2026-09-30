@@ -94,6 +94,30 @@
       ? `record-v3:${hash(`${record}|${el.tagName}|${selector(el)}|${el.getAttribute("role") || ""}`)}`
       : headingFingerprint(el);
   };
+  function reproductionContext() {
+    const result = { source: "app" };
+    for (const [field, tag] of Object.entries({
+      objectId: "object-id",
+      workspaceId: "workspace-id",
+      file: "file",
+      section: "section",
+      view: "view",
+      version: "version",
+    })) {
+      const value = document
+        .querySelector(`meta[name="feedbacks:${tag}"]`)
+        ?.content?.trim();
+      if (
+        value &&
+        value.length <= 240 &&
+        !/https?:\/\/|bearer\s|(?:token|password|secret|api[_-]?key|authorization)\s*[:=]/i.test(
+          value,
+        )
+      )
+        result[field] = value;
+    }
+    return Object.keys(result).length > 1 ? result : undefined;
+  }
   function context({
     chosen,
     annotations,
@@ -134,7 +158,9 @@
       anchor,
       ...(textEdit ? { textEdit } : {}),
     }));
+    const reproduction = reproductionContext();
     return {
+      ...(reproduction ? { reproduction } : {}),
       url: U.safeUrl(location.href),
       viewport: { width: innerWidth, height: innerHeight },
       devicePixelRatio,

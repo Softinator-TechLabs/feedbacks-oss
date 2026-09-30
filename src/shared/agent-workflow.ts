@@ -28,6 +28,8 @@ export const agentToolSchemas = {
     threadId: z.string().uuid(),
     snapshotRevision: z.number().int().positive().optional(),
     includeImage: z.boolean().default(false),
+    videoTimeMs: z.number().int().min(0).max(300000).optional(),
+    includeGeometry: z.boolean().default(false),
     includeRecordings: z.boolean().default(false),
     annotationIds: z.array(z.string().uuid()).max(100).default([]),
   }),
@@ -88,7 +90,7 @@ export const agentToolSchemas = {
 export type AgentTool = keyof typeof agentToolSchemas;
 export const agentToolDescriptions: Record<AgentTool, string> = {
   start:
-    "Read one task: feedback text, relevant points, access/coordination and one next step. includeImage:true also returns one relevant screenshot or saved video frame. Small discussions are complete. includeRecordings:true adds bounded session metadata. Empty sections are omitted unless requested; denied reads remain explicit. Read-only; no claims or status changes.",
+    "Read one task: feedback text, relevant points, access/coordination and one next step. includeImage:true returns a relevant screenshot, saved frame or sampled video contact sheet; videoTimeMs focuses video samples. Small discussions are complete. includeRecordings:true adds bounded session metadata. Geometry is opt-in via includeGeometry. Empty sections are omitted unless requested; denied reads remain explicit. Read-only; no claims or status changes.",
   guide:
     "Read a guide only when needed: start, glossary, media, workflow, install or manage-context.",
   workspace:
@@ -98,7 +100,7 @@ export const agentToolDescriptions: Record<AgentTool, string> = {
   thread:
     "Read one needed task section. Empty sections are omitted from overview. Follow returned next calls to continue large text/pages with stable revisions. Point IDs differ from numbers; preserve point plans.",
   asset:
-    "Inspect one authorized image with includeImage:true as a native MCP image, optionally cropped in ORIGINAL pixels. Default metadata only. For video, read metadata and use its authenticated same-server URL with a media-capable client; never claim a filename proves playback.",
+    "Get a native image with includeImage:true: screenshot (crop in ORIGINAL pixels) or a labelled video contact sheet. Optional videoTimeMs focuses video samples on the asset clock. Default metadata only. Samples are not full playback. No credential lookup or download commands needed.",
   describe:
     "Discover the exact input schema for one operation, or search its catalog. Full output schemas need includeOutputSchema:true. Use before execute for statuses, replies, instructions, members, documents or other advanced actions. Availability is not authorization.",
   execute:

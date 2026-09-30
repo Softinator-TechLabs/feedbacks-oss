@@ -40,6 +40,19 @@ export function registerAssetDownloadRoutes(
   app.get("/api/assets/:id", async (req, res, next) => {
     try {
       const actor = await ops.auth.authenticate(bearer(req), cookie(req));
+      if (req.query.preview === "agent") {
+        const result = await ops.executeOperation(actor, "assets.get", {
+          assetId: String(req.params.id),
+          includeImage: true,
+          maxDimension: 1280,
+        });
+        if (!result.image) fail("PREVIEW_UNAVAILABLE", "Media preview unavailable", 422);
+        res
+          .set("Cache-Control", "private, no-store")
+          .type("image/webp")
+          .send(Buffer.from(result.image.data, "base64"));
+        return;
+      }
       const objectKey = await database.transaction(async (db) => {
         await accountLock(db);
         const current = await new Auth(db).current(actor);

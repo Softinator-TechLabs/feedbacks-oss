@@ -6,7 +6,7 @@ Use your own domain, PostgreSQL database and S3-compatible object storage. Wasab
 
 ## Local development
 
-Follow the README. `compose.dev.yaml` starts PostgreSQL on loopback and the application uses private local files under `.local/assets`. Local file storage is for development; production configuration requires S3.
+Follow the README. For video contact sheets outside Docker, install `ffmpeg` and `ffprobe` on the server PATH; the standard application image includes them. Missing decoders return explicit preview unavailability. `compose.dev.yaml` starts PostgreSQL on loopback and the application uses private local files under `.local/assets`. Local file storage is for development; production configuration requires S3.
 
 ## Production configuration
 

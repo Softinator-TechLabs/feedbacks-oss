@@ -49,9 +49,14 @@ test("video feedback stays in the authorized project and rejects invalid media",
     const thread = await ops.executeOperation(owner, "threads.create", {
       projectId: other.id,
       body: "Watch the menu transition",
-      context: { url: "https://other.test/", viewport: { width: 1280, height: 720 } },
+      context: {
+        url: "https://other.test/",
+        viewport: { width: 1280, height: 720 },
+        reproduction: { source: "app", objectId: "demo-42", file: "chapters/demo.tex" },
+      },
       idempotencyKey: "video-thread",
     });
+    assert.equal(thread.context.reproduction.objectId, "demo-42");
     let webm = Buffer.from(
       "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAHmEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHWTbuMU6uEElTDZ1OsggEjTbuMU6uEHFO7a1OsggHQ7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsCrXsYMPQkBNgIxMYXZmNjEuNy4xMDBXQYxMYXZmNjEuNy4xMDBEiYhAj0AAAAAAABZUrmvIrgEAAAAAAAA/14EBc8WIb6rqfHTPUF6cgQAitZyDdW5kiIEAhoVWX1ZQOIOBASPjg4Q7msoA4JCwgRC6gRCagQJVsIRVuYEBElTDZ/tzc59jwIBnyJlFo4dFTkNPREVSRIeMTGF2ZjYxLjcuMTAwc3PWY8CLY8WIb6rqfHTPUF5nyKFFo4dFTkNPREVSRIeUTGF2YzYxLjE5LjEwMSBsaWJ2cHhnyKFFo4hEVVJBVElPTkSHkzAwOjAwOjAxLjAwMDAwMDAwMAAfQ7Z1qOeBAKOjgQAAgBACAJ0BKhAAEAAARwiFhYiZhIgCAgAMDWAA/v+rUIAcU7trkbuPs4EAt4r3gQHxggGj8IED",
       "base64",
@@ -115,6 +120,23 @@ test("video feedback stays in the authorized project and rejects invalid media",
     });
     assert.equal(upload.asset.contentType, "video/webm");
     assert.equal(upload.asset.rendition, "tabVideo");
+    const preview = await ops.executeOperation(owner, "assets.get", {
+      assetId: upload.asset.id,
+      includeImage: true,
+    });
+    assert.ok(preview.image, JSON.stringify(preview.videoPreview));
+    assert.equal(preview.videoPreview.state, "sampled");
+    assert.equal(preview.videoPreview.playbackVerified, false);
+    assert.ok(preview.videoPreview.frames.length > 0);
+    // Uploaded duration is an untrusted hint: this synthetic video is only 1 s.
+    assert.ok(preview.videoPreview.frames.every((f: any) => f.videoTimeMs < 1100));
+    await assert.rejects(
+      ops.executeOperation(reviewer, "assets.get", {
+        assetId: upload.asset.id,
+        includeImage: true,
+      }),
+      { code: "FORBIDDEN" },
+    );
     assert.deepEqual(
       await store.get(
         (await db.one("SELECT object_key FROM assets WHERE id=$1", [upload.asset.id]))
@@ -160,6 +182,16 @@ test("video feedback stays in the authorized project and rejects invalid media",
     });
     assert.equal(uploadedOverHttp.status, 200, await uploadedOverHttp.text());
     const url = `${origin}${upload.asset.url}`;
+    const previewResponse = await fetch(`${url}?preview=agent`, {
+      headers: { Authorization: `Bearer ${token.token}` },
+    });
+    assert.equal(previewResponse.status, 200);
+    assert.match(previewResponse.headers.get("content-type") || "", /^image\/webp/);
+    assert.equal(previewResponse.headers.get("cache-control"), "private, no-store");
+    assert.ok((await previewResponse.arrayBuffer()).byteLength > 0);
+    const beforePreviewDenial = storageReads;
+    assert.equal((await fetch(`${url}?preview=agent`)).status, 401);
+    assert.equal(storageReads, beforePreviewDenial);
     const denied = await fetch(url);
     assert.equal(denied.status, 401);
     const response = await fetch(url, {
@@ -233,7 +265,27 @@ test("video feedback stays in the authorized project and rejects invalid media",
       projectIds: [project.id],
       scopes: ["assets.get"],
     });
+    const noAssets = await ops.executeOperation(owner, "tokens.create", {
+      name: "Thread-only reader",
+      projectIds: [other.id],
+      scopes: ["threads.get"],
+    });
     const beforeDenied = storageReads;
+    for (const deniedKey of [wrongProject.token, noAssets.token]) {
+      assert.equal(
+        (
+          await fetch(`${url}?preview=agent`, {
+            headers: { Authorization: `Bearer ${deniedKey}` },
+          })
+        ).status,
+        403,
+      );
+    }
+    assert.equal(
+      storageReads,
+      beforeDenied,
+      "denied previews never read private storage",
+    );
     assert.equal((await fetch(url, { headers: { Range: "bytes=0-15" } })).status, 401);
     assert.equal(
       (
@@ -260,6 +312,28 @@ test("video feedback stays in the authorized project and rejects invalid media",
     assert.equal(fullImage.status, 200, "image responses preserve full-byte behavior");
     assert.equal(fullImage.headers.get("content-range"), null);
     assert.equal((await fullImage.arrayBuffer()).byteLength, image.asset.bytes);
+    const expiring = await ops.executeOperation(owner, "tokens.create", {
+      name: "Revoked while decoding",
+      projectIds: [other.id],
+      scopes: ["assets.get"],
+    });
+    const expiringActor = await ops.auth.authenticate(expiring.token);
+    const originalGet = store.get.bind(store);
+    store.get = async (key) => {
+      await ops.executeOperation(owner, "tokens.revoke", { tokenId: expiring.id });
+      return originalGet(key);
+    };
+    try {
+      await assert.rejects(
+        ops.executeOperation(expiringActor, "assets.get", {
+          assetId: upload.asset.id,
+          includeImage: true,
+        }),
+        { code: "UNAUTHENTICATED" },
+      );
+    } finally {
+      store.get = originalGet;
+    }
     await assert.rejects(
       ops.executeOperation(reviewer, "assets.get", { assetId: upload.asset.id }),
       { code: "FORBIDDEN" },
