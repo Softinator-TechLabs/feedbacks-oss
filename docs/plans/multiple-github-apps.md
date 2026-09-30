@@ -67,9 +67,9 @@ rotation. Never distribute server App secrets to another installation.
 The complete per-project, central inventory and illustrated setup change is
 tracked in [PR #160](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/160).
 Its initial implementation at `ff8f575695e5d8e223f770a6ab9720b34f34fcd1`
-passed all six required CI jobs. Final-head CI is recorded on the PR.
+passed all six CI jobs. Final-head CI is recorded on the PR.
 
-- Node 24 `npm run check`: passed; 434 tests passed, 24 opt-in browser/native
+- Node 24 `npm run check` after updating from `main`: passed; 439 tests passed, 24 opt-in browser/native
   checks skipped, zero failures. Includes formatting, generated contracts/docs,
   types, application/site/extension/plugin builds, isolated smoke and release
   boundary checks.
