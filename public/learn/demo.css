@@ -409,7 +409,7 @@ dialog .screen:not([data-kind="recording"]) {
 /* Landing presentations share the player's visibility and Pause state. The
    translucent backing is painted once; only the readable front plane moves. */
 :host([depth]) {
-  --depth-scale: 1;
+  --depth-scale: 1.4;
 }
 :host([depth]) .depth-stage {
   position: relative;
@@ -449,7 +449,7 @@ dialog .screen:not([data-kind="recording"]) {
   box-shadow: none;
   -webkit-box-reflect: below 8px linear-gradient(transparent 90%, #ffffff40 100%);
   transform-origin: center;
-  animation: review-depth 7s ease-in-out infinite alternate paused;
+  animation: review-depth 6s ease-in-out infinite alternate paused;
 }
 :host([depth][data-motion-running]) .depth-stage > figure {
   animation-play-state: running;
@@ -478,6 +478,9 @@ dialog .screen:not([data-kind="recording"]) {
 @media (max-width: 800px) {
   :host([depth]) {
     --depth-scale: 0.35;
+  }
+  :host([depth]) .depth-stage > figure {
+    animation-duration: 7s;
   }
 }
 @media (prefers-reduced-motion: reduce) {
