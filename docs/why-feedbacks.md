@@ -1,8 +1,12 @@
 # Why Feedbacks
 
-Feedbacks prepares website feedback for AI-assisted UI changes and bug fixes. Clients, colleagues and testers mark the exact problem. Developers and their coding agents get the screenshot, original page, selected element, comments and approved project guidance together, then record what they changed and verified.
+Feedbacks prepares website feedback for AI-assisted UI changes and bug fixes. Clients, colleagues and testers mark the exact problem. Developers and their coding agents get screenshots, exact text suggestions, video or session replay, timestamped diagnostics and approved project guidance together, then record what they changed and verified. The complete product is free Apache-2.0 software.
 
 Start with one server for your team, connect the Chrome extension, prepare projects and member access, then connect each resolving developer’s own agent through MCP. Follow the [complete setup flow](../site-docs/guide/getting-started.md).
+
+## Replay a bug and keep its evidence
+
+A reviewer can explicitly record video with a browser session, or a session without video. Replay, activity, console, network and performance share a timeline. Save and annotate video frames, inspect the original event context and download a complete thread bundle for investigation outside Feedbacks. Capture limits and missing-channel coverage remain visible. See [session replay](session-replay.md) and the [public debugging guide](../site-docs/guide/debug-bundles.md).
 
 ## Keep requests and planned work distinct
 
@@ -28,4 +32,4 @@ The Apache-2.0 source includes the backend, web app, Chrome extension, HTTP API,
 
 Self-hosting requires no hosted Feedbacks account, external job service or email provider. Operators provide the server, TLS, database, storage, backups and maintenance. MCP connects your separately configured agent; Feedbacks does not include a model subscription or guarantee an autonomous fix. See [self-hosting](self-hosting.md) and [deployment boundaries](architecture.md).
 
-Feedbacks is an early 0.x product. It is designed for this review workflow; it does not replace GitHub project planning or a session replay platform, and does not claim mature SaaS tenancy, SSO or billing.
+Feedbacks is an early 0.x product. It is designed for this review workflow; it provides reviewer-started session replay, not always-on visitor analytics. It does not replace GitHub project planning or claim shared-database customer tenancy, SSO or billing.

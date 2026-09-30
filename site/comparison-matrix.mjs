@@ -1,7 +1,7 @@
 // Each verdict links to the vendor's documentation or public source.
 // Missing documentation is not evidence of absence. Omitted cells are unverified.
 // Each confirmed cell has a source and its own review date.
-export const matrixReviewed = "27 September 2026";
+export const matrixReviewed = "30 September 2026";
 
 export const matrixGroups = [
   {
@@ -18,6 +18,7 @@ export const matrixGroups = [
       ["drafts", "Local unsent review points"],
       ["resolved", "Resolve individual points"],
       ["reviewDefaults", "Saved review and recording controls"],
+      ["textSuggestions", "Selected text and replacement suggestions"],
     ],
   },
   {
@@ -52,6 +53,9 @@ export const matrixGroups = [
       ["trimVideo", "Trim video visually"],
       ["cropVideo", "Crop video frame"],
       ["replay", "Session replay"],
+      ["timeline", "Shared playback and diagnostic timeline"],
+      ["frameAnnotations", "Timestamped frame annotations"],
+      ["threadBundle", "Portable complete thread archive"],
       ["diagnostics", "Console or network context"],
     ],
   },
@@ -65,6 +69,8 @@ export const matrixGroups = [
       ["agentContext", "Visual or page context for agents"],
       ["expertise", "Owner-approved weighted reviewer guidance in MCP"],
       ["github", "GitHub Issues handoff"],
+      ["multiRepo", "Multiple GitHub repositories per project"],
+      ["projectContext", "Versioned project guidance for agents"],
     ],
   },
   {
@@ -84,195 +90,237 @@ export const matrixFeatures = matrixGroups.flatMap((group) => group.features);
 // Dates describe documentation/source review, not installed-product testing.
 export const matrixRows = {
   feedbacks: {
+    textSuggestions: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
+      reviewed: "30 September 2026",
+      detail:
+        "Selected original text and suggested replacement; does not edit the live website.",
+    },
+    timeline: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/session-replay.md",
+      reviewed: "30 September 2026",
+      detail:
+        "User-started recording. Replay, video and captured event channels share a playhead.",
+    },
+    frameAnnotations: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/session-replay.md",
+      reviewed: "30 September 2026",
+      detail: "Saved and annotated frames retain their recording time.",
+    },
+    threadBundle: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/session-replay.md",
+      reviewed: "30 September 2026",
+      detail:
+        "Authorized thread archive with media, recordings, diagnostics and checksums.",
+    },
+    multiRepo: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/api.md",
+      reviewed: "30 September 2026",
+      detail:
+        "One configured GitHub App with multiple installations and repositories, not multiple App credentials.",
+    },
+    projectContext: {
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md",
+      reviewed: "30 September 2026",
+      detail:
+        "Approved project instructions remain separate from untrusted captured content.",
+    },
+
     source: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     selfHost: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     independent: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     storage: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     extension: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     drawing: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     mcp: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     video: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
       detail:
         "Up to five minutes of active recording; separate recorder tab and preview before Send.",
     },
     github: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/api.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
       detail:
         "Optional GitHub App; reviewed issue drafts and project opt-in for status sync.",
     },
     expertise: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     screenshots: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     fullPage: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     pins: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     originals: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     drafts: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     resolved: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     reviewDefaults: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
       detail:
         "Separate saved controls for review and recording; recording restores prior review controls.",
     },
     highlighter: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     steps: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     blur: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
       detail: "Visual softening, not secure redaction. Use Redact for private pixels.",
     },
     redact: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     stickers: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     localImages: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     cropExport: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
       detail:
         "Local clipboard and downloads only; sent feedback retains the complete screenshot.",
     },
     rasterExport: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     pdfExport: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     clipboard: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     tabAudio: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
       detail: "Tab audio and microphone are separate opt-ins, both off by default.",
     },
     microphone: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     pauseVideo: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     trimVideo: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     cropVideo: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     diagnostics: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     discussion: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/review-workflow.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     agentContext: {
       status: "yes",
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md",
-      reviewed: "27 September 2026",
+      reviewed: "30 September 2026",
     },
     replay: {
-      status: "no",
-      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md",
-      reviewed: "27 September 2026",
+      status: "yes",
+      url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/session-replay.md",
+      reviewed: "30 September 2026",
     },
   },
   bugpin: {

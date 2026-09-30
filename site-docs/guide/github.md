@@ -1,6 +1,13 @@
+---
+title: GitHub Issues across repositories and organizations
+description: Connect multiple repositories through GitHub App installations, choose a destination for each Feedbacks issue and opt into verified status synchronization.
+---
+
 # GitHub Issues
 
 Feedbacks can create a verified Issue in selected GitHub repositories across multiple organizations within one project. The integration is optional; normal feedback and MCP reads work without it.
+
+**One configured App, multiple installations and repositories.** The server currently uses one GitHub App credential set. Install that App on each permitted account; projects can select repositories across those installations.
 
 ## Set up the App
 

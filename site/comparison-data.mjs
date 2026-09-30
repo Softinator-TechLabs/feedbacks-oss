@@ -74,7 +74,7 @@ export const comparisons = [
     name: "OpenReplay + Spot",
     group: "Open source",
     summary:
-      "A replay-led bug report and a marked screenshot preserve different kinds of evidence.",
+      "Two self-hosted ways to preserve a browser bug: compare replay, review and developer handoff.",
     theirCapture:
       "Spot records a browser tab or desktop and produces a video report with actions, console and network context.",
     theirHosting:
@@ -86,7 +86,7 @@ export const comparisons = [
     bestFor:
       "Choose OpenReplay + Spot when reproducing a sequence of user actions is the main job.",
     feedbacksBest:
-      "Choose Feedbacks for original screenshots per review point, annotated exports, an optional five-minute recording and continuing team discussion on your own server.",
+      "Choose Feedbacks for screenshots and text suggestions, video with session replay, a synchronized debug timeline and complete thread bundles in one free Apache-2.0 review workspace.",
     sources: [
       ["OpenReplay source", "https://github.com/openreplay/openreplay"],
       ["Spot documentation", "https://docs.openreplay.com/en/spot/"],

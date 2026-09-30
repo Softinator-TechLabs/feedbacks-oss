@@ -1,8 +1,8 @@
 # Feedbacks
 
-**Website feedback for AI coding agents.**
+**Free, Apache-2.0 visual feedback, session replay and debugging context.**
 
-Clients, colleagues and testers point out UI changes and bugs. Feedbacks keeps the comment, original screenshot, exact page, selected element and approved project guidance together, so developers can give their coding agents useful context, make the agreed fix and record verification.
+Show the problem with a screenshot, exact text suggestion or video + session recording. Keep the discussion, event timeline, browser diagnostics and approved project context together. Your team and coding agent can investigate the evidence, make the agreed change and record verification. The complete product is free to self-host; you provide the infrastructure and any AI tools you use.
 
 **Set up a team server first.** The order is: server → install and connect the Chrome extension → project context, optional GitHub App and members → each developer's personal MCP setup. One installation serves your team; the extension does not host a server. Follow the [complete setup flow](site-docs/guide/getting-started.md), or the separate [DevOps installation guide](site-docs/guide/self-host.md).
 
@@ -10,13 +10,15 @@ Clients, colleagues and testers point out UI changes and bugs. Feedbacks keeps t
 
 ## What it does
 
-- Capture and annotate website screenshots, redact sensitive areas, and attach page and viewport context.
-- Organize feedback by project with explicit member access and allowed website origins.
-- Discuss changes, mention teammates, and track response obligations separately from work status.
-- Move between filtered threads with arrow keys, add optional tags and reuse personal saved views.
-- Compare screenshot attachments and deliberately share selected console/network context.
-- Give tools and agents project-scoped access through the same authorization layer as the web app.
-- Keep screenshot objects private; the application checks access before serving them.
+- **Show exactly what changed:** screenshot pins, annotation, full-page capture and selected-text replacement suggestions.
+- **Replay the bug:** video or session-only recording with one timeline for activity, console, network and performance. Save and annotate frames.
+- **Take the evidence:** complete thread bundles with discussion, media, recordings, diagnostics and checksums; scoped agent reads and recording exports.
+- **Give agents context:** approved project instructions, reviewer guidance and responsibilities through MCP, API and CLI.
+- **Move the work forward:** assignments, categories, tags, saved views and point progress; optional GitHub Issues across multiple repositories and App installations.
+- **Review beyond the extension:** scoped guest links, PDF/image review, an optional text widget, surveys/NPS, scheduled public-page QA, native mobile clients and signed webhooks.
+- **Own the whole service:** Apache-2.0 server and clients, PostgreSQL and private S3-compatible storage. One installation serves one organization.
+
+[Recording guide](site-docs/guide/session-replay.md) · [Debug bundles](site-docs/guide/debug-bundles.md) · [Text suggestions](site-docs/guide/text-suggestions.md) · [More review workflows](site-docs/guide/more-ways-to-review.md)
 
 Feedbacks is an early 0.x release. Each application deployment serves one organization. Public registration, billing, SSO and shared-database customer tenancy are not implemented. See [architecture and deployment boundaries](docs/architecture.md).
 

@@ -37,6 +37,8 @@ function shell({ title, description, canonical, content }) {
     <meta property="og:title" content="${escape(title)}" />
     <meta property="og:description" content="${escape(description)}" />
     <meta property="og:type" content="website" />
+    <meta property="og:image" content="${home}/media/social-preview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta property="og:url" content="${canonical}" />
     <link rel="canonical" href="${canonical}" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -49,8 +51,8 @@ function shell({ title, description, canonical, content }) {
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header wrap compare-header">
       <a class="wordmark" href="/" aria-label="Feedbacks home"><img src="/favicon.svg" width="30" height="30" alt="" />feedbacks<span class="wordmark-dot">.</span></a>
-      <nav aria-label="Main navigation"><a href="/">Home</a><a href="/compare/">Compare tools</a><a href="${source}" ${externalLink}>GitHub <span aria-hidden="true">↗</span></a></nav>
-      <a class="button header-cta" href="${store}" ${externalLink}>Get it for Chrome <span aria-hidden="true">↗</span></a>
+      <nav aria-label="Main navigation"><a href="/">Home</a><a href="/compare/">Compare tools</a><a href="/docs/">Docs</a><a href="${source}" ${externalLink}>GitHub <span aria-hidden="true">↗</span></a></nav>
+      <a class="button header-cta" href="/docs/guide/getting-started">Set up Feedbacks <span aria-hidden="true">→</span></a>
     </header>
     <main id="main">${content}</main>
     <footer class="site-footer wrap compare-footer">
@@ -65,15 +67,15 @@ const ours = {
   editing:
     "Pencil, shapes, text, highlighter, numbered steps, blur, redaction, stickers and movable local images. Copy annotated PNG pixels or download PNG, JPEG, WebP and multi-page PDF. Crop export changes local outputs only.",
   recording:
-    "Record a short tab video in a separate recorder for up to five active minutes, with pause/resume and separate opt-in tab audio and microphone. Preview, visually trim or crop, then send. Recording is not session replay.",
+    "Record video + session, or a session without video, for up to five minutes. DOM replay, activity, console, network and performance share a timeline. Preview, trim or crop video and annotate frames. Edited clips omit DOM replay. Tab audio and microphone are separate opt-ins.",
   capture:
-    "Capture visible or full-page screenshots, attach original evidence to element pins, and keep unsent points local until Send. Shared pins and individually resolved points stay linked to the team thread.",
+    "Capture visible or full-page screenshots, keep original evidence per point and suggest exact text replacements. Review local drafts before Send; published pins and individual point progress stay linked to the thread.",
   hosting:
-    "Apache-2.0 backend, web app, extension, MCP and CLI. Run them with your PostgreSQL and private S3-compatible storage.",
+    "Free Apache-2.0 server, web app, extension, MCP and CLI, with no feature paywall. Run them with your PostgreSQL and private S3-compatible storage; infrastructure is your responsibility.",
   agents:
-    "Scoped MCP access to the thread, replies, screenshot and owner-approved reviewer guidance. Expertise weights are advisory.",
+    "Scoped MCP, API and CLI access to discussion, screenshots, recording events and approved project guidance. Export a complete thread bundle or materialize recording evidence through the local MCP adapter. Reviewer weights are advisory.",
   handoff:
-    "Clarify requests in the thread. An optional GitHub App can create an Issue from a reviewed draft and sync verified open/closed status when a project opts in; an authorized maintainer or separately scoped agent can perform the handoff.",
+    "An optional GitHub App connects multiple repositories across installations and organizations. Choose a destination and create a linked Issue, directly or after editing a draft. Verified open/closed sync is a separate project opt-in.",
 };
 
 const statusLabels = {
@@ -90,7 +92,10 @@ const statusLabels = {
 
 function matrixGroup(group, activeSlug) {
   const features = group.features;
-  const entries = [{ slug: "feedbacks", name: "Feedbacks" }, ...comparisons];
+  const entries = [
+    { slug: "feedbacks", name: "Feedbacks" },
+    ...comparisons.filter((entry) => !activeSlug || entry.slug === activeSlug),
+  ];
   const header = features
     .map(([, label]) => `<th scope="col">${escape(label)}</th>`)
     .join("");
@@ -119,7 +124,7 @@ function matrixGroup(group, activeSlug) {
     <div class="matrix-intro"><h2 id="matrix-${group.id}-heading">${escape(group.title)}</h2><p>${escape(group.description)}</p></div>
     <div class="matrix-controls" aria-label="Comparison table navigation"><p>Swipe or use the arrows to see every feature.</p><div><button type="button" class="matrix-prev" aria-label="Previous comparison columns" disabled>←</button><span class="matrix-position" aria-live="polite">Feature 1 of ${features.length}</span><button type="button" class="matrix-next" aria-label="Next comparison columns">→</button></div></div>
     <div class="matrix-scroll" role="region" aria-label="${escape(group.title)} comparison table" tabindex="0">
-      <table style="--matrix-columns: ${features.length}"><caption>${escape(group.title)}: Feedbacks and ${comparisons.length} website feedback tools, compared by documented capability</caption><thead><tr><th scope="col">Tool</th>${header}</tr></thead><tbody>${rows}</tbody></table>
+      <table class="matrix-columns-${features.length}"><caption>${escape(group.title)}: Feedbacks and ${activeSlug ? escape(comparisons.find((entry) => entry.slug === activeSlug).name) : `${comparisons.length} website feedback tools`}, compared by documented capability</caption><thead><tr><th scope="col">Tool</th>${header}</tr></thead><tbody>${rows}</tbody></table>
     </div>
 
   </section>`;
@@ -131,7 +136,7 @@ function matrix(activeSlug) {
     <p>${matrixFeatures.length} capabilities across ${matrixGroups.length} tables. Open a confirmed mark for its source and review date. “Not verified” means the available evidence does not establish that capability; it does not mean the tool lacks it.</p>
     <nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape(group.title)}</a>`).join("")}</nav>
     <p class="matrix-key"><strong>✓</strong> Confirmed <span>·</span> <strong>No</strong> Explicitly unavailable <span>·</span> <strong>Not verified</strong> Evidence insufficient <span>·</span> <strong>Parts</strong> Components to assemble <span>·</span> <strong>External</strong> Required account <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Some named formats confirmed</p>
-    <p class="matrix-date">Latest review: ${matrixReviewed}. Official vendor sources were reviewed on this date; each sourced cell records its check. Vendor documentation describes available capabilities, which can depend on plan or setup. This is not a hands-on certification. Feedbacks describes the current source; installed and Store versions may differ. A tick does not imply identical workflows.</p>
+    <p class="matrix-date">Feedbacks source reviewed ${matrixReviewed}; vendor documentation reviewed ${reviewed}. Each sourced cell keeps its own date. Vendor documentation describes available capabilities, which can depend on plan or setup. This is not a hands-on certification. Feedbacks describes the current source; installed and Store versions may differ. A tick does not imply identical workflows.</p>
     </div>${matrixGroups.map((group) => matrixGroup(group, activeSlug)).join("")}`;
 }
 
@@ -172,17 +177,19 @@ function detail(entry, index) {
       </section>
       <aside class="compare-limits">
         <h2>What Feedbacks does today.</h2>
-        <p>Feedbacks is an early 0.x product. Its optional GitHub App requires separate server configuration and repository installation; it creates an Issue only from a reviewed draft and syncs verified open/closed status only after project opt-in. Incoming feedback never creates Issues automatically. The extension can record a short tab video with a five-minute active limit and 40 MiB size limit. Tab audio and microphone are optional. Visual trimming and frame cropping run locally before Send. Feedbacks does not provide session replay or an AI model subscription. Full-page screenshots retain separate readable sections; the optional combined attachment can be scaled for server limits. Blur is visual softening; use Redact for private pixels. Crop export affects downloads and clipboard copies, not the shared screenshot. It also offers opt-in project surveys and NPS. Self-hosting has no Feedbacks license fee; you still pay for your server, database, storage and operations.</p>
+        <p>Feedbacks is free Apache-2.0 software, including session replay and debugging exports. Recording starts explicitly and is bounded to five minutes; video has a 40 MiB limit. Optional audio, network bodies and masking have separate controls. Edited video omits DOM replay. Screenshot diagnostic artifacts can contain raw browser values and do not inherit session masking. Check capture coverage and review evidence before sharing.</p>
+        <p>GitHub requires one configured App and approved installations. Multiple repositories and organizations are supported; independent App credential sets are not. Incoming comments do not automatically create Issues. Self-hosting infrastructure and any AI-model subscriptions are supplied by your team.</p>
         <p>Reviewer expertise belongs in owner-approved guidance. A private member note or profile field is not automatically shared with an ordinary agent. Guidance helps interpretation but never grants permissions or guarantees how a model will decide.</p>
       </aside>
-      <div class="compare-actions"><a class="button primary" href="${store}" ${externalLink}>Get the Chrome extension</a><a href="${source}/blob/HEAD/docs/self-hosting.md" ${externalLink}>Self-host Feedbacks</a></div>
+      <div class="compare-actions"><a class="button primary" href="/docs/guide/getting-started">Set up Feedbacks</a><a href="/docs/guide/session-replay">Explore recordings and replay</a></div>
       <section class="compare-sources" aria-labelledby="compare-sources-heading">
         <h2 id="compare-sources-heading">Sources and scope.</h2>
-        <p>Checked ${reviewed}. This is a comparison of published product documentation, not a hands-on certification of every plan or deployment. Features and plans can change.</p>
+        <p>Vendor documentation checked ${reviewed}; Feedbacks source updated ${matrixReviewed}. This is a comparison of published product documentation, not a hands-on certification of every plan or deployment. Features and plans can change.</p>
         ${entry.scopeNote ? `<p>${escape(entry.scopeNote)}</p>` : ""}
         <ul>
           <li><a href="${source}/blob/HEAD/docs/why-feedbacks.md" ${externalLink}>Feedbacks product boundaries</a></li>
           <li><a href="${source}/blob/HEAD/docs/extension.md" ${externalLink}>Feedbacks capture, editing and recording</a></li>
+          <li><a href="${source}/blob/HEAD/docs/session-replay.md" ${externalLink}>Feedbacks session replay and debug bundles</a></li>
           <li><a href="${source}/blob/HEAD/docs/agents.md" ${externalLink}>Feedbacks agent context</a></li>
           <li><a href="${source}/blob/HEAD/docs/self-hosting.md" ${externalLink}>Feedbacks self-hosting</a></li>
           ${entry.sources.map(([label, url]) => `<li><a href="${escape(url)}" ${externalLink}>${escape(label)}</a></li>`).join("")}
@@ -203,7 +210,7 @@ function indexPage() {
     canonical,
     content: `<div class="compare-index wrap">
       <h1>Choose where your feedback lives.</h1>
-      <p class="compare-index-intro">Some tools start with a widget. Some start with a recording or a canvas. Feedbacks combines screenshots, original evidence for each page pin, annotation and local exports, optional recordings, and a discussion your team and agent can follow on your own server.</p>
+      <p class="compare-index-intro">Some tools start with a widget. Some start with a recording or a canvas. Feedbacks combines screenshots, original evidence for each page pin, annotation and local exports, video and session replay, a shared diagnostic timeline and portable debugging bundles on your own server. The whole product is free and Apache-2.0.</p>
       <p class="compare-index-note">Several tools here also offer MCP, self-hosting or both. Each page links to the vendor's own description, and makes the tradeoffs clear.</p>
       ${matrix()}
       ${groups
@@ -218,7 +225,7 @@ function indexPage() {
               .join("")}</div></section>`,
         )
         .join("")}
-      <div class="compare-index-end"><p>Own the full stack. Keep the thread.</p><a class="button primary" href="${store}" ${externalLink}>Get the Chrome extension</a><a href="${source}" ${externalLink}>Explore the source</a></div>
+      <div class="compare-index-end"><p>Own the full stack. Keep the thread.</p><a class="button primary" href="/docs/guide/getting-started">Set up Feedbacks</a><a href="${source}" ${externalLink}>Explore the source</a></div>
     </div>`,
   });
 }

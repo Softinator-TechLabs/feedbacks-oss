@@ -27,3 +27,5 @@ Documentation checks enforce links and index reachability. They do not prove tha
 Screenshot diagnostic evidence: [reviewer workflow](extension.md#screenshot-diagnostic-evidence), [approved design](superpowers/specs/2026-09-29-screenshot-diagnostic-evidence-design.md) and [implementation plan](superpowers/plans/2026-09-29-screenshot-diagnostic-evidence.md).
 
 User onboarding: [complete setup](../site-docs/guide/getting-started.md), [client guide](../site-docs/guide/clients.md), [owner setup](../site-docs/guide/team-setup.md), [Chrome Store listing](chrome-web-store.md).
+
+Public feature guides: [session recording](../site-docs/guide/session-replay.md), [debug bundles](../site-docs/guide/debug-bundles.md), [text suggestions](../site-docs/guide/text-suggestions.md), [agent context](../site-docs/guide/agent-context.md), and [more review workflows](../site-docs/guide/more-ways-to-review.md).

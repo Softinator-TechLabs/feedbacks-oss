@@ -3,7 +3,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "Feedbacks Docs",
   description:
-    "Install Feedbacks for your team, capture UI feedback and give AI coding agents the context to fix it.",
+    "Free Apache-2.0 visual feedback, session replay, debugging bundles and AI-agent context. Install and use the complete self-hosted product.",
   lang: "en-US",
   base: "/docs/",
   cleanUrls: true,
@@ -11,9 +11,38 @@ export default defineConfig({
   sitemap: { hostname: "https://feedbacks.softinator.ai" },
   head: [
     ["script", { src: "/learn/demo.js?v=20260928-5", defer: "" }],
-    ["meta", { name: "theme-color", content: "#12243b" }],
+    ["script", { src: "/learn/evidence.js", defer: "" }],
+    ["link", { rel: "stylesheet", href: "/learn/evidence.css" }],
+    ["meta", { name: "theme-color", content: "#fffdfa" }],
+    [
+      "meta",
+      {
+        property: "og:image",
+        content: "https://feedbacks.softinator.ai/media/social-preview.png",
+      },
+    ],
+    ["meta", { name: "twitter:card", content: "summary_large_image" }],
     ["link", { rel: "icon", href: "/docs/favicon.svg" }],
   ],
+  transformHead({ pageData }) {
+    const path = pageData.relativePath.replace(/(?:index)?\.md$/, "");
+    const canonical = `https://feedbacks.softinator.ai/docs/${path}`;
+    return [
+      ["link", { rel: "canonical", href: canonical }],
+      ["meta", { property: "og:url", content: canonical }],
+      ["meta", { property: "og:title", content: `${pageData.title} | Feedbacks` }],
+      [
+        "meta",
+        {
+          property: "og:description",
+          content:
+            pageData.description ||
+            "Free, self-hosted visual feedback and debugging evidence.",
+        },
+      ],
+      ["meta", { property: "og:type", content: "article" }],
+    ];
+  },
   themeConfig: {
     logo: "/favicon.svg",
     siteTitle: "Feedbacks",
@@ -32,6 +61,16 @@ export default defineConfig({
           { text: "Owner: projects and people", link: "/guide/team-setup" },
           { text: "Capture and review", link: "/guide/review-feedback" },
           { text: "Install, pin and send", link: "/guide/chrome-extension" },
+        ],
+      },
+      {
+        text: "Capture the whole story",
+        items: [
+          { text: "Video and session replay", link: "/guide/session-replay" },
+          { text: "Debugging bundles", link: "/guide/debug-bundles" },
+          { text: "Exact text suggestions", link: "/guide/text-suggestions" },
+          { text: "Project and agent context", link: "/guide/agent-context" },
+          { text: "More ways to review", link: "/guide/more-ways-to-review" },
         ],
       },
       {
@@ -63,7 +102,7 @@ export default defineConfig({
       { icon: "github", link: "https://github.com/Softinator-TechLabs/feedbacks-oss" },
     ],
     footer: {
-      message: "Documentation for the open-source Feedbacks app.",
+      message: "Free software. Apache-2.0. Your infrastructure.",
       copyright: "© Softinator TechLabs",
     },
   },

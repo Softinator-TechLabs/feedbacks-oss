@@ -89,6 +89,7 @@ jobs:
       - run: npm run build
       - run: npm run qa:recording-browser
       - run: npm run qa:extension-browser
+      - run: npm run qa:public-site
       - run: npm run qa:walkthrough-browser
       - run: npm run qa:agent-setup
 

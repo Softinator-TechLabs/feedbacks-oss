@@ -27,9 +27,9 @@ typography:
     lineHeight: 1.55
   landing-display:
     fontFamily: "Manrope, Arial, sans-serif"
-    fontSize: "clamp(40px, 5.3vw, 76px)"
+    fontSize: "clamp(40px, 4.5vw, 64px)"
     fontWeight: 800
-    lineHeight: 1.08
+    lineHeight: 1.1
     letterSpacing: "-0.04em"
   landing-title:
     fontFamily: "Manrope, Arial, sans-serif"
@@ -123,7 +123,7 @@ Unsent review pins use rust `review-draft` with a dashed white border. Published
 
 ## Typography
 
-The landing uses self-hosted Manrope for reading, controls and bold headings, with self-hosted Caveat only for short pencil notes. Frontmatter records the default desktop hierarchy from [landing.css](site/landing.css). The hero becomes 80px at 1450px and wider; at 900px and below it uses `clamp(36px, 6.2vw, 48px)` with a 1.1 line height, overridden to 42px between 600px and 900px. Pencil notes become 28px at 1050px and below. Supporting prose remains upright Manrope; handwritten text never carries a setup instruction by itself.
+The landing uses self-hosted Manrope for reading, controls and bold headings, with self-hosted Caveat only for short pencil notes. Frontmatter records the default desktop hierarchy from [landing.css](site/landing.css), with the hero display overridden by [product-story.css](site/product-story.css). The hero uses a 1.1 line height and becomes 45px at 1050px and below, `clamp(38px, 7vw, 54px)` at 800px and below, and 38px at 480px and below. Pencil notes become 28px at 1050px and below. Supporting prose remains upright Manrope; handwritten text never carries a setup instruction by itself.
 
 **The Reading Voice Rule.** Use Manrope for product explanation and controls; reserve Caveat for brief annotations alongside the evidence.
 
@@ -131,7 +131,7 @@ Application body text uses the system stack at 15px/1.55; extension body text us
 
 ## Layout
 
-The landing wrapper is at most 1280px wide, with 48px side gutters by default, 32px at 1050px and below, and 18px at 900px and below. The desktop introduction pairs headline and setup action; the scene pairs a large screenshot and a short note. At 900px and below, the first scene uses a legible detail crop of the actual capture, while zoom always opens the complete original. Between 600px and 900px the detail and note remain side by side; smaller screens stack them. The compact introduction and control row keep the screenshot near the first viewport. Setup links use four columns, changing to two at 1050px. Other website pages keep their incumbent wrapper breakpoints.
+The landing wrapper is at most 1280px wide, with 48px side gutters by default, 32px at 1050px and below, and 18px at 900px and below. The desktop introduction pairs the headline and setup action with an illustrative recording timeline. The hero and alternating product sections stack at 800px and below. The product-capture walkthrough follows in its own section, pairing a large screenshot with a short note; zoom opens the complete original. Text-suggestion, evidence-bundle and project-context diagrams use dedicated mobile compositions at 600px and below. Setup links use four columns, changing to two at 1050px. Other website pages keep their incumbent wrapper breakpoints.
 
 Application forms group related controls; optional settings use disclosure sections. Help presents setup and capture as ordered steps, with wrapping guide links and a server URL field beside its copy action. That field and action stack at 600px and below. The extension popup stays compact at 368px wide, with secondary capture tools and diagnostics disclosed as needed.
 
@@ -193,8 +193,14 @@ Navigation preserves applied filters and protects unsaved drafts. Thread rows ke
 - Don't apply marketing display styles to the application or extension.
 - Don't treat reviewer guidance or weights as authorization.
 
-The landing opening is a two-column composition on desktop: positioning and setup action on the left, a complete viewport-bounded walkthrough on the right. Below 900px it stacks. Keep the three workflow choices and player controls visible together at laptop heights. Comparisons are an open section and primary navigation destination. Landing, docs and Help expose a shared Pause all / Play all control.
+The landing opening is a two-column composition on desktop: positioning and setup action on the left, a compact recording timeline illustration on the right. At 800px and below it stacks. Keep the three capture-walkthrough choices and player controls visible together. Comparisons are an open section and primary navigation destination. The capture walkthrough on landing, docs and Help exposes a shared Pause all / Play all control; the illustrative recording timeline has its own Play example / Pause example control.
 
 All native selects inherit the shared form control border, surface and 44px minimum height. Their 16px chevron sits 12px inside the right edge, with room for selected text; forced-colors mode uses the system arrow. The Help project switcher uses a 48px full-width field; review evidence keeps the Points filter labelled and responsive beside its counts, with each screenshot shown inline by its point. Keep native keyboard and mobile selection behavior.
 
 Thread screenshots captured with separate point metadata draw the reviewer's chosen marker over the image: no marker, outline circle, solid circle, arrow or numbered pin, in small, medium or large size. The default is a small red outline circle without a number or selection box. The extension Settings save the default; hover Page Controls override it for one review. Each marked image has its own Hide pins / Show pins control above the image; hiding pins reveals the approved page pixels underneath. Point metadata and per-point screenshots remain available with No marker. Older screenshots with baked pins state that limitation instead of offering a false hide action.
+
+## Public feature storytelling
+
+The landing now opens with concise free Apache-2.0 positioning beside a user-started recording timeline illustration. Three selectable events connect a click, failed request and console error. The existing product-capture walkthrough follows in its own section. Alternating editorial sections show exact text suggestions, portable evidence and approved project context; a compact linked directory exposes the remaining review workflows. The setup order remains server first.
+
+Landing diagrams use the established green, peach and blue scene colors, clear geometry and ordinary product vocabulary. They are labelled as illustrative; real inspector captures retain their original pixels and provenance. Docs use Manrope and warm paper with a rust link color in light mode, preserving accessible dark mode. Shared diagrams and short task guides link to canonical reference manuals. Motion is optional and off by default for the new timeline; manual controls always work.

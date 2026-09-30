@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Public product story and current feature guides](public-product-story.md)
+
 - [Reliable agent task intake and completion](agent-task-flow.md)
 
 - [Discussion comment edit and delete](discussion-comment-management.md)
