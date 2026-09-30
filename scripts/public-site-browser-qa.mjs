@@ -276,11 +276,8 @@ try {
           0,
           "Playback stays on the page",
         );
-        await demo.locator(".zoom").click();
-        assert.equal(await demo.locator("dialog").evaluate((el) => el.open), true);
-        assert.ok(await demo.locator("dialog .recording-inspector").isVisible());
-        await page.keyboard.press("Escape");
-        assert.equal(await demo.locator("dialog").evaluate((el) => el.open), false);
+        assert.equal(await demo.locator(".zoom, dialog").count(), 0);
+        assert.ok(await demo.locator(".recording-inspector").isVisible());
         await demo
           .getByRole("button", { name: "0:04 · Request fails", exact: true })
           .click();

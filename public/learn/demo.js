@@ -697,7 +697,7 @@
     };
   }
   // Reuse the playback clock: decorative depth never starts its own loop.
-  function interactiveDepth(host, stage, dialog) {
+  function interactiveDepth(host, stage) {
     if (!host.hasAttribute("depth")) return;
     const finePointer = matchMedia(
       "(hover: hover) and (pointer: fine) and (min-width: 801px)",
@@ -774,7 +774,7 @@
           return;
         }
         // Freeze immediately over controls or keyboard focus; no chasing targets.
-        if (overControl || stage.matches(":focus-within") || dialog.open) return;
+        if (overControl || stage.matches(":focus-within")) return;
         if (boundsDirty) {
           const rect = stage.getBoundingClientRect();
           targetScroll =
@@ -833,7 +833,7 @@
         stylesReady = false,
         recordingRuntime;
       const template = document.createElement("template");
-      template.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-11"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
+      template.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-12"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div>`;
       // Keep loaded styles connected across scene changes. Replacing the link
       // would briefly expose the fallback and reflow the page on every tab click.
       for (const node of [...this.shadowRoot.childNodes]) {
@@ -866,16 +866,16 @@
           });
       };
       const stylesheets = [
-        this.shadowRoot.querySelector(`link[href="${base}demo.css?v=20260930-11"]`),
+        this.shadowRoot.querySelector(`link[href="${base}demo.css?v=20260930-12"]`),
       ];
       if (this.getAttribute("step") === "recording") {
         let reviewStyle = this.shadowRoot.querySelector(
-          `link[href="${base}recording-review.css?v=20260930-11"]`,
+          `link[href="${base}recording-review.css?v=20260930-12"]`,
         );
         if (!reviewStyle) {
           reviewStyle = document.createElement("link");
           reviewStyle.rel = "stylesheet";
-          reviewStyle.href = base + "recording-review.css?v=20260930-11";
+          reviewStyle.href = base + "recording-review.css?v=20260930-12";
           this.shadowRoot.prepend(reviewStyle);
         }
         stylesheets.push(reviewStyle);
@@ -885,9 +885,7 @@
         frameBox = q(".frame"),
         caption = q(".caption"),
         controls = q(".controls"),
-        dialog = q("dialog"),
-        hit = q(".screen-hit"),
-        zoom = q(".zoom");
+        hit = q(".screen-hit");
       let elapsed = this.paused && !scene.moments ? frameDuration : 0,
         visible = false,
         raf = 0,
@@ -989,12 +987,11 @@
         recordingRuntime = undefined;
         frameBox.replaceChildren();
         hit.hidden = f.kind === "recording";
-        zoom.hidden = !f.image && f.kind !== "recording";
         screen.dataset.kind = f.image ? "capture" : "diagram";
         if (f.kind === "recording") {
           screen.dataset.kind = "recording";
           const generation = this.index;
-          import(base + "recording-runtime.js?v=20260930-11")
+          import(base + "recording-runtime.js?v=20260930-12")
             .then(async ({ mountRecording }) => {
               if (disposed || this.index !== generation) return;
               recordingRuntime = mountRecording(frameBox, {
@@ -1101,7 +1098,7 @@
         refreshMotion();
         renderControls();
       };
-      const depth = interactiveDepth(this, q(".depth-stage"), dialog);
+      const depth = interactiveDepth(this, q(".depth-stage"));
       const tick = (now) => {
         depth?.tick(now);
         if (interactionHeld) {
@@ -1231,30 +1228,12 @@
         },
         options,
       );
-      let placeholder;
-      zoom.onclick = () => {
-        if (dialog.open) return;
-        placeholder = document.createElement("div");
-        placeholder.className = "expanded-placeholder";
-        placeholder.style.height = `${figure.getBoundingClientRect().height}px`;
-        figure.before(placeholder);
-        q(".expanded-player").append(figure);
-        dialog.showModal();
-        q(".close").focus();
-      };
-      q(".close").onclick = () => dialog.close();
-      dialog.addEventListener("close", () => {
-        placeholder?.replaceWith(figure);
-        placeholder = undefined;
-        zoom.focus();
-      });
       caption.textContent = scene.frames[0].caption;
       renderControls();
       this.cleanup = () => {
         disposed = true;
         interactionEvents.abort();
         depth?.dispose();
-        if (dialog.open) dialog.close();
         recordingRuntime?.dispose();
         players.delete(this);
         this.removeAttribute("data-motion-running");

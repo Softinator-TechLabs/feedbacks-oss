@@ -28,7 +28,7 @@ The player remains shared by landing, docs and app help. Failed CSS keeps the or
 
 ## Acceptance
 
-The delayed cold-load regression must keep accumulated layout shifts below 0.1 at desktop, laptop and mobile sizes. Default autoplay, stored Pause, seeking, expanded viewing, reduced motion and pointer depth must continue to work. Record local timings separately from public Lighthouse/field measurements; do not infer production scores from a localhost test.
+The delayed cold-load regression must keep accumulated layout shifts below 0.1 at desktop, laptop and mobile sizes. Default autoplay, stored Pause, seeking, inline viewing, reduced motion and pointer depth must continue to work. Record local timings separately from public Lighthouse/field measurements; do not infer production scores from a localhost test.
 
 ## Verification receipt
 

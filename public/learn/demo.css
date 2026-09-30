@@ -58,23 +58,6 @@ figure {
 .screen-hit:hover {
   background: transparent;
 }
-.zoom {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 3;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 10px;
-  background: #fff;
-  color: #17324d;
-  border: 1px solid #c6cbbb;
-}
-.zoom[hidden] {
-  display: none;
-}
 svg.motion-layer {
   position: absolute;
   inset: 0;
@@ -285,27 +268,6 @@ svg {
   font-size: 15px;
   margin-bottom: 0;
 }
-dialog {
-  border: 1px solid #c6cbbb;
-  padding: 12px;
-  max-width: 95vw;
-  max-height: 95dvh;
-  background: #fff;
-  color: #20241e;
-  border-radius: 8px;
-}
-dialog::backdrop {
-  background: #0009;
-}
-dialog img {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-dialog > .close {
-  display: block;
-  margin-left: auto;
-}
 
 /* Hosts can bound a walkthrough without cropping its screenshot or controls. */
 .screen {
@@ -387,18 +349,6 @@ dialog > .close {
 :host([step="recording"]) .caption {
   font-size: 13px;
   min-height: 3em;
-}
-dialog {
-  width: min(1200px, 95vw);
-}
-dialog figure {
-  margin-top: 10px;
-}
-dialog .screen:not([data-kind="recording"]) {
-  height: min(70dvh, 700px);
-}
-.expanded-placeholder {
-  width: 100%;
 }
 
 :host([step="discussion"]) .screen {
@@ -550,11 +500,6 @@ dialog .screen:not([data-kind="recording"]) {
   /* Hold the plane while someone approaches or uses its controls. Playback
      continues; leaving the surface resumes depth without changing preference. */
   animation-play-state: paused;
-}
-:host([depth]) dialog figure {
-  animation: none;
-  transform: none;
-  -webkit-box-reflect: none;
 }
 @keyframes review-depth {
   from {

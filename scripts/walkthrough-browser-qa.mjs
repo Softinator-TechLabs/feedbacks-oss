@@ -266,14 +266,7 @@ try {
   assert.equal(await demo.locator(".action-cursor").getAttribute("transform"), pinCursor);
   await demo.locator(".play").click();
   await demo.evaluate((element) => element.setAttribute("step", "capture"));
-  await demo.locator(".zoom").click();
-  assert(await demo.locator("dialog").evaluate((element) => element.open));
-  await page.keyboard.press("Escape");
-  assert.equal(await demo.locator("dialog").evaluate((element) => element.open), false);
-  await page.waitForFunction(() => {
-    const root = document.querySelector("feedbacks-demo").shadowRoot;
-    return root.querySelector(".zoom") === root.activeElement;
-  });
+  assert.equal(await demo.locator(".zoom, dialog").count(), 0, "Capture stays inline");
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await demo.evaluate((element) => element.setAttribute("step", "capture"));
   await demo.locator(".motion-layer").waitFor();
@@ -557,13 +550,7 @@ try {
   );
   await firstTab.evaluate(() => scrollTo(0, 0));
   await firstTab.mouse.move(plane.x + 20, plane.y + 30);
-  await depth.locator(".zoom").click();
-  assert.equal(
-    await depth.locator("dialog figure").evaluate((el) => getComputedStyle(el).transform),
-    "none",
-    "Expanded inspection stays flat",
-  );
-  await firstTab.keyboard.press("Escape");
+  assert.equal(await depth.locator(".zoom, dialog").count(), 0, "Hero stays inline");
   await firstTab.locator("#features").scrollIntoViewIfNeeded();
   await firstTab.waitForFunction(
     () =>
