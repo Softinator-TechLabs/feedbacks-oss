@@ -325,17 +325,25 @@ export async function verifySelectedText({
   await viewer.goto(url);
   await viewer.getByRole("heading", { name: "Review on the page" }).waitFor();
   assert.equal(await viewer.locator(".review-text-edit").count(), 2);
+  await viewer.getByRole("button", { name: "Expand all", exact: true }).click();
   await viewer.getByText("Remove selected text", { exact: true }).waitFor();
   const image = viewer.locator(".review-point-figure").first();
-  assert.equal((await image.locator(".review-text-selection").count()) > 0, true);
-  assert.equal(await image.locator(".review-element-outline").count(), 0);
-  await image.getByRole("button", { name: "Hide text selection", exact: true }).click();
-  assert.equal(await image.locator(".review-text-selection").count(), 0);
-  assert.equal(await image.locator(".review-image-pin").count(), 1);
-  await image.getByRole("button", { name: "Show element outline", exact: true }).click();
-  assert.equal(await image.locator(".review-element-outline").count(), 1);
-  await image.getByRole("button", { name: "Hide points", exact: true }).click();
-  assert.equal(await image.locator(".review-image-pin").count(), 0);
+  const preview = image.locator(".review-image-open");
+  await image.getByRole("button", { name: "Expand image", exact: true }).click();
+  const expanded = viewer.getByRole("dialog");
+  assert.equal((await preview.locator(".review-text-selection").count()) > 0, true);
+  assert.equal(await preview.locator(".review-element-outline").count(), 0);
+  await expanded
+    .getByRole("button", { name: "Hide text selection", exact: true })
+    .click();
+  assert.equal(await preview.locator(".review-text-selection").count(), 0);
+  assert.equal(await preview.locator(".review-image-pin").count(), 1);
+  await expanded
+    .getByRole("button", { name: "Show element outline", exact: true })
+    .click();
+  assert.equal(await preview.locator(".review-element-outline").count(), 1);
+  await expanded.getByRole("button", { name: "Hide points", exact: true }).click();
+  assert.equal(await preview.locator(".review-image-pin").count(), 0);
   assert.equal(
     (await viewer
       .locator(".review-point-figure")
@@ -345,7 +353,10 @@ export async function verifySelectedText({
     true,
     "image visibility is independent",
   );
-  await image.getByRole("button", { name: "Show text selection", exact: true }).click();
+  await expanded
+    .getByRole("button", { name: "Show text selection", exact: true })
+    .click();
+  await expanded.getByRole("button", { name: "Close", exact: true }).click();
   await viewer.setViewportSize({ width: 1200, height: 900 });
   await viewer.locator(".review-evidence").screenshot({
     path: join(root, ".local/remaining-todos-qa/text-edit-thread-desktop.png"),
@@ -359,15 +370,18 @@ export async function verifySelectedText({
     path: join(root, ".local/remaining-todos-qa/text-edit-thread-mobile.png"),
   });
   await viewer.setViewportSize({ width: 1200, height: 900 });
-  await image.getByRole("button", { name: "Add annotations", exact: true }).click();
+  await image.getByRole("button", { name: "Expand image", exact: true }).click();
   const markup = viewer.getByRole("dialog");
+  await markup.getByRole("button", { name: "Edit annotations", exact: true }).click();
+  assert.equal(await viewer.locator("dialog[open]").count(), 1);
   await markup.getByRole("button", { name: "Hide text selection", exact: true }).click();
   await markup.getByRole("button", { name: "Show text selection", exact: true }).click();
+  await markup.getByRole("button", { name: "Hide element outline", exact: true }).click();
   await markup.getByRole("button", { name: "Show element outline", exact: true }).click();
+  await markup.getByRole("button", { name: "Show points", exact: true }).click();
   await markup.getByRole("button", { name: "Hide points", exact: true }).click();
-  await markup
-    .getByRole("button", { name: "Close annotation editor", exact: true })
-    .click();
+  await markup.getByRole("button", { name: "Cancel", exact: true }).click();
+  await markup.getByRole("button", { name: "Close", exact: true }).click();
   await viewer.goto(
     `${access.url}/projects/${thread.projectId}?search=Clearer%20reviewed%20page`,
   );

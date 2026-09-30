@@ -542,7 +542,6 @@ export function ThreadDetail({
                 canResolve={project?.permissions.canResolve}
                 canMaintain={project?.permissions.canMaintain}
                 onSaved={setThread}
-                onAnnotate={(asset) => setMarkupTarget({ kind: "asset", asset })}
               />
             )}
             <ThreadAttachments

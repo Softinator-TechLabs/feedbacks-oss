@@ -47,6 +47,7 @@ type ListData = {
   likes: Map<string, Map<string, { uniqueLikes: number; liked: boolean }>>;
   replies: Map<string, any[]>;
   assets: Map<string, any[]>;
+  recordingModes: Map<string, Array<"session" | "video">>;
   diagnostics: Map<
     string,
     { count: number; latest: ReturnType<typeof diagnosticSummary>[] }
@@ -67,37 +68,48 @@ function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
 export async function listData(db: Database, a: Actor, rows: any[]): Promise<ListData> {
   const ids = rows.map((row) => row.id);
   const fingerprints = [...new Set(rows.map((row) => row.data.context.fingerprint))];
-  const [replyRows, assetRows, likeRows, viewRows, countRows, diagnosticRows] =
-    await Promise.all([
-      db.query(
-        "SELECT id,thread_id,data,created_at FROM replies WHERE thread_id=ANY($1::uuid[]) ORDER BY created_at,id",
-        [ids],
-      ),
-      db.query(
-        "SELECT id,thread_id,data FROM assets WHERE thread_id=ANY($1::uuid[]) AND status='validated' ORDER BY data->>'createdAt',data->>'filename',id",
-        [ids],
-      ),
-      db.query(
-        'SELECT thread_id,COALESCE(reply_id,thread_id) AS id,count(*)::integer AS "uniqueLikes",bool_or(user_id=$2) AS liked FROM discussion_likes WHERE thread_id=ANY($1::uuid[]) GROUP BY thread_id,COALESCE(reply_id,thread_id)',
-        [ids, a.userId],
-      ),
-      db.query(
-        "SELECT fingerprint,count(*)::integer AS count,bool_or(user_id=$3) AS liked FROM view_likes WHERE project_id=$1 AND fingerprint=ANY($2::text[]) GROUP BY fingerprint",
-        [rows[0].project_id, fingerprints, a.userId],
-      ),
-      db.query(
-        "SELECT t.data->'context'->>'fingerprint' AS fingerprint,count(DISTINCT t.id)::integer AS threads,count(r.id)::integer AS replies FROM threads t LEFT JOIN replies r ON r.thread_id=t.id WHERE t.project_id=$1 AND t.data->'context'->>'fingerprint'=ANY($2::text[]) GROUP BY fingerprint",
-        [rows[0].project_id, fingerprints],
-      ),
-      db.query(
-        `SELECT id,project_id,thread_id,status,summary,started_at,created_at,total
+  const [
+    replyRows,
+    assetRows,
+    likeRows,
+    viewRows,
+    countRows,
+    diagnosticRows,
+    recordingRows,
+  ] = await Promise.all([
+    db.query(
+      "SELECT id,thread_id,data,created_at FROM replies WHERE thread_id=ANY($1::uuid[]) ORDER BY created_at,id",
+      [ids],
+    ),
+    db.query(
+      "SELECT id,thread_id,data FROM assets WHERE thread_id=ANY($1::uuid[]) AND status='validated' ORDER BY data->>'createdAt',data->>'filename',id",
+      [ids],
+    ),
+    db.query(
+      'SELECT thread_id,COALESCE(reply_id,thread_id) AS id,count(*)::integer AS "uniqueLikes",bool_or(user_id=$2) AS liked FROM discussion_likes WHERE thread_id=ANY($1::uuid[]) GROUP BY thread_id,COALESCE(reply_id,thread_id)',
+      [ids, a.userId],
+    ),
+    db.query(
+      "SELECT fingerprint,count(*)::integer AS count,bool_or(user_id=$3) AS liked FROM view_likes WHERE project_id=$1 AND fingerprint=ANY($2::text[]) GROUP BY fingerprint",
+      [rows[0].project_id, fingerprints, a.userId],
+    ),
+    db.query(
+      "SELECT t.data->'context'->>'fingerprint' AS fingerprint,count(DISTINCT t.id)::integer AS threads,count(r.id)::integer AS replies FROM threads t LEFT JOIN replies r ON r.thread_id=t.id WHERE t.project_id=$1 AND t.data->'context'->>'fingerprint'=ANY($2::text[]) GROUP BY fingerprint",
+      [rows[0].project_id, fingerprints],
+    ),
+    db.query(
+      `SELECT id,project_id,thread_id,status,summary,started_at,created_at,total
        FROM (SELECT id,project_id,thread_id,status,summary,started_at,created_at,
          count(*) OVER(PARTITION BY thread_id)::integer AS total,
          row_number() OVER(PARTITION BY thread_id ORDER BY created_at DESC,id DESC) AS rank
          FROM diagnostic_evidence WHERE thread_id=ANY($1::uuid[])) ranked WHERE rank<=3`,
-        [ids],
-      ),
-    ]);
+      [ids],
+    ),
+    db.query(
+      "SELECT DISTINCT thread_id,summary->>'mode' AS mode FROM recordings WHERE thread_id=ANY($1::uuid[]) ORDER BY thread_id,mode",
+      [ids],
+    ),
+  ]);
   const diagnostics = new Map<
     string,
     { count: number; latest: ReturnType<typeof diagnosticSummary>[] }
@@ -162,6 +174,14 @@ export async function listData(db: Database, a: Actor, rows: any[]): Promise<Lis
     likes,
     replies: groupBy(replyRows, (row) => row.thread_id),
     assets: groupBy(assetRows, (row) => row.thread_id),
+    recordingModes: new Map(
+      [...groupBy(recordingRows, (row) => row.thread_id)].map(([id, entries]) => [
+        id,
+        entries
+          .map((entry) => entry.mode)
+          .filter((mode) => mode === "session" || mode === "video"),
+      ]),
+    ),
     diagnostics,
     views,
     reviewers,
@@ -207,6 +227,16 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
         "SELECT id,data FROM assets WHERE thread_id=$1 AND status='validated' ORDER BY data->>'createdAt',data->>'filename',id",
         [row.id],
       );
+  const recordingModes = list
+    ? (list.recordingModes.get(row.id) ?? [])
+    : (
+        await db.query(
+          "SELECT DISTINCT summary->>'mode' AS mode FROM recordings WHERE thread_id=$1 ORDER BY mode",
+          [row.id],
+        )
+      )
+        .map((item) => item.mode)
+        .filter((mode) => mode === "session" || mode === "video");
   data.response = discussionResponse(
     data.author,
     new Date(row.created_at).toISOString(),
@@ -239,6 +269,7 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
   }
   return {
     ...data,
+    recordingModes,
     diagnosticEvidence: {
       count: diagnosticCount,
       latest: diagnosticLatest,

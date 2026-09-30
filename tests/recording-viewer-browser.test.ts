@@ -72,12 +72,7 @@ test(
           .isVisible(),
         true,
       );
-      assert.equal(
-        await page
-          .getByText("No session recording was shared with this thread.")
-          .isVisible(),
-        true,
-      );
+      assert.equal(await page.locator(".thread-recordings").count(), 0);
       assert.equal(
         await page
           .getByAltText("Original feedback screenshot")

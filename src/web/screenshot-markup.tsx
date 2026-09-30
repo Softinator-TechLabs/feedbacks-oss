@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, errorText, uid, type Thread } from "./api.js";
-import "./screenshot-markup.css";
 
 type Asset = Thread["assets"][number];
 type Point = { x: number; y: number };
@@ -44,11 +43,17 @@ export function ScreenshotMarkup({
   target,
   onSaved,
   onClose,
+  embedded,
 }: {
   thread: Thread;
   target: MarkupTarget;
   onSaved: (thread: Thread) => void;
   onClose: () => void;
+  embedded?: {
+    zoom: number;
+    hiddenLayers: { points: boolean; element: boolean; text: boolean };
+    onBusyChange: (busy: boolean) => void;
+  };
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -75,11 +80,12 @@ export function ScreenshotMarkup({
   const [edited, setEdited] = useState(false);
   const [pin, setPin] = useState<Point | null>(null);
   const [body, setBody] = useState("");
-  const [hiddenLayers, setHiddenLayers] = useState({
+  const [localHiddenLayers, setHiddenLayers] = useState({
     points: false,
     element: true,
     text: false,
   });
+  const hiddenLayers = embedded?.hiddenLayers ?? localHiddenLayers;
   const evidence =
     target.kind === "asset" && target.asset.rendition === "screenshot"
       ? target.asset.markings || []
@@ -241,6 +247,7 @@ export function ScreenshotMarkup({
       return;
     }
     setBusy(true);
+    embedded?.onBusyChange(true);
     setError("");
     try {
       let source = target.kind === "asset" ? target.asset : pending.current.raw;
@@ -284,37 +291,32 @@ export function ScreenshotMarkup({
       setError(`${errorText(failure)} The screenshot and marks are kept here for retry.`);
     } finally {
       setBusy(false);
+      embedded?.onBusyChange(false);
     }
   }
 
-  return (
-    <dialog
-      ref={dialog}
-      className="screenshot-markup-dialog"
-      aria-label={target.kind === "frame" ? "Annotate video frame" : "Mark screenshot"}
-      onClose={onClose}
-      onCancel={(event) => {
-        if (busy) event.preventDefault();
-      }}
-    >
-      <div className="screenshot-markup-heading">
-        <div>
-          <h2>
-            {target.kind === "frame" ? "Annotate this frame" : "Mark this screenshot"}
-          </h2>
-          <p className="muted">
-            Place a point or draw on the image. Save changes to update this thread.
-          </p>
+  const content = (
+    <>
+      {!embedded && (
+        <div className="screenshot-markup-heading">
+          <div>
+            <h2>
+              {target.kind === "frame" ? "Annotate this frame" : "Mark this screenshot"}
+            </h2>
+            <p className="muted">
+              Place a point or draw on the image. Save changes to update this thread.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onClose}
+            aria-label="Close annotation editor"
+          >
+            ×
+          </button>
         </div>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onClose}
-          aria-label="Close annotation editor"
-        >
-          ×
-        </button>
-      </div>
+      )}
       <div className="screenshot-markup-tools" role="group" aria-label="Marking tools">
         {target.kind === "frame" && (
           <button
@@ -360,7 +362,7 @@ export function ScreenshotMarkup({
           Clear marks
         </button>
       </div>
-      {layers.some((layer) => layer.present) && (
+      {!embedded && layers.some((layer) => layer.present) && (
         <div
           className="screenshot-markup-tools"
           role="group"
@@ -389,7 +391,17 @@ export function ScreenshotMarkup({
         <canvas
           ref={canvas}
           aria-label="Screenshot marking canvas"
-          style={{ cursor: tool === "pin" ? "crosshair" : "cell" }}
+          style={{
+            cursor: tool === "pin" ? "crosshair" : "cell",
+            ...(embedded && target.kind === "asset"
+              ? {
+                  width: target.asset.width
+                    ? `${target.asset.width * (embedded.zoom || 1)}px`
+                    : "100%",
+                  maxWidth: embedded.zoom ? "none" : "100%",
+                }
+              : {}),
+          }}
           onPointerDown={(event) => {
             if (!ready || busy) return;
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -484,9 +496,25 @@ export function ScreenshotMarkup({
             ? "Saving…"
             : target.kind === "frame"
               ? "Save point and frame"
-              : "Save marked screenshot"}
+              : embedded
+                ? "Save annotations"
+                : "Save marked screenshot"}
         </button>
       </div>
+    </>
+  );
+  if (embedded) return <div className="screenshot-markup-inline">{content}</div>;
+  return (
+    <dialog
+      ref={dialog}
+      className="screenshot-markup-dialog"
+      aria-label={target.kind === "frame" ? "Annotate video frame" : "Mark screenshot"}
+      onClose={onClose}
+      onCancel={(event) => {
+        if (busy) event.preventDefault();
+      }}
+    >
+      {content}
     </dialog>
   );
 }

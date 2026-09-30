@@ -12,6 +12,7 @@ import {
 } from "../../shared/taxonomy.js";
 import type { ReviewFilters } from "../../shared/contracts.js";
 import { labels, type Actor, type Project, type Thread } from "../api.js";
+import { threadEvidenceLabels } from "./evidence-types.js";
 
 export function threadAttachmentLabels(thread: Pick<Thread, "assets">) {
   const counts = { screenshots: 0, videos: 0, files: 0 };
@@ -102,6 +103,9 @@ export function ThreadListRow({
           )}
           <div className="thread-summary">
             <h2>{t.body}</h2>
+            <p className="thread-evidence-types" aria-label="Feedback type">
+              {threadEvidenceLabels(t).join(" · ")}
+            </p>
             {textEdit && (
               <p className="thread-text-edit-preview" aria-label="Suggested text edit">
                 <span>

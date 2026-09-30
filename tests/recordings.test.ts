@@ -373,6 +373,20 @@ test("recordings are private, immutable and removed with their thread", async ()
     });
     assert.equal(exported.thread.revision, uploaded.thread.revision);
     assert.equal(uploaded.recording.id, recording.id);
+    assert.deepEqual(uploaded.thread.recordingModes, ["session"]);
+    const summaryList = await ops.executeOperation(owner, "threads.list", {
+      projectId: p.id,
+    });
+    assert.deepEqual(
+      summaryList.items.find((item: any) => item.id === thread.id).recordingModes,
+      ["session"],
+    );
+    assert.deepEqual(
+      (await ops.executeOperation(owner, "threads.get", { threadId: outside.id }))
+        .recordingModes,
+      [],
+    );
+
     assert.equal(
       (await ops.executeOperation(owner, "recordings.list", { threadId: thread.id }))
         .items.length,
@@ -460,6 +474,7 @@ test("recordings are private, immutable and removed with their thread", async ()
       recording: videoRecording,
     });
     assert.equal(videoUploaded.recording.video.assetId, videoIdSame);
+    assert.deepEqual(videoUploaded.thread.recordingModes, ["session", "video"]);
     const repeated = await ops.executeOperation(owner, "recordings.upload", input);
     assert.equal(repeated.recording.id, recording.id);
     assert.equal(objects.size, 2);

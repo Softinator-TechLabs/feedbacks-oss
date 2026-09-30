@@ -117,3 +117,37 @@ Open **Archive** above the feedback list to find archived threads. The thread he
 Signed-in human project maintainers can select threads on the current list page and choose **Delete selected**, or choose **Delete thread** in a thread header. The confirmation lists the selected feedback and consequences. Deletion permanently removes thread-owned records, points, replies, reviews, attachments and guest discussion links; shared project documents and external GitHub issues remain. A changed thread requires reloading and reviewing the selection before deleting it. A pending GitHub issue creation must be reconciled first.
 
 Deleting feedback shows a five-second toast for that action. The **Deleted feedback** panel appears only while current-object storage cleanup is pending or failed and refreshes while the list is open. Completing a manual cleanup retry also shows a toast; historical completed receipts never create a notification on page load. The service retains completed receipts for audit. Failed or pending cleanup survives server restarts; cleanup continues automatically after the page closes or the server restarts. **Retry file cleanup** checks failed work immediately. Each batch processes up to 12 objects. Archived feedback can be restored; deleted feedback cannot be restored in the app. Older storage versions, retention-locked copies, backups and already delivered external copies follow the operator's retention policy.
+
+## Identify and expand capture evidence
+
+Feedback rows show the evidence type: Text, Text edit, Screenshot, Full page,
+Document, Video, Session recording or Video + session. Mixed evidence keeps its
+relevant labels. Recording frames and thumbnails do not count as separate screenshot
+captures. The recording section is absent when no session recording or video exists;
+recording loading failures still offer their existing recovery information.
+
+Choose **Expand image** beside a screenshot, or click the screenshot, to inspect it
+in a larger viewer. Points, element outlines and text selection use the same
+visibility state as the inline image. Layer controls live in the expanded viewer,
+keeping each point preview compact.
+**Fit width**, **100%** and **200%** control zoom; large captures scroll inside the
+viewer. **Close** or Escape returns to the review. **Open original file** opens only
+the saved image, without browser-rendered evidence layers. Legacy annotations saved
+into image pixels remain part of that image.
+
+Choose **Edit annotations** inside that viewer to draw or revise marks without
+opening another dialog. The layer controls and zoom remain available while editing.
+**Save annotations** updates the image and returns to viewing; **Cancel** (or Escape)
+discards the draft and stays in the viewer. A failed save preserves the draft for
+retry. Editing requires the existing thread write permission.
+
+Numbered points show a compact preview, status and any non-normal priority. A
+single-point thread starts expanded; multiple points start collapsed and can be opened independently.
+**Expand all** and **Collapse all** affect the filtered points across pages. Subtle
+open/close transitions respect the system reduced-motion preference. Lists show five points per page with Previous/Next controls
+and retain their original numbering when filtered. Direct links reveal the target
+point's page. Each opened point groups feedback and its **Priority / Schedule**
+controls together, places the screenshot alongside them on wide panels (below them
+on narrow screens), and keeps resolve/remove actions in a separate footer. Technical
+element details stay collapsed. Screenshot expansion sits directly below its preview;
+annotation editing is available inside the expanded viewer.

@@ -114,7 +114,7 @@ export function PointWorkPlan({
         </select>
       </label>
       <label>
-        When
+        Schedule
         <select
           aria-label={`Point ${number} timing`}
           value={timingSelection(current, new Date(), timeZone)}

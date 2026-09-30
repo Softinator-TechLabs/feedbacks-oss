@@ -170,7 +170,19 @@ export async function verifyPendingPoints({
     throw Error(
       `No-marker thread did not render: ${JSON.stringify({ status: noMarkerResponse?.status(), url: noMarkerThreadPage.url(), text: (await noMarkerThreadPage.locator("body").innerText()).slice(0, 500) })}`,
     );
-  assert.equal(await noMarkerThreadPage.locator(".review-point-figure img").count(), 2);
+  await noMarkerThreadPage
+    .getByRole("button", { name: "Expand all", exact: true })
+    .click();
+  await noMarkerThreadPage
+    .getByRole("button", { name: "Expand image", exact: true })
+    .first()
+    .click();
+  assert.equal(
+    await noMarkerThreadPage
+      .locator(".review-point-figure .review-image-open img")
+      .count(),
+    2,
+  );
   assert.equal(await noMarkerThreadPage.locator(".review-image-pin").count(), 0);
   assert.equal(
     await noMarkerThreadPage.getByRole("button", { name: "Hide points" }).count(),

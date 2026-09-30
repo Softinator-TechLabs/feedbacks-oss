@@ -306,6 +306,7 @@ export type Thread = {
     createdAt: string;
     editedAt?: string;
   }>;
+  recordingModes?: Array<"session" | "video">;
   assets: Array<{
     id: string;
     url: string;

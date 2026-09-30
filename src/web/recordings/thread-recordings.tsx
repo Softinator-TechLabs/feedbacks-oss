@@ -92,7 +92,15 @@ export function ThreadRecordings({
   const videoSeekAttemptsRef = useRef(0);
   const pendingFrameRef = useRef<PendingFrame | null>(null);
 
+  const recordingModesKey = thread.recordingModes?.join(",");
   useEffect(() => {
+    if (recordingModesKey === "") {
+      setSummaries([]);
+      setSelectedId("");
+      setListError("");
+      setListing(false);
+      return;
+    }
     let current = true;
     setListing(true);
     setListError("");
@@ -119,7 +127,7 @@ export function ThreadRecordings({
     return () => {
       current = false;
     };
-  }, [thread.id, reload]);
+  }, [thread.id, recordingModesKey, reload]);
 
   useEffect(() => {
     const serial = ++requestSerial.current;
@@ -541,6 +549,16 @@ export function ThreadRecordings({
     [recording, thread.assets, thread.context?.annotations],
   );
 
+  // Unknown legacy summaries are discovered silently. Keep failures visible,
+  // but never show an empty recording section on screenshot/text feedback.
+  if (
+    !listError &&
+    !standaloneVideos.length &&
+    !summaries.length &&
+    (!listing || !thread.recordingModes?.length)
+  )
+    return null;
+
   return (
     <section
       className="thread-recordings"
@@ -578,14 +596,6 @@ export function ThreadRecordings({
           )}
         </div>
       )}
-      {!listing &&
-        !listError &&
-        summaries.length === 0 &&
-        standaloneVideos.length === 0 && (
-          <p className="muted recording-empty">
-            No session recording was shared with this thread.
-          </p>
-        )}
       {!listing &&
         summaries.length === 0 &&
         standaloneVideos.map((asset) => (
