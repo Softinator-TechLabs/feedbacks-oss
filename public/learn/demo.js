@@ -34,6 +34,33 @@
     }
   });
   const scenes = {
+    discussion: {
+      duration: 1500,
+      frames: [
+        {
+          image: "thread-discuss",
+          label: "Discuss",
+          caption: "Reply beside the feedback. Keep the decision in the thread.",
+        },
+        {
+          image: "thread-ready",
+          label: "Agree",
+          caption: "Your teammate picks up the fix.",
+        },
+        {
+          image: "thread-ready",
+          action: "thread-copy",
+          label: "Copy",
+          caption: "Choose Copy task for agent. The discussion goes with it.",
+        },
+        {
+          kind: "quick-handoff",
+          label: "Paste",
+          caption:
+            "Paste into Codex or Claude. Your agent starts with the team's context.",
+        },
+      ],
+    },
     recording: {
       duration: 10000,
       frames: [
@@ -171,6 +198,52 @@
   // Coordinates use the original capture pixels, so the cursor and text stay
   // attached to the real controls at every responsive size.
   const actions = {
+    "thread-discuss": {
+      size: [2304, 1180],
+      view: [1270, 160, 1034, 880],
+      camera: [
+        [0, 0, 0, 2304, 1180],
+        [0.24, 1270, 160, 1034, 880],
+      ],
+      points: [
+        [0, 1570, 570],
+        [0.2, 1630, 595],
+        [0.65, 2160, 955],
+      ],
+      clicks: [[0.76, 2160, 955]],
+      type: {
+        box: [1480, 541, 780, 130],
+        x: 1490,
+        y: 588,
+        font: 32,
+        line: 44,
+        lines: ["I’ll fix the checkout request", "and verify it."],
+        from: 0.25,
+        to: 0.58,
+      },
+    },
+    "thread-ready": {
+      size: [2304, 1180],
+      view: [1320, 125, 984, 738],
+      points: [
+        [0, 2140, 910],
+        [0.2, 1900, 485],
+      ],
+    },
+    "thread-copy": {
+      size: [2304, 1180],
+      view: [1210, 0, 1094, 820],
+      camera: [
+        [0, 1320, 125, 984, 738],
+        [0.25, 1210, 0, 1094, 820],
+      ],
+      points: [
+        [0, 1900, 485],
+        [0.3, 1760, 62],
+      ],
+      clicks: [[0.37, 1760, 62]],
+      mark: [1715, 18, 90, 87],
+    },
     "capture-1": {
       size: [810, 680],
       points: [
@@ -372,7 +445,7 @@
     return el;
   };
   function actionLayer(screen, frame, scene) {
-    let action = actions[frame.image];
+    let action = actions[frame.action ?? frame.image];
     if (!action) {
       const width = screen.clientWidth,
         height = screen.clientHeight;
@@ -408,6 +481,14 @@
         clicks: scene.kind === "server" ? [] : [[0.47, x + w * 0.6, y + h * 0.5]],
         mark: [x, y, w, h],
       };
+      if (frame.kind === "quick-handoff") {
+        action.points = [
+          [0, width * 0.25, height * 0.8],
+          [0.16, x + 25, y + 30],
+        ];
+        action.clicks = [[0.18, x + 25, y + 30]];
+        delete action.mark;
+      }
     }
     const [width, height] = action.size,
       view = action.view ?? [0, 0, width, height],
@@ -512,6 +593,33 @@
     let previousCount = -1;
     return (progress) => {
       const p = clamp(progress);
+      if (action.camera) {
+        let start = action.camera[0],
+          end = start;
+        for (const key of action.camera) {
+          if (key[0] <= p) start = end = key;
+          else {
+            end = key;
+            break;
+          }
+        }
+        const ease =
+          start === end
+            ? 1
+            : 1 - Math.pow(1 - clamp((p - start[0]) / (end[0] - start[0])), 3);
+        const viewBox = start
+          .slice(1)
+          .map((value, i) => value + (end[i + 1] - value) * ease)
+          .join(" ");
+        layer.setAttribute("viewBox", viewBox);
+        screen.querySelector(".capture-image")?.setAttribute("viewBox", viewBox);
+      }
+      if (frame.kind === "quick-handoff") {
+        const pasted = p >= 0.22;
+        screen.querySelector(".handoff-paste").hidden = !pasted;
+        screen.querySelector(".handoff-placeholder").hidden = pasted;
+        screen.querySelector(".handoff-ready").hidden = p < 0.48;
+      }
       if (scene.kind === "pin") {
         const clicked = p >= 0.47;
         const menu = screen.querySelector(".chrome-card");
@@ -590,6 +698,113 @@
         );
     };
   }
+  // Reuse the playback clock: decorative depth never starts its own loop.
+  function interactiveDepth(host, stage, dialog) {
+    if (!host.hasAttribute("depth")) return;
+    const finePointer = matchMedia(
+      "(hover: hover) and (pointer: fine) and (min-width: 801px)",
+    );
+    const abort = new AbortController();
+    const options = { passive: true, signal: abort.signal };
+    let targetX = 0,
+      targetY = 0,
+      targetScroll = 0;
+    let x = 0,
+      y = 0,
+      scroll = 0,
+      previous = 0;
+    let boundsDirty = true,
+      overControl = false;
+    const clamp = (value) => Math.max(-1, Math.min(1, value));
+    const control = (target) =>
+      target instanceof Element &&
+      !!target.closest(
+        "button:not(.screen-hit), a, input, select, textarea, summary, [role=button], .controls",
+      );
+    const markBounds = () => {
+      boundsDirty = true;
+    };
+    stage.addEventListener(
+      "pointermove",
+      (event) => {
+        if (
+          event.pointerType !== "mouse" ||
+          !finePointer.matches ||
+          host.motion.matches ||
+          host.paused
+        )
+          return;
+        overControl = control(event.target);
+        if (overControl) return;
+        const rect = stage.getBoundingClientRect();
+        targetX = clamp(((event.clientX - rect.left) / rect.width) * 2 - 1);
+        targetY = clamp(((event.clientY - rect.top) / rect.height) * 2 - 1);
+      },
+      options,
+    );
+    stage.addEventListener(
+      "pointerleave",
+      () => {
+        targetX = targetY = 0;
+        overControl = false;
+      },
+      options,
+    );
+    window.addEventListener("scroll", markBounds, options);
+    window.addEventListener("resize", markBounds, options);
+    finePointer.addEventListener("change", markBounds, options);
+    const write = () => {
+      stage.style.setProperty(
+        "--depth-tilt",
+        `${-y} ${x || 0.00001} 0 ${Math.hypot(x, y) * 3}deg`,
+      );
+      stage.style.setProperty("--depth-scroll", `${scroll}px`);
+      stage.style.setProperty("--depth-light-x", `${50 + x * 32}%`);
+      stage.style.setProperty("--depth-light-y", `${20 + y * 20}%`);
+      stage.style.setProperty("--depth-shadow-x", `${x * 9}px`);
+      stage.style.setProperty("--depth-shadow-scale", String(1 - scroll / 160));
+    };
+    return {
+      tick(now) {
+        const delta = previous ? Math.min(now - previous, 64) : 16;
+        previous = now;
+        if (host.motion.matches || !finePointer.matches) {
+          if (x || y || scroll) {
+            x = y = scroll = targetX = targetY = targetScroll = 0;
+            write();
+          }
+          return;
+        }
+        // Freeze immediately over controls or keyboard focus; no chasing targets.
+        if (overControl || stage.matches(":focus-within") || dialog.open) return;
+        if (boundsDirty) {
+          const rect = stage.getBoundingClientRect();
+          targetScroll =
+            clamp((innerHeight / 2 - rect.top - rect.height / 2) / innerHeight) * -12;
+          boundsDirty = false;
+        }
+        if (
+          Math.abs(targetX - x) +
+            Math.abs(targetY - y) +
+            Math.abs(targetScroll - scroll) <
+          0.001
+        )
+          return;
+        const ease = 1 - Math.exp(-delta / 150);
+        x += (targetX - x) * ease;
+        y += (targetY - y) * ease;
+        scroll += (targetScroll - scroll) * ease;
+        write();
+      },
+      refresh() {
+        previous = 0;
+        boundsDirty = true;
+      },
+      dispose() {
+        abort.abort();
+      },
+    };
+  }
   class FeedbacksDemo extends HTMLElement {
     static observedAttributes = ["step"];
     constructor() {
@@ -618,7 +833,7 @@
       players.add(this);
       let disposed = false,
         recordingRuntime;
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-7"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-8"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         frameBox = q(".frame"),
@@ -736,7 +951,7 @@
           poster.alt = "Actual Feedbacks recording review with sample events";
           frameBox.append(poster);
           const generation = this.index;
-          import(base + "recording-runtime.js?v=20260930-7")
+          import(base + "recording-runtime.js?v=20260930-8")
             .then(({ mountRecording }) => {
               if (disposed || this.index !== generation || !poster.isConnected) return;
               poster.remove();
@@ -765,7 +980,7 @@
         } else if (f.image) {
           const wrap = document.createElement("div");
           wrap.className = "image";
-          const action = actions[f.image],
+          const action = actions[f.action ?? f.image],
             view = action.view ?? [0, 0, ...action.size];
           const art = svgNode(
             "svg",
@@ -819,6 +1034,9 @@
                   `<div class="${i === f.active ? "active" : ""}">${step.title}<small>${step.detail}</small></div>`,
               )
               .join("")}</div>`;
+          else if (f.kind === "quick-handoff")
+            box.innerHTML =
+              '<div class="quick-handoff"><div class="handoff-heading"><strong>Your coding agent</strong><span>Codex / Claude</span></div><div class="prompt-input"><span class="handoff-placeholder">Paste the Feedbacks task…</span><div class="handoff-paste" hidden><p>Fix this Feedbacks task and verify it.</p><p class="handoff-task">Checkout fails after clicking Place order.</p><div class="handoff-context"><span>Task</span><span>Discussion</span><span>Page context</span></div></div></div><div class="handoff-ready" hidden>Context pasted. Ready to send.</div></div>';
           else
             box.innerHTML =
               '<div class="agent-note"><strong>Your coding agent</strong><div class="prompt-input"><span class="typed-prompt"></span></div><small>Screenshot · page · element · project context</small></div>';
@@ -828,7 +1046,9 @@
         refreshMotion();
         renderControls();
       };
+      const depth = interactiveDepth(this, q(".depth-stage"), dialog);
       const tick = (now) => {
+        depth?.tick(now);
         if (last) elapsed += Math.min(now - last, 100);
         last = now;
         if (elapsed >= frameDuration) {
@@ -844,6 +1064,7 @@
       const schedule = () => {
         cancelAnimationFrame(raf);
         last = 0;
+        depth?.refresh();
         const running = visible && !this.paused && !document.hidden;
         this.toggleAttribute("data-motion-running", running);
         if (running) raf = requestAnimationFrame(tick);
@@ -893,6 +1114,7 @@
       renderControls();
       this.cleanup = () => {
         disposed = true;
+        depth?.dispose();
         if (dialog.open) dialog.close();
         recordingRuntime?.dispose();
         players.delete(this);

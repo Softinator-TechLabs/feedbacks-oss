@@ -69,7 +69,7 @@
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
     </script>
-    <script defer src="/learn/demo.js?v=20260930-7"></script>
+    <script defer src="/learn/demo.js?v=20260930-8"></script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -108,11 +108,14 @@
           <div class="product-actions">
             <a class="start-button" href="/docs/guide/getting-started"
               >Set up Feedbacks <span aria-hidden="true">↗</span></a
-            ><a
-              class="source-link"
-              href="https://github.com/Softinator-TechLabs/feedbacks-oss"
-              >Explore the source</a
             >
+            <div class="existing-team-action">
+              <span>Team already has a setup?</span>
+              <a
+                href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
+                >Install the Chrome extension</a
+              >
+            </div>
           </div>
           <p class="product-footnote">The complete product, on your infrastructure.</p>
         </div>
@@ -179,7 +182,7 @@
         </section>
       </section>
       <nav class="feature-nav wrap" aria-label="Explore product capabilities">
-        <a href="#recordings">Replay the moment</a
+        <a href="#recordings">Discuss &amp; hand off</a
         ><a href="#text-changes">Suggest the words</a
         ><a href="#debug-bundle">Take the evidence</a
         ><a href="#agent-context">Give your agent context</a>
@@ -190,30 +193,23 @@
         aria-labelledby="recordings-title"
       >
         <div class="product-section-copy">
-          <h2 id="recordings-title">
-            “It broke when I clicked here.”<br />Now you can see why.
-          </h2>
+          <h2 id="recordings-title">Discuss it together.<br />Hand it to your agent.</h2>
           <p>
-            Record a tab video with its session, or capture the session alone. Jump from a
-            click to the request, console message or frame at that moment.
+            Keep decisions beside the evidence. Copy the thread into Codex or Claude, with
+            your team's discussion and page context attached.
           </p>
-          <ul class="plain-features">
-            <li>One timeline for video, replay and diagnostics</li>
-            <li>Screenshot comments and annotated frames</li>
-            <li>Review, trim and send when you’re ready</li>
-          </ul>
-          <a class="text-link" href="/docs/guide/session-replay"
-            >Explore session recording <span aria-hidden="true">→</span></a
+          <a class="text-link" href="/docs/guide/mcp"
+            >Connect your agent <span aria-hidden="true">→</span></a
           >
         </div>
         <figure class="product-figure recording-figure">
-          <feedbacks-demo step="recording" depth>
+          <feedbacks-demo step="discussion">
             <img
-              src="/media/story/recording-inspector.webp"
-              width="760"
-              height="689"
+              src="/learn/thread-ready.webp"
+              width="2304"
+              height="1180"
               loading="lazy"
-              alt="Actual Feedbacks recording inspector with timestamped activity, requests and console events."
+              alt="Feedbacks thread with Maya and Leo discussing a checkout fix and the Copy task for agent action."
             />
           </feedbacks-demo>
         </figure>
@@ -401,12 +397,8 @@
             </li>
           </ol>
           <p class="server-tip">
-            Team already has a setup?
-            <a
-              href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
-              >Install the Chrome extension</a
-            >, then open <strong>Setup → Copy server URL</strong> in your Feedbacks app.
-            Paste it into the extension.
+            To connect the extension, open <strong>Setup → Copy server URL</strong> in
+            your Feedbacks app, then paste it into the extension.
           </p>
         </div>
       </section>

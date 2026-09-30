@@ -211,7 +211,20 @@ try {
           await page.locator(".product-figure figcaption, .demo-guide").count(),
           0,
         );
-        assert.equal(await page.locator("feedbacks-demo[depth]").count(), 3);
+        assert.equal(await page.locator("feedbacks-demo[depth]").count(), 2);
+        assert.equal(
+          await page.locator("#recordings feedbacks-demo").getAttribute("depth"),
+          null,
+          "Thread handoff remains flat",
+        );
+        assert.equal(
+          await page.getByText("Team already has a setup?", { exact: true }).count(),
+          1,
+        );
+        assert.equal(
+          await page.locator(".existing-team-action a").getAttribute("href"),
+          "https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo",
+        );
         for (const arrow of await page
           .locator(".text-link > span, .story-note .link-arrow")
           .all()) {
@@ -232,7 +245,7 @@ try {
                 .map((section) => section.getAttribute("aria-labelledby")),
             ),
           ["hero-title", "capture-title", "recordings-title"],
-          "Show point capture immediately after the hero, then recording evidence",
+          "Show point capture immediately after the hero, then team discussion",
         );
         const demo = page.locator('feedbacks-demo[step="recording"]').first();
         assert.equal(
@@ -278,15 +291,23 @@ try {
         );
         await page.evaluate(() => window.scrollTo(0, 0));
         await page.screenshot({ path: `.impeccable/review/hero-${width}.png` });
-        const recording = page.locator("#recordings feedbacks-demo");
-        await recording.scrollIntoViewIfNeeded();
-        await recording.locator(".review-follow").waitFor();
-        assert.ok(await recording.locator(".play").isVisible());
-        await recording.locator(".play").click();
+        const discussion = page.locator("#recordings feedbacks-demo");
+        await discussion.scrollIntoViewIfNeeded();
+        assert.equal(await discussion.getAttribute("step"), "discussion");
+        assert.equal(await page.locator('feedbacks-demo[step="recording"]').count(), 1);
+        await discussion
+          .getByRole("button", {
+            name: "Paste",
+            exact: true,
+          })
+          .click();
+        assert.ok(await discussion.locator(".handoff-paste").isVisible());
+        assert.ok(await discussion.locator(".handoff-ready").isVisible());
+        await discussion.locator(".play").click();
         await page.waitForTimeout(500);
-        assert.equal(await recording.locator(".play").innerText(), "Pause");
-        await recording.locator(".play").click();
-        assert.equal(await recording.locator(".play").innerText(), "Play");
+        assert.equal(await discussion.locator(".play").innerText(), "Pause");
+        await discussion.locator(".play").click();
+        assert.equal(await discussion.locator(".play").innerText(), "Play");
       }
       if (path === "/compare/")
         await page.screenshot({ path: `.impeccable/review/matrix-${width}.png` });
@@ -312,7 +333,8 @@ try {
   });
   await nojs.goto(origin);
   assert.match(await nojs.locator("main").innerText(), /Apache-2.0/);
-  assert.equal(await nojs.locator('feedbacks-demo[step="recording"] img').count(), 2);
+  assert.equal(await nojs.locator('feedbacks-demo[step="recording"] img').count(), 1);
+  assert.equal(await nojs.locator('feedbacks-demo[step="discussion"] img').count(), 1);
   assert.ok(await nojs.locator("#recordings").isVisible());
   await nojs.goto(origin + "/docs/");
   assert.ok(await nojs.getByRole("list", { name: "Workflow at a glance" }).isVisible());

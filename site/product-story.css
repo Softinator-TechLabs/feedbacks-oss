@@ -36,8 +36,18 @@
   margin: 0;
   gap: 24px;
 }
-.source-link {
+.existing-team-action {
+  display: grid;
+  gap: 5px;
   font-size: 14px;
+  line-height: 1.4;
+}
+.existing-team-action > span {
+  color: var(--secondary);
+}
+.existing-team-action > a {
+  font-size: 16px;
+  font-weight: 700;
   text-underline-offset: 5px;
 }
 .product-footnote {

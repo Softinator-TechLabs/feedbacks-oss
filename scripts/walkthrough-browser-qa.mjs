@@ -83,6 +83,7 @@ try {
     "capture",
     "send",
     "agent",
+    "discussion",
   ]) {
     await demo.evaluate((element, value) => element.setAttribute("step", value), step);
     await demo.locator(".frame > *").waitFor();
@@ -144,6 +145,24 @@ try {
       false,
     );
   }
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await demo.locator(".step").first().click();
+  await demo.locator(".play").click();
+  const initialCamera = await demo.locator(".capture-image").getAttribute("viewBox");
+  await page.waitForFunction((before) => {
+    const art = document
+      .querySelector("feedbacks-demo")
+      .shadowRoot.querySelector(".capture-image");
+    return art && art.getAttribute("viewBox") !== before;
+  }, initialCamera);
+  await demo.locator(".handoff-paste").waitFor({ state: "visible", timeout: 6500 });
+  assert.match(
+    await demo.locator(".handoff-paste").innerText(),
+    /Fix this Feedbacks task and verify it\./,
+    "Paste arrives as a complete prompt, without slow typing",
+  );
+  await demo.locator(".play").click();
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await demo.evaluate((element) => element.setAttribute("step", "pin"));
   await demo.locator(".pin-browser").waitFor({ timeout: 2000 });
   // Reduced motion and manually selected frames must show each action's outcome.
@@ -402,6 +421,49 @@ try {
     hoverTime,
     "Hover holds the same perspective clock",
   );
+  const interactiveStyle = () =>
+    depth.locator(".depth-stage").evaluate((stage) => {
+      const figure = getComputedStyle(stage.querySelector("figure"));
+      return {
+        rotate: figure.rotate,
+        translate: figure.translate,
+        light: stage.style.getPropertyValue("--depth-light-x"),
+        shadow: getComputedStyle(stage, "::after").transform,
+      };
+    });
+  // Pointer steers the held plane, light and ground shadow as one material.
+  await firstTab.mouse.move(plane.x + plane.width * 0.25, plane.y + 60);
+  await firstTab.waitForTimeout(350);
+  const leftTilt = await interactiveStyle();
+  await firstTab.mouse.move(plane.x + plane.width * 0.75, plane.y + 60);
+  await firstTab.waitForTimeout(350);
+  const rightTilt = await interactiveStyle();
+  assert.notEqual(leftTilt.rotate, rightTilt.rotate, "Pointer changes tilt");
+  assert.notEqual(leftTilt.light, rightTilt.light, "Glass light follows pointer");
+  assert.notEqual(leftTilt.shadow, rightTilt.shadow, "Ground shadow follows pointer");
+  await depth.locator(".play").hover();
+  const controlHold = await interactiveStyle();
+  await firstTab.waitForTimeout(200);
+  assert.deepEqual(
+    await interactiveStyle(),
+    controlHold,
+    "Controls hold all depth effects",
+  );
+  await depth.locator(".play").click();
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
+  const pausedDepth = await interactiveStyle();
+  await firstTab.mouse.move(plane.x + 20, plane.y + 60);
+  await firstTab.waitForTimeout(200);
+  assert.deepEqual(
+    await interactiveStyle(),
+    pausedDepth,
+    "Global Pause holds pointer effects",
+  );
+  await depth.locator(".play").press("Enter");
+  const keyboardHold = await interactiveStyle();
+  await firstTab.mouse.move(plane.x + plane.width * 0.7, plane.y + 60);
+  await firstTab.waitForTimeout(200);
+  assert.deepEqual(await interactiveStyle(), keyboardHold, "Keyboard focus holds depth");
   await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
   await firstTab.mouse.move(0, 0);
   await firstTab.waitForFunction((held) => {
@@ -410,6 +472,15 @@ try {
       .shadowRoot.querySelector(".depth-stage > figure");
     return figure.getAnimations()[0].currentTime > held;
   }, hoverTime);
+  const beforeScroll = (await interactiveStyle()).translate;
+  await firstTab.evaluate(() => scrollTo(0, 120));
+  await firstTab.waitForTimeout(400);
+  assert.notEqual(
+    (await interactiveStyle()).translate,
+    beforeScroll,
+    "Scroll changes depth gently",
+  );
+  await firstTab.evaluate(() => scrollTo(0, 0));
   await firstTab.mouse.move(plane.x + 20, plane.y + 30);
   await depth.locator(".zoom").click();
   assert.equal(
@@ -430,9 +501,21 @@ try {
   await firstTab.emulateMedia({ reducedMotion: "reduce" });
   assert.equal((await depthStyle()).animation, "none");
   assert.equal((await depthStyle()).transform, "none");
+  assert.equal((await interactiveStyle()).rotate, "none");
+  assert.equal((await interactiveStyle()).translate, "none");
   assert.equal(await depth.locator(".play").innerText(), "Pause");
   await firstTab.emulateMedia({ reducedMotion: "no-preference" });
   await firstTab.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    (await interactiveStyle()).rotate,
+    "none",
+    "Small screens omit pointer tilt",
+  );
+  assert.equal(
+    (await interactiveStyle()).translate,
+    "none",
+    "Small screens omit scroll depth",
+  );
   assert.equal(
     await depth.evaluate((el) =>
       getComputedStyle(el).getPropertyValue("--depth-scale").trim(),
@@ -449,7 +532,7 @@ try {
   await preferenceContext.close();
   assert.deepEqual(errors, []);
   console.log(
-    "Walkthroughs passed: nine scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",
+    "Walkthroughs passed: ten scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",
   );
 } finally {
   await browser.close();
