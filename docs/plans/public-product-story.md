@@ -8,7 +8,7 @@ Make the free Apache-2.0 product understandable in one short visit. Preserve the
 
 ## Evidence and approach
 
-The landing currently explains only screenshot-to-agent handoff. The comparison generator incorrectly says Feedbacks has no session replay. Current behavior is documented in [session replay](../session-replay.md), [extension](../extension.md) and [API](../api.md), backed by recording, diagnostic and text-evidence tests. GitHub supports one configured App with multiple repository installations, not multiple independent App credentials.
+The landing currently explains only screenshot-to-agent handoff. The comparison generator incorrectly says Feedbacks has no session replay. Current behavior is documented in [session replay](../session-replay.md), [extension](../extension.md) and [API](../api.md), backed by recording, diagnostic and text-evidence tests. The initial GitHub scope was one configured App. Merged PR #160 supersedes that boundary: the server supports multiple configured Apps, the owner selects one per project, and repositories use that App's permitted installations.
 
 Extend the existing static Vite site, shared local educational assets and VitePress documentation. Avoid a new framework or dependencies. Use concise, crawlable HTML and accessible diagrams; label synthetic examples and preserve real screenshot provenance. Keep hosting costs distinct from the free software license. Competitor evidence retains its actual review dates; new unverified capabilities remain unknown.
 
@@ -24,7 +24,7 @@ Extend the existing static Vite site, shared local educational assets and VitePr
 
 ## Acceptance criteria
 
-Visitors see free Apache-2.0 positioning, what gets captured, and the server-first setup action without reading a long introduction. A short interactive timeline demonstrates the relationship between a click, failed request and console error, with manual controls and reduced-motion behavior. All new public guides appear in navigation, search, sitemap and Markdown exports. Generated comparisons confirm replay with evidence and never equate missing vendor evidence with missing features. No invented customer metrics or automatic-fix promises.
+Visitors see free Apache-2.0 positioning, what gets captured, and the server-first setup action without reading a long introduction. A user-started walkthrough of actual recording-review captures demonstrates the relationship between a click, failed request and console error, with manual controls and reduced-motion behavior. All new public guides appear in navigation, search, sitemap and Markdown exports. Generated comparisons confirm replay with evidence and never equate missing vendor evidence with missing features. No invented customer metrics or automatic-fix promises.
 
 ## Compatibility and recovery
 
@@ -34,6 +34,7 @@ Static website and documentation only. No migrations, application permissions or
 
 - Present each selling point once per page. Licensing belongs in the landing hero; remove duplicate license banners, repeated feature-paywall copy and redundant role links. Each later section must explain a distinct capability or next step.
 
+- Use the actual extension renderer for the hero: desktop/mobile Activity, Network and Console captures, with a full-size view. Synthetic events are identified as sample data; do not invent a substitute product interface.
 - Preserve the existing visual identity and actual capture walkthrough; add product-specific diagrams instead of decorative imagery.
 - Separate guided session capture from always-on visitor analytics, and full thread archives from agent-local recording exports.
 - Self-hosting infrastructure is operator-provided. The software has no license fee.
@@ -41,7 +42,7 @@ Static website and documentation only. No migrations, application permissions or
 
 ## Completion receipt
 
-Local evidence: `npm run check` passed (430 tests passed, 24 environment-gated tests skipped, typechecks, builds, isolated smoke and release checks). Four focused comparison tests pass, including a regression for CSP-safe table widths. `npm run qa:public-site` passes ten routes at desktop/mobile sizes, local links/assets, timeline mouse/keyboard/playback controls, offscreen pause, reduced-motion initial state, no-JavaScript fallback and mobile comparison navigation. The browser check is included in CI. The existing eight-scene walkthrough check also passes at six viewport sizes, including a complete 1280×640 product hero and the relocated capture walkthrough with its controls.
+Local evidence: `npm run check` passed (430 tests passed, 24 environment-gated tests skipped, typechecks, builds, isolated smoke and release checks). Four focused comparison tests pass, including a regression for CSP-safe table widths. `npm run qa:public-site` passes ten routes at desktop/mobile sizes, local links/assets, timeline mouse/keyboard/playback controls, offscreen pause, reduced-motion initial state, no-JavaScript fallback and mobile comparison navigation. The browser check is included in CI. The existing nine-scene walkthrough check also passes at six viewport sizes, including a complete 1280×640 product hero and the relocated capture walkthrough with its controls.
 
 Rendered landing evidence: [previous public page](../screenshots/public-product-story/before-desktop.png), [desktop](../screenshots/public-product-story/desktop.png) and [mobile](../screenshots/public-product-story/mobile.png).
 

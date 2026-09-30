@@ -1,6 +1,5 @@
 import type { Actor } from "../../shared/contracts.js";
 import type { Database } from "../db.js";
-import type { Config } from "../config.js";
 import { Auth } from "../auth.js";
 import type { GithubRepo } from "../github-app.js";
 import { fail } from "../errors.js";
@@ -12,11 +11,6 @@ export async function human(db: Database, actor: Actor) {
   if (current.mustChangePassword)
     fail("PASSWORD_CHANGE_REQUIRED", "Change your password first", 403);
   return current;
-}
-
-export function requireApp(config: Config) {
-  if (!config.githubAppId || !config.githubAppSlug || !config.githubAppPrivateKey)
-    fail("GITHUB_UNAVAILABLE", "This server has no GitHub App configured", 503);
 }
 
 export function issueNumber(value: string, repo: GithubRepo) {

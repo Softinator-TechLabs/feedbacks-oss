@@ -10,7 +10,12 @@ import {
   requireConnectedGithubRepo,
 } from "../github-repositories.js";
 import { fail } from "../errors.js";
-import { human, issueNumber, requireApp } from "./operation-common.js";
+import {
+  configuredGithubApps,
+  projectGithubAppId,
+  requireSyncAppId,
+} from "../github-app-config.js";
+import { human, issueNumber } from "./operation-common.js";
 
 export async function githubStatusSyncState(
   db: Database,
@@ -26,23 +31,23 @@ export async function githubStatusSyncState(
     const sync = await tx.one("SELECT * FROM github_status_sync WHERE thread_id=$1", [
       row.id,
     ]);
+    const configured = configuredGithubApps(config).some(
+      (app) => app.id === projectGithubAppId(config, project),
+    );
     return {
       status:
         sync?.status === "uncertain"
           ? "uncertain"
           : !project.githubConnected || !project.githubStatusSync
             ? "disabled"
-            : !config.githubAppId || !config.githubAppPrivateKey || !config.githubAppSlug
+            : !configured
               ? "error"
               : (sync?.status ?? "pending"),
       issueUrl: sync?.issue_url ?? null,
       feedbacksState: sync?.feedbacks_state ?? null,
       githubState: sync?.github_state ?? null,
       pendingTarget: sync?.pending_target ?? null,
-      errorCode:
-        !config.githubAppId || !config.githubAppPrivateKey || !config.githubAppSlug
-          ? "GITHUB_UNAVAILABLE"
-          : (sync?.error_code ?? null),
+      errorCode: !configured ? "GITHUB_UNAVAILABLE" : (sync?.error_code ?? null),
     };
   });
 }
@@ -55,7 +60,6 @@ export async function githubStatusSyncOperation(
   client: GithubApp,
 ) {
   const name = "github.statusSync";
-  requireApp(config);
   const target = await db.transaction(async (tx) => {
     await accountLock(tx);
     const a = await human(tx, actor);
@@ -78,8 +82,13 @@ export async function githubStatusSyncOperation(
       project,
       `https://github.com/${link.repository}`,
     );
-    return { repo, number: issueNumber(i.issueUrl, repo) };
+    return {
+      repo,
+      number: issueNumber(i.issueUrl, repo),
+      appId: requireSyncAppId(config, project, link),
+    };
   });
+  client = client.forApp(target.appId);
   const issue = await client.readIssue(target.repo, target.number);
   let reservationToken: string | null = null;
   if (i.source === "feedbacks") {
@@ -89,7 +98,11 @@ export async function githubStatusSyncOperation(
       const row = await threadRow(tx, a, i.threadId, "maintain");
       checkRevision(row, i.revision);
       const project = await access(tx, a, row.project_id, "maintain");
-      if (!project.githubConnected || !project.githubStatusSync)
+      if (
+        !project.githubConnected ||
+        !project.githubStatusSync ||
+        projectGithubAppId(config, project) !== target.appId
+      )
         fail("GITHUB_SYNC_DISABLED", "Status sync was disabled", 409);
       if (row.data.work.state === "declined")
         fail(
@@ -109,7 +122,8 @@ export async function githubStatusSyncOperation(
         if (
           !project.githubConnected ||
           !project.githubStatusSync ||
-          !hasConnectedGithubRepo(project, target.repo)
+          !hasConnectedGithubRepo(project, target.repo) ||
+          projectGithubAppId(config, project) !== target.appId
         )
           fail(
             "GITHUB_SYNC_DISABLED",
@@ -176,7 +190,8 @@ export async function githubStatusSyncOperation(
     if (
       !project.githubConnected ||
       !project.githubStatusSync ||
-      !hasConnectedGithubRepo(project, target.repo)
+      !hasConnectedGithubRepo(project, target.repo) ||
+      projectGithubAppId(config, project) !== target.appId
     )
       fail("GITHUB_SYNC_DISABLED", "Status sync was disabled or repository changed", 409);
     const link = row.data.externalIssues?.find(

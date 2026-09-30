@@ -122,7 +122,7 @@ export const matrixRows = {
       url: "https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/api.md",
       reviewed: "30 September 2026",
       detail:
-        "One configured GitHub App with multiple installations and repositories, not multiple App credentials.",
+        "Multiple configured GitHub Apps; the owner selects one per project, with repositories across that App’s permitted installations.",
     },
     projectContext: {
       status: "yes",

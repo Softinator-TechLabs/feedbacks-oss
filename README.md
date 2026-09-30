@@ -14,7 +14,7 @@ Show the problem with a screenshot, exact text suggestion or video + session rec
 - **Replay the bug:** video or session-only recording with one timeline for activity, console, network and performance. Save and annotate frames.
 - **Take the evidence:** complete thread bundles with discussion, media, recordings, diagnostics and checksums; scoped agent reads and recording exports.
 - **Give agents context:** approved project instructions, reviewer guidance and responsibilities through MCP, API and CLI.
-- **Move the work forward:** assignments, categories, tags, saved views and point progress; optional GitHub Issues across multiple repositories and App installations.
+- **Move the work forward:** assignments, categories, tags, saved views and point progress; optional GitHub Issues across repositories and installations, with multiple configured Apps and one owner-selected App per project.
 - **Review beyond the extension:** scoped guest links, PDF/image review, an optional text widget, surveys/NPS, scheduled public-page QA, native mobile clients and signed webhooks.
 - **Own the whole service:** Apache-2.0 server and clients, PostgreSQL and private S3-compatible storage. One installation serves one organization.
 

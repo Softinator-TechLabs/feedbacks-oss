@@ -143,15 +143,37 @@ try {
       if (path === "/") {
         const demo = page.locator("feedbacks-evidence");
         assert.equal(
+          (await page.locator("body").innerText()).match(/Apache-2.0/g)?.length,
+          1,
+          "State licensing once on the landing",
+        );
+        await demo.locator(".evidence-screen").evaluate((img) => img.decode());
+        await demo
+          .getByRole("button", { name: "Enlarge the actual Feedbacks recording review" })
+          .click();
+        assert.equal(await demo.locator("dialog").evaluate((el) => el.open), true);
+        assert.ok(
+          await demo
+            .locator(".evidence-full")
+            .evaluate((img) => img.src.includes("recording-")),
+        );
+        await page.keyboard.press("Escape");
+        assert.equal(await demo.locator("dialog").evaluate((el) => el.open), false);
+        assert.equal(
           await demo.getByRole("button", { name: "Play example", exact: true }).count(),
           1,
         );
         await demo.getByRole("button", { name: "00:04 Request fails" }).click();
         assert.match(await demo.locator(".evidence-event").innerText(), /500/);
+        assert.match(
+          await demo.locator(".evidence-screen").getAttribute("src"),
+          /recording-desktop-1.webp/,
+        );
         await demo.getByRole("button", { name: "00:05 Console error" }).focus();
         await page.keyboard.press("Enter");
         assert.match(await demo.locator(".evidence-event").innerText(), /Console/);
         await demo.getByRole("button", { name: "00:02 Click", exact: true }).click();
+        await demo.locator(".evidence-screen").evaluate((img) => img.decode());
         await page.evaluate(() => window.scrollTo(0, 0));
         await page.screenshot({
           path: `.impeccable/review/${width === 1440 ? "desktop" : "mobile"}.png`,
@@ -161,6 +183,10 @@ try {
         await demo.getByRole("button", { name: "Play example", exact: true }).click();
         await page.waitForTimeout(2500);
         assert.match(await demo.locator(".evidence-event").innerText(), /500/);
+        assert.match(
+          await demo.locator(".evidence-screen").getAttribute("src"),
+          /recording-desktop-1.webp/,
+        );
         await page.locator("#features").scrollIntoViewIfNeeded();
         await page.waitForTimeout(100);
         assert.equal(

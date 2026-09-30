@@ -71,6 +71,7 @@ try {
   const demo = page.locator("feedbacks-demo");
   for (const step of [
     "server",
+    "github",
     "install",
     "pin",
     "connect",
@@ -81,6 +82,8 @@ try {
   ]) {
     await demo.evaluate((element, value) => element.setAttribute("step", value), step);
     await demo.locator(".frame > *").waitFor();
+    if (step === "github")
+      assert.match(await demo.locator(".caption").innerText(), /GitHub/);
     await page.waitForFunction(
       () =>
         getComputedStyle(
@@ -280,6 +283,13 @@ try {
     await page.locator("feedbacks-demo .frame > *").waitFor();
     for (const button of await page.locator("[data-scene]").all()) {
       await button.click();
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(
+            document.querySelector("feedbacks-demo").shadowRoot.querySelector(".screen"),
+          ).position === "relative",
+      );
+
       const bounds = await page.evaluate(() => ({
         walkthroughHeight: document.querySelector(".story").getBoundingClientRect()
           .height,
@@ -300,7 +310,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    "Walkthroughs passed: eight scenes including pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",
+    "Walkthroughs passed: nine scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",
   );
 } finally {
   await browser.close();

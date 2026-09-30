@@ -34,6 +34,32 @@
     updateMotionState();
   }
   const scenes = {
+    github: {
+      kind: "server",
+      steps: [
+        { title: "1. GitHub · create App", detail: "Your organization · private App" },
+        {
+          title: "2. Server · configure App",
+          detail: "Your operator stores its credentials",
+        },
+        { title: "3. Project · connect", detail: "Choose App · select repositories" },
+      ],
+      frames: [
+        {
+          caption: "Create a private App in the GitHub organization you want to connect.",
+          active: 0,
+        },
+        {
+          caption: "Your server operator adds the App securely to this Feedbacks server.",
+          active: 1,
+        },
+        {
+          caption:
+            "Install it on selected repositories. Choose the App in your project's GitHub tab and connect.",
+          active: 2,
+        },
+      ],
+    },
     server: {
       kind: "server",
       frames: [
@@ -689,7 +715,27 @@
           } else if (scene.kind === "chrome")
             box.innerHTML = `<div class="browser-bar"><span class="address">Your website</span><span class="icon puzzle">${puzzle}</span>${f.active === 2 ? '<span class="icon pinned-icon"><strong>F.</strong></span>' : ""}</div><div class="chrome-card">${f.active === 0 ? '<strong>Feedbacks</strong><p>Chrome Web Store</p><span class="store-action">Add to Chrome</span>' : `<strong>Extensions</strong><div class="extension-row"><span>Feedbacks</span><span class="icon pin">${pin}</span></div>`}</div>`;
           else if (scene.kind === "server")
-            box.innerHTML = `<div class="sequence">${["DevOps · team server", "Owner · projects & people", "Reviewers + developers · connect"].map((t, i) => `<div class="${i === f.active ? "active" : ""}">${t}<small>${["HTTPS + database + private images", "Project context + member access", "One team URL. Your own account."][i]}</small></div>`).join("")}</div>`;
+            box.innerHTML = `<div class="sequence">${(
+              scene.steps ?? [
+                {
+                  title: "DevOps · team server",
+                  detail: "HTTPS + database + private images",
+                },
+                {
+                  title: "Owner · projects & people",
+                  detail: "Project context + member access",
+                },
+                {
+                  title: "Reviewers + developers · connect",
+                  detail: "One team URL. Your own account.",
+                },
+              ]
+            )
+              .map(
+                (step, i) =>
+                  `<div class="${i === f.active ? "active" : ""}">${step.title}<small>${step.detail}</small></div>`,
+              )
+              .join("")}</div>`;
           else
             box.innerHTML =
               '<div class="agent-note"><strong>Your coding agent</strong><div class="prompt-input"><span class="typed-prompt"></span></div><small>Screenshot · page · element · project context</small></div>';

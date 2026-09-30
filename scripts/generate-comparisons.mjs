@@ -178,7 +178,7 @@ function detail(entry, index) {
       <aside class="compare-limits">
         <h2>What Feedbacks does today.</h2>
         <p>Recording starts explicitly and is bounded to five minutes; video has a 40 MiB limit. Optional audio, network bodies and masking have separate controls. Edited video omits DOM replay. Screenshot diagnostic artifacts can contain raw browser values and do not inherit session masking. Check capture coverage and review evidence before sharing.</p>
-        <p>GitHub requires one configured App and approved installations. Multiple repositories and organizations are supported; independent App credential sets are not. Incoming comments do not automatically create Issues. Self-hosting infrastructure and any AI-model subscriptions are supplied by your team.</p>
+        <p>GitHub supports multiple configured Apps on one server. The owner selects one App per project; repositories can span that App’s permitted installations. Incoming comments do not automatically create Issues. Self-hosting infrastructure and any AI-model subscriptions are supplied by your team.</p>
         <p>Reviewer expertise belongs in owner-approved guidance. A private member note or profile field is not automatically shared with an ordinary agent. Guidance helps interpretation but never grants permissions or guarantees how a model will decide.</p>
       </aside>
       <div class="compare-actions"><a class="button primary" href="/docs/guide/getting-started">Set up Feedbacks</a><a href="/docs/guide/session-replay">Explore recordings and replay</a></div>

@@ -50,6 +50,8 @@ Use one codebase and separate runtime installations. A deployment represents one
 | Browser extension         | Versioned extension ZIP                | User-selected server and local connection state                       |
 | Native app integration    | Host-built Swift or Android module     | Host app pairs a reviewer device and stores its scoped token locally  |
 
+GitHub App credentials are deployment configuration, with owner-only project assignment. Additional Apps restrict repositories to approved GitHub accounts. Each native Issue reservation and verified link pins its App identity; recovery never substitutes another App. See [GitHub deployment configuration](self-hosting.md#multiple-github-apps).
+
 Organization-specific deployment inventory and secrets should live in a separate private infrastructure repository. A separate enterprise code fork is unnecessary for the current feature set and creates duplicated fixes. If commercial-only services are introduced later, keep their interfaces explicit and their licensing separate.
 
 ## Scaling boundaries
