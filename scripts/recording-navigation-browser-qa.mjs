@@ -114,6 +114,16 @@ try {
       return r.data;
     }, message);
   const annotate = async (owner, mode) => {
+    // Closing the point editor precedes the background recorder's async resume.
+    const waitForResume = () =>
+      owner.waitForFunction(
+        async () => {
+          const response = await chrome.runtime.sendMessage({ type: "sessionStatus" });
+          return response.ok && response.data.annotationPause === null;
+        },
+        undefined,
+        { polling: 100 },
+      );
     await page.bringToFront();
     const comment = `${mode} saved screenshot point`;
     const editor = page.getByRole("textbox", { name: "Comment on selected element" });
@@ -150,6 +160,7 @@ try {
         exact: true,
       })
       .waitFor();
+    await waitForResume();
     const saved = await send({ type: "recordingAnnotations" }, owner);
     assert.equal(saved.items.length, 1);
     assert.equal(saved.items[0].body, comment);
@@ -174,6 +185,7 @@ try {
         exact: true,
       })
       .waitFor();
+    await waitForResume();
     const resumed = await send({ type: "sessionStatus" }, owner);
     assert.equal(resumed.annotationPause, null);
     assert.equal(resumed.annotationIntervals.length, 2);
