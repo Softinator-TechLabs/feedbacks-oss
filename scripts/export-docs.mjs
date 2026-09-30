@@ -23,6 +23,6 @@ for (const path of files.sort()) {
   const heading = markdown.match(/^# (.+)$/m)?.[1] ?? name;
   links.push(`- [${heading}](https://feedbacks.softinator.ai/docs/${name}): ${heading}`);
 }
-const index = `# Feedbacks documentation\n\nFeedbacks is an open-source, self-hosted tool that prepares website feedback and visual context for AI coding agents. Start with a team server, then the Chrome extension, projects and members, and each developer’s personal MCP connection.\n\n## Pages\n\n${links.join("\n")}\n\nSource and issue tracker: https://github.com/Softinator-TechLabs/feedbacks-oss\n`;
+const index = `# Feedbacks documentation\n\nFeedbacks is free Apache-2.0 software for self-hosted visual feedback, video and session replay, debugging bundles, exact text suggestions and AI-agent context. Start with a team server, then the Chrome extension, projects and members, and each developer’s personal MCP connection.\n\n## Pages\n\n${links.join("\n")}\n\nSource and issue tracker: https://github.com/Softinator-TechLabs/feedbacks-oss\n`;
 await writeFile(join(output.pathname, "llms.txt"), index);
 await writeFile(new URL("../dist/site/llms.txt", import.meta.url), index);

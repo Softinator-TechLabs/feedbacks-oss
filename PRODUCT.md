@@ -23,7 +23,7 @@ The owner prepares projects and people: website origins, published project conte
 
 ## Product Purpose
 
-Turn website feedback into context your AI agent can use. Keep the client's request or tester's bug report together with the original screenshot, exact page, viewport, selected element details when available and authorized project guidance. Developers use that evidence with their own coding agents through MCP, agree the work, verify the change and record the outcome.
+Free Apache-2.0 visual feedback, session replay and debugging context for your team and its coding agents. Keep the client's request or tester's bug report together with the original screenshot, exact page, viewport, selected element details when available and authorized project guidance. Developers use that evidence with their own coding agents through MCP, agree the work, verify the change and record the outcome.
 
 Start with the team's Feedbacks server. DevOps installs one organization per installation; the extension connects to that installation and does not host it. A reviewer installs and pins the extension, copies the server URL from Help, connects with their own account and receives project access from the owner. Capture follows explicit stages: Save point creates a local draft; Review & send opens the evidence review; Send feedback shares the checked notes and screenshots. Clients and reviewers do not need to configure MCP. Each resolving developer connects their own agent with their own Feedbacks key.
 
@@ -32,6 +32,8 @@ Capture and MCP do not require GitHub. A connected project can optionally create
 Developers and authorized coding agents share that context. Owners can describe reviewer expertise in approved guidance and assign subject-specific importance weights, with project overrides. Agents receive this advisory context separately from untrusted discussion and approved project instructions. Weights support interpretation; they do not guarantee a model's decisions or grant permission to act.
 
 ## Capabilities and Constraints
+
+The public story includes screenshots and annotations, selected-text replacement suggestions, explicit video/session recording with a shared diagnostic timeline, timestamped frames, complete thread bundles and approved agent context. Optional workflows include guest reviews, PDF/image documents, a text widget, surveys, scheduled public-page QA, native clients and signed webhooks. The server supports multiple configured GitHub Apps. Its owner selects one App per project; that project can connect repositories across the selected App's permitted installations. Self-hosting infrastructure and any model subscriptions are operator-supplied; the software has no license fee.
 
 Reviewers can move through filtered threads using arrow keys, organize optional tags, save personal views and compare screenshot attachments. Standalone page-review diagnostics are off by default. Session recordings capture activity, loading, console and network automatically; video debug context is on by default. Recordings and screenshot comments are shared only after review and Send. A bundled Codex plugin reuses the same MCP contracts.
 

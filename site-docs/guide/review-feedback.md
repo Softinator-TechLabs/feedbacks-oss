@@ -2,13 +2,17 @@
 
 ## Capture
 
-On a website, open the extension and choose **Capture this page**, or right-click an element. Feedbacks outlines the element and opens a small comment field beside it. Write a note, choose **Save point**, and repeat on other elements. Choose **Review screenshots** when you are done. The screenshot editor shows all numbered comments, drawing tools and an optional overall note. Each point keeps its own element context in the resulting thread. Every point saves its original visible screenshot, including open menus. A visible-area capture includes those saved views even for points now offscreen. Full-page capture is optional; use it only when the whole page matters. Inspect each image before sending. A separate **Record a short tab video** flow records up to five minutes, with separate optional tab audio and microphone.
+On a website, open the extension and choose **Capture view**, or right-click an element. Feedbacks outlines the element and opens a small comment field beside it. Write a note, choose **Save point**, and repeat on other elements. Choose **Review & send** when you are done. The screenshot editor shows all numbered comments, drawing tools and an optional overall note. Each point keeps its own element context in the resulting thread. Every point saves its original visible screenshot, including open menus. A visible-area capture includes those saved views even for points now offscreen. Full-page capture is optional; use it only when the whole page matters. Inspect each image before sending. Choose **Record video + session** for a sequence of actions, or session-only capture without video. [See the recording and timeline guide](/guide/session-replay).
 
 Saved points reappear on the reviewed website when the element still matches. Hover or focus a pin to read its comment. In the screenshot editor you can revise each point's text before sending; its selector, rectangle and border evidence stay attached to that point. The editor also draws the captured element rectangle alongside the numbered pin. In the thread, **Review on the page** places clickable numbered points and captured element boxes on the screenshot alongside their full notes. Open a point's **Element details** to see its tag, selector, screenshot position, box geometry and captured border styling. A point captured without a matching element is labeled **Page position only** instead of implying an element was selected. On a phone, tap a point or **Show on screenshot** to jump to it. The screenshot selector lets you inspect each numbered page or the optional combined full-page overview; drawing marks are visible in the image.
 
 Point notes, the overall feedback comment and discussion replies accept simple Markdown such as **bold**, _italic_, links, lists and code. The editor provides a small formatting toolbar for the overall comment and replies. Feedbacks renders these notes as text and safe links; embedded HTML and remote Markdown images are not rendered.
 
 The extension uploads only when you send. Screenshots can include visible forms and frames, and video has no redaction tool. Review sensitive content first. [Extension permissions and setup](/guide/chrome-extension).
+
+## Suggest exact text
+
+Select visible page text → **Suggest edit** → check the original and enter its replacement → **Save suggestion**. The original wording and screenshot stay together. [Text suggestions](/guide/text-suggestions).
 
 ## Review a queue
 

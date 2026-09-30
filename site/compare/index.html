@@ -14,6 +14,11 @@
       content="A clear look at Feedbacks and other visual feedback tools. Compare capture, self-hosting, agent context and handoff with direct sources."
     />
     <meta property="og:type" content="website" />
+    <meta
+      property="og:image"
+      content="https://feedbacks.softinator.ai/media/social-preview.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta property="og:url" content="https://feedbacks.softinator.ai/compare/" />
     <link rel="canonical" href="https://feedbacks.softinator.ai/compare/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -32,7 +37,7 @@
         ></a
       >
       <nav aria-label="Main navigation">
-        <a href="/">Home</a><a href="/compare/">Compare tools</a
+        <a href="/">Home</a><a href="/compare/">Compare tools</a><a href="/docs/">Docs</a
         ><a
           href="https://github.com/Softinator-TechLabs/feedbacks-oss"
           target="_blank"
@@ -40,12 +45,8 @@
           >GitHub <span aria-hidden="true">↗</span></a
         >
       </nav>
-      <a
-        class="button header-cta"
-        href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
-        target="_blank"
-        rel="nofollow noopener noreferrer"
-        >Get it for Chrome <span aria-hidden="true">↗</span></a
+      <a class="button header-cta" href="/docs/guide/getting-started"
+        >Set up Feedbacks <span aria-hidden="true">→</span></a
       >
     </header>
     <main id="main">
@@ -54,8 +55,9 @@
         <p class="compare-index-intro">
           Some tools start with a widget. Some start with a recording or a canvas.
           Feedbacks combines screenshots, original evidence for each page pin, annotation
-          and local exports, optional recordings, and a discussion your team and agent can
-          follow on your own server.
+          and local exports, video and session replay, a shared diagnostic timeline and
+          portable debugging bundles on your own server. The whole product is free and
+          Apache-2.0.
         </p>
         <p class="compare-index-note">
           Several tools here also offer MCP, self-hosting or both. Each page links to the
@@ -64,7 +66,7 @@
         <div class="comparison-overview">
           <h2>Compare the details that matter.</h2>
           <p>
-            36 capabilities across 5 tables. Open a confirmed mark for its source and
+            42 capabilities across 5 tables. Open a confirmed mark for its source and
             review date. “Not verified” means the available evidence does not establish
             that capability; it does not mean the tool lacks it.
           </p>
@@ -84,11 +86,12 @@
             <strong>Partial</strong> Some named formats confirmed
           </p>
           <p class="matrix-date">
-            Latest review: 27 September 2026. Official vendor sources were reviewed on
-            this date; each sourced cell records its check. Vendor documentation describes
-            available capabilities, which can depend on plan or setup. This is not a
-            hands-on certification. Feedbacks describes the current source; installed and
-            Store versions may differ. A tick does not imply identical workflows.
+            Feedbacks source reviewed 30 September 2026; vendor documentation reviewed 27
+            September 2026. Each sourced cell keeps its own date. Vendor documentation
+            describes available capabilities, which can depend on plan or setup. This is
+            not a hands-on certification. Feedbacks describes the current source;
+            installed and Store versions may differ. A tick does not imply identical
+            workflows.
           </p>
         </div>
         <section
@@ -110,7 +113,7 @@
                 disabled
               >
                 ←</button
-              ><span class="matrix-position" aria-live="polite">Feature 1 of 8</span
+              ><span class="matrix-position" aria-live="polite">Feature 1 of 9</span
               ><button
                 type="button"
                 class="matrix-next"
@@ -126,7 +129,7 @@
             aria-label="Capture and page review comparison table"
             tabindex="0"
           >
-            <table style="--matrix-columns: 8">
+            <table class="matrix-columns-9">
               <caption>
                 Capture and page review: Feedbacks and 15 website feedback tools, compared
                 by documented capability
@@ -142,6 +145,7 @@
                   <th scope="col">Local unsent review points</th>
                   <th scope="col">Resolve individual points</th>
                   <th scope="col">Saved review and recording controls</th>
+                  <th scope="col">Selected text and replacement suggestions</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,8 +156,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Browser extension capture. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Browser extension capture"
+                      aria-label="Feedbacks: Browser extension capture. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Browser extension capture"
                       >✓</a
                     >
                   </td>
@@ -162,8 +166,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Screenshot capture. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Screenshot capture"
+                      aria-label="Feedbacks: Screenshot capture. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Screenshot capture"
                       >✓</a
                     >
                   </td>
@@ -172,8 +176,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Full-page capture. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Full-page capture"
+                      aria-label="Feedbacks: Full-page capture. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Full-page capture"
                       >✓</a
                     >
                   </td>
@@ -182,8 +186,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Element or page pins. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Element or page pins"
+                      aria-label="Feedbacks: Element or page pins. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Element or page pins"
                       >✓</a
                     >
                   </td>
@@ -192,8 +196,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Screenshot saved with each comment. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Screenshot saved with each comment"
+                      aria-label="Feedbacks: Screenshot saved with each comment. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Screenshot saved with each comment"
                       >✓</a
                     >
                   </td>
@@ -202,8 +206,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Local unsent review points. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Local unsent review points"
+                      aria-label="Feedbacks: Local unsent review points. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Local unsent review points"
                       >✓</a
                     >
                   </td>
@@ -212,8 +216,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Resolve individual points. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Resolve individual points"
+                      aria-label="Feedbacks: Resolve individual points. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Resolve individual points"
                       >✓</a
                     >
                   </td>
@@ -222,8 +226,18 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Saved review and recording controls. Confirmed. Checked 27 September 2026. Separate saved controls for review and recording; recording restores prior review controls. Read source."
-                      title="Confirmed. Checked 27 September 2026. Separate saved controls for review and recording; recording restores prior review controls. Read source for Feedbacks: Saved review and recording controls"
+                      aria-label="Feedbacks: Saved review and recording controls. Confirmed. Checked 30 September 2026. Separate saved controls for review and recording; recording restores prior review controls. Read source."
+                      title="Confirmed. Checked 30 September 2026. Separate saved controls for review and recording; recording restores prior review controls. Read source for Feedbacks: Saved review and recording controls"
+                      >✓</a
+                    >
+                  </td>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
+                      target="_blank"
+                      rel="nofollow noopener noreferrer"
+                      aria-label="Feedbacks: Selected text and replacement suggestions. Confirmed. Checked 30 September 2026. Selected original text and suggested replacement; does not edit the live website. Read source."
+                      title="Confirmed. Checked 30 September 2026. Selected original text and suggested replacement; does not edit the live website. Read source for Feedbacks: Selected text and replacement suggestions"
                       >✓</a
                     >
                   </td>
@@ -274,6 +288,12 @@
                   <td class="matrix-unknown">
                     <span
                       aria-label="BugPin: Saved review and recording controls not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="BugPin: Selected text and replacement suggestions not verified"
                       >Not verified</span
                     >
                   </td>
@@ -337,6 +357,12 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="FasterFixes: Selected text and replacement suggestions not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/siteping.html">SitePing</a></th>
@@ -392,6 +418,12 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="SitePing: Selected text and replacement suggestions not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row">
@@ -444,6 +476,12 @@
                   <td class="matrix-unknown">
                     <span
                       aria-label="OpenReplay + Spot: Saved review and recording controls not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="OpenReplay + Spot: Selected text and replacement suggestions not verified"
                       >Not verified</span
                     >
                   </td>
@@ -507,6 +545,12 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="BugHerd: Selected text and replacement suggestions not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/marker-io.html">Marker.io</a></th>
@@ -559,6 +603,12 @@
                   <td class="matrix-unknown">
                     <span
                       aria-label="Marker.io: Saved review and recording controls not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Marker.io: Selected text and replacement suggestions not verified"
                       >Not verified</span
                     >
                   </td>
@@ -631,6 +681,12 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="MarkUp.io: Selected text and replacement suggestions not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/markup-hero.html">Markup Hero</a></th>
@@ -692,6 +748,12 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Markup Hero: Selected text and replacement suggestions not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/redpen-ai.html">Redpen.ai</a></th>
@@ -744,6 +806,12 @@
                   <td class="matrix-unknown">
                     <span
                       aria-label="Redpen.ai: Saved review and recording controls not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Redpen.ai: Selected text and replacement suggestions not verified"
                       >Not verified</span
                     >
                   </td>
@@ -816,6 +884,12 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Pastel: Selected text and replacement suggestions not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/ruttl.html">Ruttl</a></th>
@@ -863,6 +937,12 @@
                   <td class="matrix-unknown">
                     <span
                       aria-label="Ruttl: Saved review and recording controls not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Ruttl: Selected text and replacement suggestions not verified"
                       >Not verified</span
                     >
                   </td>
@@ -925,6 +1005,12 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Superflow: Selected text and replacement suggestions not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/usersnap.html">Usersnap</a></th>
@@ -980,6 +1066,12 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Usersnap: Selected text and replacement suggestions not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/userback.html">Userback</a></th>
@@ -1032,6 +1124,12 @@
                   <td class="matrix-unknown">
                     <span
                       aria-label="Userback: Saved review and recording controls not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Userback: Selected text and replacement suggestions not verified"
                       >Not verified</span
                     >
                   </td>
@@ -1099,6 +1197,12 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Atarim: Selected text and replacement suggestions not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -1142,7 +1246,7 @@
             aria-label="Annotation and image exports comparison table"
             tabindex="0"
           >
-            <table style="--matrix-columns: 11">
+            <table class="matrix-columns-11">
               <caption>
                 Annotation and image exports: Feedbacks and 15 website feedback tools,
                 compared by documented capability
@@ -1171,8 +1275,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Draw, shapes and text. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Draw, shapes and text"
+                      aria-label="Feedbacks: Draw, shapes and text. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Draw, shapes and text"
                       >✓</a
                     >
                   </td>
@@ -1181,8 +1285,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Highlighter. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Highlighter"
+                      aria-label="Feedbacks: Highlighter. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Highlighter"
                       >✓</a
                     >
                   </td>
@@ -1191,8 +1295,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Numbered steps. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Numbered steps"
+                      aria-label="Feedbacks: Numbered steps. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Numbered steps"
                       >✓</a
                     >
                   </td>
@@ -1201,8 +1305,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Blur tool. Confirmed. Checked 27 September 2026. Visual softening, not secure redaction. Use Redact for private pixels. Read source."
-                      title="Confirmed. Checked 27 September 2026. Visual softening, not secure redaction. Use Redact for private pixels. Read source for Feedbacks: Blur tool"
+                      aria-label="Feedbacks: Blur tool. Confirmed. Checked 30 September 2026. Visual softening, not secure redaction. Use Redact for private pixels. Read source."
+                      title="Confirmed. Checked 30 September 2026. Visual softening, not secure redaction. Use Redact for private pixels. Read source for Feedbacks: Blur tool"
                       >✓</a
                     >
                   </td>
@@ -1211,8 +1315,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Mask private pixels. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Mask private pixels"
+                      aria-label="Feedbacks: Mask private pixels. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Mask private pixels"
                       >✓</a
                     >
                   </td>
@@ -1221,8 +1325,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Stamps or stickers. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Stamps or stickers"
+                      aria-label="Feedbacks: Stamps or stickers. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Stamps or stickers"
                       >✓</a
                     >
                   </td>
@@ -1231,8 +1335,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Insert, move and resize local images. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Insert, move and resize local images"
+                      aria-label="Feedbacks: Insert, move and resize local images. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Insert, move and resize local images"
                       >✓</a
                     >
                   </td>
@@ -1241,8 +1345,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Crop screenshot exports. Confirmed. Checked 27 September 2026. Local clipboard and downloads only; sent feedback retains the complete screenshot. Read source."
-                      title="Confirmed. Checked 27 September 2026. Local clipboard and downloads only; sent feedback retains the complete screenshot. Read source for Feedbacks: Crop screenshot exports"
+                      aria-label="Feedbacks: Crop screenshot exports. Confirmed. Checked 30 September 2026. Local clipboard and downloads only; sent feedback retains the complete screenshot. Read source."
+                      title="Confirmed. Checked 30 September 2026. Local clipboard and downloads only; sent feedback retains the complete screenshot. Read source for Feedbacks: Crop screenshot exports"
                       >✓</a
                     >
                   </td>
@@ -1251,8 +1355,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: PNG, JPEG and WebP export. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: PNG, JPEG and WebP export"
+                      aria-label="Feedbacks: PNG, JPEG and WebP export. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: PNG, JPEG and WebP export"
                       >✓</a
                     >
                   </td>
@@ -1261,8 +1365,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Multi-page PDF export. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Multi-page PDF export"
+                      aria-label="Feedbacks: Multi-page PDF export. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Multi-page PDF export"
                       >✓</a
                     >
                   </td>
@@ -1271,8 +1375,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Copy annotated image. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Copy annotated image"
+                      aria-label="Feedbacks: Copy annotated image. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Copy annotated image"
                       >✓</a
                     >
                   </td>
@@ -2270,7 +2374,7 @@
                 disabled
               >
                 ←</button
-              ><span class="matrix-position" aria-live="polite">Feature 1 of 8</span
+              ><span class="matrix-position" aria-live="polite">Feature 1 of 11</span
               ><button
                 type="button"
                 class="matrix-next"
@@ -2286,7 +2390,7 @@
             aria-label="Recording and diagnostics comparison table"
             tabindex="0"
           >
-            <table style="--matrix-columns: 8">
+            <table class="matrix-columns-11">
               <caption>
                 Recording and diagnostics: Feedbacks and 15 website feedback tools,
                 compared by documented capability
@@ -2301,6 +2405,9 @@
                   <th scope="col">Trim video visually</th>
                   <th scope="col">Crop video frame</th>
                   <th scope="col">Session replay</th>
+                  <th scope="col">Shared playback and diagnostic timeline</th>
+                  <th scope="col">Timestamped frame annotations</th>
+                  <th scope="col">Portable complete thread archive</th>
                   <th scope="col">Console or network context</th>
                 </tr>
               </thead>
@@ -2312,8 +2419,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Record feedback video. Confirmed. Checked 27 September 2026. Up to five minutes of active recording; separate recorder tab and preview before Send. Read source."
-                      title="Confirmed. Checked 27 September 2026. Up to five minutes of active recording; separate recorder tab and preview before Send. Read source for Feedbacks: Record feedback video"
+                      aria-label="Feedbacks: Record feedback video. Confirmed. Checked 30 September 2026. Up to five minutes of active recording; separate recorder tab and preview before Send. Read source."
+                      title="Confirmed. Checked 30 September 2026. Up to five minutes of active recording; separate recorder tab and preview before Send. Read source for Feedbacks: Record feedback video"
                       >✓</a
                     >
                   </td>
@@ -2322,8 +2429,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Capture tab audio. Confirmed. Checked 27 September 2026. Tab audio and microphone are separate opt-ins, both off by default. Read source."
-                      title="Confirmed. Checked 27 September 2026. Tab audio and microphone are separate opt-ins, both off by default. Read source for Feedbacks: Capture tab audio"
+                      aria-label="Feedbacks: Capture tab audio. Confirmed. Checked 30 September 2026. Tab audio and microphone are separate opt-ins, both off by default. Read source."
+                      title="Confirmed. Checked 30 September 2026. Tab audio and microphone are separate opt-ins, both off by default. Read source for Feedbacks: Capture tab audio"
                       >✓</a
                     >
                   </td>
@@ -2332,8 +2439,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Microphone narration. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Microphone narration"
+                      aria-label="Feedbacks: Microphone narration. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Microphone narration"
                       >✓</a
                     >
                   </td>
@@ -2342,8 +2449,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Pause and resume recording. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Pause and resume recording"
+                      aria-label="Feedbacks: Pause and resume recording. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Pause and resume recording"
                       >✓</a
                     >
                   </td>
@@ -2352,8 +2459,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Trim video visually. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Trim video visually"
+                      aria-label="Feedbacks: Trim video visually. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Trim video visually"
                       >✓</a
                     >
                   </td>
@@ -2362,19 +2469,49 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Crop video frame. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Crop video frame"
+                      aria-label="Feedbacks: Crop video frame. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Crop video frame"
                       >✓</a
                     >
                   </td>
-                  <td class="matrix-no">
+                  <td class="matrix-yes">
                     <a
-                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
+                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/session-replay.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Session replay. No. Checked 27 September 2026. Read source."
-                      title="No. Checked 27 September 2026. Read source for Feedbacks: Session replay"
-                      >No</a
+                      aria-label="Feedbacks: Session replay. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Session replay"
+                      >✓</a
+                    >
+                  </td>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/session-replay.md"
+                      target="_blank"
+                      rel="nofollow noopener noreferrer"
+                      aria-label="Feedbacks: Shared playback and diagnostic timeline. Confirmed. Checked 30 September 2026. User-started recording. Replay, video and captured event channels share a playhead. Read source."
+                      title="Confirmed. Checked 30 September 2026. User-started recording. Replay, video and captured event channels share a playhead. Read source for Feedbacks: Shared playback and diagnostic timeline"
+                      >✓</a
+                    >
+                  </td>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/session-replay.md"
+                      target="_blank"
+                      rel="nofollow noopener noreferrer"
+                      aria-label="Feedbacks: Timestamped frame annotations. Confirmed. Checked 30 September 2026. Saved and annotated frames retain their recording time. Read source."
+                      title="Confirmed. Checked 30 September 2026. Saved and annotated frames retain their recording time. Read source for Feedbacks: Timestamped frame annotations"
+                      >✓</a
+                    >
+                  </td>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/session-replay.md"
+                      target="_blank"
+                      rel="nofollow noopener noreferrer"
+                      aria-label="Feedbacks: Portable complete thread archive. Confirmed. Checked 30 September 2026. Authorized thread archive with media, recordings, diagnostics and checksums. Read source."
+                      title="Confirmed. Checked 30 September 2026. Authorized thread archive with media, recordings, diagnostics and checksums. Read source for Feedbacks: Portable complete thread archive"
+                      >✓</a
                     >
                   </td>
                   <td class="matrix-yes">
@@ -2382,8 +2519,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/extension.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Console or network context. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Console or network context"
+                      aria-label="Feedbacks: Console or network context. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Console or network context"
                       >✓</a
                     >
                   </td>
@@ -2422,6 +2559,23 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="BugPin: Session replay not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="BugPin: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span aria-label="BugPin: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="BugPin: Portable complete thread archive not verified"
                       >Not verified</span
                     >
                   </td>
@@ -2476,6 +2630,24 @@
                   </td>
                   <td class="matrix-unknown">
                     <span
+                      aria-label="FasterFixes: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="FasterFixes: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="FasterFixes: Portable complete thread archive not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
                       aria-label="FasterFixes: Console or network context not verified"
                       >Not verified</span
                     >
@@ -2515,6 +2687,24 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="SitePing: Session replay not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="SitePing: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="SitePing: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="SitePing: Portable complete thread archive not verified"
                       >Not verified</span
                     >
                   </td>
@@ -2588,6 +2778,24 @@
                       >✓</a
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="OpenReplay + Spot: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="OpenReplay + Spot: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="OpenReplay + Spot: Portable complete thread archive not verified"
+                      >Not verified</span
+                    >
+                  </td>
                   <td class="matrix-yes">
                     <a
                       href="https://docs.openreplay.com/en/spot/"
@@ -2647,6 +2855,23 @@
                     >
                   </td>
                   <td class="matrix-unknown">
+                    <span
+                      aria-label="BugHerd: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span aria-label="BugHerd: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="BugHerd: Portable complete thread archive not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
                     <span aria-label="BugHerd: Console or network context not verified"
                       >Not verified</span
                     >
@@ -2695,6 +2920,24 @@
                     >
                   </td>
                   <td class="matrix-unknown">
+                    <span
+                      aria-label="Marker.io: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Marker.io: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Marker.io: Portable complete thread archive not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
                     <span aria-label="Marker.io: Console or network context not verified"
                       >Not verified</span
                     >
@@ -2734,6 +2977,24 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="MarkUp.io: Session replay not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="MarkUp.io: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="MarkUp.io: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="MarkUp.io: Portable complete thread archive not verified"
                       >Not verified</span
                     >
                   </td>
@@ -2778,6 +3039,24 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="Markup Hero: Session replay not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Markup Hero: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Markup Hero: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Markup Hero: Portable complete thread archive not verified"
                       >Not verified</span
                     >
                   </td>
@@ -2831,6 +3110,24 @@
                     >
                   </td>
                   <td class="matrix-unknown">
+                    <span
+                      aria-label="Redpen.ai: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Redpen.ai: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Redpen.ai: Portable complete thread archive not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
                     <span aria-label="Redpen.ai: Console or network context not verified"
                       >Not verified</span
                     >
@@ -2870,6 +3167,23 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="Pastel: Session replay not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Pastel: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span aria-label="Pastel: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Pastel: Portable complete thread archive not verified"
                       >Not verified</span
                     >
                   </td>
@@ -2918,6 +3232,23 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="Ruttl: Session replay not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Ruttl: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span aria-label="Ruttl: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Ruttl: Portable complete thread archive not verified"
                       >Not verified</span
                     >
                   </td>
@@ -2975,6 +3306,24 @@
                     >
                   </td>
                   <td class="matrix-unknown">
+                    <span
+                      aria-label="Superflow: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Superflow: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Superflow: Portable complete thread archive not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
                     <span aria-label="Superflow: Console or network context not verified"
                       >Not verified</span
                     >
@@ -3019,6 +3368,24 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="Usersnap: Session replay not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Usersnap: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Usersnap: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Usersnap: Portable complete thread archive not verified"
                       >Not verified</span
                     >
                   </td>
@@ -3075,6 +3442,24 @@
                       >✓</a
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Userback: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Userback: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Userback: Portable complete thread archive not verified"
+                      >Not verified</span
+                    >
+                  </td>
                   <td class="matrix-yes">
                     <a
                       href="https://userback.io/ai-info/"
@@ -3124,6 +3509,23 @@
                     >
                   </td>
                   <td class="matrix-unknown">
+                    <span
+                      aria-label="Atarim: Shared playback and diagnostic timeline not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span aria-label="Atarim: Timestamped frame annotations not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Atarim: Portable complete thread archive not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
                     <span aria-label="Atarim: Console or network context not verified"
                       >Not verified</span
                     >
@@ -3152,7 +3554,7 @@
                 disabled
               >
                 ←</button
-              ><span class="matrix-position" aria-live="polite">Feature 1 of 5</span
+              ><span class="matrix-position" aria-live="polite">Feature 1 of 7</span
               ><button
                 type="button"
                 class="matrix-next"
@@ -3168,7 +3570,7 @@
             aria-label="Team discussion and agent handoff comparison table"
             tabindex="0"
           >
-            <table style="--matrix-columns: 5">
+            <table class="matrix-columns-7">
               <caption>
                 Team discussion and agent handoff: Feedbacks and 15 website feedback
                 tools, compared by documented capability
@@ -3181,6 +3583,8 @@
                   <th scope="col">Visual or page context for agents</th>
                   <th scope="col">Owner-approved weighted reviewer guidance in MCP</th>
                   <th scope="col">GitHub Issues handoff</th>
+                  <th scope="col">Multiple GitHub repositories per project</th>
+                  <th scope="col">Versioned project guidance for agents</th>
                 </tr>
               </thead>
               <tbody>
@@ -3191,8 +3595,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/review-workflow.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Team comments and replies. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Team comments and replies"
+                      aria-label="Feedbacks: Team comments and replies. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Team comments and replies"
                       >✓</a
                     >
                   </td>
@@ -3201,8 +3605,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Feedback via MCP. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Feedback via MCP"
+                      aria-label="Feedbacks: Feedback via MCP. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Feedback via MCP"
                       >✓</a
                     >
                   </td>
@@ -3211,8 +3615,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Visual or page context for agents. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Visual or page context for agents"
+                      aria-label="Feedbacks: Visual or page context for agents. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Visual or page context for agents"
                       >✓</a
                     >
                   </td>
@@ -3221,8 +3625,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Owner-approved weighted reviewer guidance in MCP. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Owner-approved weighted reviewer guidance in MCP"
+                      aria-label="Feedbacks: Owner-approved weighted reviewer guidance in MCP. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Owner-approved weighted reviewer guidance in MCP"
                       >✓</a
                     >
                   </td>
@@ -3231,8 +3635,28 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/api.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: GitHub Issues handoff. Confirmed. Checked 27 September 2026. Optional GitHub App; reviewed issue drafts and project opt-in for status sync. Read source."
-                      title="Confirmed. Checked 27 September 2026. Optional GitHub App; reviewed issue drafts and project opt-in for status sync. Read source for Feedbacks: GitHub Issues handoff"
+                      aria-label="Feedbacks: GitHub Issues handoff. Confirmed. Checked 30 September 2026. Optional GitHub App; reviewed issue drafts and project opt-in for status sync. Read source."
+                      title="Confirmed. Checked 30 September 2026. Optional GitHub App; reviewed issue drafts and project opt-in for status sync. Read source for Feedbacks: GitHub Issues handoff"
+                      >✓</a
+                    >
+                  </td>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/api.md"
+                      target="_blank"
+                      rel="nofollow noopener noreferrer"
+                      aria-label="Feedbacks: Multiple GitHub repositories per project. Confirmed. Checked 30 September 2026. Multiple configured GitHub Apps; the owner selects one per project, with repositories across that App’s permitted installations. Read source."
+                      title="Confirmed. Checked 30 September 2026. Multiple configured GitHub Apps; the owner selects one per project, with repositories across that App’s permitted installations. Read source for Feedbacks: Multiple GitHub repositories per project"
+                      >✓</a
+                    >
+                  </td>
+                  <td class="matrix-yes">
+                    <a
+                      href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/agents.md"
+                      target="_blank"
+                      rel="nofollow noopener noreferrer"
+                      aria-label="Feedbacks: Versioned project guidance for agents. Confirmed. Checked 30 September 2026. Approved project instructions remain separate from untrusted captured content. Read source."
+                      title="Confirmed. Checked 30 September 2026. Approved project instructions remain separate from untrusted captured content. Read source for Feedbacks: Versioned project guidance for agents"
                       >✓</a
                     >
                   </td>
@@ -3273,6 +3697,18 @@
                       aria-label="BugPin: GitHub Issues handoff. Confirmed. Checked 27 September 2026. Read source."
                       title="Confirmed. Checked 27 September 2026. Read source for BugPin: GitHub Issues handoff"
                       >✓</a
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="BugPin: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="BugPin: Versioned project guidance for agents not verified"
+                      >Not verified</span
                     >
                   </td>
                 </tr>
@@ -3319,6 +3755,18 @@
                       >✓</a
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="FasterFixes: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="FasterFixes: Versioned project guidance for agents not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/siteping.html">SitePing</a></th>
@@ -3346,6 +3794,18 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="SitePing: GitHub Issues handoff not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="SitePing: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="SitePing: Versioned project guidance for agents not verified"
                       >Not verified</span
                     >
                   </td>
@@ -3394,6 +3854,18 @@
                       aria-label="OpenReplay + Spot: GitHub Issues handoff. Confirmed. Checked 27 September 2026. Read source."
                       title="Confirmed. Checked 27 September 2026. Read source for OpenReplay + Spot: GitHub Issues handoff"
                       >✓</a
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="OpenReplay + Spot: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="OpenReplay + Spot: Versioned project guidance for agents not verified"
+                      >Not verified</span
                     >
                   </td>
                 </tr>
@@ -3445,6 +3917,18 @@
                       >✓</a
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="BugHerd: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="BugHerd: Versioned project guidance for agents not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/marker-io.html">Marker.io</a></th>
@@ -3489,6 +3973,18 @@
                       >✓</a
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Marker.io: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Marker.io: Versioned project guidance for agents not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/markup-io.html">MarkUp.io</a></th>
@@ -3524,6 +4020,18 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="MarkUp.io: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="MarkUp.io: Versioned project guidance for agents not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/markup-hero.html">Markup Hero</a></th>
@@ -3551,6 +4059,18 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="Markup Hero: GitHub Issues handoff not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Markup Hero: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Markup Hero: Versioned project guidance for agents not verified"
                       >Not verified</span
                     >
                   </td>
@@ -3587,6 +4107,18 @@
                       aria-label="Redpen.ai: GitHub Issues handoff. Confirmed. Checked 27 September 2026. Read source."
                       title="Confirmed. Checked 27 September 2026. Read source for Redpen.ai: GitHub Issues handoff"
                       >✓</a
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Redpen.ai: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Redpen.ai: Versioned project guidance for agents not verified"
+                      >Not verified</span
                     >
                   </td>
                 </tr>
@@ -3630,6 +4162,18 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="Pastel: GitHub Issues handoff not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Pastel: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Pastel: Versioned project guidance for agents not verified"
                       >Not verified</span
                     >
                   </td>
@@ -3677,6 +4221,18 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Ruttl: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Ruttl: Versioned project guidance for agents not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/superflow.html">Superflow</a></th>
@@ -3704,6 +4260,18 @@
                   </td>
                   <td class="matrix-unknown">
                     <span aria-label="Superflow: GitHub Issues handoff not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Superflow: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Superflow: Versioned project guidance for agents not verified"
                       >Not verified</span
                     >
                   </td>
@@ -3756,6 +4324,18 @@
                       >✓</a
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Usersnap: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Usersnap: Versioned project guidance for agents not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row"><a href="/compare/userback.html">Userback</a></th>
@@ -3798,6 +4378,18 @@
                       aria-label="Userback: GitHub Issues handoff. Confirmed. Checked 27 September 2026. Read source."
                       title="Confirmed. Checked 27 September 2026. Read source for Userback: GitHub Issues handoff"
                       >✓</a
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Userback: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Userback: Versioned project guidance for agents not verified"
+                      >Not verified</span
                     >
                   </td>
                 </tr>
@@ -3844,6 +4436,18 @@
                       >Not verified</span
                     >
                   </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Atarim: Multiple GitHub repositories per project not verified"
+                      >Not verified</span
+                    >
+                  </td>
+                  <td class="matrix-unknown">
+                    <span
+                      aria-label="Atarim: Versioned project guidance for agents not verified"
+                      >Not verified</span
+                    >
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -3884,7 +4488,7 @@
             aria-label="Source and self-hosting comparison table"
             tabindex="0"
           >
-            <table style="--matrix-columns: 4">
+            <table class="matrix-columns-4">
               <caption>
                 Source and self-hosting: Feedbacks and 15 website feedback tools, compared
                 by documented capability
@@ -3906,8 +4510,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Public server source. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Public server source"
+                      aria-label="Feedbacks: Public server source. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Public server source"
                       >✓</a
                     >
                   </td>
@@ -3916,8 +4520,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: Whole service self-hosted. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: Whole service self-hosted"
+                      aria-label="Feedbacks: Whole service self-hosted. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: Whole service self-hosted"
                       >✓</a
                     >
                   </td>
@@ -3926,8 +4530,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/why-feedbacks.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: No required external account. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: No required external account"
+                      aria-label="Feedbacks: No required external account. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: No required external account"
                       >✓</a
                     >
                   </td>
@@ -3936,8 +4540,8 @@
                       href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/docs/self-hosting.md"
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      aria-label="Feedbacks: S3 in no-fee self-hosting. Confirmed. Checked 27 September 2026. Read source."
-                      title="Confirmed. Checked 27 September 2026. Read source for Feedbacks: S3 in no-fee self-hosting"
+                      aria-label="Feedbacks: S3 in no-fee self-hosting. Confirmed. Checked 30 September 2026. Read source."
+                      title="Confirmed. Checked 30 September 2026. Read source for Feedbacks: S3 in no-fee self-hosting"
                       >✓</a
                     >
                   </td>
@@ -4397,8 +5001,8 @@
             ><a href="/compare/openreplay.html"
               ><strong>OpenReplay + Spot</strong
               ><span
-                >A replay-led bug report and a marked screenshot preserve different kinds
-                of evidence.</span
+                >Two self-hosted ways to preserve a browser bug: compare replay, review
+                and developer handoff.</span
               ><span aria-hidden="true">↗</span></a
             >
           </div>
@@ -4477,12 +5081,7 @@
         </section>
         <div class="compare-index-end">
           <p>Own the full stack. Keep the thread.</p>
-          <a
-            class="button primary"
-            href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
-            target="_blank"
-            rel="nofollow noopener noreferrer"
-            >Get the Chrome extension</a
+          <a class="button primary" href="/docs/guide/getting-started">Set up Feedbacks</a
           ><a
             href="https://github.com/Softinator-TechLabs/feedbacks-oss"
             target="_blank"

@@ -533,3 +533,17 @@
   font-weight: 400;
   font-size: 11px;
 }
+
+/* External rules remain available under style-src 'self'. */
+.matrix-columns-4 {
+  --matrix-columns: 4;
+}
+.matrix-columns-7 {
+  --matrix-columns: 7;
+}
+.matrix-columns-9 {
+  --matrix-columns: 9;
+}
+.matrix-columns-11 {
+  --matrix-columns: 11;
+}

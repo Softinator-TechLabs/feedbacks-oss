@@ -15,6 +15,7 @@ const queue = [
   "agent-setup",
   "mcp-contract",
   "extension",
+  "webhooks",
 ].map((name) => `docs/${name}.md`);
 queue.push("plugins/feedbacks/skills/review-feedback/SKILL.md");
 const pages = new Map();
