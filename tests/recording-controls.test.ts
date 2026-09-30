@@ -11,11 +11,13 @@ test("microphone failure opens recovery once and keeps the error on the source t
     chrome: {
       runtime: {
         getURL: (path: string) => `chrome-extension://test/${path}`,
+        getContexts: async () =>
+          created.length ? [{ tabId: 21, documentUrl: created[0].url }] : [],
         onConnect: { addListener: (fn: any) => (connect = fn) },
       },
       tabs: {
         sendMessage: async (...args: any[]) => notices.push(args),
-        get: async () => ({ url: created[0].url }),
+        get: async () => ({ status: "complete" }),
         update: async (...args: any[]) => updated.push(args),
         create: async (input: any) => {
           created.push(input);

@@ -5,19 +5,32 @@ export function createRecordingControls({ chrome, sessionFor, startCapture }) {
   let audioRecoveryTabId;
   async function showAudioRecovery(code) {
     const url = chrome.runtime.getURL(`options.html?audioIssue=${code}#recording-audio`);
-    if (audioRecoveryTabId) {
+    const settingsUrl = new URL(url);
+    // tabs.get().url is unavailable without the broad tabs permission. Own
+    // extension contexts expose documentUrl and also survive worker restarts.
+    const contexts = chrome.runtime.getContexts
+      ? await chrome.runtime.getContexts({ contextTypes: ["TAB"] })
+      : [];
+    const matches = contexts.filter((context) => {
       try {
-        const tab = await chrome.tabs.get(audioRecoveryTabId);
-        const currentUrl = new URL(tab.url),
-          settingsUrl = new URL(url);
-        if (
+        const currentUrl = new URL(context.documentUrl);
+        return (
+          context.tabId >= 0 &&
           currentUrl.pathname === settingsUrl.pathname &&
           currentUrl.protocol === settingsUrl.protocol &&
           currentUrl.host === settingsUrl.host
-        ) {
-          await chrome.tabs.update(audioRecoveryTabId, { url, active: true });
-          return;
-        }
+        );
+      } catch {
+        return false;
+      }
+    });
+    const existing =
+      matches.find((context) => context.tabId === audioRecoveryTabId) || matches[0];
+    if (existing) {
+      try {
+        await chrome.tabs.update(existing.tabId, { url, active: true });
+        audioRecoveryTabId = existing.tabId;
+        return;
       } catch {
         // The settings tab was closed. Open one replacement below.
       }
