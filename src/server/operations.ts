@@ -1,3 +1,4 @@
+import { videoPreview } from "./video-preview.js";
 import { manageThreadDeletion, cleanupDeletedObjects } from "./thread-deletion.js";
 import {
   recordingPreflight,
@@ -142,6 +143,9 @@ export class Operations {
     let preview:
       | {
           objectKey: string;
+          video: boolean;
+          markings?: any[];
+          videoTimeMs?: number;
           maxDimension: number;
           crop?: { left: number; top: number; width: number; height: number };
         }
@@ -250,10 +254,31 @@ export class Operations {
           const result = await assets(db, a, i);
           if (name === "assets.get" && i.includeImage) {
             const row = await assetRow(db, a, i.assetId);
-            if (row.data.contentType !== "image/webp")
-              fail("VALIDATION", "Video has no image preview");
+            if (row.data.contentType === "video/webm" && i.crop)
+              fail("VALIDATION", "Video previews use videoTimeMs, not an image crop");
+            if (row.data.contentType !== "video/webm" && i.videoTimeMs !== undefined)
+              fail("VALIDATION", "videoTimeMs requires a video asset");
+            let markings =
+              i.showAnnotations && row.data.rendition === "screenshot"
+                ? row.data.markings
+                : undefined;
+            if (markings?.some((m: any) => m.annotationId && !m.number)) {
+              const thread = await db.one(
+                "SELECT data->'context'->'annotations' AS points FROM threads WHERE id=$1",
+                [row.thread_id],
+              );
+              markings = markings.map((m: any) => {
+                const index = (thread?.points ?? []).findIndex(
+                  (p: any) => p.id === m.annotationId,
+                );
+                return !m.number && index >= 0 ? { ...m, number: index + 1 } : m;
+              });
+            }
             preview = {
               objectKey: row.object_key,
+              video: row.data.contentType === "video/webm",
+              videoTimeMs: i.videoTimeMs,
+              markings,
               maxDimension: i.maxDimension,
               crop: i.crop,
             };
@@ -342,12 +367,30 @@ export class Operations {
       .then((result) => JSON.parse(JSON.stringify(result)));
     if (name === "threads.delete" || name === "threads.retryDeletion")
       return cleanupDeletedObjects(this.db, this.store, result.id);
-    if (preview)
+    if (preview?.video) {
+      Object.assign(
+        result,
+        await videoPreview(
+          this.store,
+          preview.objectKey,
+          preview.maxDimension,
+          preview.videoTimeMs,
+        ),
+      );
+      // Decoding is outside the DB lock. Recheck current scope/grants before
+      // returning pixels if access or the asset's project changed meanwhile.
+      await this.db.transaction(async (db) => {
+        await accountLock(db);
+        const a = await this.currentForOperation(db, actor, name);
+        await assetRow(db, a, (parsed.data as any).assetId);
+      });
+    } else if (preview)
       result.image = await assetPreview(
         this.store,
         preview.objectKey,
         preview.maxDimension,
         preview.crop,
+        preview.markings,
       );
     return result;
   }

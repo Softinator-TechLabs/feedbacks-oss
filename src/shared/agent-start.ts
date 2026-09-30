@@ -1,3 +1,4 @@
+import { reproductionSnapshot } from "./reproduction-context.js";
 import {
   discussionSnapshot,
   pointAnchor,
@@ -13,6 +14,8 @@ export async function startTask(
     threadId: string;
     snapshotRevision?: number;
     includeImage?: boolean;
+    videoTimeMs?: number;
+    includeGeometry?: boolean;
     includeRecordings?: boolean;
     annotationIds?: string[];
   },
@@ -137,7 +140,7 @@ export async function startTask(
   const incomplete: string[] = [];
   if (thread.body.length > 800) incomplete.push("body");
   if (
-    points.length > 3 ||
+    points.length > 20 ||
     points.some(
       (p: any) =>
         p.body.length > 240 ||
@@ -162,6 +165,9 @@ export async function startTask(
   const unlinked = (a: any) =>
     !a.recordingFrame?.annotationId && !a.markings?.some((m: any) => m.annotationId);
   const selected =
+    (input.videoTimeMs !== undefined
+      ? assets.find((a: any) => a.contentType?.startsWith("video/"))
+      : undefined) ??
     images.find((a: any) => linked(a) && a.rendition === "screenshot") ??
     images.find(linked) ??
     images.find((a: any) => unlinked(a) && a.rendition === "screenshot") ??
@@ -174,7 +180,7 @@ export async function startTask(
   if (selected) {
     const video = selected.contentType.startsWith("video/");
     media = {
-      ...assetSnapshot(selected, me?.serverOrigin),
+      ...assetSnapshot(selected, me?.serverOrigin, !input.includeGeometry),
       state: input.includeImage ? "available" : "not_requested",
       assetId: selected.id,
       width: selected.width,
@@ -195,27 +201,46 @@ export async function startTask(
         ? {
             durationMs: selected.durationMs,
             playbackVerified: false,
-            next: "Inspect the reported timestamp with a video-capable viewer; request a timestamp or still if needed. A saved frame does not prove playback.",
+            next: "Inspect the sampled frames. For another moment call feedbacks_asset with includeImage:true and videoTimeMs (asset video clock). Samples do not prove full playback.",
           }
         : {}),
       read: {
         tool: "feedbacks_asset",
-        input: { assetId: selected.id, includeImage: !video },
+        input: { assetId: selected.id, includeImage: true },
       },
     };
-    if (input.includeImage && !video) {
+    if (input.includeImage) {
       const result = await optional(
         "assets.get",
-        { assetId: selected.id, includeImage: true, maxDimension: 1280 },
+        {
+          assetId: selected.id,
+          includeImage: true,
+          maxDimension: 1280,
+          ...(video && input.videoTimeMs !== undefined
+            ? { videoTimeMs: input.videoTimeMs }
+            : {}),
+        },
         permitted("assets.get"),
       );
+      if (result.status === "available" && result.data.videoPreview)
+        media.videoPreview = result.data.videoPreview;
       if (result.status === "available" && result.data.image) {
         image = result.data.image;
         media.included = true;
         delete media.read;
       } else
         media.access =
-          result.status === "available" ? { status: "image_unavailable" } : result;
+          result.status === "available"
+            ? {
+                status: "image_unavailable",
+                ...(result.data.videoPreview?.reason
+                  ? { reason: result.data.videoPreview.reason }
+                  : {}),
+              }
+            : result;
+      if (media.access && video)
+        media.next =
+          "Preview unavailable; report the reason and request a saved still if needed. Do not inspect client credentials or invent playback.";
       if (media.access)
         media.state =
           media.access.status === "image_unavailable" ? "unavailable" : "denied";
@@ -418,20 +443,24 @@ export async function startTask(
       body: thread.body.slice(0, 800),
       ...(points.length
         ? {
-            points: points.slice(0, 3).map((p: any) => ({
+            points: points.slice(0, 20).map((p: any) => ({
               id: p.id,
               number: allPoints.findIndex((item: any) => item.id === p.id) + 1,
               text: p.body.slice(0, 240),
-              ...(pointAnchor(p.anchor) ? { anchor: pointAnchor(p.anchor) } : {}),
+              ...(input.includeGeometry && pointAnchor(p.anchor)
+                ? { anchor: pointAnchor(p.anchor) }
+                : {}),
               ...(p.textEdit
                 ? {
                     textEdit: {
                       original: p.textEdit.original.slice(0, 240),
                       replacement: p.textEdit.replacement.slice(0, 240),
-                      ...(p.textEdit.rects?.length
+                      ...(input.includeGeometry && p.textEdit.rects?.length
                         ? { rects: p.textEdit.rects.slice(0, 8) }
                         : {}),
-                      ...(p.textEdit.rects?.length > 8 ? { rectsIncomplete: true } : {}),
+                      ...(input.includeGeometry && p.textEdit.rects?.length > 8
+                        ? { rectsIncomplete: true }
+                        : {}),
                     },
                   }
                 : {}),
@@ -446,7 +475,14 @@ export async function startTask(
       ...(incomplete.length ? { incomplete } : {}),
     },
     trust: "untrusted_review_evidence",
-    reviewedPage: reviewedPage(thread.context.url, me?.serverOrigin, thread.id),
+    reviewedPage: reviewedPage(
+      safeContextUrl(thread.context.url) ?? "",
+      me?.serverOrigin,
+      thread.id,
+    ),
+    ...(reproductionSnapshot(thread.context)
+      ? { reproduction: reproductionSnapshot(thread.context) }
+      : {}),
     identity: me
       ? { actor: me.actor, member: me.member ?? { id: me.actor.userId } }
       : identity,

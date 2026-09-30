@@ -1,3 +1,4 @@
+import { reproductionSchema } from "../reproduction-context.js";
 import { diagnosticsSchema } from "../diagnostics.js";
 import {
   recordingSchema,
@@ -169,6 +170,7 @@ export const anchorSchema = z.object({
     .optional(),
 });
 export const contextSchema = z.object({
+  reproduction: reproductionSchema.optional(),
   url: z.string().url().max(4096),
   title: z.string().max(300).optional(),
   viewport: z.object({

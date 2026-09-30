@@ -63,7 +63,7 @@ export function discussionSnapshot(replies: any[] = [], budget = 3000) {
     ...(!complete ? { omitted: replies.length - items.length } : {}),
   };
 }
-export function assetSnapshot(asset: any, origin?: string) {
+export function assetSnapshot(asset: any, origin?: string, compact = false) {
   const base = safeContextUrl(origin);
   const markings = (asset.markings ?? []).slice(0, 8).map((m: any) => ({
     annotationId: m.annotationId,
@@ -79,16 +79,19 @@ export function assetSnapshot(asset: any, origin?: string) {
     type: asset.contentType,
     width: asset.width,
     height: asset.height,
+    ...(asset.durationMs ? { durationMs: asset.durationMs } : {}),
     ...(base
       ? { url: new URL(`/api/assets/${encodeURIComponent(asset.id)}`, base).href }
       : {}),
     ...(asset.recordingFrame ? { frame: asset.recordingFrame } : {}),
-    ...(asset.captureRegion ? { captureRegion: asset.captureRegion } : {}),
-    ...(asset.captureSections?.length
+    ...(!compact && asset.captureRegion ? { captureRegion: asset.captureRegion } : {}),
+    ...(!compact && asset.captureSections?.length
       ? { captureSections: asset.captureSections.slice(0, 8) }
       : {}),
-    ...(markings.length ? { markings, markingsCoordinates: "normalized-image" } : {}),
-    ...(asset.markings?.length > 8 || asset.captureSections?.length > 8
+    ...(!compact && markings.length
+      ? { markings, markingsCoordinates: "normalized-image" }
+      : {}),
+    ...(!compact && (asset.markings?.length > 8 || asset.captureSections?.length > 8)
       ? { incomplete: true }
       : {}),
   };
