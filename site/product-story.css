@@ -336,13 +336,26 @@
   }
 }
 
+.product-hero-demo {
+  min-width: 0;
+}
+/* Reserve the styled inspector footprint before custom-element/CSS upgrade. */
 .product-hero-demo feedbacks-demo[step="recording"] {
+  display: block;
+  min-height: calc(var(--recording-preview-height) + 370px);
   --recording-preview-height: 170px;
   --demo-caption-display: none;
   --recording-mode-display: none;
   --recording-guide-display: none;
   --recording-event-height: 80px;
   --demo-controls-gap: 0;
+}
+feedbacks-demo > picture,
+feedbacks-demo > img,
+feedbacks-demo > picture > img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 @media (max-width: 800px) {
   .product-hero-demo feedbacks-demo[step="recording"] {
@@ -354,5 +367,13 @@
 @media (min-width: 801px) and (max-height: 760px) {
   .product-hero-demo feedbacks-demo[step="recording"] {
     --recording-preview-height: 134px;
+  }
+}
+
+/* Reserve the complete footprint, but reveal no partial UI during loading.
+   A static picture remains available without JavaScript or after a load error. */
+@media (scripting: enabled) {
+  .product-hero-demo feedbacks-demo[reveal]:not([data-load-failed]) > picture {
+    visibility: hidden;
   }
 }

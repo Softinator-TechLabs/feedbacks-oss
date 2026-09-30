@@ -13,6 +13,7 @@ const types = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".ttf": "font/ttf",
+  ".woff2": "font/woff2",
   ".json": "application/json",
   ".xml": "application/xml",
 };
@@ -207,6 +208,20 @@ try {
         );
       }
       if (path === "/") {
+        for (const link of await page.locator("a[href]").all()) {
+          const href = await link.getAttribute("href");
+          if (href.startsWith("#") || href === "/") continue;
+          assert.equal(
+            await link.getAttribute("target"),
+            "_blank",
+            `${href}: landing destinations open a new tab`,
+          );
+          assert.match(
+            await link.getAttribute("rel"),
+            /noopener/,
+            `${href}: isolate the new tab`,
+          );
+        }
         assert.equal(
           await page.locator(".product-figure figcaption, .demo-guide").count(),
           0,

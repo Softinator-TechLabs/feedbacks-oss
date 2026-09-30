@@ -42,3 +42,11 @@ await cp(
   new URL("../site-docs/public/media/story/", import.meta.url),
   { recursive: true },
 );
+
+// Keep the original capture for reproduction; serve a sized modern fallback.
+await sharp(new URL("../site/public/media/workflow/point.png", import.meta.url).pathname)
+  .resize({ width: 1200, withoutEnlargement: true })
+  .webp({ quality: 82 })
+  .toFile(
+    new URL("../site/public/media/workflow/point-preview.webp", import.meta.url).pathname,
+  );

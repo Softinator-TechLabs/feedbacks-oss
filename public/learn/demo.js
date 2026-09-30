@@ -832,8 +832,56 @@
       this.paused = allPaused && soloPlayer !== this;
       players.add(this);
       let disposed = false,
+        stylesReady = false,
         recordingRuntime;
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-8"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
+      const template = document.createElement("template");
+      template.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-9"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
+      // Keep loaded styles connected across scene changes. Replacing the link
+      // would briefly expose the fallback and reflow the page on every tab click.
+      for (const node of [...this.shadowRoot.childNodes]) {
+        if (node.nodeName !== "LINK") node.remove();
+      }
+      for (const node of [...template.content.childNodes]) {
+        if (
+          node.nodeName === "LINK" &&
+          [...this.shadowRoot.querySelectorAll("link")].some(
+            (link) => link.href === node.href,
+          )
+        )
+          continue;
+        this.shadowRoot.append(node);
+      }
+      // Retain the server-rendered footprint until shadow styles are ready.
+      // A shadow-root stylesheet does not block painting like a head stylesheet.
+      const fallback = document.createElement("slot");
+      this.shadowRoot.prepend(fallback);
+      const stage = this.shadowRoot.querySelector(".depth-stage");
+      stage.hidden = true;
+      const loadFailed = () => this.setAttribute("data-load-failed", "");
+      const reveal = () => {
+        stage.hidden = false;
+        fallback.remove();
+        if (this.hasAttribute("reveal") && !this.motion.matches)
+          stage.animate([{ opacity: 0 }, { opacity: 1 }], {
+            duration: 280,
+            easing: "ease-out",
+          });
+      };
+      const stylesheets = [
+        this.shadowRoot.querySelector(`link[href="${base}demo.css?v=20260930-9"]`),
+      ];
+      if (this.getAttribute("step") === "recording") {
+        let reviewStyle = this.shadowRoot.querySelector(
+          `link[href="${base}recording-review.css?v=20260930-9"]`,
+        );
+        if (!reviewStyle) {
+          reviewStyle = document.createElement("link");
+          reviewStyle.rel = "stylesheet";
+          reviewStyle.href = base + "recording-review.css?v=20260930-9";
+          this.shadowRoot.prepend(reviewStyle);
+        }
+        stylesheets.push(reviewStyle);
+      }
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         frameBox = q(".frame"),
@@ -945,16 +993,10 @@
         screen.dataset.kind = f.image ? "capture" : "diagram";
         if (f.kind === "recording") {
           screen.dataset.kind = "recording";
-          const poster = document.createElement("img");
-          poster.className = "recording-poster";
-          poster.src = "/media/story/recording-desktop-0.webp";
-          poster.alt = "Actual Feedbacks recording review with sample events";
-          frameBox.append(poster);
           const generation = this.index;
-          import(base + "recording-runtime.js?v=20260930-8")
-            .then(({ mountRecording }) => {
-              if (disposed || this.index !== generation || !poster.isConnected) return;
-              poster.remove();
+          import(base + "recording-runtime.js?v=20260930-9")
+            .then(async ({ mountRecording }) => {
+              if (disposed || this.index !== generation) return;
               recordingRuntime = mountRecording(frameBox, {
                 base,
                 onSeek: (ms) => {
@@ -967,10 +1009,24 @@
                 },
                 onPause: () => setPaused(true),
               });
+              const [ready] = await Promise.all([
+                recordingRuntime.ready,
+                document.fonts.ready,
+              ]);
+              if (disposed || this.index !== generation) return;
+              if (!ready) {
+                loadFailed();
+                return;
+              }
+              // Reveal the preview, inspector and footer together, only after the
+              // real first frame has decoded. No intermediate poster or raw controls.
+              reveal();
               refreshMotion();
+              schedule();
             })
             .catch(() => {
               if (!disposed) {
+                loadFailed();
                 caption.dataset.error = "true";
                 caption.setAttribute("role", "alert");
                 caption.textContent =
@@ -1065,7 +1121,13 @@
         cancelAnimationFrame(raf);
         last = 0;
         depth?.refresh();
-        const running = visible && !this.paused && !document.hidden;
+        const running =
+          stylesReady &&
+          !stage.hidden &&
+          mounted &&
+          visible &&
+          !this.paused &&
+          !document.hidden;
         this.toggleAttribute("data-motion-running", running);
         if (running) raf = requestAnimationFrame(tick);
         else recordingRuntime?.paint(elapsed / frameDuration, false);
@@ -1073,7 +1135,7 @@
       const observer = new IntersectionObserver(
         ([entry]) => {
           visible = entry.isIntersecting;
-          if (visible && !mounted) render();
+          if (stylesReady && visible && !mounted) render();
           schedule();
         },
         { threshold: 0.25 },
@@ -1083,9 +1145,32 @@
         if (mounted) refreshMotion();
       });
       resize.observe(screen);
-      q("link").addEventListener("load", () => {
-        if (mounted) refreshMotion();
-      });
+      Promise.all(
+        stylesheets.map(
+          (link) =>
+            new Promise((resolve, reject) => {
+              if (link.sheet) resolve();
+              else {
+                link.addEventListener("load", resolve, { once: true });
+                link.addEventListener("error", reject, { once: true });
+              }
+            }),
+        ),
+      )
+        .then(() => {
+          if (disposed) return;
+          stylesReady = true;
+          if (scene.frames[0].kind !== "recording") {
+            stage.hidden = false;
+            fallback.remove();
+          }
+          if (visible && !mounted) render();
+          schedule();
+        })
+        .catch(() => {
+          // Keep a readable fallback for failed assets; never expose raw controls.
+          loadFailed();
+        });
       const visibility = () => schedule();
       document.addEventListener("visibilitychange", visibility);
       const reduce = () => {

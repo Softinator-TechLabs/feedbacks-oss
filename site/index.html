@@ -37,9 +37,9 @@
     <link rel="stylesheet" href="/product-story.css" />
     <link
       rel="preload"
-      href="/fonts/manrope-800.ttf"
+      href="/fonts/manrope-latin-v1.woff2"
       as="font"
-      type="font/ttf"
+      type="font/woff2"
       crossorigin
     />
     <script type="application/ld+json">
@@ -69,7 +69,7 @@
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
     </script>
-    <script defer src="/learn/demo.js?v=20260930-8"></script>
+    <script defer src="/learn/demo.js?v=20260930-9"></script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -82,8 +82,11 @@
       >
       <nav aria-label="Main navigation">
         <a href="#features">Features</a><a href="#comparisons">Compare</a
-        ><a href="/docs/">Docs</a
-        ><a href="https://github.com/Softinator-TechLabs/feedbacks-oss"
+        ><a href="/docs/" target="_blank" rel="noopener noreferrer">Docs</a
+        ><a
+          href="https://github.com/Softinator-TechLabs/feedbacks-oss"
+          target="_blank"
+          rel="noopener noreferrer"
           >GitHub
           <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 19 19 5M6 5h13v13" /></svg
@@ -106,13 +109,19 @@
           </p>
           <p class="license-line"><strong>100% free.</strong> Apache-2.0 open source.</p>
           <div class="product-actions">
-            <a class="start-button" href="/docs/guide/getting-started"
+            <a
+              class="start-button"
+              href="/docs/guide/getting-started"
+              target="_blank"
+              rel="noopener noreferrer"
               >Set up Feedbacks <span aria-hidden="true">↗</span></a
             >
             <div class="existing-team-action">
               <span>Team already has a setup?</span>
               <a
                 href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
+                target="_blank"
+                rel="noopener noreferrer"
                 >Install the Chrome extension</a
               >
             </div>
@@ -120,13 +129,21 @@
           <p class="product-footnote">The complete product, on your infrastructure.</p>
         </div>
         <div class="product-hero-demo">
-          <feedbacks-demo step="recording" depth
-            ><img
-              src="/media/story/recording-desktop-0.webp"
-              width="900"
-              height="655"
-              alt="Feedbacks video review with a shared timeline and timestamped activity."
-          /></feedbacks-demo>
+          <feedbacks-demo step="recording" depth reveal
+            ><picture>
+              <source
+                media="(max-width: 800px)"
+                srcset="/media/story/loading-mobile.webp"
+                width="708"
+                height="1346"
+              />
+              <img
+                src="/media/story/loading-desktop.webp"
+                width="1254"
+                height="1080"
+                alt="Feedbacks video review with a shared timeline and timestamped activity."
+              /> </picture
+          ></feedbacks-demo>
         </div>
       </section>
       <section class="capture-section wrap" aria-labelledby="capture-title">
@@ -162,7 +179,7 @@
             <div class="screen-stack">
               <feedbacks-demo id="story-demo" step="capture" depth
                 ><img
-                  src="/media/workflow/point.png"
+                  src="/media/workflow/point-preview.webp"
                   width="1440"
                   height="900"
                   loading="lazy"
@@ -172,7 +189,11 @@
             <div class="story-note" aria-live="polite">
               <div class="pencil-note" id="pencil-note">this button, right here.</div>
               <h3 id="scene-title">Right-click. <br />Say what needs changing.</h3>
-              <a id="scene-guide" href="/docs/guide/chrome-extension"
+              <a
+                id="scene-guide"
+                href="/docs/guide/chrome-extension"
+                target="_blank"
+                rel="noopener noreferrer"
                 >Install &amp; pin the extension
                 <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M5 19 19 5M6 5h13v13" /></svg
@@ -198,7 +219,11 @@
             Keep decisions beside the evidence. Copy the thread into Codex or Claude, with
             your team's discussion and page context attached.
           </p>
-          <a class="text-link" href="/docs/guide/mcp"
+          <a
+            class="text-link"
+            href="/docs/guide/mcp"
+            target="_blank"
+            rel="noopener noreferrer"
             >Connect your agent <span aria-hidden="true">→</span></a
           >
         </div>
@@ -225,7 +250,11 @@
             Select a phrase and suggest its replacement. The original text, element and
             screenshot travel together, so the developer knows exactly what you meant.
           </p>
-          <a class="text-link" href="/docs/guide/text-suggestions"
+          <a
+            class="text-link"
+            href="/docs/guide/text-suggestions"
+            target="_blank"
+            rel="noopener noreferrer"
             >See text suggestions <span aria-hidden="true">→</span></a
           >
         </div>
@@ -253,7 +282,11 @@
             events and captured diagnostics. Or let your agent read just the evidence it
             needs.
           </p>
-          <a class="text-link" href="/docs/guide/debug-bundles"
+          <a
+            class="text-link"
+            href="/docs/guide/debug-bundles"
+            target="_blank"
+            rel="noopener noreferrer"
             >Open the debugging guide <span aria-hidden="true">→</span></a
           >
         </div>
@@ -281,7 +314,11 @@
             assigned work, top-priority flags and team context, then recommend where to
             start.
           </p>
-          <a class="text-link" href="/docs/guide/agent-context"
+          <a
+            class="text-link"
+            href="/docs/guide/agent-context"
+            target="_blank"
+            rel="noopener noreferrer"
             >See how context works <span aria-hidden="true">→</span></a
           >
         </div>
@@ -308,41 +345,56 @@
           <h2 id="features-title">One place for the rest of the review.</h2>
         </div>
         <div class="feature-rows">
-          <a href="/docs/guide/github"
+          <a href="/docs/guide/github" target="_blank" rel="noopener noreferrer"
             ><strong>GitHub, across repositories</strong
             ><span
               >Use multiple Apps on one server, one per project. Connect repositories
               across that App’s permitted installations.</span
             ><span aria-hidden="true">↗</span></a
           >
-          <a href="/docs/guide/review-feedback"
+          <a href="/docs/guide/review-feedback" target="_blank" rel="noopener noreferrer"
             ><strong>A queue your team can work through</strong
             ><span
               >Assignments, categories, tags, saved views, point progress and verified
               outcomes.</span
             ><span aria-hidden="true">↗</span></a
           >
-          <a href="/docs/guide/more-ways-to-review#guest-review"
+          <a
+            href="/docs/guide/more-ways-to-review#guest-review"
+            target="_blank"
+            rel="noopener noreferrer"
             ><strong>Invite clients into the review</strong
             ><span>Scoped guest links and published page annotations.</span
             ><span aria-hidden="true">↗</span></a
           >
-          <a href="/docs/guide/more-ways-to-review#documents"
+          <a
+            href="/docs/guide/more-ways-to-review#documents"
+            target="_blank"
+            rel="noopener noreferrer"
             ><strong>Review documents, too</strong
             ><span>Discuss PDF and image attachments alongside website feedback.</span
             ><span aria-hidden="true">↗</span></a
           >
-          <a href="/docs/guide/more-ways-to-review#widget-and-surveys"
+          <a
+            href="/docs/guide/more-ways-to-review#widget-and-surveys"
+            target="_blank"
+            rel="noopener noreferrer"
             ><strong>Hear from people on your website</strong
             ><span>Optional text-feedback widget, surveys and NPS.</span
             ><span aria-hidden="true">↗</span></a
           >
-          <a href="/docs/guide/more-ways-to-review#scheduled-qa"
+          <a
+            href="/docs/guide/more-ways-to-review#scheduled-qa"
+            target="_blank"
+            rel="noopener noreferrer"
             ><strong>Keep checking public pages</strong
             ><span>Opt-in scheduled QA, run history and visual baselines.</span
             ><span aria-hidden="true">↗</span></a
           >
-          <a href="/docs/guide/more-ways-to-review#native-apps-and-webhooks"
+          <a
+            href="/docs/guide/more-ways-to-review#native-apps-and-webhooks"
+            target="_blank"
+            rel="noopener noreferrer"
             ><strong>Connect the rest of your workflow</strong
             ><span>iOS and Android integrations, signed webhooks, API and CLI.</span
             ><span aria-hidden="true">↗</span></a
@@ -360,7 +412,7 @@
           </div>
           <ol class="setup-path">
             <li>
-              <a href="/docs/guide/self-host"
+              <a href="/docs/guide/self-host" target="_blank" rel="noopener noreferrer"
                 ><span class="setup-number">1</span><strong>Start the server</strong
                 ><span
                   >DevOps · installation guide
@@ -369,7 +421,10 @@
               ></a>
             </li>
             <li>
-              <a href="/docs/guide/chrome-extension"
+              <a
+                href="/docs/guide/chrome-extension"
+                target="_blank"
+                rel="noopener noreferrer"
                 ><span class="setup-number">2</span><strong>Connect Chrome</strong
                 ><span
                   >Install → pin → paste server URL
@@ -378,7 +433,7 @@
               ></a>
             </li>
             <li>
-              <a href="/docs/guide/team-setup"
+              <a href="/docs/guide/team-setup" target="_blank" rel="noopener noreferrer"
                 ><span class="setup-number">3</span><strong>Bring your team</strong
                 ><span
                   >Projects, context &amp; members
@@ -387,7 +442,7 @@
               ></a>
             </li>
             <li>
-              <a href="/docs/guide/mcp"
+              <a href="/docs/guide/mcp" target="_blank" rel="noopener noreferrer"
                 ><span class="setup-number">4</span><strong>Connect your agent</strong
                 ><span
                   >Developer · personal MCP setup
@@ -405,7 +460,7 @@
       <section class="comparisons wrap" id="comparisons" aria-labelledby="compare-title">
         <div class="comparison-heading">
           <h2 id="compare-title">Compare your options.</h2>
-          <a href="/compare/"
+          <a href="/compare/" target="_blank" rel="noopener noreferrer"
             >See the full comparison <span aria-hidden="true">→</span></a
           >
         </div>
@@ -414,38 +469,77 @@
           agent workflows. Every confirmed capability links to its source.
         </p>
         <nav class="comparison-links" aria-label="Compare Feedbacks with other tools">
-          <a href="/compare/bugherd.html">BugHerd</a>
-          <a href="/compare/marker-io.html">Marker.io</a>
-          <a href="/compare/markup-io.html">MarkUp.io</a>
-          <a href="/compare/markup-hero.html">Markup Hero</a>
-          <a href="/compare/redpen-ai.html">Redpen.ai</a>
-          <a href="/compare/pastel.html">Pastel</a>
-          <a href="/compare/ruttl.html">Ruttl</a>
-          <a href="/compare/superflow.html">Superflow</a>
-          <a href="/compare/usersnap.html">Usersnap</a>
-          <a href="/compare/userback.html">Userback</a>
-          <a href="/compare/atarim.html">Atarim</a>
-          <a href="/compare/bugpin.html">BugPin</a>
-          <a href="/compare/fasterfixes.html">FasterFixes</a>
-          <a href="/compare/siteping.html">SitePing</a>
-          <a href="/compare/openreplay.html">OpenReplay + Spot</a>
+          <a href="/compare/bugherd.html" target="_blank" rel="noopener noreferrer"
+            >BugHerd</a
+          >
+          <a href="/compare/marker-io.html" target="_blank" rel="noopener noreferrer"
+            >Marker.io</a
+          >
+          <a href="/compare/markup-io.html" target="_blank" rel="noopener noreferrer"
+            >MarkUp.io</a
+          >
+          <a href="/compare/markup-hero.html" target="_blank" rel="noopener noreferrer"
+            >Markup Hero</a
+          >
+          <a href="/compare/redpen-ai.html" target="_blank" rel="noopener noreferrer"
+            >Redpen.ai</a
+          >
+          <a href="/compare/pastel.html" target="_blank" rel="noopener noreferrer"
+            >Pastel</a
+          >
+          <a href="/compare/ruttl.html" target="_blank" rel="noopener noreferrer"
+            >Ruttl</a
+          >
+          <a href="/compare/superflow.html" target="_blank" rel="noopener noreferrer"
+            >Superflow</a
+          >
+          <a href="/compare/usersnap.html" target="_blank" rel="noopener noreferrer"
+            >Usersnap</a
+          >
+          <a href="/compare/userback.html" target="_blank" rel="noopener noreferrer"
+            >Userback</a
+          >
+          <a href="/compare/atarim.html" target="_blank" rel="noopener noreferrer"
+            >Atarim</a
+          >
+          <a href="/compare/bugpin.html" target="_blank" rel="noopener noreferrer"
+            >BugPin</a
+          >
+          <a href="/compare/fasterfixes.html" target="_blank" rel="noopener noreferrer"
+            >FasterFixes</a
+          >
+          <a href="/compare/siteping.html" target="_blank" rel="noopener noreferrer"
+            >SitePing</a
+          >
+          <a href="/compare/openreplay.html" target="_blank" rel="noopener noreferrer"
+            >OpenReplay + Spot</a
+          >
         </nav>
       </section>
     </main>
     <footer class="site-footer wrap landing-footer">
       <div>
         <a class="wordmark" href="/">feedbacks.</a>
-        <p>By <a href="https://softinator.ai">Softinator</a>. Built in the open.</p>
+        <p>
+          By
+          <a href="https://softinator.ai" target="_blank" rel="noopener noreferrer"
+            >Softinator</a
+          >. Built in the open.
+        </p>
       </div>
 
       <nav aria-label="Footer navigation">
         <a
           href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/CONTRIBUTING.md"
+          target="_blank"
+          rel="noopener noreferrer"
           >Contribute</a
         ><a
           href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/HEAD/SECURITY.md"
+          target="_blank"
+          rel="noopener noreferrer"
           >Security</a
-        ><a href="/privacy.html">Privacy</a>
+        ><a href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy</a>
       </nav>
     </footer>
     <script type="module" src="/site.js"></script>

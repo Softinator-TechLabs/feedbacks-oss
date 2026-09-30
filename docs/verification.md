@@ -39,6 +39,8 @@ Agent setup handoff changes also run `npm run qa:agent-setup` after building. Th
 
 ## Public website story
 
+Public-site QA also runs `scripts/public-site-performance-qa.mjs`: a cold-load regression with deliberately delayed shadow CSS/runtime delivery at desktop, laptop and mobile sizes. It keeps accumulated layout shifts below 0.1, checks compressed font transfer and verifies the readable static fallback on stylesheet failure. These are controlled local checks, not a Lighthouse score or real-user Core Web Vitals certification.
+
 After `npm run build:site`, run `npm run qa:public-site` to check the landing, feature guides and comparisons under production-style CSP. It checks desktop/mobile layout, same-origin links and assets, interactive timeline controls, paused/reduced-motion behavior, no-JavaScript content and scrollable comparison tables. Captures use synthetic examples and remain under ignored `.impeccable/review/`. Reproduce the current inspector and sharing artwork with `node scripts/capture-public-recording.mjs` and `node scripts/capture-site-social.mjs`; provenance is in [website assets](website-assets.md).
 `npm run qa:github-apps` exercises owner-page registration in isolated Chromium
 with synthetic GitHub responses: an actual cross-site return with Strict session

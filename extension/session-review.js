@@ -335,7 +335,6 @@ export function createSessionReview(
     follow.setAttribute("aria-pressed", String(followPlayback));
     follow.textContent = followPlayback ? "Following playback" : "Follow playback";
     if (followPlayback) {
-      selected = "everything";
       focusedSeq = null;
       lastAutoScrollSeq = null;
       render();
@@ -410,7 +409,7 @@ export function createSessionReview(
         ? reviewState(recording.events, at)
         : null;
     if (playing && followPlayback) {
-      selected = "everything";
+      // Follow time within the visitor's chosen channel; never undo a tab click.
       focusedSeq = null;
     }
     const rows =
@@ -437,7 +436,7 @@ export function createSessionReview(
       b.textContent = `${channel[0].toUpperCase() + channel.slice(1)} (${count})`;
       b.setAttribute("aria-selected", String(channel === selected));
     }
-    if (playing && selected === "everything") {
+    if (playing && followPlayback) {
       const reached = rows.findLastIndex((event) => event.atMs <= at);
       if (reached >= 0) eventPage = Math.floor(reached / 200);
     }
@@ -616,7 +615,6 @@ export function createSessionReview(
     }
     if (at >= recording.durationMs) seek(0);
     focusedSeq = null;
-    if (followPlayback) selected = "everything";
     playing = true;
     play.textContent = "Pause";
     if (videoElement) void videoElement.play().catch(() => pause());

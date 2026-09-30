@@ -83,6 +83,9 @@
 }
 .recording-demo .review-tabs [aria-selected="true"] {
   border-bottom-color: var(--accent);
+  /* Selection already has color + underline. Changing label width can wrap
+     a tab onto another row and move the entire page on some system fonts. */
+  font-weight: 400;
 }
 .recording-demo .review-event-controls {
   margin: 7px 0;
@@ -102,6 +105,7 @@
   margin: 5px 0;
 }
 .recording-demo .review-events {
+  height: var(--recording-event-height, 160px);
   max-height: var(--recording-event-height, 160px);
   scrollbar-color: #9caca0 #f6f7f3;
   scrollbar-width: thin;

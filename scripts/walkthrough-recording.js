@@ -165,7 +165,7 @@ export function mountRecording(
   root.className = "recording-demo";
   const stylesheet = document.createElement("link");
   stylesheet.rel = "stylesheet";
-  stylesheet.href = `${base}recording-review.css`;
+  stylesheet.href = `${base}recording-review.css?v=20260930-9`;
   const canvas = document.createElement("canvas");
   canvas.className = "recording-page";
   canvas.width = 1024;
@@ -251,6 +251,10 @@ export function mountRecording(
   }
   draw();
   return {
+    ready: chair.decode().then(
+      () => true,
+      () => false,
+    ),
     paint(progress, isPlaying = false) {
       if (disposed) return;
       const next = clamp(progress) * durationMs;

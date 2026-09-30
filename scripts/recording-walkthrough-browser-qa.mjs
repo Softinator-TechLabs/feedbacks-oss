@@ -127,6 +127,60 @@ try {
     await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
     false,
   );
+  // Playback must follow the selected category instead of undoing each click.
+  const playerHeight = await page
+    .locator(".recording-demo")
+    .evaluate((el) => el.offsetHeight);
+  await page.evaluate(() => player.paint(0.75, true));
+  for (const channel of [
+    "Activity",
+    "Network",
+    "Console",
+    "Performance",
+    "Environment",
+  ]) {
+    const tab = page.getByRole("tab", { name: new RegExp("^" + channel) });
+    await tab.click();
+    await page.evaluate(() => player.paint(0.8, true));
+    assert.equal(
+      await tab.getAttribute("aria-selected"),
+      "true",
+      `${channel} stays selected during playback`,
+    );
+    const height = await page
+      .locator(".recording-demo")
+      .evaluate((el) => el.offsetHeight);
+    assert.ok(
+      Math.abs(height - playerHeight) <= 1,
+      `${channel} must not move the page below the player (${playerHeight} → ${height})`,
+    );
+  }
+  await page.getByRole("tab", { name: /^Everything/ }).click();
+  // Different OS fonts can put a wrapping tab row right on its width boundary.
+  // Selecting a tab must not add/remove a row by changing the label's weight.
+  const unstableWidths = await page.locator(".recording-demo").evaluate((root) => {
+    const originalStyle = root.getAttribute("style");
+    const failures = [];
+    root.style.fontFamily = "Arial, sans-serif";
+    for (let width = 280; width <= 640; width += 2) {
+      root.style.width = `${width}px`;
+      const heights = [...root.querySelectorAll('[role="tab"]')].map((tab) => {
+        tab.click();
+        return root.offsetHeight;
+      });
+      if (Math.max(...heights) - Math.min(...heights) > 1)
+        failures.push({ width, heights });
+    }
+    if (originalStyle === null) root.removeAttribute("style");
+    else root.setAttribute("style", originalStyle);
+    return failures;
+  });
+  assert.deepEqual(
+    unstableWidths,
+    [],
+    "tab selection keeps wrapping stable across font metrics and widths",
+  );
+  await page.getByRole("tab", { name: /^Everything/ }).click();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.evaluate(() => player.paint(0.98, true));
   await page.waitForTimeout(150);
