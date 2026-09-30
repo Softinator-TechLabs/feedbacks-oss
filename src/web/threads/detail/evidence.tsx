@@ -279,6 +279,59 @@ export function ReviewEvidence({
           </p>
         </div>
       </div>
+      {threadClosed && (
+        <p className="muted">
+          This thread is closed. Reopen it to continue individual points; earlier point
+          decisions are kept.
+        </p>
+      )}
+      <ErrorNotice error={action.error} />
+      {action.notice && <Notice>{action.notice}</Notice>}
+      {action.error.includes("CONFLICT") && onSaved && (
+        <button
+          type="button"
+          disabled={action.busy}
+          onClick={() =>
+            void action.run(async () =>
+              onSaved(await api<Thread>("threads.get", { threadId: thread.id })),
+            )
+          }
+        >
+          Load latest point status
+        </button>
+      )}
+      {mainCaptures.map((asset) => (
+        <EvidenceScreenshot
+          asset={asset}
+          id={`asset-${asset.id}`}
+          className="review-main-capture"
+          loading="eager"
+          hiddenLayers={hiddenLayers(asset.baseAssetId ?? asset.id)}
+          onToggleLayer={toggleLayer}
+          captureMarker={thread.context.captureMarker}
+          thread={thread}
+          onSaved={canWrite ? onSaved : undefined}
+          key={asset.baseAssetId ?? asset.id}
+        />
+      ))}
+      {extraCaptures.length > 0 && (
+        <details className="review-extra-captures">
+          <summary>More page captures ({extraCaptures.length})</summary>
+          {extraCaptures.map((asset) => (
+            <EvidenceScreenshot
+              asset={asset}
+              id={`asset-${asset.id}`}
+              loading="lazy"
+              hiddenLayers={hiddenLayers(asset.baseAssetId ?? asset.id)}
+              onToggleLayer={toggleLayer}
+              captureMarker={thread.context.captureMarker}
+              thread={thread}
+              onSaved={canWrite ? onSaved : undefined}
+              key={asset.baseAssetId ?? asset.id}
+            />
+          ))}
+        </details>
+      )}
       <div className="review-point-overview">
         <p>
           {counts.open} open · {counts.resolved} resolved
@@ -337,59 +390,6 @@ export function ReviewEvidence({
           </div>
         )}
       </div>
-      {threadClosed && (
-        <p className="muted">
-          This thread is closed. Reopen it to continue individual points; earlier point
-          decisions are kept.
-        </p>
-      )}
-      <ErrorNotice error={action.error} />
-      {action.notice && <Notice>{action.notice}</Notice>}
-      {action.error.includes("CONFLICT") && onSaved && (
-        <button
-          type="button"
-          disabled={action.busy}
-          onClick={() =>
-            void action.run(async () =>
-              onSaved(await api<Thread>("threads.get", { threadId: thread.id })),
-            )
-          }
-        >
-          Load latest point status
-        </button>
-      )}
-      {mainCaptures.map((asset) => (
-        <EvidenceScreenshot
-          asset={asset}
-          id={`asset-${asset.id}`}
-          className="review-main-capture"
-          loading="eager"
-          hiddenLayers={hiddenLayers(asset.baseAssetId ?? asset.id)}
-          onToggleLayer={toggleLayer}
-          captureMarker={thread.context.captureMarker}
-          thread={thread}
-          onSaved={canWrite ? onSaved : undefined}
-          key={asset.baseAssetId ?? asset.id}
-        />
-      ))}
-      {extraCaptures.length > 0 && (
-        <details className="review-extra-captures">
-          <summary>More page captures ({extraCaptures.length})</summary>
-          {extraCaptures.map((asset) => (
-            <EvidenceScreenshot
-              asset={asset}
-              id={`asset-${asset.id}`}
-              loading="lazy"
-              hiddenLayers={hiddenLayers(asset.baseAssetId ?? asset.id)}
-              onToggleLayer={toggleLayer}
-              captureMarker={thread.context.captureMarker}
-              thread={thread}
-              onSaved={canWrite ? onSaved : undefined}
-              key={asset.baseAssetId ?? asset.id}
-            />
-          ))}
-        </details>
-      )}
       <ol className="review-point-list">
         {filteredPoints
           .slice(pointOffset, pointOffset + pointsPerPage)
@@ -413,6 +413,15 @@ export function ReviewEvidence({
                           ? `${item.textEdit.original} → ${item.textEdit.replacement || "Remove selected text"}`
                           : item.body}
                       </span>
+                      {state !== "open" && (
+                        <small className="review-point-state">
+                          {state === "removed"
+                            ? "Removed"
+                            : state === "closed"
+                              ? "Closed"
+                              : "Resolved"}
+                        </small>
+                      )}
                       {thread.annotationPlans?.[item.id] &&
                         thread.annotationPlans[item.id].priority !== "normal" && (
                           <small>
@@ -421,14 +430,8 @@ export function ReviewEvidence({
                           </small>
                         )}
                     </span>
-                    <span className="review-point-state">
-                      {state === "open"
-                        ? "Open"
-                        : state === "removed"
-                          ? "Removed"
-                          : state === "closed"
-                            ? "Closed"
-                            : "Resolved"}
+                    <span className="review-point-disclosure">
+                      {expandedPoints.has(item.id) ? "Collapse" : "Expand"}
                     </span>
                     <Icon name="arrowRight" />
                   </summary>

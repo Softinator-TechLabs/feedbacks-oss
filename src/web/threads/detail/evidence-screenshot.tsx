@@ -83,7 +83,7 @@ export function EvidenceScreenshot({
     className === "review-main-capture"
       ? 520
       : className === "review-point-figure"
-        ? 220
+        ? undefined
         : 320;
   const layerControls = layers.length > 0 && (
     <span
@@ -154,6 +154,27 @@ export function EvidenceScreenshot({
         <span>{imageLabel(asset)}</span>
         {embeddedPins && <span className="review-legacy-pins">Pins saved in image</span>}
       </figcaption>
+      <div className="review-image-actions">
+        {layerControls}
+        <button
+          type="button"
+          className="review-pin-toggle"
+          onClick={() => setExpanded(true)}
+        >
+          <Icon name="expand" /> Expand image
+        </button>
+        {onSaved && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(true);
+              setExpanded(true);
+            }}
+          >
+            <Icon name="edit" /> Edit annotations
+          </button>
+        )}
+      </div>
       <button
         type="button"
         className="review-image-frame review-image-open"
@@ -167,15 +188,6 @@ export function EvidenceScreenshot({
       >
         {image}
       </button>
-      <div className="review-image-actions">
-        <button
-          type="button"
-          className="review-pin-toggle"
-          onClick={() => setExpanded(true)}
-        >
-          <Icon name="expand" /> Expand image
-        </button>
-      </div>
       <dialog
         ref={dialog}
         className="evidence-image-dialog"

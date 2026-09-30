@@ -385,3 +385,87 @@ test(
     }
   },
 );
+
+test(
+  "inline point review exposes layers, clear disclosure labels and full-width evidence",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const f = await evidenceViewerFixture({ writable: true, pointCount: 20 });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      await page.goto(f.url, { waitUntil: "domcontentloaded" });
+      const point = page.locator(".review-point-details").first();
+      const summary = point.locator("summary.review-point-summary");
+      assert.match(await summary.innerText(), /Expand/);
+      assert.doesNotMatch(await summary.innerText(), /Open/);
+      await summary.press("Enter");
+      await summary.getByText("Collapse", { exact: true }).waitFor();
+      const figure = point.locator(".review-point-figure");
+      await figure.getByRole("button", { name: "Hide points", exact: true }).click();
+      assert.equal(
+        await figure.locator(".review-image-open .review-image-pin").count(),
+        0,
+      );
+      await figure.getByRole("button", { name: "Show points", exact: true }).click();
+      await figure.getByRole("button", { name: "Show element outline" }).click();
+      await figure.getByRole("button", { name: "Hide text selection" }).click();
+      assert.equal(
+        await figure.locator(".review-image-open .review-element-outline").count(),
+        1,
+      );
+      assert.equal(
+        await figure.locator(".review-image-open .review-text-selection").count(),
+        0,
+      );
+      for (const width of [1440, 900, 390]) {
+        await page.setViewportSize({ width, height: 1000 });
+        const image = (await figure.locator(".review-image-open").boundingBox())!;
+        const detail = (await point.locator(".review-point-detail").boundingBox())!;
+        assert.ok(
+          image.width > detail.width * 0.85,
+          "inline evidence uses the point width",
+        );
+        assert.equal(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          true,
+        );
+        const controls = await figure
+          .locator(".review-image-actions button")
+          .evaluateAll((buttons) =>
+            buttons.map((button) => button.getBoundingClientRect().height),
+          );
+        assert.ok(
+          controls.every((height) => height >= 44 && height <= 46),
+          "consistent control heights",
+        );
+        await point.screenshot({ path: `.local/evidence-qa/inline-point-${width}.png` });
+      }
+      await figure.getByRole("button", { name: "Expand image", exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      assert.equal(await dialog.locator(".review-element-outline").count(), 1);
+      assert.equal(await dialog.locator(".review-text-selection").count(), 0);
+      await dialog.getByRole("button", { name: "Show text selection" }).click();
+      await dialog.getByRole("button", { name: "Close", exact: true }).click();
+      assert.equal(
+        await figure.locator(".review-image-open .review-text-selection").count(),
+        1,
+      );
+      await figure.getByRole("button", { name: "Edit annotations", exact: true }).click();
+      await page.getByRole("dialog").getByLabel("Screenshot marking canvas").waitFor();
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "Switch capture example" }).click();
+      const main = page.locator(".review-main-capture");
+      const overview = page.locator(".review-point-overview");
+      assert.ok(
+        (await overview.boundingBox())!.y >
+          (await main.boundingBox())!.y + (await main.boundingBox())!.height,
+        "point controls follow the image",
+      );
+    } finally {
+      await browser.close();
+      await f.close();
+    }
+  },
+);
