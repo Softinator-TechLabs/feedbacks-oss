@@ -102,7 +102,7 @@ export default defineConfig({
       { icon: "github", link: "https://github.com/Softinator-TechLabs/feedbacks-oss" },
     ],
     footer: {
-      message: "Free software. Apache-2.0. Your infrastructure.",
+      message: "Feedbacks documentation. Built in the open.",
       copyright: "© Softinator TechLabs",
     },
   },

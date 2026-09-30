@@ -177,7 +177,7 @@ function detail(entry, index) {
       </section>
       <aside class="compare-limits">
         <h2>What Feedbacks does today.</h2>
-        <p>Feedbacks is free Apache-2.0 software, including session replay and debugging exports. Recording starts explicitly and is bounded to five minutes; video has a 40 MiB limit. Optional audio, network bodies and masking have separate controls. Edited video omits DOM replay. Screenshot diagnostic artifacts can contain raw browser values and do not inherit session masking. Check capture coverage and review evidence before sharing.</p>
+        <p>Recording starts explicitly and is bounded to five minutes; video has a 40 MiB limit. Optional audio, network bodies and masking have separate controls. Edited video omits DOM replay. Screenshot diagnostic artifacts can contain raw browser values and do not inherit session masking. Check capture coverage and review evidence before sharing.</p>
         <p>GitHub requires one configured App and approved installations. Multiple repositories and organizations are supported; independent App credential sets are not. Incoming comments do not automatically create Issues. Self-hosting infrastructure and any AI-model subscriptions are supplied by your team.</p>
         <p>Reviewer expertise belongs in owner-approved guidance. A private member note or profile field is not automatically shared with an ordinary agent. Guidance helps interpretation but never grants permissions or guarantees how a model will decide.</p>
       </aside>

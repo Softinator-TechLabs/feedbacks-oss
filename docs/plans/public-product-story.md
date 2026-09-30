@@ -32,6 +32,8 @@ Static website and documentation only. No migrations, application permissions or
 
 ## Decision log
 
+- Present each selling point once per page. Licensing belongs in the landing hero; remove duplicate license banners, repeated feature-paywall copy and redundant role links. Each later section must explain a distinct capability or next step.
+
 - Preserve the existing visual identity and actual capture walkthrough; add product-specific diagrams instead of decorative imagery.
 - Separate guided session capture from always-on visitor analytics, and full thread archives from agent-local recording exports.
 - Self-hosting infrastructure is operator-provided. The software has no license fee.
