@@ -218,9 +218,12 @@ export function Help({ actor, projects }: { actor?: Actor; projects: Project[] }
       </ol>
       {actor?.owner && (
         <section className="help-github-apps">
-          <h2>GitHub integration · optional</h2>
-          <p>Manage the Apps configured on this server and their project assignments.</p>
-          <a href="/github-apps">Manage GitHub Apps</a>
+          <h2>Integrations · optional</h2>
+          <p>
+            Connect your tools, choose encrypted or environment storage, and manage their
+            project connections.
+          </p>
+          <a href="/integrations">Manage integrations</a>
         </section>
       )}
       <p className="muted help-footer">

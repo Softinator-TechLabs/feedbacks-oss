@@ -8,6 +8,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 - [Thread evidence types and expanded screenshot review](thread-evidence-viewer.md)
 - [Public product story and current feature guides](public-product-story.md)
+- [GitHub Apps managed from Feedbacks](github-app-management.md)
+
 - [Multiple GitHub Apps per server](multiple-github-apps.md)
 
 - [Reliable agent task intake and completion](agent-task-flow.md)

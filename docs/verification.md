@@ -40,3 +40,12 @@ Agent setup handoff changes also run `npm run qa:agent-setup` after building. Th
 ## Public website story
 
 After `npm run build:site`, run `npm run qa:public-site` to check the landing, feature guides and comparisons under production-style CSP. It checks desktop/mobile layout, same-origin links and assets, interactive timeline controls, paused/reduced-motion behavior, no-JavaScript content and scrollable comparison tables. Captures use synthetic examples and remain under ignored `.impeccable/review/`. Reproduce the current inspector and sharing artwork with `node scripts/capture-public-recording.mjs` and `node scripts/capture-site-social.mjs`; provenance is in [website assets](website-assets.md).
+`npm run qa:github-apps` exercises owner-page registration in isolated Chromium
+with synthetic GitHub responses: an actual cross-site return with Strict session
+cookies, normal CSRF completion, both credential storage choices, project/repo
+selection, management/reconnect, the common owner-only Integrations hub, direct walkthrough loading, keyboard flow and
+desktop/mobile light/dark bounds. Build server/web first. It creates no real
+GitHub App and does not replace acceptance of the actual GitHub approval UI.
+Focused encrypted-catalog, recovery/race and worker checks live in
+`tests/github-managed-apps.test.ts`; provider/server/connection isolation is checked in
+`tests/integration-vault.test.ts`. Native tests verify migration 28.

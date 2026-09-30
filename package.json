@@ -44,7 +44,8 @@
     "docs:generate": "node --import tsx scripts/generate-operation-docs.ts && node scripts/generate-agent-guides.mjs",
     "docs:check": "node --import tsx scripts/generate-operation-docs.ts --check && node scripts/generate-agent-guides.mjs --check",
     "qa:public-site": "node scripts/public-site-browser-qa.mjs",
-    "qa:walkthrough-browser": "node scripts/walkthrough-browser-qa.mjs"
+    "qa:walkthrough-browser": "node scripts/walkthrough-browser-qa.mjs",
+    "qa:github-apps": "node scripts/github-apps-browser-qa.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",

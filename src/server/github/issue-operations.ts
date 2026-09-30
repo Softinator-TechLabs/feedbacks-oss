@@ -1,3 +1,4 @@
+import { currentGithubApp } from "../github-managed-apps.js";
 import { randomUUID } from "node:crypto";
 import type { Actor } from "../../shared/contracts.js";
 import type { Database } from "../db.js";
@@ -12,7 +13,6 @@ import { quickIssueDraft } from "../issue-draft.js";
 import type { AssetStore } from "../assets.js";
 import {
   projectGithubAppId,
-  requireGithubApp,
   historicalGithubAppId,
   assertGithubOwner,
 } from "../github-app-config.js";
@@ -163,7 +163,7 @@ export async function githubIssueOperation(
         );
       checkRevision(row, i.revision);
       const appId = projectGithubAppId(config, project);
-      const app = requireGithubApp(config, appId);
+      const app = await currentGithubApp(tx, config, appId, repo.owner);
       assertGithubOwner(app, repo.owner);
       const requestId = randomUUID();
       await tx.query(

@@ -62,6 +62,7 @@ import { manageGuestProjectLinks } from "./guest-project-links.js";
 import { manageWebhooks } from "./webhooks.js";
 import { manageQa, compareQaImages } from "./scheduled-qa.js";
 import { manageSurveys } from "./surveys.js";
+import { integrationCatalog } from "./integrations/catalog.js";
 import {
   documents,
   documentUploadPreflight,
@@ -153,6 +154,11 @@ export class Operations {
         const auth = new Auth(db),
           a = await this.currentForOperation(db, actor, name),
           i: any = parsed.data;
+        if (name === "integrations.catalog") {
+          if (a.kind !== "human") fail("FORBIDDEN", "Human server owner required", 403);
+          ownerOnly(a);
+          return integrationCatalog({ db, config: this.config, store: this.store });
+        }
         if (name === "auth.me") {
           const member = await db.one("SELECT id,name FROM users WHERE id=$1", [
             a.userId,

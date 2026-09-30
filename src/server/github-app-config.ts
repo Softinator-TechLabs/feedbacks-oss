@@ -9,6 +9,7 @@ export type GithubAppConfig = {
   slug: string;
   privateKey: string;
   owners: string[];
+  loadPrivateKey?: (owner?: string) => Promise<string>;
 };
 
 const appInput = z

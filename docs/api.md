@@ -114,15 +114,46 @@ Figma's [file URL format](https://developers.figma.com/docs/rest-api/file-endpoi
 ## Optional GitHub App
 
 `github.apps {}` returns bounded configured App metadata and `defaultAppId` for
-the owner page at `/github-apps`. It requires a signed-in human server owner,
+the owner page at `/github-apps`, reached from **Setup → Manage integrations**.
+The common `integrations.catalog` operation lists implemented providers with safe
+active/retained connection and storage counts. It requires a current human server
+owner and never loads credential values. See [adapter boundaries](integrations.md).
+GitHub management requires a signed-in human server owner,
 works without projects, makes no GitHub requests and never returns credentials.
 The page uses the owner's existing authorized project list to show assignments,
-missing Apps and project links. It is reachable through **Setup → Manage GitHub
-Apps** and each project's owner-only **Manage configured Apps** link.
+missing Apps and project links. It is reachable through **Setup → Manage integrations → GitHub** and each project's owner-only **Manage configured Apps** link.
 
-Set `GITHUB_APP_ID`, `GITHUB_APP_SLUG` and `GITHUB_APP_PRIVATE_KEY_BASE64` together on the server. The key is a base64-encoded RSA private key and belongs only in deployment secrets. Grant the App repository metadata read and Issues read/write, then install it on the intended repository. In the project's **GitHub** tab, save an exact `https://github.com/OWNER/REPO` URL and select **Connect project**. Existing MCP agent handoff needs none of these settings.
+Human server owners can create and manage Apps through the web page without
+per-App deployment edits. `github.appSetupStart {account,accountType}` returns a
+private manifest request and session-bound state. The browser registration
+bridge posts it to GitHub; the return bridge calls
+`github.appSetupComplete {state,code}` through the normal cookie/CSRF transport.
+State expires in 30 minutes, is single-use and must match the same signed-in
+session/current owner. At most 10 attempts are retained per owner in that window.
+The server rechecks owner rights after GitHub exchange and private storage work.
 
-Additional Apps use `GITHUB_APPS_JSON` deployment secrets; see [multiple-App configuration](self-hosting.md#multiple-github-apps). `github.appSelect {projectId,revision,appId}` selects a configured numeric GitHub App ID (string) or `null` to disable the project's App. Only a signed-in human server owner may assign it. Ordinary project updates preserve the assignment; clients cannot assign an App through `projects.update`. A change clears connected repositories and disables sync; pending Issue requests, uncertain syncs and active sync leases return `GITHUB_PENDING`. `github.connection` includes `appId`, `appName`, `approvedAccounts`, `canSelectApp`, and owner-only `apps` metadata (ID/name/slug/accounts, never keys). Removed credentials keep the selected ID visible with `configured:false`. Every additional App restricts access to its deployment-approved GitHub accounts.
+`github.appImport {appId,revision,privateKey}` verifies an existing RSA PEM and
+registration; the web page reads a selected PEM file. Use `revision:null` for an
+unmanaged App and the current revision to replace a managed key.
+`github.appAdopt {appId}` optionally migrates an environment App using its
+existing server key. `github.appUpdate {appId,revision,name}` renames the local
+label; `github.appEnable {appId,revision,enabled}` disconnects/reconnects it.
+All require a human server owner; agent/extension keys are denied. Metadata
+includes `source:server|feedbacks`, `enabled`, managed `revision`, registration
+`account` and `accountType`. Outputs/events never contain PEMs or exchange codes.
+Manual imports verify permissions and identity, not GitHub visibility.
+
+Managed keys are encrypted in PostgreSQL with per-record AES-256-GCM keys in the
+existing private AssetStore. Both stores are needed for restore. Missing or
+modified storage returns `GITHUB_STORAGE_UNAVAILABLE`; same-ID key replacement
+can restore pending-request reconciliation and preserves disconnected state.
+Managed records override environment credentials, so disabled Apps cannot fall
+back to old env keys. Metadata is loaded afresh per operation/worker and current
+availability is checked under the account lock before write reservation.
+See [both storage choices and recovery](self-hosting.md#multiple-github-apps).
+Existing environment configuration remains supported without migration.
+
+`github.appSelect {projectId,revision,appId}` selects a configured numeric GitHub App ID (string) or `null` to disable the project's App. Only a signed-in human server owner may assign it. Ordinary project updates preserve the assignment; clients cannot assign an App through `projects.update`. A change clears connected repositories and disables sync; pending Issue requests, uncertain syncs and active sync leases return `GITHUB_PENDING`. `github.connection` includes `appId`, `appName`, `approvedAccounts`, `canSelectApp`, and owner-only `apps` metadata (ID/name/slug/accounts, never keys). Removed credentials keep the selected ID visible with `configured:false`. Managed Apps restrict access to verified registration accounts; existing approved-account policy is preserved on adoption/key replacement.
 
 Issue requests store `github_app_id`, and verified links include `githubAppId`. Creation uses the selected App; refresh and reconciliation use recorded provenance. Status sync requires the Issue's original App to match the current project App (`GITHUB_APP_CHANGED` otherwise). Legacy unlabelled records use only the legacy default, never a newly selected App. Removing or disabling an App cannot fall back to another configured App. Migration 27 adds the nullable request identity.
 

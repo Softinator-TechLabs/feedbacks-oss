@@ -23,10 +23,43 @@ const githubAppMetadata = z.object({
   name: z.string(),
   slug: z.string(),
   owners: z.array(z.string()).max(20),
+  source: z.enum(["server", "feedbacks"]).optional(),
+  account: z.string().optional(),
+  enabled: z.boolean().optional(),
+  revision: revision.optional(),
+  accountType: z.enum(["organization", "personal"]).optional(),
 });
+
+const githubAppId = z.string().regex(/^[1-9]\d{0,19}$/);
 
 export const projectsInputs = {
   "github.apps": z.object({}),
+  "github.appSetupStart": z
+    .object({
+      account: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/),
+      accountType: z.enum(["organization", "personal"]),
+    })
+    .strict(),
+  "github.appSetupComplete": z
+    .object({
+      state: z.string().regex(/^[A-Za-z0-9_-]{32,100}$/),
+      code: z.string().regex(/^[A-Za-z0-9_-]{20,200}$/),
+    })
+    .strict(),
+  "github.appImport": z
+    .object({
+      appId: githubAppId,
+      privateKey: z.string().min(1).max(16000),
+      revision: revision.nullable(),
+    })
+    .strict(),
+  "github.appAdopt": z.object({ appId: githubAppId }).strict(),
+  "github.appUpdate": z
+    .object({ appId: githubAppId, revision, name: z.string().trim().min(1).max(100) })
+    .strict(),
+  "github.appEnable": z
+    .object({ appId: githubAppId, revision, enabled: z.boolean() })
+    .strict(),
   "projects.context.get": z.object({ projectId: id }),
   "projects.context.save": z.object({ projectId: id, ...contextTextInput }),
   "projects.list": z.object({}),
@@ -133,6 +166,15 @@ export const projectsInputs = {
 };
 
 export const projectsOutputs = {
+  "github.appSetupStart": z.object({
+    actionUrl: z.string().url(),
+    manifest: z.string().max(8000),
+  }),
+  "github.appSetupComplete": githubAppMetadata,
+  "github.appImport": githubAppMetadata,
+  "github.appAdopt": githubAppMetadata,
+  "github.appUpdate": githubAppMetadata,
+  "github.appEnable": githubAppMetadata,
   "github.apps": z.object({
     defaultAppId: z.string().nullable(),
     apps: z.array(githubAppMetadata).max(21),

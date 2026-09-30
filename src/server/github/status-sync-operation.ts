@@ -1,3 +1,4 @@
+import { currentGithubApp } from "../github-managed-apps.js";
 import type { Actor } from "../../shared/contracts.js";
 import type { Database } from "../db.js";
 import type { Config } from "../config.js";
@@ -82,6 +83,12 @@ export async function githubStatusSyncOperation(
       project,
       `https://github.com/${link.repository}`,
     );
+    await currentGithubApp(
+      tx,
+      config,
+      requireSyncAppId(config, project, link),
+      repo.owner,
+    );
     return {
       repo,
       number: issueNumber(i.issueUrl, repo),
@@ -135,6 +142,7 @@ export async function githubStatusSyncOperation(
             entry.url === issue.url && entry.verification === "github_verified",
         );
         if (!link) fail("GITHUB_ISSUE_INVALID", "Verified Issue link changed", 409);
+        await currentGithubApp(tx, config, target.appId, target.repo.owner);
         await tx.query(
           `INSERT INTO github_status_sync(thread_id,issue_url) VALUES($1,$2)
            ON CONFLICT(thread_id) DO NOTHING`,

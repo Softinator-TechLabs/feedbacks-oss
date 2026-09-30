@@ -142,8 +142,8 @@ export function ProjectGithub({
             <details>
               <summary>Use a private App from another GitHub account</summary>
               <p>
-                Your organization can keep its own private App. Ask your server operator
-                to configure it, then choose it for this project.
+                Your organization can keep its own private App. The server owner can add
+                it from Manage configured Apps, then choose it for this project.
               </p>
               {React.createElement("feedbacks-demo", { step: "github" })}
               <a href="https://feedbacks.softinator.ai/docs/guide/github">

@@ -525,6 +525,9 @@ test("GitHub pending writes block moves and preserved issue links cannot start t
         githubAppSlug: "fixture",
       } as any,
       {
+        withConfig() {
+          return this;
+        },
         readIssue: async () => {
           contacted = true;
           throw Error("unexpected external read");

@@ -45,7 +45,7 @@ try {
       purgeExpiredPairings(db),
       drainExpiredDiagnosticEvidence(db, store),
       deliverWebhooks(db),
-      pollGithubStatusSync(db, config),
+      pollGithubStatusSync(db, config, undefined, store),
       runScheduledQa(db),
     ])
       .then((results) => {
