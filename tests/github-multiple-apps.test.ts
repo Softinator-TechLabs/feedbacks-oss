@@ -62,7 +62,7 @@ import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
 import { GithubApp, githubRepo } from "../src/server/github-app.js";
 import { pollGithubStatusSync } from "../src/server/github-status-worker.js";
-import { outputSchemas } from "../src/shared/contracts.js";
+import { operationRegistry, outputSchemas } from "../src/shared/contracts.js";
 
 async function fixture(legacy = false) {
   const pg = new PGlite(),
@@ -362,6 +362,9 @@ test("App selection is human-owner-only, revision checked, account restricted an
     });
     const agent = await f.ops.auth.authenticate(key.token);
     await assert.rejects(f.select(p, "102", agent), { code: "FORBIDDEN" });
+    await assert.rejects(f.ops.executeOperation(agent, "github.apps", {}), {
+      code: "FORBIDDEN",
+    });
     const member = await f.ops.executeOperation(f.owner, "members.create", {
       email: "maintainer@example.test",
       name: "Maintainer",
@@ -388,6 +391,9 @@ test("App selection is human-owner-only, revision checked, account restricted an
     );
     maintainer = await f.ops.auth.authenticate(undefined, renewed.token);
     await assert.rejects(f.select(p, "102", maintainer), { code: "FORBIDDEN" });
+    await assert.rejects(f.ops.executeOperation(maintainer, "github.apps", {}), {
+      code: "FORBIDDEN",
+    });
     await assert.rejects(f.select(p, "999"), { code: "GITHUB_UNAVAILABLE" });
     p = await f.select(p, "101");
     const before = f.calls.length;
@@ -417,6 +423,34 @@ test("App selection is human-owner-only, revision checked, account restricted an
     assert.equal(info.canSelectApp, false);
     assert.deepEqual(info.apps, []);
     assert.equal(info.appId, "102");
+  } finally {
+    await f.pg.close();
+  }
+});
+
+test("owner App inventory is available before creating projects and exposes only safe metadata", async () => {
+  const f = await fixture(true);
+  try {
+    const inventory = await f.ops.executeOperation(f.owner, "github.apps", {});
+    assert.equal(operationRegistry["github.apps"].readOnly, true);
+    outputSchemas["github.apps"].parse(inventory);
+    assert.equal(inventory.defaultAppId, "101");
+    assert.deepEqual(
+      inventory.apps.map((app: any) => app.id),
+      ["101", "102"],
+    );
+    assert.deepEqual(inventory.apps[1].owners, ["second-team"]);
+    assert.ok(!JSON.stringify(inventory).includes("PRIVATE KEY"));
+    assert.ok(!JSON.stringify(inventory).includes(entries[0].privateKeyBase64));
+    assert.equal(f.calls.length, 0);
+    f.config.githubAppId = undefined;
+    f.config.githubAppSlug = undefined;
+    f.config.githubAppPrivateKey = undefined;
+    f.config.githubApps = [];
+    assert.deepEqual(await f.ops.executeOperation(f.owner, "github.apps", {}), {
+      defaultAppId: null,
+      apps: [],
+    });
   } finally {
     await f.pg.close();
   }

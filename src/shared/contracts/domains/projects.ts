@@ -18,7 +18,15 @@ import {
   documentOutput,
 } from "../output-common.js";
 
+const githubAppMetadata = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  owners: z.array(z.string()).max(20),
+});
+
 export const projectsInputs = {
+  "github.apps": z.object({}),
   "projects.context.get": z.object({ projectId: id }),
   "projects.context.save": z.object({ projectId: id, ...contextTextInput }),
   "projects.list": z.object({}),
@@ -125,6 +133,10 @@ export const projectsInputs = {
 };
 
 export const projectsOutputs = {
+  "github.apps": z.object({
+    defaultAppId: z.string().nullable(),
+    apps: z.array(githubAppMetadata).max(21),
+  }),
   "projects.context.get": contextTextOutput,
   "projects.context.save": contextTextOutput,
   "documents.upload": documentOutput,
@@ -156,16 +168,7 @@ export const projectsOutputs = {
     appName: z.string().nullable(),
     approvedAccounts: z.array(z.string()).max(20),
     canSelectApp: z.boolean(),
-    apps: z
-      .array(
-        z.object({
-          id: z.string(),
-          name: z.string(),
-          slug: z.string(),
-          owners: z.array(z.string()).max(20),
-        }),
-      )
-      .max(21),
+    apps: z.array(githubAppMetadata).max(21),
     configured: z.boolean(),
     connected: z.boolean(),
     statusSyncEnabled: z.boolean(),

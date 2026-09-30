@@ -113,6 +113,13 @@ Figma's [file URL format](https://developers.figma.com/docs/rest-api/file-endpoi
 
 ## Optional GitHub App
 
+`github.apps {}` returns bounded configured App metadata and `defaultAppId` for
+the owner page at `/github-apps`. It requires a signed-in human server owner,
+works without projects, makes no GitHub requests and never returns credentials.
+The page uses the owner's existing authorized project list to show assignments,
+missing Apps and project links. It is reachable through **Setup → Manage GitHub
+Apps** and each project's owner-only **Manage configured Apps** link.
+
 Set `GITHUB_APP_ID`, `GITHUB_APP_SLUG` and `GITHUB_APP_PRIVATE_KEY_BASE64` together on the server. The key is a base64-encoded RSA private key and belongs only in deployment secrets. Grant the App repository metadata read and Issues read/write, then install it on the intended repository. In the project's **GitHub** tab, save an exact `https://github.com/OWNER/REPO` URL and select **Connect project**. Existing MCP agent handoff needs none of these settings.
 
 Additional Apps use `GITHUB_APPS_JSON` deployment secrets; see [multiple-App configuration](self-hosting.md#multiple-github-apps). `github.appSelect {projectId,revision,appId}` selects a configured numeric GitHub App ID (string) or `null` to disable the project's App. Only a signed-in human server owner may assign it. Ordinary project updates preserve the assignment; clients cannot assign an App through `projects.update`. A change clears connected repositories and disables sync; pending Issue requests, uncertain syncs and active sync leases return `GITHUB_PENDING`. `github.connection` includes `appId`, `appName`, `approvedAccounts`, `canSelectApp`, and owner-only `apps` metadata (ID/name/slug/accounts, never keys). Removed credentials keep the selected ID visible with `configured:false`. Every additional App restricts access to its deployment-approved GitHub accounts.

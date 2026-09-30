@@ -14,6 +14,7 @@ import {
 import { human } from "./operation-common.js";
 
 export const connectionOperationNames = new Set([
+  "github.apps",
   "github.appSelect",
   "github.connection",
   "github.connect",
@@ -31,6 +32,21 @@ export async function githubConnectionOperation(
   config: Config,
   client: GithubApp,
 ) {
+  if (name === "github.apps")
+    return db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await human(tx, actor);
+      ownerOnly(a);
+      return {
+        defaultAppId: config.githubAppId ?? null,
+        apps: configuredGithubApps(config).map(({ id, name, slug, owners }) => ({
+          id,
+          name,
+          slug,
+          owners,
+        })),
+      };
+    });
   if (name === "github.appSelect")
     return db.transaction(async (tx) => {
       await accountLock(tx);

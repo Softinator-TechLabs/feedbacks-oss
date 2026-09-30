@@ -79,7 +79,7 @@ export function ProjectGithub({
                         appId,
                       }),
                     );
-                  }, "GitHub App saved. Connect the selected repositories to continue.");
+                  }, "GitHub App saved.");
                 }}
               >
                 <Field label="GitHub App">
@@ -128,6 +128,11 @@ export function ProjectGithub({
                 Approved GitHub accounts: {connection.data.approvedAccounts.join(", ")}.
               </p>
             )}
+            {connection.data.canSelectApp && (
+              <p>
+                <a href="/github-apps">Manage configured Apps</a>
+              </p>
+            )}
             {connection.data.canSelectApp && project.githubConnected && (
               <p className="muted">
                 Changing App disconnects this project's repositories and turns off status
@@ -137,10 +142,10 @@ export function ProjectGithub({
             <details>
               <summary>Use a private App from another GitHub account</summary>
               <p>
-                Each private App belongs to one GitHub account or organization. Ask DevOps
-                to configure that account's App on this server, then select it here. Sign
-                in to GitHub with an account allowed to install that App.
+                Your organization can keep its own private App. Ask your server operator
+                to configure it, then choose it for this project.
               </p>
+              {React.createElement("feedbacks-demo", { step: "github" })}
               <a href="https://feedbacks.softinator.ai/docs/guide/github">
                 GitHub App setup guide
               </a>

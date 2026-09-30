@@ -126,6 +126,8 @@ export const operationDescriptions: Record<string, string> = {
     "After an agreed engineering handoff, register the actual canonical GitHub, Jira Cloud or Linear Issue URL using the current thread revision. Manually registered links are reported, not remotely verified; linking never resolves the thread. The optional connected GitHub App provides a separate verified creation path.",
   "threads.figmaReference":
     "A signed-in human project maintainer can register, replace or clear one Figma file reference after design work is agreed. Supply a Figma file URL or null to clear. The server stores a canonical file URL with an optional node-id and never transfers discussion or assets to Figma. This browser-only operation does not verify Figma access or change thread work status.",
+  "github.apps":
+    "List safe deployment-configured GitHub App metadata and the legacy default identity. Signed-in human server owners only; no GitHub requests or credentials are returned.",
   "github.appSelect":
     "A signed-in human server owner selects or clears this project’s GitHub App from deployment-configured credentials. Uses the current project revision; changing App clears connections and pauses sync. Pending external writes must be reconciled first. Credentials are never returned.",
   "github.connection":

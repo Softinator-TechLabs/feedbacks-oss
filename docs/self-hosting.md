@@ -118,6 +118,20 @@ source control and shell history. Base64 is encoding, not encryption. Restart
 the server after changing deployment secrets. Invalid configuration fails
 startup with a generic error that does not print the secret.
 
+The owner can open **Setup → Manage GitHub Apps** to see configured Apps,
+approved GitHub accounts and assigned projects. Project links open App selection
+and repository connection; each App has an installation-management link. Missing
+credentials remain visible by their assigned App ID. This page works before any
+projects exist and provides empty-state setup steps. Configuration is loaded
+from deployment secrets; the page does not display or store App keys.
+
+The page reuses the Setup walkthrough player for three steps: GitHub App,
+server configuration, and project connection. App IDs and deployment details
+are available through expandable sections. For registration, follow
+[GitHub's registration guide](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)
+(checked 2026-09-30); an organization owner or authorized App manager can register
+the App under that organization.
+
 Keep `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, and `GITHUB_APP_PRIVATE_KEY_BASE64`
 unchanged to preserve the existing default App. Projects without an explicit
 assignment keep that default. New installations using only `GITHUB_APPS_JSON`

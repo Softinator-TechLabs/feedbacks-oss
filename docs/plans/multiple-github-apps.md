@@ -1,6 +1,7 @@
 # Multiple GitHub Apps per Feedbacks server
 
-Status: implemented and verified locally; PR CI is the integration gate. Date: 2026-09-30.
+Status: implemented and verified locally; required PR CI remains the integration gate.
+Date: 2026-09-30.
 
 ## Outcome and design
 
@@ -37,6 +38,17 @@ credentials fail closed. Legacy unlabelled Issues use only the legacy default.
 - [x] UI: native App selector, owner-only save, selected account/install guidance,
       explicit reconnect notice, missing configuration and empty states. Verify
       desktop/mobile, keyboard controls and both owner/maintainer views.
+- [x] Central owner page: **Setup → GitHub Apps** lists safe configured App
+      metadata, approved accounts, assigned projects and missing credentials.
+      Link to project assignment/install actions and explain GitHub registration,
+      server configuration and project selection. Keep credential changes in
+      deployment secrets; deny inventory access to members and agent/extension
+      tokens. Verify empty/missing states and desktop/mobile keyboard behavior.
+- [x] Simple guidance: reuse the Setup walkthrough player for three illustrated
+      steps (GitHub registration, operator configuration, project connection).
+      Keep IDs and operator instructions behind disclosure; verify manual steps,
+      reduced motion, keyboard controls and mobile bounds in the existing
+      walkthrough acceptance suite.
 - [x] Docs and local verification: update canonical setup/API/operations guidance,
       regenerate catalogs; run focused tests, full checks and native PostgreSQL.
       Review final diff. Required PR CI remains the integration gate.
@@ -52,22 +64,37 @@ rotation. Never distribute server App secrets to another installation.
 
 ## Verification receipt
 
-- Node 24 `npm run check`: passed; 433 tests passed, 24 opt-in browser/native
+The complete per-project, central inventory and illustrated setup change is
+tracked in [PR #160](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/160).
+Its initial implementation at `ff8f575695e5d8e223f770a6ab9720b34f34fcd1`
+passed all six required CI jobs. Final-head CI is recorded on the PR.
+
+- Node 24 `npm run check`: passed; 434 tests passed, 24 opt-in browser/native
   checks skipped, zero failures. Includes formatting, generated contracts/docs,
   types, application/site/extension/plugin builds, isolated smoke and release
   boundary checks.
 - `npm run test:postgres`: all three native PostgreSQL checks passed, including
   concurrent migration application through migration 27.
-- Focused multiple-App/quick-Issue/status-sync tests: all 13 passed. Two regression
+- Focused multiple-App tests: all nine passed, including the owner inventory's
+  metadata-only response, zero-project setup and member/agent denial. Earlier
+  multiple-App/quick-Issue/status-sync verification passed all 13 tests. Two regression
   cases first reproduced explicit-selection persistence and client account-list
   shadowing, then passed after their repairs. An independent reviewer ran all
-  eight multiple-App tests and reported no remaining important findings.
+  eight initial multiple-App tests, reviewed the central page and walkthrough,
+  and reported no remaining important findings.
 - Synthetic loopback browser QA: owner assignment/save, connection and second
-  repository, maintainer restrictions, keyboard focus, 1280/390 widths, light/dark
-  themes and no horizontal overflow passed. Desktop Add repository/Save App
+  repository, central inventory through Setup, assigned-project/install links,
+  empty/missing/zero-project states, maintainer restrictions, keyboard focus,
+  1280/390 widths, light/dark themes and no horizontal overflow passed. Opening
+  the walkthrough preserves mobile bounds. Desktop Add repository/Save App
   controls align with their inputs; mobile helper text precedes the actions.
   Saved synthetic screenshots: [desktop](../screenshots/github-apps/desktop.png)
-  and [mobile](../screenshots/github-apps/mobile.png).
+  and [mobile](../screenshots/github-apps/mobile.png); central owner page
+  [desktop](../screenshots/github-apps/inventory-desktop.png) and
+  [mobile](../screenshots/github-apps/inventory-mobile.png).
+- `npm run qa:walkthrough-browser`: all nine scenes passed, including GitHub
+  guidance, manual steps, Play/Pause, reduced motion, keyboard controls and
+  mobile bounds. The existing Setup scenes retain their original content.
 - Local container checks require a running Docker daemon and were not run. The
   required CI container job verifies that boundary before integration.
 

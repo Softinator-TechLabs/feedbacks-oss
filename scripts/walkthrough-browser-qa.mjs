@@ -62,6 +62,7 @@ try {
   const demo = page.locator("feedbacks-demo");
   for (const step of [
     "server",
+    "github",
     "install",
     "pin",
     "connect",
@@ -72,6 +73,8 @@ try {
   ]) {
     await demo.evaluate((element, value) => element.setAttribute("step", value), step);
     await demo.locator(".frame > *").waitFor();
+    if (step === "github")
+      assert.match(await demo.locator(".caption").innerText(), /GitHub/);
     await page.waitForFunction(
       () =>
         getComputedStyle(
@@ -281,7 +284,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    "Walkthroughs passed: eight scenes including pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds and complete laptop hero.",
+    "Walkthroughs passed: nine scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds and complete laptop hero.",
   );
 } finally {
   await browser.close();

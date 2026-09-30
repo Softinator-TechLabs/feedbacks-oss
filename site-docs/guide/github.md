@@ -35,6 +35,14 @@ For independent self-hosted servers, create an App and key for each server's
 operator. Keep keys in that server's deployment secrets; never distribute a
 shared App private key to other operators. [Deployment configuration](/reference/manual/self-hosting#multiple-github-apps).
 
+The server owner can open **Setup → Manage GitHub Apps** for the central
+**Configured Apps** list. It shows approved accounts, assigned projects and
+installation links. Open a listed project to choose/change its App. Projects
+with removed credentials are shown separately; restore that App or change the
+assignment. The page's setup steps explain GitHub registration, server secrets
+and project selection. App keys are managed by the server operator, never shown
+or entered on this page.
+
 ### More than one GitHub organization or repository
 
 A GitHub App installation belongs to a GitHub **account** (a personal account or one organization). Selecting three repositories in Softinator-TechLabs grants access only to those three repositories in that organization. To use another organization, [install the same App there separately](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app) and choose its repositories. The Feedbacks server requests a token for the exact repository when it creates an Issue; it does not reuse an installation token from another organization.

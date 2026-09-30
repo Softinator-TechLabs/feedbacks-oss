@@ -29,6 +29,7 @@
 .github-project-page {
   max-width: 980px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 .github-project-page .page-heading {
@@ -150,4 +151,68 @@
 }
 .github-app-selection select {
   width: 100%;
+}
+
+.github-apps-page {
+  max-width: 980px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.github-apps-page .page-heading,
+.github-apps-page p {
+  margin-bottom: 8px;
+}
+.github-apps-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.github-apps-list > li {
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.github-app-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.github-apps-list h4 {
+  margin: 12px 0 6px;
+}
+.github-app-projects {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.github-app-projects li {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px 20px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  overflow-wrap: anywhere;
+}
+.github-apps-help > summary,
+.github-app-details > summary,
+.github-app-operator-help > summary {
+  min-height: 44px;
+  padding-block: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.github-apps-help li {
+  margin-bottom: 10px;
+}
+.github-apps-help feedbacks-demo,
+.github-app-selection feedbacks-demo {
+  max-width: 560px;
+}
+.help-github-apps {
+  margin: 28px 0 0 38px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
 }
