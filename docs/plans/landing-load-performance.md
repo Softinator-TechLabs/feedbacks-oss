@@ -43,3 +43,7 @@ The delayed cold-load regression must keep accumulated layout shifts below 0.1 a
 The first Linux CI run exposed a remaining tab-wrap jump: selected labels became bold and changed the row count at some widths. The demo now retains constant label weight, with selection shown by color/underline. A 280–640px width sweep with alternate font metrics reproduces and guards the failure.
 
 The landing hero reserves blank white space until the whole recording player is ready, then fades in the card and controls together over 280 ms. Reduced motion reveals it immediately. A responsive still of the current first frame remains available without JavaScript or after an asset-loading failure. Styles, fonts and decoded artwork are ready before the reveal; playback begins from the first frame. User-visible smoothness takes priority over a synthetic score.
+
+## Interaction and explicit playback
+
+Timeline, event-tab, image and step interactions hold only the inspected player. Pointer leave or leaving keyboard focus resumes it unless the visitor explicitly paused. Touch inspection releases on gesture completion. Interaction never stores a Pause preference. Explicit Play and Pause apply to all players and continue to synchronize across pages and tabs. A two-player browser regression verifies local inspection, other-player motion, pointer/keyboard release and the global Pause override.

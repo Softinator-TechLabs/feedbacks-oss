@@ -61,6 +61,78 @@ server.listen(0, "127.0.0.1");
 await once(server, "listening");
 const browser = await chromium.launch({ headless: true });
 try {
+  // Inspecting one walkthrough must never become a persisted site-wide Pause.
+  const interactionPage = await browser.newPage({
+    viewport: { width: 1440, height: 1000 },
+  });
+  await interactionPage.goto(`http://127.0.0.1:${server.address().port}`);
+  await interactionPage.evaluate(() => {
+    const main = document.querySelector("main");
+    main.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:24px";
+    main.querySelector("feedbacks-demo").setAttribute("step", "recording");
+    const other = document.createElement("feedbacks-demo");
+    other.setAttribute("step", "capture");
+    main.append(other);
+  });
+  const inspected = interactionPage.locator("feedbacks-demo").first();
+  const other = interactionPage.locator("feedbacks-demo").nth(1);
+  await inspected.locator("canvas").waitFor();
+  await other.locator(".action-cursor").waitFor();
+  await inspected
+    .getByRole("button", { name: "0:04 · Request fails", exact: true })
+    .click();
+  assert.equal(
+    await inspected.locator(".play").innerText(),
+    "Pause",
+    "seek is inspection, not explicit Pause",
+  );
+  const time = () => inspected.locator('input[type="range"]').inputValue();
+  const heldTime = await time();
+  const otherCursor = await other.locator(".action-cursor").getAttribute("transform");
+  await interactionPage.waitForTimeout(300);
+  assert.equal(await time(), heldTime, "inspection holds this player");
+  assert.notEqual(
+    await other.locator(".action-cursor").getAttribute("transform"),
+    otherCursor,
+    "other walkthrough keeps playing",
+  );
+  assert.equal(
+    await interactionPage.evaluate(() => localStorage.getItem("feedbacks-motion")),
+    null,
+    "inspection does not store Pause",
+  );
+  await interactionPage.mouse.move(0, 0);
+  await interactionPage.waitForTimeout(200);
+  assert.notEqual(await time(), heldTime, "mouse leave resumes the inspected player");
+  await inspected.getByRole("tab", { name: /^Network/ }).click();
+  const tabTime = await time();
+  await interactionPage.waitForTimeout(150);
+  assert.equal(await time(), tabTime, "tab inspection holds playback");
+  await inspected.locator(".play").click();
+  assert.deepEqual(
+    await interactionPage.locator("feedbacks-demo .play").allTextContents(),
+    ["Play", "Play"],
+    "explicit Pause stops everyone",
+  );
+  await interactionPage.mouse.move(0, 0);
+  await interactionPage.waitForTimeout(150);
+  assert.equal(await time(), tabTime, "mouse leave cannot undo explicit Pause");
+  await other.locator(".play").click();
+  assert.deepEqual(
+    await interactionPage.locator("feedbacks-demo .play").allTextContents(),
+    ["Pause", "Pause"],
+    "explicit Play resumes everyone",
+  );
+  await interactionPage.mouse.move(0, 0);
+  await inspected.getByRole("tab", { name: /^Activity/ }).focus();
+  await interactionPage.keyboard.press("Tab");
+  const keyboardTime = await time();
+  await interactionPage.waitForTimeout(150);
+  assert.equal(await time(), keyboardTime, "keyboard inspection holds this player");
+  await inspected.evaluate((el) => el.shadowRoot.activeElement?.blur());
+  await interactionPage.waitForTimeout(150);
+  assert.notEqual(await time(), keyboardTime, "leaving keyboard inspection resumes");
+  await interactionPage.close();
   const page = await browser.newPage({
     viewport: { width: 390, height: 900 },
     reducedMotion: "reduce",
@@ -174,6 +246,8 @@ try {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await demo.locator(".step").nth(1).click();
   await demo.locator(".play").click();
+  await page.mouse.move(0, 0);
+  await demo.evaluate((el) => el.shadowRoot.activeElement?.blur());
   await page.waitForFunction(
     () =>
       document.querySelector("feedbacks-demo").shadowRoot.querySelector(".pin")?.dataset
@@ -215,7 +289,7 @@ try {
           .getAttribute("opacity"),
       ) > 0,
   );
-  await demo.locator(".screen-hit").click();
+  await demo.locator(".play").click();
   assert.equal(await demo.locator(".play").innerText(), "Play");
   const pausedCursor = await demo.locator(".action-cursor").getAttribute("transform");
   await page.waitForTimeout(400);
@@ -223,17 +297,18 @@ try {
     await demo.locator(".action-cursor").getAttribute("transform"),
     pausedCursor,
   );
-  await demo.locator(".screen-hit").press("Space");
+  await demo.locator(".play").press("Space");
   assert.equal(await demo.locator(".play").innerText(), "Pause");
   await demo.locator(".step").nth(1).click();
-  await demo.locator(".play").click();
+  await page.mouse.move(0, 0);
+  await demo.evaluate((el) => el.shadowRoot.activeElement?.blur());
   await page.waitForFunction(() => {
     const text = document
       .querySelector("feedbacks-demo")
       .shadowRoot.querySelector(".typed-text")?.textContent;
     return text?.length > 5 && text.length < 35;
   });
-  await demo.locator(".screen-hit").click();
+  await demo.locator(".play").click();
   const partial = await demo.locator(".typed-text").textContent();
   await page.waitForTimeout(500);
   assert.equal(await demo.locator(".typed-text").textContent(), partial);
@@ -266,13 +341,13 @@ try {
   assert.equal(await page.locator("feedbacks-motion-control").count(), 0);
   await allDemos.first().locator(".play").click();
   assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Play", "Play"]);
-  // Playing either player resumes only that one; pausing either stops everyone.
+  // Explicit Play and Pause apply to every player; interaction never changes them.
   await allDemos.nth(1).locator(".play").click();
-  assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Play", "Pause"]);
+  assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Pause", "Pause"]);
   await allDemos.nth(1).evaluate((element) => element.setAttribute("step", "connect"));
   assert.equal(await allDemos.nth(1).locator(".play").innerText(), "Pause");
   await allDemos.first().locator(".play").click();
-  assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Pause", "Play"]);
+  assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Play", "Play"]);
   await allDemos.first().locator(".screen-hit").click();
   assert.deepEqual(await allDemos.locator(".play").allTextContents(), ["Play", "Play"]);
   await allDemos.nth(1).evaluate((element) => element.setAttribute("step", "connect"));
@@ -532,7 +607,7 @@ try {
   await preferenceContext.close();
   assert.deepEqual(errors, []);
   console.log(
-    "Walkthroughs passed: ten scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",
+    "Walkthroughs passed: ten scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, local inspection and play-all/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",
   );
 } finally {
   await browser.close();
