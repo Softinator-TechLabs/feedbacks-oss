@@ -8,6 +8,25 @@ import { chromium } from "playwright";
 // A cold, delayed upgrade must not move the surrounding page. This deliberately
 // separates shadow CSS and recording runtime delivery to expose flashes of raw UI.
 const root = resolve("dist/site");
+const landing = await readFile(resolve(root, "index.html"), "utf8");
+assert.match(
+  landing,
+  /<script[^>]*data-cfasync="false"[^>]*src="\/learn\/demo\.js/,
+  "critical walkthrough bypasses Rocket Loader deferral",
+);
+for (const resource of [
+  "demo.css",
+  "recording-review.css",
+  "recording-runtime.js",
+  "studio-chair.webp",
+])
+  assert.ok(
+    landing.includes(`/learn/${resource}`) &&
+      new RegExp(
+        `<link[^>]+(?:preload|modulepreload)[^>]+/learn/${resource.replaceAll(".", "\\.")}`,
+      ).test(landing),
+    `${resource} loads in parallel from the HTML head`,
+  );
 const types = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -123,6 +142,34 @@ try {
       );
     }
     await page.close();
+  }
+  const fontPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  let releaseFont;
+  const fontGate = new Promise((resolve) => {
+    releaseFont = resolve;
+  });
+  await fontPage.route("**/fonts/caveat-*.woff2", async (route) => {
+    await fontGate;
+    await route.continue();
+  });
+  try {
+    await fontPage.goto(`http://127.0.0.1:${server.address().port}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await fontPage.evaluate(() => {
+      void document.fonts.load("600 24px Caveat");
+    });
+    await fontPage
+      .locator(".product-hero-demo canvas")
+      .waitFor({ state: "visible", timeout: 3000 });
+    assert.equal(
+      await fontPage.evaluate(() => document.fonts.status),
+      "loading",
+      "hero renders while unrelated handwriting font is still pending",
+    );
+  } finally {
+    releaseFont();
+    await fontPage.close();
   }
   const loadingPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   let releaseImage;

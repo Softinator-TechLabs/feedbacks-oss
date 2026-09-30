@@ -197,6 +197,16 @@ try {
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get("content-type"), /text\/(html|markdown|plain)/);
   }
+  const compressedPlayer = await request(`${website}/learn/demo.js?v=20260930-11`, {
+    headers: { "Accept-Encoding": "gzip" },
+  });
+  assert.equal(compressedPlayer.status, 200);
+  assert.equal(compressedPlayer.headers.get("content-encoding"), "gzip");
+  assert.match(compressedPlayer.headers.get("vary"), /Accept-Encoding/i);
+  assert.match(compressedPlayer.headers.get("cache-control"), /max-age=604800/);
+  assert.match(await compressedPlayer.text(), /customElements/);
+  const mutablePlayer = await request(`${website}/learn/demo.js`);
+  assert.match(mutablePlayer.headers.get("cache-control"), /no-cache/);
   const agentIndex = await request(`${website}/docs/llms.txt`);
   assert.equal(agentIndex.status, 200);
   assert.match(await agentIndex.text(), /Feedbacks documentation/);
