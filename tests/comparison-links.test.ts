@@ -43,7 +43,8 @@ test("Feedbacks comparison describes current optional video and GitHub workflows
   const page = await readFile(resolve(compareDirectory, "bugpin.html"), "utf8");
   assert.doesNotMatch(page, /does not automatically create or synchronize Issues/);
   assert.ok(page.includes("optional GitHub App"));
-  assert.ok(page.includes("short tab video"));
+  assert.ok(page.includes("video + session"));
+  assert.doesNotMatch(page, /Recording is not session replay/);
 });
 
 test("comparison evidence separates unknown, replay and recording capabilities", async () => {
@@ -53,13 +54,14 @@ test("comparison evidence separates unknown, replay and recording capabilities",
   assert.equal(new Set(matrixFeatures.map(([key]) => key)).size, matrixFeatures.length);
   for (const [key] of matrixFeatures)
     assert.ok(matrixRows.feedbacks[key], `Feedbacks: ${key}`);
-  assert.equal(matrixRows.feedbacks.replay.status, "no");
+  assert.equal(matrixRows.feedbacks.replay.status, "yes");
+  assert.match(matrixRows.feedbacks.replay.url, /session-replay/);
   assert.equal(matrixRows["marker-io"].replay.status, "yes");
   assert.equal(matrixRows["marker-io"].video, undefined);
   for (const [slug, row] of Object.entries(matrixRows)) {
     for (const [key, evidence] of Object.entries(row)) {
       assert.match(evidence.url, /^https:\/\//, `${slug}.${key}`);
-      assert.equal(evidence.reviewed, "27 September 2026", `${slug}.${key}`);
+      assert.match(evidence.reviewed, /^\d{1,2} September 2026$/, `${slug}.${key}`);
       if (slug !== "feedbacks") assert.notEqual(evidence.status, "no", `${slug}.${key}`);
     }
   }
@@ -71,4 +73,15 @@ test("comparison evidence separates unknown, replay and recording capabilities",
   }
   assert.ok(page.includes("Not verified"));
   assert.ok(page.includes("does not mean the tool lacks it"));
+});
+
+test("comparison widths remain available under the public site's strict style policy", async () => {
+  const { matrixGroups } = await import("../site/comparison-matrix.mjs");
+  const css = await readFile(resolve(compareDirectory, "../comparison.css"), "utf8");
+  const page = await readFile(resolve(compareDirectory, "openreplay.html"), "utf8");
+  assert.doesNotMatch(page, /style="--matrix-columns/);
+  for (const group of matrixGroups) {
+    assert.ok(page.includes(`class="matrix-columns-${group.features.length}"`));
+    assert.ok(css.includes(`.matrix-columns-${group.features.length}`));
+  }
 });

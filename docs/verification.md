@@ -36,3 +36,7 @@ Keep source, local checks, exact-revision CI, package integrity, deployment and 
 [CI](../.github/workflows/ci.yml) runs Node 22/24 checks, native PostgreSQL checks, isolated Chromium extension acceptance, dependency audit, container smoke, source export, SBOM generation and history secret scanning. Workflow tokens have read-only contents permissions; pull requests do not receive deployment secrets. Deployment credentials and operator acceptance records remain private.
 
 Agent setup handoff changes also run `npm run qa:agent-setup` after building. This disposable browser check covers secret-free/default and explicit quick copies, evidence-read scopes, retry/recovery, mobile layout and keyboard controls. It never uses the developer’s clipboard or production credentials.
+
+## Public website story
+
+After `npm run build:site`, run `npm run qa:public-site` to check the landing, feature guides and comparisons under production-style CSP. It checks desktop/mobile layout, same-origin links and assets, interactive timeline controls, paused/reduced-motion behavior, no-JavaScript content and scrollable comparison tables. Captures use synthetic examples and remain under ignored `.impeccable/review/`. Reproduce the current inspector and sharing artwork with `node scripts/capture-public-recording.mjs` and `node scripts/capture-site-social.mjs`; provenance is in [website assets](website-assets.md).

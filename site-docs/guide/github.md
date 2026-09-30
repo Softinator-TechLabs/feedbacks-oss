@@ -1,13 +1,20 @@
+---
+title: GitHub Issues across repositories and organizations
+description: Connect multiple repositories through GitHub App installations, choose a destination for each Feedbacks issue and opt into verified status synchronization.
+---
+
 # GitHub Issues
 
 Feedbacks can create a verified Issue in selected GitHub repositories across multiple organizations within one project. The integration is optional; normal feedback and MCP reads work without it.
 
+**Multiple configured Apps, one App per project.** A server can use separate private GitHub Apps for different projects. Its owner selects each project's App; project maintainers connect repositories across that App's permitted installations.
+
 ## Set up the App
 
 1. A server owner creates a GitHub App with **Metadata: read** and **Issues: read and write** on the selected repositories. Webhooks are not required for Issue creation or the current polling-based status sync.
-2. Store `GITHUB_APP_ID`, `GITHUB_APP_SLUG` and `GITHUB_APP_PRIVATE_KEY_BASE64` as private deployment secrets. The last value is the base64-encoded RSA PEM; never commit or display it in a public page.
+2. Configure Apps through the private deployment secret `GITHUB_APPS_JSON`, or keep `GITHUB_APP_ID`, `GITHUB_APP_SLUG` and `GITHUB_APP_PRIVATE_KEY_BASE64` for the existing default App. Private keys use base64-encoded RSA PEM; never commit or display them in a public page. See [multiple-App configuration](/reference/manual/self-hosting#multiple-github-apps).
 3. Install the App on each owning GitHub account and select only the repositories that should receive Issues. A private App created for one organization cannot be installed in other organizations; its owner must first make it public, then each organization owner approves its own selected-repository installation. Public App visibility does not itself grant repository access.
-4. In Feedbacks, open the project’s **GitHub** tab. Save the first exact `https://github.com/OWNER/REPO` URL and choose **Connect project**. Use **Add another repository** for each additional destination. Feedbacks checks installation access for each exact repository before connecting it and shows the access state per row. A revoked installation is shown as needing attention.
+4. In Feedbacks, the server owner selects the project's **GitHub App** and chooses **Save App** in its **GitHub** tab. Existing projects retain their default App. A project maintainer then saves the first exact `https://github.com/OWNER/REPO` URL and chooses **Connect project**. Use **Add another repository** for each additional destination. Feedbacks checks installation access for each exact repository before connecting it and shows the access state per row. A revoked installation is shown as needing attention.
 
 Only a project maintainer can connect or disconnect. Use a repository whose access policy matches the feedback you will put in Issues.
 
@@ -49,7 +56,7 @@ A GitHub App installation belongs to a GitHub **account** (a personal account or
 
 If your App is **private**, GitHub permits installation only on the account that owns it. To install it in other organizations, the App owner must [change its visibility](https://docs.github.com/en/apps/maintaining-github-apps/modifying-a-github-app-registration) in the App's **Advanced → Danger zone → Make public** settings. This makes the installation page available to other accounts; each installation still needs an owner to choose and approve repositories. GitHub warns that a public App installed on other accounts cannot be made private again until those installations are removed. Review the App's requested permissions and availability before making that change. For the same public App, you do not need to create one App per organization. Separate private Apps are an alternative when each belongs to its own organization.
 
-A Feedbacks project can connect multiple repositories across these installations. Use **Manage App installations** to install the same App on another organization, then **Add another repository** in the project. Separate Feedbacks projects keep independent repository selections. When a thread has more than one possible destination, choose the repository before creating its Issue.
+A Feedbacks project can connect multiple repositories across its selected App's permitted installations. Use **Manage App installations** to install the same App on another organization, then **Add another repository** in the project. Separate Feedbacks projects keep independent repository selections. When a thread has more than one possible destination, choose the repository before creating its Issue.
 
 ## Create an Issue from feedback
 

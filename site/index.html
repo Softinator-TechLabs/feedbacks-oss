@@ -3,27 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Feedbacks — Website feedback for AI coding agents</title>
+    <title>Feedbacks — Free, open-source visual feedback &amp; session replay</title>
     <meta
       name="description"
-      content="Turn client feedback and UI bug reports into screenshots, page details and project context for AI coding agents. Open source. Self-host on your team's server."
+      content="Free Apache-2.0 website feedback with screenshots, video, session replay, debugging bundles and AI-agent context. Self-host the complete product."
     />
     <meta name="theme-color" content="#fffdfa" />
     <meta
       property="og:title"
-      content="Feedbacks — Website feedback for AI coding agents"
+      content="Feedbacks — Free, open-source visual feedback &amp; session replay"
     />
     <meta
       property="og:description"
-      content="Point at a UI problem. Send the screenshot and context. Let your developer work through the fix with their AI agent. Start with your team's own server."
+      content="Show the bug. Replay the moment. Share the evidence. Free, Apache-2.0 and self-hosted, with MCP for your coding agent."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://feedbacks.softinator.ai/" />
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      property="og:image"
+      content="https://feedbacks.softinator.ai/media/social-preview.png"
+    />
+    <meta
+      property="og:image:alt"
+      content="Feedbacks: visual feedback, session replay and debugging evidence. Free and Apache-2.0."
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <link rel="canonical" href="https://feedbacks.softinator.ai/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/landing.css" />
+    <link rel="stylesheet" href="/product-story.css" />
+    <link rel="stylesheet" href="/learn/evidence.css" />
+    <script defer src="/learn/evidence.js"></script>
     <link
       rel="preload"
       href="/fonts/manrope-800.ttf"
@@ -39,7 +52,22 @@
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Web, Chrome",
         "url": "https://feedbacks.softinator.ai/",
-        "description": "Self-hosted website feedback and visual context for AI coding agents, client reviews and UI testing.",
+        "description": "Free, self-hosted visual feedback with screenshots, video, session replay, debugging bundles and AI-agent context.",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "Free software. Self-hosting infrastructure is provided by the operator."
+        },
+        "featureList": [
+          "Screenshot annotations",
+          "Video and session replay",
+          "Debugging evidence bundles",
+          "Text suggestions",
+          "MCP, API and CLI",
+          "GitHub Issues"
+        ],
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
     </script>
@@ -55,7 +83,8 @@
         ></a
       >
       <nav aria-label="Main navigation">
-        <a href="#comparisons">Compare tools</a><a href="/docs/">Docs</a
+        <a href="#features">Features</a><a href="#comparisons">Compare</a
+        ><a href="/docs/">Docs</a
         ><a href="https://github.com/Softinator-TechLabs/feedbacks-oss"
           >GitHub
           <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
@@ -64,26 +93,97 @@
       </nav>
     </header>
     <main id="main">
-      <div class="hero wrap">
-        <section class="intro" aria-labelledby="hero-title">
+      <section class="product-hero wrap" aria-labelledby="hero-title">
+        <div class="product-intro">
           <h1 id="hero-title">
-            Less “which button?”<br />More
+            Show the bug.<br />Keep the
             <span class="marked"
-              >fixing.<svg viewBox="0 0 300 24" aria-hidden="true">
+              >whole story.<svg viewBox="0 0 300 24" aria-hidden="true">
                 <path d="M4 15Q98 2 290 9M16 23Q161 10 283 17" /></svg
             ></span>
           </h1>
-          <div class="intro-aside">
-            <p>Point out a UI change. <br />Give your AI agent the full picture.</p>
+          <p class="product-lead">
+            Screenshots, video and session replay.<br />The context your team and AI agent
+            need to fix it.
+          </p>
+          <p class="license-line"><strong>100% free.</strong> Apache-2.0 open source.</p>
+          <div class="product-actions">
             <a class="start-button" href="/docs/guide/getting-started"
-              >Set up Feedbacks
-              <span aria-hidden="true"
-                ><svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 19 19 5M6 5h13v13" /></svg></span
-            ></a>
-            <p class="setup-note">Open source. Your team’s server first.</p>
+              >Set up Feedbacks <span aria-hidden="true">↗</span></a
+            ><a
+              class="source-link"
+              href="https://github.com/Softinator-TechLabs/feedbacks-oss"
+              >Explore the source</a
+            >
           </div>
-        </section>
+          <p class="product-footnote">The complete product, on your infrastructure.</p>
+        </div>
+        <div class="product-hero-demo">
+          <feedbacks-evidence
+            ><img
+              src="/media/story/recording-desktop-0.webp"
+              width="900"
+              height="655"
+              alt="Actual Feedbacks video review with a shared timeline and timestamped activity." /></feedbacks-evidence
+          ><a class="demo-guide" href="/docs/guide/session-replay"
+            >Video, replay &amp; the debugging timeline
+            <span aria-hidden="true">→</span></a
+          >
+        </div>
+      </section>
+      <nav class="feature-nav wrap" aria-label="Explore product capabilities">
+        <a href="#recordings">Replay the moment</a
+        ><a href="#text-changes">Suggest the words</a
+        ><a href="#debug-bundle">Take the evidence</a
+        ><a href="#agent-context">Give your agent context</a>
+      </nav>
+      <section
+        class="product-section wrap"
+        id="recordings"
+        aria-labelledby="recordings-title"
+      >
+        <div class="product-section-copy">
+          <h2 id="recordings-title">
+            “It broke when I clicked here.”<br />Now you can see why.
+          </h2>
+          <p>
+            Record a tab video with its session, or capture the session alone. Jump from a
+            click to the request, console message or frame at that moment.
+          </p>
+          <ul class="plain-features">
+            <li>One timeline for video, replay and diagnostics</li>
+            <li>Screenshot comments and annotated frames</li>
+            <li>Review, trim and send when you’re ready</li>
+          </ul>
+          <a class="text-link" href="/docs/guide/session-replay"
+            >Explore session recording <span aria-hidden="true">→</span></a
+          >
+        </div>
+        <figure class="product-figure recording-figure">
+          <a
+            href="/media/story/recording-inspector.webp"
+            aria-label="Open the complete recording inspector screenshot"
+            ><img
+              src="/media/story/recording-inspector.webp"
+              width="760"
+              height="689"
+              loading="lazy"
+              alt="Actual Feedbacks recording inspector with timestamped Activity, Network, Console and Performance events in its Everything feed."
+          /></a>
+          <figcaption>
+            Actual recording inspector with synthetic events. Select an event to inspect
+            its moment.
+          </figcaption>
+        </figure>
+      </section>
+      <section class="capture-section wrap" aria-labelledby="capture-title">
+        <div class="section-intro">
+          <h2 id="capture-title">A small change? Just point it out.</h2>
+          <p>
+            Pin the exact element. Annotate the screenshot. Keep every comment with its
+            original view.
+          </p>
+        </div>
         <section class="story" id="workflow" aria-labelledby="workflow-title">
           <h2 class="sr-only" id="workflow-title">From a click to context</h2>
           <div
@@ -107,7 +207,14 @@
           </div>
           <div class="story-stage" data-active="0">
             <div class="screen-stack">
-              <feedbacks-demo id="story-demo" step="capture"></feedbacks-demo>
+              <feedbacks-demo id="story-demo" step="capture"
+                ><img
+                  src="/media/workflow/point.png"
+                  width="1440"
+                  height="900"
+                  loading="lazy"
+                  alt="Feedbacks extension capturing a comment beside a selected button on a fictional furniture website."
+              /></feedbacks-demo>
             </div>
             <div class="story-note" aria-live="polite">
               <div class="pencil-note" id="pencil-note">this button, right here.</div>
@@ -120,33 +227,158 @@
             </div>
           </div>
         </section>
-      </div>
-      <section class="handoff wrap" aria-labelledby="handoff-title">
-        <div class="handoff-heading">
-          <h2 id="handoff-title">“Make <span class="circled">this</span> darker.”</h2>
-          <p>Now “this” comes with context.</p>
+      </section>
+      <section
+        class="product-section wrap reverse"
+        id="text-changes"
+        aria-labelledby="text-title"
+      >
+        <div class="product-section-copy">
+          <h2 id="text-title">Less “change that bit.”<br />More exact words.</h2>
+          <p>
+            Select a phrase and suggest its replacement. The original text, element and
+            screenshot travel together, so the developer knows exactly what you meant.
+          </p>
+          <a class="text-link" href="/docs/guide/text-suggestions"
+            >See text suggestions <span aria-hidden="true">→</span></a
+          >
         </div>
-        <div class="context-trail" aria-label="Context delivered to your agent">
-          <span>Screenshot</span><span>Page + element</span><span>Your notes</span
-          ><span>Project guidance</span
-          ><span class="agent-end"
-            >Your AI agent
-            <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 19 19 5M6 5h13v13" /></svg
-          ></span>
+        <figure class="product-figure">
+          <picture
+            ><source media="(max-width: 600px)" srcset="/media/story/text-mobile.svg" />
+            <img
+              src="/media/story/text.svg"
+              width="760"
+              height="320"
+              loading="lazy"
+              alt="Illustrative text suggestion replacing ‘every room’ with ‘your favourite corner’, preserving the original."
+          /></picture>
+          <figcaption>
+            A precise suggestion, ready to review. Your live page stays unchanged.
+          </figcaption>
+        </figure>
+      </section>
+      <section
+        class="product-section wrap"
+        id="debug-bundle"
+        aria-labelledby="bundle-title"
+      >
+        <div class="product-section-copy">
+          <h2 id="bundle-title">The bug report.<br />With the debugging attached.</h2>
+          <p>
+            Download a complete thread bundle: conversation, screenshots, videos, session
+            events and captured diagnostics. Or let your agent read just the evidence it
+            needs.
+          </p>
+          <a class="text-link" href="/docs/guide/debug-bundles"
+            >Open the debugging guide <span aria-hidden="true">→</span></a
+          >
         </div>
-        <p class="agent-instruction">
-          Connect Codex, Claude Code or Antigravity through MCP. Ask it to read the
-          feedback, make the change and verify it.
-        </p>
+        <figure class="product-figure">
+          <picture
+            ><source media="(max-width: 600px)" srcset="/media/story/bundle-mobile.svg" />
+            <img
+              src="/media/story/bundle.svg"
+              width="760"
+              height="320"
+              loading="lazy"
+              alt="A portable thread archive contains conversation, media, recordings, diagnostics and a checksummed manifest."
+          /></picture>
+          <figcaption>
+            Portable evidence for investigation, even outside Feedbacks.
+          </figcaption>
+        </figure>
+      </section>
+      <section
+        class="product-section wrap reverse"
+        id="agent-context"
+        aria-labelledby="context-title"
+      >
+        <div class="product-section-copy">
+          <h2 id="context-title">Your agent needs<br />your team’s context, too.</h2>
+          <p>
+            Keep project instructions, responsibilities and reviewer guidance beside the
+            evidence. Use MCP, API or CLI to bring your own coding agent into the
+            workflow.
+          </p>
+          <a class="text-link" href="/docs/guide/agent-context"
+            >See how context works <span aria-hidden="true">→</span></a
+          >
+        </div>
+        <figure class="product-figure">
+          <picture
+            ><source
+              media="(max-width: 600px)"
+              srcset="/media/story/context-mobile.svg" />
+            <img
+              src="/media/story/context.svg"
+              width="760"
+              height="320"
+              loading="lazy"
+              alt="Captured evidence and approved project guidance are distinct inputs to the developer and coding agent."
+          /></picture>
+          <figcaption>
+            Read the request. Make the agreed change. Verify before resolving.
+          </figcaption>
+        </figure>
+      </section>
+      <section
+        class="feature-directory wrap"
+        id="features"
+        aria-labelledby="features-title"
+      >
+        <div class="section-intro">
+          <h2 id="features-title">One place for the rest of the review.</h2>
+        </div>
+        <div class="feature-rows">
+          <a href="/docs/guide/github"
+            ><strong>GitHub, across repositories</strong
+            ><span
+              >Use multiple Apps on one server, one per project. Connect repositories
+              across that App’s permitted installations.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+          <a href="/docs/guide/review-feedback"
+            ><strong>A queue your team can work through</strong
+            ><span
+              >Assignments, categories, tags, saved views, point progress and verified
+              outcomes.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+          <a href="/docs/guide/more-ways-to-review#guest-review"
+            ><strong>Invite clients into the review</strong
+            ><span>Scoped guest links and published page annotations.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+          <a href="/docs/guide/more-ways-to-review#documents"
+            ><strong>Review documents, too</strong
+            ><span>Discuss PDF and image attachments alongside website feedback.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+          <a href="/docs/guide/more-ways-to-review#widget-and-surveys"
+            ><strong>Hear from people on your website</strong
+            ><span>Optional text-feedback widget, surveys and NPS.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+          <a href="/docs/guide/more-ways-to-review#scheduled-qa"
+            ><strong>Keep checking public pages</strong
+            ><span>Opt-in scheduled QA, run history and visual baselines.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+          <a href="/docs/guide/more-ways-to-review#native-apps-and-webhooks"
+            ><strong>Connect the rest of your workflow</strong
+            ><span>iOS and Android integrations, signed webhooks, API and CLI.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+        </div>
       </section>
       <section class="setup-section" id="setup" aria-labelledby="setup-title">
         <div class="wrap">
           <div class="setup-heading">
             <h2 id="setup-title">One team server.<br />Everyone on the same page.</h2>
             <p>
-              DevOps installs it once on company infrastructure. <br />Reviewers just
-              connect to it.
+              Your team provides hosting and any AI tools it chooses. Reviewers connect to
+              the same server.
             </p>
           </div>
           <ol class="setup-path">
@@ -191,26 +423,6 @@
             Already have a server? <strong>Setup → Copy server URL.</strong> Paste it into
             the extension.
           </p>
-          <div class="role-links">
-            <span>Pick your guide:</span
-            ><a href="/docs/guide/clients"
-              >I’m a client
-              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 19 19 5M6 5h13v13" /></svg></a
-            ><a href="/docs/guide/chrome-extension"
-              >I’m reviewing or testing
-              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 19 19 5M6 5h13v13" /></svg></a
-            ><a href="/docs/guide/self-host"
-              >I’m setting up the server
-              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 19 19 5M6 5h13v13" /></svg></a
-            ><a href="/docs/guide/mcp"
-              >I’m fixing the code
-              <svg class="link-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 19 19 5M6 5h13v13" /></svg
-            ></a>
-          </div>
         </div>
       </section>
       <section class="comparisons wrap" id="comparisons" aria-labelledby="compare-title">
@@ -220,7 +432,10 @@
             >See the full comparison <span aria-hidden="true">→</span></a
           >
         </div>
-        <p>Compare capture, hosting and AI-agent workflows.</p>
+        <p>
+          Compare screenshots, recordings, session replay, debugging evidence, hosting and
+          agent workflows. Every confirmed capability links to its source.
+        </p>
         <nav class="comparison-links" aria-label="Compare Feedbacks with other tools">
           <a href="/compare/bugherd.html">BugHerd</a>
           <a href="/compare/marker-io.html">Marker.io</a>

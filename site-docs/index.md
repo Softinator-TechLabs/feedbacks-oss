@@ -1,13 +1,27 @@
 ---
-title: Website feedback for AI coding agents
-description: Start with a team server, connect the Chrome extension, prepare your projects and give AI coding agents the context to resolve UI feedback.
+title: Free visual feedback, session replay and debugging guides
+description: Learn Feedbacks — free Apache-2.0 website feedback, screenshots, video and session replay, debugging bundles, precise text suggestions and AI-agent context.
 ---
 
-# Website feedback your coding agent can work with
+# Show the problem. Keep the context.
 
-Feedbacks prepares context for AI-assisted UI changes and bug fixes. Clients, colleagues and testers point to a problem on a website. The screenshot, exact page, selected element details and comments stay together. Developers connect their own coding agent through MCP, make the agreed change and record what they verified.
+Feedbacks is **free, Apache-2.0 and self-hosted**. Capture screenshots, video or a browser session; review the evidence together; give your developer and coding agent the context to fix it.
 
-**Your team needs a Feedbacks server first.** DevOps installs it once on your company's infrastructure. Everyone connects to that address. Installing the Chrome extension alone does not create a server or an account.
+<Evidence />
+
+## What do you want to do?
+
+| Your task                                    | Guide                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------ |
+| Show a UI problem                            | [Screenshots, pins and annotations](/guide/review-feedback)              |
+| Reproduce a bug                              | [Video, session replay and the event timeline](/guide/session-replay)    |
+| Investigate with the evidence                | [Debugging bundles and browser diagnostics](/guide/debug-bundles)        |
+| Change the exact words                       | [Text suggestions](/guide/text-suggestions)                              |
+| Bring your coding agent                      | [Project context](/guide/agent-context) and [MCP setup](/guide/mcp)      |
+| Send work to GitHub                          | [Repositories, installations and Issues](/guide/github)                  |
+| Review with clients or collect more feedback | [Guests, documents, widgets, surveys and QA](/guide/more-ways-to-review) |
+
+**New installation? Start with your team server.** The extension connects to it; it does not create hosting or accounts. The software has no license fee. Your team provides infrastructure and any AI tools it chooses.
 
 ## New team? Follow this order
 
