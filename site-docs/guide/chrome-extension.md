@@ -26,6 +26,8 @@ Open your website and click the pinned extension. **Right-click** the element, w
 
 For a wording change, select the page text and choose **Suggest edit**. Check the original, enter its replacement, then **Save suggestion**. Leave the replacement empty to request deletion. The website stays unchanged.
 
+Review mode also enables selection on pages that block dragging or double-clicking text. Exit review to restore the site's behavior. Editable/private content remains excluded, and recording mode keeps the site's normal interactions.
+
 <Demo step="capture" />
 
 **Default shortcut:** Mac **⌘ Shift Y** · Windows **Ctrl Shift Y** starts or resumes review. Change it in extension **Settings → Keyboard shortcuts**. If another extension uses that combination, choose a different one there.

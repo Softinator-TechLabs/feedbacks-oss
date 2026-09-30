@@ -268,6 +268,9 @@
         : 0;
     recordingUpdatedAt = now;
     recordingState = state;
+    globalThis.FeedbacksTextSelection.setEnabled(
+      active && !recordingOnly && !recordingBusy(),
+    );
     recordingMode = nextMode;
     clearInterval(recordingTimer);
     if (state === "recording" && active)
@@ -2134,6 +2137,39 @@
   F.listen("pointerup", selectionChanged, true);
   F.listen("keyup", selectionChanged, true);
   F.listen("selectionchange", selectionChanged, true);
+  for (const type of ["selectstart", "mousedown", "pointerdown"])
+    F.listen(
+      type,
+      (event) => {
+        const element =
+          event.target.nodeType === 3 ? event.target.parentElement : event.target;
+        if (
+          !active ||
+          recordingOnly ||
+          recordingBusy() ||
+          captureActive ||
+          chosen ||
+          pendingReview ||
+          event.composedPath().includes(host) ||
+          (type !== "selectstart" &&
+            (event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey)) ||
+          element?.closest?.(
+            'button,a[role="button"],[role="button"],label,summary,[draggable="true"]',
+          ) ||
+          !globalThis.FeedbacksTextSelection.eligible(element, host) ||
+          (type !== "selectstart" &&
+            !globalThis.FeedbacksTextSelection.hitsText(
+              element,
+              event.clientX,
+              event.clientY,
+            ))
+        )
+          return;
+        // Keep the browser's native selection default; site handlers cannot cancel it.
+        event.stopImmediatePropagation();
+      },
+      true,
+    );
   F.listen(
     "contextmenu",
     (event) => {
@@ -2543,6 +2579,7 @@
         reviewId = message.reviewId;
         threads = [];
         active = true;
+        globalThis.FeedbacksTextSelection.setEnabled(!recordingOnly && !recordingBusy());
         globalThis.feedbacksReviewActive = true;
         if (project?.id !== message.project.id) {
           threads = [];
@@ -2648,6 +2685,7 @@
         clearChosenPoint();
         draftEditing = false;
         active = false;
+        globalThis.FeedbacksTextSelection.setEnabled(false);
         globalThis.feedbacksReviewActive = false;
         clearInterval(timer);
         clearInterval(recordingTimer);

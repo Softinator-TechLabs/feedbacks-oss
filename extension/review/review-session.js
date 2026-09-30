@@ -1,6 +1,7 @@
 import { reviewDefaults } from "./review-preferences.js";
 import { diagnosticCollector } from "../diagnostics/diagnostics.js";
 import { accountFingerprint } from "../diagnostics/identity.js";
+import { installSelectionStyles, removeSelectionStyles } from "./selection-access.js";
 // Website routing and opt-in, document-start review. No page is sent to the
 // service until the user opens Feedbacks or explicitly asks to add feedback.
 export function createReviewController({ get, set, authenticated, defaultServer }) {
@@ -94,6 +95,7 @@ export function createReviewController({ get, set, authenticated, defaultServer 
         },
       });
       css ||= await (await fetch(chrome.runtime.getURL("content.css"))).text();
+      await installSelectionStyles(tabId);
       const result = await chrome.tabs.sendMessage(tabId, {
         type: "activate",
         reviewShortcuts: state.reviewShortcuts !== false,
@@ -177,6 +179,7 @@ export function createReviewController({ get, set, authenticated, defaultServer 
       throw Error("The page changed while restoring recording controls.");
     const latest = await get();
     const session = assertReview(latest);
+    await installSelectionStyles(tabId);
     const result = await chrome.tabs.sendMessage(tabId, {
       type: "activate",
       reviewShortcuts: latest.reviewShortcuts !== false,
@@ -230,6 +233,7 @@ export function createReviewController({ get, set, authenticated, defaultServer 
     return {};
   }
   async function stop(tabId) {
+    await removeSelectionStyles(tabId);
     const state = await get(),
       sessions = { ...state.sessions };
     await chrome.scripting
