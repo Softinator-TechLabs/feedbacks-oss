@@ -12,7 +12,7 @@ export default defineConfig({
   head: [
     [
       "script",
-      { "data-cfasync": "false", src: "/learn/demo.js?v=20260930-11", defer: "" },
+      { "data-cfasync": "false", src: "/learn/demo.js?v=20260930-12", defer: "" },
     ],
     ["meta", { name: "theme-color", content: "#fffdfa" }],
     [

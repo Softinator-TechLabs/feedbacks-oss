@@ -23,8 +23,12 @@ try {
       button.textContent = "Pause";
     });
     // Capture the exact starting layout, independent of elapsed playback time.
-    const png = await demo.locator(".depth-stage").screenshot();
-    const output = `site/public/media/story/loading-${width > 800 ? "desktop" : "mobile"}.webp`;
+    const stage = demo.locator(".depth-stage");
+    await stage.evaluate((element) =>
+      Promise.all(element.getAnimations().map((animation) => animation.finished)),
+    );
+    const png = await stage.screenshot();
+    const output = `site/public/media/story/loading-${width > 800 ? "desktop" : "mobile"}-v2.webp`;
     await sharp(png).webp({ quality: 85 }).toFile(output);
     console.log(output, await demo.boundingBox());
     await page.close();
