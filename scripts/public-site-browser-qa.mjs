@@ -141,6 +141,17 @@ try {
         );
       }
       if (path === "/") {
+        assert.deepEqual(
+          await page
+            .locator("main > section")
+            .evaluateAll((sections) =>
+              sections
+                .slice(0, 3)
+                .map((section) => section.getAttribute("aria-labelledby")),
+            ),
+          ["hero-title", "capture-title", "recordings-title"],
+          "Show point capture immediately after the hero, then recording evidence",
+        );
         const demo = page.locator("feedbacks-evidence");
         assert.equal(
           (await page.locator("body").innerText()).match(/Apache-2.0/g)?.length,

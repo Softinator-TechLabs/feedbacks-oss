@@ -630,14 +630,17 @@ button:focus-visible {
 .review-dock .drawer-handle {
   display: flex;
   align-items: center;
-  gap: 5px;
-  width: 54px;
+  gap: 6px;
+  width: auto;
+  min-width: 54px;
   height: 44px;
   padding: 8px;
+  flex: none;
   position: relative;
 }
 .drawer-handle svg {
   display: block;
+  flex: none;
   width: 24px;
   height: 24px;
   fill: none;
@@ -648,15 +651,16 @@ button:focus-visible {
 }
 .drawer-handle[data-count]:not([data-count=""])::after {
   content: attr(data-count);
-  position: absolute;
-  top: -4px;
-  right: -5px;
-  min-width: 18px;
-  padding: 2px 4px;
+  flex: none;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  text-align: center;
   border-radius: 10px;
   background: #a43e17;
   color: white;
-  font: 700 11px/1.3 system-ui;
+  font: 700 11px/20px system-ui;
 }
 .review-dock[data-recording="recording"],
 .review-dock[data-recording="paused"] {
