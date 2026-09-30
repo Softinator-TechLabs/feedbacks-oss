@@ -167,6 +167,7 @@ test(
         w.calls = [];
         w.tracks = [];
         w.mixCounts = [];
+        w.encodedBytes = 0;
         Object.defineProperty(navigator, "permissions", {
           value: { query: async () => ({ state: w.permission }) },
         });
@@ -210,6 +211,9 @@ test(
           constructor(stream: MediaStream, options?: MediaRecorderOptions) {
             super(stream, options);
             w.mixCounts.push(stream.getAudioTracks().length);
+            this.addEventListener("dataavailable", (event) => {
+              w.encodedBytes += event.data.size;
+            });
           }
         };
       });
@@ -255,7 +259,11 @@ test(
       );
       assert.equal(await page.evaluate(() => (window as any).calls.length), 2);
       assert.deepEqual(await page.evaluate(() => (window as any).mixCounts), [1]);
-      await page.waitForTimeout(300);
+      // Wait for the native encoder, rather than stopping a short fixture before
+      // its first frame has been encoded on a busy machine.
+      await page.waitForFunction(() => (window as any).encodedBytes > 0, undefined, {
+        timeout: 10000,
+      });
       await page.evaluate(() => (window as any).control({ action: "stop" }));
       await page
         .waitForFunction(
