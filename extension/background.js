@@ -7,6 +7,7 @@ import {
 } from "./diagnostics/archive.js";
 import "./utils.js";
 import { createReviewController } from "./review/review-session.js";
+import { installSelectionStyles } from "./review/selection-access.js";
 import {
   createServerSetup,
   probeFeedbacksServer,
@@ -973,6 +974,10 @@ async function route(message, sender) {
     ].includes(message.type)
       ? recordingSessionFor(sender)
       : sessionFor(sender));
+    if (message.type === "reviewSelectionStyles") {
+      await installSelectionStyles(sender.tab.id);
+      return {};
+    }
     if (message.type === "recordingAnnotationBegin")
       return recordingAnnotations.begin(sender, message);
     if (message.type === "recordingAnnotationSave")

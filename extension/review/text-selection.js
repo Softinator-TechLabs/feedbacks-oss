@@ -3,6 +3,76 @@
   if (globalThis.FeedbacksTextSelection) return;
   const excluded =
     'input,textarea,select,script,style,[hidden],[aria-hidden="true"],[data-feedbacks-private]';
+  let enabled = false;
+  let styleRefreshTimer;
+  const originalMarkers = new WeakMap();
+  function markDocument(doc) {
+    const element = doc.documentElement;
+    if (!element) return;
+    const attribute = "data-feedbacks-text-selection";
+    if (enabled) {
+      if (!originalMarkers.has(element))
+        originalMarkers.set(element, element.getAttribute(attribute));
+      element.setAttribute(attribute, "on");
+    } else if (originalMarkers.has(element)) {
+      const old = originalMarkers.get(element);
+      if (old === null) element.removeAttribute(attribute);
+      else element.setAttribute(attribute, old);
+      originalMarkers.delete(element);
+    }
+  }
+  globalThis.FeedbacksFrames.observeDocuments((doc) => {
+    if (!enabled) return;
+    markDocument(doc);
+    clearTimeout(styleRefreshTimer);
+    styleRefreshTimer = setTimeout(() => {
+      if (enabled)
+        chrome.runtime.sendMessage({ type: "reviewSelectionStyles" }).catch(() => {});
+    }, 80);
+  });
+  function setEnabled(value) {
+    enabled = value;
+    if (!value) clearTimeout(styleRefreshTimer);
+    globalThis.FeedbacksFrames.visitDocuments(markDocument);
+  }
+  function hitsText(element, x, y) {
+    // Boxless inline containers still render text; map via a visible ancestor.
+    while (
+      element.parentElement &&
+      (!element.getBoundingClientRect().width || !element.getBoundingClientRect().height)
+    )
+      element = element.parentElement;
+    const local = element.getBoundingClientRect();
+    const mapped = globalThis.FeedbacksFrames.rect(element);
+    if (!mapped.width || !mapped.height) return false;
+    const point = {
+      x: local.x + ((x - mapped.x) * local.width) / mapped.width,
+      y: local.y + ((y - mapped.y) * local.height) / mapped.height,
+    };
+    const range = element.ownerDocument.caretRangeFromPoint(point.x, point.y);
+    if (range?.startContainer.nodeType !== 3 || !range.startContainer.length)
+      return false;
+    // A caret is the nearest insertion boundary, which can be after the glyph.
+    const offsets = new Set([
+      Math.min(range.startOffset, range.startContainer.length - 1),
+      Math.max(0, range.startOffset - 1),
+    ]);
+    for (const offset of offsets) {
+      range.setStart(range.startContainer, offset);
+      range.setEnd(range.startContainer, offset + 1);
+      if (
+        [...range.getClientRects()].some(
+          (rect) =>
+            point.x >= rect.left - 2 &&
+            point.x <= rect.right + 2 &&
+            point.y >= rect.top - 2 &&
+            point.y <= rect.bottom + 2,
+        )
+      )
+        return true;
+    }
+    return false;
+  }
   function eligible(element, host) {
     if (
       !element?.isConnected ||
@@ -158,5 +228,11 @@
       return null;
     return { element, range, original, rects, actionRect: visible.at(-1) };
   }
-  globalThis.FeedbacksTextSelection = { read, rectangles };
+  globalThis.FeedbacksTextSelection = {
+    read,
+    rectangles,
+    eligible,
+    hitsText,
+    setEnabled,
+  };
 })();

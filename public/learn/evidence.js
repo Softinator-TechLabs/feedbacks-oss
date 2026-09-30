@@ -44,7 +44,7 @@ class EvidenceDemo extends HTMLElement {
         const preload = new Image();
         preload.src = `/media/story/recording-${layout}-${i}.webp`;
       }
-    this.root.querySelectorAll("[data-moment]").forEach((button) =>
+    this.root.querySelectorAll("button[data-moment]").forEach((button) =>
       button.addEventListener("click", () => {
         this.pause();
         this.show(Number(button.dataset.moment));
@@ -82,7 +82,7 @@ class EvidenceDemo extends HTMLElement {
     this.root.querySelector(".evidence-full").src =
       `/media/story/recording-desktop-${index}.webp`;
     this.root
-      .querySelectorAll("[data-moment]")
+      .querySelectorAll("button[data-moment]")
       .forEach((button, i) => button.setAttribute("aria-pressed", String(i === index)));
   }
   play() {
