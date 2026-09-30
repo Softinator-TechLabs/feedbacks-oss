@@ -225,6 +225,23 @@ feedbacks-evidence img {
   font-size: 12px;
   color: #505767;
 }
+@media (min-width: 801px) and (max-height: 760px) {
+  .evidence-demo {
+    padding: 18px;
+  }
+  .evidence-demo-top {
+    margin-bottom: 12px;
+  }
+  .evidence-checkout {
+    padding: 14px;
+  }
+  .evidence-order img {
+    height: 80px;
+  }
+  .evidence-track {
+    margin-top: 18px;
+  }
+}
 @media (max-width: 600px) {
   .evidence-demo {
     padding: 16px;

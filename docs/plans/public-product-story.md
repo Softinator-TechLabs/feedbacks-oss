@@ -20,7 +20,7 @@ Extend the existing static Vite site, shared local educational assets and VitePr
 - [x] Correct generated comparisons and source dates; add meaningful regression coverage.
 - [x] Improve metadata, social preview, canonical links and internal discovery.
 - [x] Verify build, links, desktop/mobile, keyboard, reduced motion and no-JavaScript content.
-- [ ] Review diff and complete repository checks and delivery receipt.
+- [x] Review diff and complete local repository checks and delivery receipt.
 
 ## Acceptance criteria
 
@@ -41,7 +41,7 @@ Static website and documentation only. No migrations, application permissions or
 
 ## Completion receipt
 
-Local evidence: `npm run check` passed (430 tests passed, 24 environment-gated tests skipped, typechecks, builds, isolated smoke and release checks). Four focused comparison tests pass, including a regression for CSP-safe table widths. `npm run qa:public-site` passes ten routes at desktop/mobile sizes, local links/assets, timeline mouse/keyboard/playback controls, offscreen pause, reduced-motion initial state, no-JavaScript fallback and mobile comparison navigation. The browser check is included in CI.
+Local evidence: `npm run check` passed (430 tests passed, 24 environment-gated tests skipped, typechecks, builds, isolated smoke and release checks). Four focused comparison tests pass, including a regression for CSP-safe table widths. `npm run qa:public-site` passes ten routes at desktop/mobile sizes, local links/assets, timeline mouse/keyboard/playback controls, offscreen pause, reduced-motion initial state, no-JavaScript fallback and mobile comparison navigation. The browser check is included in CI. The existing eight-scene walkthrough check also passes at six viewport sizes, including a complete 1280×640 product hero and the relocated capture walkthrough with its controls.
 
 Rendered landing evidence: [previous public page](../screenshots/public-product-story/before-desktop.png), [desktop](../screenshots/public-product-story/desktop.png) and [mobile](../screenshots/public-product-story/mobile.png).
 

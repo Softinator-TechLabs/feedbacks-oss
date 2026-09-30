@@ -198,10 +198,24 @@
   color: #20241e;
 }
 @media (min-width: 901px) {
+  .capture-section .story {
+    padding-bottom: 0;
+  }
+  .capture-section feedbacks-demo {
+    --demo-screen-height: clamp(220px, calc(100svh - 340px), 360px);
+    --demo-footer-display: grid;
+    --demo-caption-height: 0;
+    --demo-controls-gap: 0;
+  }
   .capture-section .story-stage {
     display: grid;
     grid-template-columns: 1.5fr 0.7fr;
     gap: 28px;
+  }
+}
+@media (min-width: 801px) and (max-height: 760px) {
+  .product-hero {
+    padding: 16px 0 20px;
   }
 }
 @media (max-width: 1050px) {
