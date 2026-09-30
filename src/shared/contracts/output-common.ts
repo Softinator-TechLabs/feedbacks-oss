@@ -45,6 +45,7 @@ export const assetMetadataOutput = z.object({
   threadId: id.optional(),
 });
 export const imagePreviewOutput = z.object({
+  marked: z.boolean().optional(),
   mimeType: z.literal("image/webp"),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
@@ -59,7 +60,31 @@ export const imagePreviewOutput = z.object({
     })
     .optional(),
 });
+export const videoPreviewOutput = z.object({
+  state: z.enum(["sampled", "unavailable"]),
+  playbackVerified: z.literal(false),
+  reason: z.string().optional(),
+  timeBasis: z.literal("asset_video").optional(),
+  sourceVersion: z.string().optional(),
+  durationMs: z.number().int().positive().optional(),
+  durationUnknown: z.boolean().optional(),
+  frames: z
+    .array(
+      z.object({
+        requestedTimeMs: z.number(),
+        videoTimeMs: z.number(),
+        x: z.number(),
+        y: z.number(),
+        width: z.number(),
+        height: z.number(),
+      }),
+    )
+    .max(3)
+    .optional(),
+  missedTimeMs: z.array(z.number()).max(3).optional(),
+});
 export const assetOutput = assetMetadataOutput.extend({
+  videoPreview: videoPreviewOutput.optional(),
   image: imagePreviewOutput.extend({ data: z.string().max(2800000) }).optional(),
   preview: imagePreviewOutput.optional(),
 });

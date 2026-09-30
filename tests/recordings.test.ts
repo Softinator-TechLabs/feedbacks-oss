@@ -1,3 +1,4 @@
+import { assetPreview } from "../src/server/assets.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -1031,6 +1032,7 @@ test("a teammate can turn a saved frame into a point and revise its marks withou
     );
     const pointId = randomUUID();
     const annotatedInput = {
+      rendition: "screenshot",
       threadId: thread.id,
       revision: thread.revision,
       replacesAssetId: raw.asset.id,
@@ -1060,6 +1062,30 @@ test("a teammate can turn a saved frame into a point and revise its marks withou
     assert.equal(annotated.asset.baseAssetId, raw.asset.id);
     assert.equal(annotated.asset.recordingFrame.annotationId, pointId);
     assert.equal(annotated.asset.markings[0].annotationId, pointId);
+    const marked = await ops.executeOperation(owner, "assets.get", {
+      assetId: annotated.asset.id,
+      includeImage: true,
+    });
+    const assetKey = (
+      await db.one("SELECT object_key FROM assets WHERE id=$1", [annotated.asset.id])
+    ).object_key;
+    const expected = await assetPreview(store, assetKey, 1600, undefined, [
+      { ...annotated.asset.markings[0], number: 1 },
+    ]);
+    assert.equal(marked.image.marked, true);
+    assert.equal(
+      marked.image.data,
+      expected.data,
+      "saved-frame pin uses its thread point number",
+    );
+    const unmarked = await ops.executeOperation(owner, "assets.get", {
+      assetId: annotated.asset.id,
+      includeImage: true,
+      showAnnotations: false,
+    });
+    assert.equal(unmarked.image.marked, undefined);
+    assert.notEqual(unmarked.image.data, marked.image.data);
+
     assert.equal(
       (await ops.executeOperation(owner, "assets.upload", annotatedInput)).asset.id,
       annotated.asset.id,

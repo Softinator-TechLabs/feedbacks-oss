@@ -1,3 +1,4 @@
+import { annotationOverlay } from "./image-annotations.js";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -34,6 +35,7 @@ export async function assetPreview(
   objectKey: string,
   maxDimension: number,
   crop?: { left: number; top: number; width: number; height: number },
+  markings: any[] = [],
 ) {
   const source = sharp(await store.get(objectKey));
   const metadata = await source.metadata();
@@ -49,7 +51,7 @@ export async function assetPreview(
   )
     fail("VALIDATION", "Crop must fit within the original image dimensions");
   if (crop) source.extract(crop);
-  const { data, info } = await source
+  let { data, info } = await source
     .resize({
       width: maxDimension,
       height: maxDimension,
@@ -58,6 +60,19 @@ export async function assetPreview(
     })
     .webp({ quality: 80 })
     .toBuffer({ resolveWithObject: true });
+  const overlay = annotationOverlay(
+    markings,
+    metadata.width!,
+    metadata.height!,
+    info.width,
+    info.height,
+    crop,
+  );
+  if (overlay)
+    data = await sharp(data)
+      .composite([{ input: overlay }])
+      .webp({ quality: 80 })
+      .toBuffer();
   if (data.length > 2 * 1024 * 1024)
     fail(
       "IMAGE_TOO_LARGE",
@@ -65,6 +80,7 @@ export async function assetPreview(
       413,
     );
   return {
+    ...(overlay ? { marked: true } : {}),
     data: data.toString("base64"),
     mimeType: "image/webp" as const,
     width: info.width,

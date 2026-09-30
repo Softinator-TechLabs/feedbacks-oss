@@ -46,6 +46,8 @@ export const assetsInputs = {
   "assets.get": z.object({
     assetId: id,
     includeImage: z.boolean().default(false),
+    showAnnotations: z.boolean().default(true),
+    videoTimeMs: z.number().int().min(0).max(300000).optional(),
     maxDimension: z.number().int().min(256).max(2048).default(1600),
     crop: z
       .object({

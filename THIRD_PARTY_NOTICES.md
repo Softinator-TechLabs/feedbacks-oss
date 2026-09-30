@@ -84,3 +84,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
+
+## FFmpeg server executable
+
+The application container includes the Debian FFmpeg package and its runtime dependencies as separate executables for video previews, with DejaVu fonts for labels. Upstream: https://ffmpeg.org/ and https://dejavu-fonts.github.io/. Package license/copyright notices are retained under `/usr/share/doc` in the container; the installed Debian build determines applicable FFmpeg LGPL/GPL terms. These binaries are not bundled into the Chrome extension, static website or MCP client plugin. Distribution of container images must preserve the package notices and applicable corresponding-source obligations; source packages are available from Debian's package archives.

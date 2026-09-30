@@ -131,7 +131,7 @@ test("video issue starts with its saved timestamped frame without exporting vide
     ),
   );
 });
-test("video without a frame supplies a focused media action without inventing playback", async () => {
+test("video without a saved frame requests one native preview without inventing playback", async () => {
   const f: any = base();
   f.assets = [{ id: randomUUID(), contentType: "video/webm", durationMs: 120000 }];
   const calls: Array<{ op: string; input: any }> = [];
@@ -139,11 +139,12 @@ test("video without a frame supplies a focused media action without inventing pl
     threadId: id,
     includeImage: true,
   });
-  assert.equal(r.image, undefined);
+  assert.ok(r.image);
   assert.equal(r.media.kind, "video");
   assert.equal(r.media.playbackVerified, false);
-  assert.equal(r.media.read.tool, "feedbacks_asset");
-  assert.ok(calls.every((c) => c.op !== "assets.get"));
+  assert.equal(r.media.read, undefined);
+  assert.equal(calls.filter((c) => c.op === "assets.get").length, 1);
+  assert.equal(calls.find((c) => c.op === "assets.get")!.input.includeImage, true);
 });
 test("known-empty overview has no discussion, diagnostic or history suggestions", async () => {
   const r = await runAgentTool(async () => base(), "thread", { threadId: id });
@@ -510,7 +511,10 @@ test("start preserves long element selectors and page coordinates", async () => 
       anchor: { selector, pagePoint: { x: 120, y: 3200 } },
     },
   ];
-  const r = await runAgentTool(executor(f, []), "start", { threadId: id });
+  const r = await runAgentTool(executor(f, []), "start", {
+    threadId: id,
+    includeGeometry: true,
+  });
   assert.equal(r.task.points[0].anchor.selector, selector);
   assert.deepEqual(r.task.points[0].anchor.pagePoint, { x: 120, y: 3200 });
 });
@@ -541,4 +545,19 @@ test("recording preview preserves edit timeline mapping instead of assuming offs
     { threadId: id, includeRecordings: true },
   );
   assert.deepEqual(r.recordings.items[0].video.segments, segments);
+});
+
+test("marked-first start omits geometry but retains explicit target and complete brief points", async () => {
+  const f: any = base();
+  f.context.reproduction = { source: "app", objectId: "demo-42", section: "Methods" };
+  f.context.annotations = Array.from({ length: 9 }, (_, n) => ({
+    id: randomUUID(),
+    body: `Change ${n + 1}`,
+    anchor: { selector: "long selector", rect: { x: 1, y: 2, width: 3, height: 4 } },
+  }));
+  const r = await runAgentTool(executor(f, []), "start", { threadId: id });
+  assert.equal(r.task.points.length, 9);
+  assert.equal(r.task.incomplete, undefined);
+  assert.equal(r.reproduction.objectId, "demo-42");
+  assert.equal(r.task.points[0].anchor, undefined);
 });
