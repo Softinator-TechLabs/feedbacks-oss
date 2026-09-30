@@ -1,3 +1,9 @@
+import {
+  discussionSnapshot,
+  pointAnchor,
+  assetSnapshot,
+  safeContextUrl,
+} from "./task-snapshot.js";
 import type { AgentExecutor } from "./agent-workflow.js";
 import { presentTaskCounts, reviewedPage } from "./agent-task-context.js";
 
@@ -7,6 +13,7 @@ export async function startTask(
     threadId: string;
     snapshotRevision?: number;
     includeImage?: boolean;
+    includeRecordings?: boolean;
     annotationIds?: string[];
   },
 ) {
@@ -140,8 +147,8 @@ export async function startTask(
   )
     incomplete.push("points");
   const replies = thread.replies ?? [];
-  if (replies.length > 1 || replies.some((r: any) => r.body.length > 400))
-    incomplete.push("discussion");
+  const discussion = discussionSnapshot(replies);
+  if (discussion && !discussion.complete) incomplete.push("discussion");
   const pointId = (points.find((p: any) => effectiveState(p) === "open") ?? points[0])
     ?.id;
   const assets = thread.assets ?? [];
@@ -161,10 +168,14 @@ export async function startTask(
     images.find(unlinked) ??
     assets.find((a: any) => a.contentType?.startsWith("video/"));
   let image: any;
-  let media: any;
+  let media: any = input.includeImage
+    ? { state: assets.length ? "no_preview" : "no_assets" }
+    : undefined;
   if (selected) {
     const video = selected.contentType.startsWith("video/");
     media = {
+      ...assetSnapshot(selected, me?.serverOrigin),
+      state: input.includeImage ? "available" : "not_requested",
       assetId: selected.id,
       width: selected.width,
       height: selected.height,
@@ -205,7 +216,78 @@ export async function startTask(
       } else
         media.access =
           result.status === "available" ? { status: "image_unavailable" } : result;
+      if (media.access)
+        media.state =
+          media.access.status === "image_unavailable" ? "unavailable" : "denied";
     }
+  }
+  let recordings: any;
+  if (input.includeRecordings) {
+    const result = await optional(
+      "recordings.list",
+      { threadId: thread.id },
+      permitted("recordings.list"),
+    );
+    recordings =
+      result.status !== "available"
+        ? result
+        : {
+            complete: result.data.items.length <= 3,
+            total: result.data.items.length,
+            items: result.data.items.slice(0, 3).map((r: any) => ({
+              id: r.id,
+              mode: r.mode,
+              startedAt: r.startedAt,
+              durationMs: r.durationMs,
+              eventCount: r.eventCount,
+              url: safeContextUrl(r.url),
+              video: r.video
+                ? {
+                    assetId: r.video.assetId,
+                    offsetMs: r.video.offsetMs,
+                    ...(r.video.segments
+                      ? {
+                          segments: r.video.segments.slice(0, 10),
+                          ...(r.video.segments.length > 10
+                            ? {
+                                timingIncomplete: true,
+                                readTiming: {
+                                  tool: "feedbacks_execute",
+                                  input: {
+                                    operation: "recordings.list",
+                                    input: { threadId: thread.id },
+                                  },
+                                },
+                              }
+                            : {}),
+                        }
+                      : {}),
+                  }
+                : undefined,
+              coverage: r.coverage
+                ?.slice(0, 10)
+                .map((c: any) => ({ channel: c.channel, status: c.status })),
+              ...(r.coverage?.length > 10 ? { coverageIncomplete: true } : {}),
+              read: {
+                tool: "feedbacks_execute",
+                input: {
+                  operation: "recordings.events",
+                  input: { recordingId: r.id, limit: 20 },
+                },
+              },
+            })),
+            ...(result.data.items.length > 3
+              ? {
+                  next: {
+                    tool: "feedbacks_execute",
+                    input: {
+                      operation: "recordings.list",
+                      input: { threadId: thread.id },
+                    },
+                  },
+                }
+              : {}),
+          };
   }
   const ownClaim =
     verified &&
@@ -340,11 +422,16 @@ export async function startTask(
               id: p.id,
               number: allPoints.findIndex((item: any) => item.id === p.id) + 1,
               text: p.body.slice(0, 240),
+              ...(pointAnchor(p.anchor) ? { anchor: pointAnchor(p.anchor) } : {}),
               ...(p.textEdit
                 ? {
                     textEdit: {
                       original: p.textEdit.original.slice(0, 240),
                       replacement: p.textEdit.replacement.slice(0, 240),
+                      ...(p.textEdit.rects?.length
+                        ? { rects: p.textEdit.rects.slice(0, 8) }
+                        : {}),
+                      ...(p.textEdit.rects?.length > 8 ? { rectsIncomplete: true } : {}),
                     },
                   }
                 : {}),
@@ -365,7 +452,17 @@ export async function startTask(
       : identity,
     ...(missingScopes.length ? { missingScopes } : {}),
     ...(!scoped ? { scopesUnknown: true } : {}),
-    ...(project ? { project: { id: project.id, permissions: project.permissions } } : {}),
+    ...(project
+      ? {
+          project: {
+            id: project.id,
+            permissions: project.permissions,
+            ...(safeContextUrl(project.repositoryUrl)
+              ? { repositoryUrl: safeContextUrl(project.repositoryUrl) }
+              : {}),
+          },
+        }
+      : {}),
     ...(approvedInstructions ? { approvedInstructions } : {}),
     coordination: {
       verified,
@@ -379,15 +476,27 @@ export async function startTask(
     ...(input.snapshotRevision !== undefined
       ? { snapshot: { matches: input.snapshotRevision === thread.revision } }
       : {}),
-    ...(replies.length
+    ...(discussion
       ? {
           discussion: {
-            latest: { id: replies.at(-1).id, text: replies.at(-1).body.slice(0, 400) },
-            ...(replies.length > 1 ? { earlierReplies: replies.length - 1 } : {}),
+            ...discussion,
+            ...(!discussion.complete
+              ? {
+                  next: {
+                    tool: "feedbacks_thread",
+                    input: {
+                      threadId: thread.id,
+                      section: "discussion",
+                      expectedRevision: thread.revision,
+                    },
+                  },
+                }
+              : {}),
           },
         }
       : {}),
     ...(media ? { media } : {}),
+    ...(recordings ? { recordings } : {}),
     ...(image ? { image } : {}),
     ...(thread.diagnosticEvidence?.count
       ? {

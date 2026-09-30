@@ -39,7 +39,7 @@ test("compact describe exposes transformed assignment input without calling busi
       throw new Error("Unexpected execution");
     },
     "describe",
-    { operation: "assignments.assign" },
+    { operation: "assignments.assign", includeOutputSchema: true },
   );
   assertAssignmentInput(description.inputSchema);
   assert.ok(
@@ -58,7 +58,7 @@ test("every discoverable agent operation has convertible input and output schema
         throw new Error("Unexpected execution");
       },
       "describe",
-      { operation },
+      { operation, includeOutputSchema: true },
     );
     assert.equal(description.operation, operation);
     assert.equal(description.inputSchema.type, "object", operation);
