@@ -14,7 +14,7 @@ test(
       const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
-      await page.goto(f.url, { waitUntil: "networkidle" });
+      await page.goto(f.url, { waitUntil: "domcontentloaded" });
       assert.deepEqual(
         await page.locator('[aria-label="Feedback type"]').allTextContents(),
         [
@@ -123,6 +123,262 @@ test(
       );
       await page.keyboard.press("Escape");
       assert.deepEqual(errors, []);
+    } finally {
+      await browser.close();
+      await f.close();
+    }
+  },
+);
+
+test(
+  "image editing stays in the expanded viewer and preserves drafts on save failure",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const f = await evidenceViewerFixture({ writable: true, failFirstUpload: true });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      await page.goto(f.url, { waitUntil: "domcontentloaded" });
+      assert.equal(
+        await page.getByRole("button", { name: "Add annotations", exact: true }).count(),
+        0,
+      );
+      await page.getByRole("button", { name: "Expand image", exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("button", { name: "Edit annotations", exact: true }).click();
+      assert.equal(await page.locator("dialog[open]").count(), 1);
+      await dialog.getByRole("button", { name: "Circle", exact: true }).click();
+      const canvas = dialog.getByLabel("Screenshot marking canvas");
+      await page.waitForFunction(
+        () => document.querySelector<HTMLCanvasElement>("canvas")?.width === 1200,
+      );
+      const box = (await canvas.boundingBox())!;
+      await page.mouse.move(box.x + box.width * 0.25, box.y + 100);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * 0.4, box.y + 180, { steps: 5 });
+      await page.mouse.up();
+      await dialog.getByRole("button", { name: "Save annotations", exact: true }).click();
+      await dialog.getByRole("alert").waitFor();
+      assert.equal(
+        await dialog.getByRole("button", { name: "Undo mark" }).isEnabled(),
+        true,
+      );
+      assert.equal(await page.locator("dialog[open]").count(), 1);
+      await dialog.getByRole("button", { name: "Save annotations", exact: true }).click();
+      await dialog
+        .getByRole("button", { name: "Edit annotations", exact: true })
+        .waitFor();
+      assert.equal(
+        await page.locator("dialog[open]").count(),
+        1,
+        "save returns to the same viewer",
+      );
+      assert.equal(f.uploads.length, 2);
+      assert.equal(f.uploads[0].idempotencyKey, f.uploads[1].idempotencyKey);
+      assert.equal(f.uploads[1].replacesAssetId, "capture");
+      assert.equal(f.uploads[1].markup[0].tool, "ellipse");
+      assert.equal(await dialog.locator("img").getAttribute("src"), "/saved.webp");
+      await dialog.getByRole("button", { name: "Edit annotations", exact: true }).click();
+      await dialog.getByRole("button", { name: "Clear marks" }).click();
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+      assert.equal(f.uploads.length, 2);
+      assert.equal(await dialog.isVisible(), true);
+      await dialog.getByRole("button", { name: "Edit annotations", exact: true }).click();
+      assert.equal(
+        await dialog.getByRole("button", { name: "Undo mark" }).isEnabled(),
+        true,
+        "cancel retains previously saved marks",
+      );
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth), true);
+      await page.screenshot({ path: ".local/evidence-qa/edit-mobile.png" });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.screenshot({ path: ".local/evidence-qa/edit-desktop.png" });
+      await page.keyboard.press("Escape");
+      assert.equal(
+        await dialog.isVisible(),
+        true,
+        "Escape cancels editing before closing the viewer",
+      );
+    } finally {
+      await browser.close();
+      await f.close();
+    }
+  },
+);
+
+test(
+  "twenty points support compact pages, bulk expansion and stable editing",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const f = await evidenceViewerFixture({ writable: true, pointCount: 20 });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      await page.goto(f.url, { waitUntil: "domcontentloaded" });
+      const list = page.locator(".review-point-list");
+      assert.equal(await list.locator(".review-point-details").count(), 5);
+      assert.equal(await list.locator(".review-point-details[open]").count(), 0);
+      assert.ok(
+        (await list.boundingBox())!.height < 450,
+        "20 compact rows do not become 20 full editors",
+      );
+      assert.equal(
+        await list.getByRole("button", { name: "Resolve point", exact: true }).count(),
+        0,
+      );
+      await list.locator("summary.review-point-summary").nth(0).click();
+      await list.getByRole("button", { name: "Resolve point", exact: true }).waitFor();
+      assert.equal(await list.locator(".review-point-details[open]").count(), 1);
+      assert.equal(
+        await list.getByRole("button", { name: "Resolve point", exact: true }).count(),
+        1,
+      );
+      await page
+        .locator(".review-evidence")
+        .screenshot({ path: ".local/evidence-qa/point-layout-desktop.png" });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page
+        .locator(".review-evidence")
+        .screenshot({ path: ".local/evidence-qa/point-layout-mobile.png" });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await list.locator("summary.review-point-summary").nth(1).click();
+      assert.equal(await list.locator(".review-point-details[open]").count(), 2);
+      await page.getByRole("button", { name: "Expand all", exact: true }).click();
+      assert.equal(await list.locator(".review-point-details[open]").count(), 5);
+      await page.getByRole("button", { name: "Next points" }).click();
+      assert.equal(
+        await list.locator(".review-point-details[open]").count(),
+        5,
+        "bulk expansion carries across pages",
+      );
+      await page.getByRole("button", { name: "Collapse all", exact: true }).click();
+      assert.equal(await list.locator(".review-point-details[open]").count(), 0);
+      await page.getByRole("button", { name: "Next points" }).click();
+      await list.locator("summary.review-point-summary").nth(1).click();
+      assert.equal(await list.locator(".review-point-details[open]").count(), 1);
+      assert.equal(
+        await list.locator(".review-point-details[open]").getAttribute("data-point-id"),
+        "point-11",
+      );
+      await page
+        .locator(".review-evidence")
+        .screenshot({ path: ".local/evidence-qa/points-desktop.png" });
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      await page
+        .locator(".review-evidence")
+        .screenshot({ path: ".local/evidence-qa/points-mobile.png" });
+      await list.locator("summary.review-point-summary").nth(1).press("Enter");
+      assert.equal(await list.locator(".review-point-details[open]").count(), 0);
+      await page.getByRole("button", { name: "Next points" }).click();
+      await list.locator("summary.review-point-summary").nth(4).press("Enter");
+      assert.equal(
+        await list.locator(".review-point-details[open]").getAttribute("data-point-id"),
+        "point-19",
+      );
+      await page.getByLabel("Filter points").selectOption("resolved");
+      assert.equal(await list.locator(".review-point-details").count(), 0);
+      await page.getByText("No points in this view.", { exact: true }).waitFor();
+      await page.goto(f.url + "#point-point-11", { waitUntil: "domcontentloaded" });
+      await list
+        .locator('.review-point-details[open][data-point-id="point-11"]')
+        .waitFor();
+      assert.equal(await page.getByLabel("Filter points").inputValue(), "all");
+      await page.goto(f.url + "#asset-capture-19", { waitUntil: "domcontentloaded" });
+      await list
+        .locator('.review-point-details[open][data-point-id="point-19"]')
+        .waitFor();
+      assert.equal(await list.locator(".review-point-number").last().textContent(), "20");
+      // A saved thread refresh must not reapply a hash we have already navigated away from.
+      for (let i = 0; i < 3; i++)
+        await page.getByRole("button", { name: "Previous points" }).click();
+      await list.locator("summary.review-point-summary").first().click();
+      await list.getByRole("button", { name: "Expand image", exact: true }).click();
+      const viewer = page.getByRole("dialog");
+      await viewer.getByRole("button", { name: "Edit annotations", exact: true }).click();
+      const canvas = viewer.locator("canvas");
+      await page.waitForFunction(() => {
+        const el = document.querySelector("canvas");
+        return el && el.width === 1200;
+      });
+      const box = (await canvas.boundingBox())!;
+      await page.mouse.move(box.x + 30, box.y + 30);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 60, box.y + 60);
+      await page.mouse.up();
+      await viewer.getByRole("button", { name: "Save annotations", exact: true }).click();
+      await viewer
+        .getByRole("button", { name: "Edit annotations", exact: true })
+        .waitFor();
+      assert.equal(await viewer.isVisible(), true);
+      await viewer.getByRole("button", { name: "Close", exact: true }).click();
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      assert.equal(
+        await list
+          .locator(".review-point-details")
+          .first()
+          .evaluate((el) => getComputedStyle(el, "::details-content").transitionDuration),
+        "0s",
+      );
+      await page.getByRole("button", { name: "Expand all", exact: true }).click();
+      assert.equal(await list.locator(".review-point-details[open]").count(), 5);
+      await page.getByRole("button", { name: "Collapse all", exact: true }).click();
+      assert.equal(await list.locator(".review-point-details[open]").count(), 0);
+      await list.locator("summary.review-point-summary").first().click();
+      assert.equal(
+        await list.locator(".review-point-details[open]").getAttribute("data-point-id"),
+        "point",
+      );
+    } finally {
+      await browser.close();
+      await f.close();
+    }
+  },
+);
+
+test(
+  "asset-linked review keeps the selected point while planning and editing",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const f = await evidenceViewerFixture({ writable: true, pointCount: 20 });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+      await page.goto(f.url + "#asset-capture", { waitUntil: "domcontentloaded" });
+      await page.locator('.review-point-details[open][data-point-id="point"]').waitFor();
+      await page.getByRole("button", { name: "Next points" }).click();
+      await page.locator("summary.review-point-summary").first().click();
+      const point = page.locator('.review-point-details[data-point-id="point-5"]');
+      await point.getByLabel("Point 6 priority").selectOption("high");
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector('.review-point-plan[aria-busy="false"] select')
+            ?.getAttribute("disabled") === null,
+      );
+      assert.equal(await point.getByLabel("Point 6 priority").inputValue(), "high");
+      await point.getByLabel("Point 6 timing").selectOption("later");
+      await point.getByText("High priority · Later", { exact: true }).waitFor();
+      await point.getByRole("button", { name: "Expand image", exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("button", { name: "Edit annotations", exact: true }).click();
+      await page.waitForFunction(() => document.querySelector("canvas")?.width === 1200);
+      const box = (await dialog.locator("canvas").boundingBox())!;
+      await page.mouse.move(box.x + 40, box.y + 40);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 90, box.y + 90);
+      await page.mouse.up();
+      await dialog.getByRole("button", { name: "Save annotations", exact: true }).click();
+      await dialog
+        .getByRole("button", { name: "Edit annotations", exact: true })
+        .waitFor();
+      assert.equal(await dialog.isVisible(), true);
+      assert.equal(await point.getAttribute("open"), "");
+      assert.equal(f.uploads.length, 1);
     } finally {
       await browser.close();
       await f.close();

@@ -128,8 +128,26 @@ recording loading failures still offer their existing recovery information.
 
 Choose **Expand image** beside a screenshot, or click the screenshot, to inspect it
 in a larger viewer. Points, element outlines and text selection use the same
-visibility controls as the inline image, including changes made while expanded.
+visibility state as the inline image. Layer controls live in the expanded viewer,
+keeping each point preview compact.
 **Fit width**, **100%** and **200%** control zoom; large captures scroll inside the
 viewer. **Close** or Escape returns to the review. **Open original file** opens only
 the saved image, without browser-rendered evidence layers. Legacy annotations saved
 into image pixels remain part of that image.
+
+Choose **Edit annotations** inside that viewer to draw or revise marks without
+opening another dialog. The layer controls and zoom remain available while editing.
+**Save annotations** updates the image and returns to viewing; **Cancel** (or Escape)
+discards the draft and stays in the viewer. A failed save preserves the draft for
+retry. Editing requires the existing thread write permission.
+
+Numbered points show a compact preview, status and any non-normal priority. A
+single-point thread starts expanded; multiple points start collapsed and can be opened independently.
+**Expand all** and **Collapse all** affect the filtered points across pages. Subtle
+open/close transitions respect the system reduced-motion preference. Lists show five points per page with Previous/Next controls
+and retain their original numbering when filtered. Direct links reveal the target
+point's page. Each opened point groups feedback and its **Priority / Schedule**
+controls together, places the screenshot alongside them on wide panels (below them
+on narrow screens), and keeps resolve/remove actions in a separate footer. Technical
+element details stay collapsed. Screenshot expansion sits directly below its preview;
+annotation editing is available inside the expanded viewer.

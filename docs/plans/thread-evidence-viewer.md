@@ -8,6 +8,8 @@ Hide the recording section when a thread has no recording or video. Identify tex
 text edits, screenshots, full-page captures, documents, video and session recordings
 in the feedback list, including mixed evidence. Expand screenshot evidence with the
 same point, element-outline and text-selection layers used in the inline review.
+Keep editing in that viewer, standardize control heights, and present large point
+sets as five compact rows per page with independent and bulk expansion.
 
 ## Evidence and approach
 
@@ -25,6 +27,9 @@ by the list. Derive other labels from existing evidence metadata.
 - [x] Reproduce the empty section and raw-image behavior; establish acceptance cases.
 - [x] Add regression assertions for capture labels, recording metadata and expansion.
 - [x] Implement and verify desktop/mobile, overlay alignment and keyboard dismissal.
+- [x] Keep view/edit in one dialog, preserving zoom, layers and failed-save drafts.
+- [x] Add compact point summaries, pagination, filtering and direct-link reveal.
+- [x] Add Expand all / Collapse all with reduced-motion-aware transitions.
 - [x] Update canonical review docs and generated contracts.
 - [x] Review diff and complete the repository check matrix.
 
@@ -38,7 +43,7 @@ application change restores the previous presentation without data conversion.
 
 ## Verification
 
-- `npm run check`: passed (433 passed, 25 opt-in tests skipped); includes formatting,
+- `npm run check`: passed (433 passed, 28 opt-in tests skipped); includes formatting,
   boundaries/docs, types, tests, all builds, isolated app smoke and release checks.
 - Explicit Chromium tests: expanded-image layers/zoom/focus on desktop and mobile,
   empty recording sections, replay diagnostics and video frame saving passed.
@@ -50,4 +55,15 @@ application change restores the previous presentation without data conversion.
   [mobile viewer](../screenshots/thread-evidence-viewer/expanded-mobile.png) use
   synthetic content. Reproduce with `FEEDBACKS_RECORDING_BROWSER_SMOKE=1 node
 --import tsx --test tests/evidence-viewer-browser.test.ts`.
+- Follow-up Chromium evidence covers same-dialog editing, failed-save retry,
+  cancel, twenty-point pagination, filters and keyboard interaction. Desktop/mobile
+  screenshots: [editing](../screenshots/thread-evidence-viewer/edit-desktop.png),
+  [mobile editing](../screenshots/thread-evidence-viewer/edit-mobile.png),
+  [points](../screenshots/thread-evidence-viewer/points-desktop.png),
+  [mobile points](../screenshots/thread-evidence-viewer/points-mobile.png),
+  [grouped point controls](../screenshots/thread-evidence-viewer/point-layout-desktop.png)
+  and [mobile point controls](../screenshots/thread-evidence-viewer/point-layout-mobile.png).
+- Independent follow-up review found stale navigation hashes being reapplied after
+  saving. Point and asset hashes now run only on navigation, with regressions for
+  planning and editing after moving to a different point.
 - CI, merge, deployment and production verification remain pending.

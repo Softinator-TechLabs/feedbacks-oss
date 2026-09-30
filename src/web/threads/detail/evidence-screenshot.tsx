@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import type { Thread } from "../../api.js";
 import { Icon } from "../../icons.js";
+import { ScreenshotMarkup } from "../../screenshot-markup.js";
 
 type Asset = Thread["assets"][number];
 export type EvidenceLayer = "points" | "element" | "text";
@@ -26,7 +27,8 @@ export function EvidenceScreenshot({
   hiddenLayers,
   onToggleLayer,
   captureMarker,
-  onAnnotate,
+  thread,
+  onSaved,
 }: {
   asset: Asset;
   className?: string;
@@ -35,11 +37,15 @@ export function EvidenceScreenshot({
   hiddenLayers: Record<EvidenceLayer, boolean>;
   onToggleLayer: (assetId: string, layer: EvidenceLayer) => void;
   captureMarker?: Thread["context"]["captureMarker"];
-  onAnnotate?: (asset: Asset) => void;
+  thread: Thread;
+  onSaved?: (thread: Thread) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const identity = asset.baseAssetId ?? asset.id;
   const [zoom, setZoom] = useState(0);
   useEffect(() => {
     if (expanded) dialog.current?.showModal();
@@ -48,7 +54,8 @@ export function EvidenceScreenshot({
   useEffect(() => {
     setExpanded(false);
     setZoom(0);
-  }, [asset.id]);
+    setEditing(false);
+  }, [identity]);
   const points =
     asset.rendition === "screenshot"
       ? (asset.markings || []).filter(
@@ -73,7 +80,11 @@ export function EvidenceScreenshot({
     asset.rendition === "annotated" &&
     asset.markings?.some((mark) => mark.tool === "point");
   const maxHeight =
-    className === "review-main-capture" ? 520 : className ? undefined : 320;
+    className === "review-main-capture"
+      ? 520
+      : className === "review-point-figure"
+        ? 220
+        : 320;
   const layerControls = layers.length > 0 && (
     <span
       className="review-layer-controls"
@@ -86,7 +97,7 @@ export function EvidenceScreenshot({
           className="review-pin-toggle"
           key={layer}
           aria-pressed={!hiddenLayers[layer]}
-          onClick={() => onToggleLayer(asset.id, layer)}
+          onClick={() => onToggleLayer(identity, layer)}
         >
           {hiddenLayers[layer] ? "Show" : "Hide"} {layerLabels[layer]}
         </button>
@@ -141,20 +152,7 @@ export function EvidenceScreenshot({
     <figure id={id} className={className}>
       <figcaption className="review-image-caption">
         <span>{imageLabel(asset)}</span>
-        {layerControls}
         {embeddedPins && <span className="review-legacy-pins">Pins saved in image</span>}
-        <button
-          type="button"
-          className="review-pin-toggle"
-          onClick={() => setExpanded(true)}
-        >
-          <Icon name="expand" /> Expand image
-        </button>
-        {onAnnotate && (
-          <button type="button" onClick={() => onAnnotate(asset)}>
-            Add annotations
-          </button>
-        )}
       </figcaption>
       <button
         type="button"
@@ -169,22 +167,49 @@ export function EvidenceScreenshot({
       >
         {image}
       </button>
+      <div className="review-image-actions">
+        <button
+          type="button"
+          className="review-pin-toggle"
+          onClick={() => setExpanded(true)}
+        >
+          <Icon name="expand" /> Expand image
+        </button>
+      </div>
       <dialog
         ref={dialog}
         className="evidence-image-dialog"
         aria-labelledby={titleId}
-        onClose={() => setExpanded(false)}
-        onCancel={() => setExpanded(false)}
+        onClose={() => {
+          setExpanded(false);
+          setEditing(false);
+        }}
+        onCancel={(event) => {
+          if (editing || saving) {
+            event.preventDefault();
+            if (!saving) setEditing(false);
+          } else setExpanded(false);
+        }}
       >
         {expanded && (
           <>
             <header className="evidence-image-toolbar">
               <h2 id={titleId}>{imageLabel(asset)}</h2>
-              <button type="button" autoFocus onClick={() => setExpanded(false)}>
+              <button
+                type="button"
+                autoFocus
+                disabled={editing || saving}
+                onClick={() => setExpanded(false)}
+              >
                 Close
               </button>
             </header>
             <div className="evidence-image-controls">
+              {onSaved && !editing && (
+                <button type="button" onClick={() => setEditing(true)}>
+                  <Icon name="edit" /> Edit annotations
+                </button>
+              )}
               {layerControls}
               <label>
                 Zoom
@@ -205,22 +230,32 @@ export function EvidenceScreenshot({
             {embeddedPins && (
               <p className="review-legacy-pins">Points are saved in this image.</p>
             )}
-            <div
-              className="evidence-image-viewport"
-              tabIndex={0}
-              role="region"
-              aria-label="Expanded screenshot"
-            >
+            {editing && onSaved ? (
+              <ScreenshotMarkup
+                thread={thread}
+                target={{ kind: "asset", asset }}
+                onSaved={onSaved}
+                onClose={() => setEditing(false)}
+                embedded={{ zoom, hiddenLayers, onBusyChange: setSaving }}
+              />
+            ) : (
               <div
-                className="review-image-frame"
-                style={{
-                  width: asset.width ? `${asset.width * (zoom || 1)}px` : "100%",
-                  maxWidth: zoom ? "none" : "100%",
-                }}
+                className="evidence-image-viewport"
+                tabIndex={0}
+                role="region"
+                aria-label="Expanded screenshot"
               >
-                {image}
+                <div
+                  className="review-image-frame"
+                  style={{
+                    width: asset.width ? `${asset.width * (zoom || 1)}px` : "100%",
+                    maxWidth: zoom ? "none" : "100%",
+                  }}
+                >
+                  {image}
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </dialog>
