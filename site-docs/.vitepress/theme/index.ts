@@ -17,7 +17,7 @@ export default {
     app.component("DocPath", DocPath);
     app.component("Evidence", {
       setup: () => () =>
-        h("feedbacks-evidence", {}, [
+        h("feedbacks-demo", { step: "recording" }, [
           h("img", {
             src: "/media/story/recording-desktop-0.webp",
             width: 900,

@@ -365,6 +365,8 @@ export function createSessionReview(
   const content = make("div", null, "review-events");
   content.setAttribute("aria-label", "Captured events");
   root.append(content);
+  let renderedChannel,
+    renderedRows = [];
   const details = make("details", null, "review-detail");
   const detailSummary = make("summary", "Technical details");
   const detailBody = make("pre");
@@ -435,20 +437,6 @@ export function createSessionReview(
       b.textContent = `${channel[0].toUpperCase() + channel.slice(1)} (${count})`;
       b.setAttribute("aria-selected", String(channel === selected));
     }
-    const previousScrollTop = content.scrollTop;
-    content.replaceChildren();
-    if (!rows.length)
-      content.append(
-        make(
-          "p",
-          selected === "activity"
-            ? "No activity captured."
-            : selected === "console"
-              ? "No console messages captured. Recording starts when you press Start; earlier DevTools messages are not copied. Logs, warnings and errors are included when observed."
-              : "No events at this time. Scrub forward to inspect later events.",
-          "hint",
-        ),
-      );
     if (playing && selected === "everything") {
       const reached = rows.findLastIndex((event) => event.atMs <= at);
       if (reached >= 0) eventPage = Math.floor(reached / 200);
@@ -459,32 +447,77 @@ export function createSessionReview(
     }
     eventPage = Math.min(eventPage, Math.max(0, Math.ceil(rows.length / 200) - 1));
     const activeSeq = focusedSeq ?? rows.findLast((event) => event.atMs <= at)?.seq;
-    for (const e of rows.slice(eventPage * 200, (eventPage + 1) * 200)) {
-      const b = make("button", null, "review-event");
-      b.type = "button";
+    const pageRows = rows.slice(eventPage * 200, (eventPage + 1) * 200);
+    const rowKey = (event) =>
+      selected === "network" && !allEvents ? networkKey(event) : event.seq;
+    const rowsChanged =
+      renderedChannel !== selected ||
+      renderedRows.length !== pageRows.length ||
+      pageRows.some((event, index) => renderedRows[index].key !== rowKey(event));
+    if (rowsChanged) {
+      const previousScrollTop = content.scrollTop;
+      content.replaceChildren();
+      renderedChannel = selected;
+      renderedRows = pageRows.map((event) => {
+        const b = make("button", null, "review-event"),
+          time = make("time"),
+          label = make("span", null, "review-event-label");
+        const row = { key: rowKey(event), event, button: b, time, label };
+        b.type = "button";
+        b.append(time);
+        if (selected === "everything") {
+          const tag = make("span", event.type, "review-event-tag");
+          tag.dataset.channel = event.type;
+          b.append(tag);
+        }
+        b.append(label);
+        b.onclick = () => {
+          const e = row.event;
+          focusedSeq = e.seq;
+          lastAutoScrollSeq = null;
+          seek(e.atMs);
+          detailEvent = e;
+          if (e.type === "environment") selected = "environment";
+          render();
+        };
+        content.append(b);
+        return row;
+      });
+      if (!rows.length)
+        content.append(
+          make(
+            "p",
+            selected === "activity"
+              ? "No activity captured."
+              : selected === "console"
+                ? "No console messages captured. Recording starts when you press Start; earlier DevTools messages are not copied. Logs, warnings and errors are included when observed."
+                : "No events at this time. Scrub forward to inspect later events.",
+            "hint",
+          ),
+        );
+      content.scrollTop = previousScrollTop;
+      lastAutoScrollSeq = null;
+    }
+    // Media timeupdates must not replace stable rows or write scrollTop: either
+    // operation interrupts the native smooth scroll toward the active event.
+    for (let index = 0; index < pageRows.length; index++) {
+      const e = pageRows[index],
+        row = renderedRows[index],
+        b = row.button;
+      row.event = e;
       b.dataset.seq = String(e.seq);
       b.dataset.future = String(e.atMs > at);
       if (e.seq === activeSeq) b.setAttribute("aria-current", "true");
-      b.append(make("time", reviewTime(e.atMs)));
-      if (selected === "everything") {
-        const tag = make("span", e.type, "review-event-tag");
-        tag.dataset.channel = e.type;
-        b.append(tag);
-      }
-      b.append(make("span", eventLabel(e), "review-event-label"));
-      if (e.data?.level === "error" || e.data?.error || e.data?.status >= 400)
-        b.classList.add("review-error");
-      b.onclick = () => {
-        focusedSeq = e.seq;
-        lastAutoScrollSeq = null;
-        seek(e.atMs);
-        detailEvent = e;
-        if (e.type === "environment") selected = "environment";
-        render();
-      };
-      content.append(b);
+      else b.removeAttribute("aria-current");
+      const time = reviewTime(e.atMs),
+        label = eventLabel(e);
+      if (row.time.textContent !== time) row.time.textContent = time;
+      if (row.label.textContent !== label) row.label.textContent = label;
+      b.classList.toggle(
+        "review-error",
+        Boolean(e.data?.level === "error" || e.data?.error || e.data?.status >= 400),
+      );
     }
-    content.scrollTop = previousScrollTop;
     if ((playing && followPlayback) || focusedSeq !== null) {
       const active = content.querySelector('[aria-current="true"]');
       if (active && activeSeq !== lastAutoScrollSeq) {

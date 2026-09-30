@@ -46,4 +46,9 @@ CLAUDE.local.md
 
 /site/public/learn/
 
+# Actual recording walkthrough renderer and synthetic page assets are generated.
+/public/learn/recording-runtime.js
+/public/learn/recording-review.css
+/public/learn/studio-chair.webp
+
 /site-docs/public/media/story/

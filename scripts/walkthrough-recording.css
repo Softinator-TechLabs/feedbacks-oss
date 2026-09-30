@@ -1,0 +1,159 @@
+.recording-demo {
+  --line: #dfe3da;
+  --muted: #596054;
+  --text: #20241e;
+  --accent: #17324d;
+  --on-accent: #fff;
+  --hover: #f6f7f3;
+  --canvas: #fff;
+  color: var(--text);
+  background: var(--canvas);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  width: 100%;
+  min-width: 0;
+}
+.recording-demo *,
+.recording-demo *::before,
+.recording-demo *::after {
+  box-sizing: border-box;
+}
+.recording-demo .recording-page {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: var(--recording-preview-height, none);
+  object-fit: contain;
+}
+.recording-demo .session-review {
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  padding: 8px 12px 12px;
+}
+.recording-demo button {
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.recording-demo button:focus-visible,
+.recording-demo input:focus-visible,
+.recording-demo summary:focus-visible {
+  outline: 2px solid #3875a9;
+  outline-offset: 2px;
+}
+.recording-demo .session-review > .review-toolbar {
+  margin: 4px 0 14px;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.recording-demo .session-review > .review-toolbar > button {
+  display: none;
+}
+.recording-demo .review-toolbar input {
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.recording-demo .review-toolbar output {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+.recording-demo .review-timeline-events {
+  margin-bottom: 8px;
+}
+.recording-demo .review-tabs {
+  gap: 2px;
+}
+.recording-demo .review-tabs button {
+  padding: 7px 6px;
+  font-size: 12px;
+  margin: 0;
+  border-radius: 4px 4px 0 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+}
+.recording-demo .review-tabs [aria-selected="true"] {
+  border-bottom-color: var(--accent);
+}
+.recording-demo .review-event-controls {
+  margin: 7px 0;
+}
+.recording-demo .review-follow {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.recording-demo .review-follow[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+.recording-demo .review-mode {
+  display: var(--recording-mode-display, block);
+  font-size: 12px;
+  margin: 5px 0;
+}
+.recording-demo .review-events {
+  max-height: var(--recording-event-height, 160px);
+  scrollbar-color: #9caca0 #f6f7f3;
+  scrollbar-width: thin;
+}
+.recording-demo .review-event {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 9px 6px;
+  font-size: 12px;
+  gap: 6px;
+  background: transparent;
+}
+.recording-demo .review-event[aria-current="true"] {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+.recording-demo .review-event time {
+  flex-basis: 42px;
+}
+.recording-demo .review-event-tag {
+  font-size: 10px;
+}
+.recording-demo .review-error .review-event-label {
+  color: #a43e17;
+}
+.recording-demo .review-guide {
+  display: var(--recording-guide-display, block);
+  margin: 8px 0 0;
+  font-size: 11px;
+}
+.recording-demo .review-detail pre {
+  max-height: 120px;
+}
+.recording-demo .hint {
+  font-size: 12px;
+}
+.recording-demo ::selection {
+  background: #e4efc3;
+  color: #20241e;
+}
+@media (max-width: 480px) {
+  .recording-demo .session-review {
+    padding-inline: 8px;
+  }
+  .recording-demo .review-tabs button {
+    padding-inline: 4px;
+    font-size: 11px;
+  }
+}
+
+@media (min-width: 601px) {
+  .recording-demo .review-tabs button {
+    min-height: 32px;
+  }
+}

@@ -64,6 +64,7 @@ try {
       viewport: { width, height: 900 },
       reducedMotion: "reduce",
     });
+    await page.addInitScript(() => localStorage.setItem("feedbacks-motion", "paused"));
     page.on("pageerror", (e) => failures.push(e.message));
     page.on("response", (r) => {
       if (r.status() >= 400) failures.push(`${r.status()} ${r.url()}`);
@@ -200,7 +201,7 @@ try {
       }
       if (path === "/docs/guide/session-replay") {
         assert.equal(
-          await page.locator("feedbacks-evidence .evidence-play").count(),
+          await page.locator('feedbacks-demo[step="recording"] .play').count(),
           1,
           "Docs hydration must preserve the interactive example",
         );
@@ -217,75 +218,58 @@ try {
           ["hero-title", "capture-title", "recordings-title"],
           "Show point capture immediately after the hero, then recording evidence",
         );
-        const demo = page.locator("feedbacks-evidence");
+        const demo = page.locator('feedbacks-demo[step="recording"]').first();
         assert.equal(
           (await page.locator("body").innerText()).match(/Apache-2.0/g)?.length,
           1,
           "State licensing once on the landing",
         );
-        await demo.locator(".evidence-screen").evaluate((img) => img.decode());
-        await demo
-          .getByRole("button", { name: "Enlarge the actual Feedbacks recording review" })
-          .click();
-        assert.equal(await demo.locator("dialog").evaluate((el) => el.open), true);
-        assert.ok(
-          await demo
-            .locator(".evidence-full")
-            .evaluate((img) => img.src.includes("recording-")),
+        await demo.locator(".recording-inspector .review-follow").waitFor();
+        assert.equal(await demo.locator(".play").innerText(), "Play");
+        assert.equal(
+          await page.locator('a[href$=".webp"]').count(),
+          0,
+          "Playback stays on the page",
         );
+        await demo.locator(".zoom").click();
+        assert.equal(await demo.locator("dialog").evaluate((el) => el.open), true);
+        assert.ok(await demo.locator("dialog .recording-inspector").isVisible());
         await page.keyboard.press("Escape");
         assert.equal(await demo.locator("dialog").evaluate((el) => el.open), false);
-        assert.equal(
-          await demo.getByRole("button", { name: "Play example", exact: true }).count(),
-          1,
-        );
-        await demo.getByRole("button", { name: "00:04 Request fails" }).click();
-        assert.deepEqual(
-          await demo
-            .locator("button[data-moment]")
-            .evaluateAll((buttons) =>
-              buttons.map((button) => button.getAttribute("aria-pressed")),
-            ),
-          ["false", "true", "false"],
-          "Selected moment must match the actual screen",
-        );
-        assert.match(await demo.locator(".evidence-event").innerText(), /500/);
+        await demo
+          .getByRole("button", { name: "0:04 · Request fails", exact: true })
+          .click();
         assert.match(
-          await demo.locator(".evidence-screen").getAttribute("src"),
-          /recording-desktop-1.webp/,
+          await demo.locator(".review-event[aria-current=true]").innerText(),
+          /POST.*503/,
         );
-        await demo.getByRole("button", { name: "00:05 Console error" }).focus();
+        await demo
+          .getByRole("button", { name: "0:05 · Console error", exact: true })
+          .focus();
         await page.keyboard.press("Enter");
-        assert.match(await demo.locator(".evidence-event").innerText(), /Console/);
-        assert.deepEqual(
-          await demo
-            .locator("button[data-moment]")
-            .evaluateAll((buttons) =>
-              buttons.map((button) => button.getAttribute("aria-pressed")),
-            ),
-          ["false", "false", "true"],
-        );
-        await demo.getByRole("button", { name: "00:02 Click", exact: true }).click();
-        await demo.locator(".evidence-screen").evaluate((img) => img.decode());
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await page.screenshot({
-          path: `.impeccable/review/${width === 1440 ? "desktop" : "mobile"}.png`,
-          fullPage: true,
-        });
-        await page.screenshot({ path: `.impeccable/review/hero-${width}.png` });
-        await demo.getByRole("button", { name: "Play example", exact: true }).click();
-        await page.waitForTimeout(2500);
-        assert.match(await demo.locator(".evidence-event").innerText(), /500/);
         assert.match(
-          await demo.locator(".evidence-screen").getAttribute("src"),
-          /recording-desktop-1.webp/,
+          await demo.locator(".review-event[aria-current=true]").innerText(),
+          /Unable to place order/,
         );
-        await page.locator("#features").scrollIntoViewIfNeeded();
-        await page.waitForTimeout(100);
-        assert.equal(
-          await demo.getByRole("button", { name: "Play example", exact: true }).count(),
-          1,
+        assert.ok(
+          await demo.locator(".review-event[aria-current=true]").evaluate((row) => {
+            const list = row.closest(".review-events").getBoundingClientRect(),
+              box = row.getBoundingClientRect();
+            return box.top >= list.top - 1 && box.bottom <= list.bottom + 1;
+          }),
+          "Seeking a moment brings its event into view",
         );
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: `.impeccable/review/hero-${width}.png` });
+        const recording = page.locator("#recordings feedbacks-demo");
+        await recording.scrollIntoViewIfNeeded();
+        await recording.locator(".review-follow").waitFor();
+        assert.ok(await recording.locator(".play").isVisible());
+        await recording.locator(".play").click();
+        await page.waitForTimeout(500);
+        assert.equal(await recording.locator(".play").innerText(), "Pause");
+        await recording.locator(".play").click();
+        assert.equal(await recording.locator(".play").innerText(), "Play");
       }
       if (path === "/compare/")
         await page.screenshot({ path: `.impeccable/review/matrix-${width}.png` });
@@ -311,7 +295,7 @@ try {
   });
   await nojs.goto(origin);
   assert.match(await nojs.locator("main").innerText(), /Apache-2.0/);
-  assert.equal(await nojs.locator("feedbacks-evidence img").count(), 1);
+  assert.equal(await nojs.locator('feedbacks-demo[step="recording"] img').count(), 2);
   assert.ok(await nojs.locator("#recordings").isVisible());
   await nojs.goto(origin + "/docs/");
   assert.ok(await nojs.getByRole("list", { name: "Workflow at a glance" }).isVisible());

@@ -65,6 +65,10 @@ try {
     viewport: { width: 390, height: 900 },
     reducedMotion: "reduce",
   });
+  // Pause explicitly for stable frame inspections; reduced motion changes cues,
+  // while the visitor's playback preference controls autoplay.
+  await page.goto(`http://127.0.0.1:${server.address().port}`);
+  await page.evaluate(() => localStorage.setItem("feedbacks-motion", "paused"));
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`http://127.0.0.1:${server.address().port}`);
@@ -173,11 +177,10 @@ try {
   assert(await demo.locator("dialog").evaluate((element) => element.open));
   await page.keyboard.press("Escape");
   assert.equal(await demo.locator("dialog").evaluate((element) => element.open), false);
-  assert(
-    await demo
-      .locator(".zoom")
-      .evaluate((element) => element === element.getRootNode().activeElement),
-  );
+  await page.waitForFunction(() => {
+    const root = document.querySelector("feedbacks-demo").shadowRoot;
+    return root.querySelector(".zoom") === root.activeElement;
+  });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await demo.evaluate((element) => element.setAttribute("step", "capture"));
   await demo.locator(".motion-layer").waitFor();
@@ -269,7 +272,7 @@ try {
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto(`http://127.0.0.1:${server.address().port}/landing`);
-    await page.locator("feedbacks-evidence .evidence-play").waitFor();
+    await page.locator('feedbacks-demo[step="recording"] .play').first().waitFor();
     await page.evaluate(() => document.fonts.ready);
     const heroBottom = await page
       .locator(".product-hero")
@@ -308,6 +311,43 @@ try {
       false,
     );
   }
+  const preferenceContext = await browser.newContext({
+    viewport: { width: 1024, height: 768 },
+  });
+  const firstTab = await preferenceContext.newPage(),
+    secondTab = await preferenceContext.newPage();
+  await firstTab.goto(`http://127.0.0.1:${server.address().port}`);
+  await secondTab.goto(`http://127.0.0.1:${server.address().port}`);
+  assert.equal(
+    await firstTab.locator("feedbacks-demo .play").innerText(),
+    "Pause",
+    "New visitors autoplay",
+  );
+  await firstTab.locator("feedbacks-demo .play").click();
+  await secondTab.waitForFunction(() => document.querySelector("feedbacks-demo").paused);
+  await firstTab.goto(`http://127.0.0.1:${server.address().port}/landing`);
+  assert.ok(
+    (await firstTab.locator("feedbacks-demo .play").allTextContents()).every(
+      (text) => text === "Play",
+    ),
+    "Pause persists across pages and players",
+  );
+  await firstTab.reload();
+  assert.ok(
+    (await firstTab.locator("feedbacks-demo .play").allTextContents()).every(
+      (text) => text === "Play",
+    ),
+    "Pause survives reload",
+  );
+  await firstTab.locator("feedbacks-demo .play").first().click();
+  await secondTab.waitForFunction(() => !document.querySelector("feedbacks-demo").paused);
+  await firstTab.goto(`http://127.0.0.1:${server.address().port}`);
+  assert.equal(
+    await firstTab.locator("feedbacks-demo .play").innerText(),
+    "Pause",
+    "Play restores autoplay for future pages",
+  );
+  await preferenceContext.close();
   assert.deepEqual(errors, []);
   console.log(
     "Walkthroughs passed: nine scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",

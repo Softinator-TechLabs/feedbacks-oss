@@ -2,6 +2,9 @@
 
 ## Unreleased: open-source preparation
 
+- In extension 0.1.55, keep stable recording-event rows during playback so Following playback scrolls smoothly through media updates.
+- Use one cursor walkthrough player across the landing page, public guides and app help, with the actual recording inspector and an in-page expanded viewer.
+
 - Prepare an Apache-2.0 source release, contributor/governance/security guidance and generic self-hosting configuration.
 - Add filtered next/previous thread navigation, keyboard shortcuts, optional tags and personal saved review views.
 - Add attachment comparison and reviewer-selected, opt-in console/resource diagnostics in extension 0.1.8.
@@ -14,7 +17,7 @@
 
 ## Initial preparation baseline
 
-Application 0.1.0 and Chrome extension 0.1.7 formed the initial preparation baseline; the current source extension is 0.1.20. The Chrome Web Store updates separately.
+Application 0.1.0 and Chrome extension 0.1.7 formed the initial preparation baseline; the current source extension is 0.1.55. The Chrome Web Store updates separately.
 
 - Apache-2.0 licensing, contributor and security reporting guidance, and source-only release archives.
 - Independent public website with self-hosting documentation and GitHub access.

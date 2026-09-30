@@ -1,6 +1,6 @@
 # Visual task guides and reliable release preparation
 
-Status: local verification complete; CI and public deployment pending. Date: 2026-09-30.
+Status: locally verified; integration CI and public deployment pending. Date: 2026-09-30.
 
 ## Outcome and scope
 
@@ -21,6 +21,14 @@ GitHub currently publishes only v0.1.0, dated 16 September 2026. Existing CI bui
 - [x] Build, verify links/Markdown exports, desktop/mobile/dark/keyboard/no-JavaScript behavior and review the diff.
 - [ ] Pass required CI, deploy docs and verify public routes.
 
+## Motion consistency steering
+
+Use one walkthrough engine and Play/Pause/expand behavior across landing, public guides and application help. Replace the separate recording screenshot slideshow and raw WebP link with the actual recording inspector, a synthetic checkout pointer sequence and synchronized diagnostics. Preserve ordinary no-JavaScript evidence images and reduced-motion/visibility behavior. Repair actual event-list rerendering that interrupts Following playback smooth scrolling. Verify repeated playback, seeks that expose the selected event, close/focus, tabs, live scroll progression, desktop/mobile and current extension packages. Default autoplay applies until an explicit Pause; origin-scoped localStorage retains the preference across pages and visits, while storage events synchronize tabs. Reduced motion changes visual cues, not the stored preference. Existing-team onboarding links directly to Chrome Web Store and the app Setup menu.
+
+- [x] Reuse the shipped recording renderer in the common player, remove the separate slideshow.
+- [x] Preserve smooth follow scrolling in the real renderer with a regression check.
+- [x] Rebuild artifacts; pass focused, browser and bounded full local checks. Required integration CI remains the merge gate.
+
 ## Compatibility and recovery
 
 Static docs presentation and opt-in release automation. No database, credential or extension permission changes. The release workflow does not choose a version or create a tag. Revert website source for presentation rollback; already-published releases are never overwritten.
@@ -31,6 +39,6 @@ Short guides lead with the next action. Exact configuration, recovery and protoc
 
 ## Completion receipt
 
-Local verification: formatting, harness, types, all builds, disposable smoke and release checks pass. The bounded full suite has 483 passing tests, 33 opt-in skips and zero failures, including eleven release-automation cases. Browser checks pass on 19 routes at desktop and mobile sizes, with dark, keyboard and no-JavaScript checks. Independent review findings were corrected and confirmed. CI and public deployment receipts are recorded in the delivery PR. Registry and client distribution remain separate tracked work; draft workflow execution needs a new reviewed version tag and is not claimed from a local build.
+Local verification: formatting, harness, types, all builds, disposable smoke and release checks pass. The bounded full suite has 484 passing tests, 34 opt-in skips and zero failures, including eleven release-automation cases. Browser checks pass on 19 routes at desktop and mobile sizes, with dark, keyboard and no-JavaScript checks. Independent review findings were corrected and confirmed. Recording follow regression checks (14), common-player behavior and real-renderer runtime browser checks pass, including laptop bounds, cursor cues, exact seeks, pause persistence and cross-tab updates. Extension 0.1.55 packages the stable-row follow fix. Docker source allowlists were updated; clean container execution is verified by required CI because the local Docker daemon is unavailable. CI and public deployment receipts are recorded in the delivery PR. Registry and client distribution remain separate tracked work; draft workflow execution needs a new reviewed version tag and is not claimed from a local build.
 
 Distribution follow-ups: [next release](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/175), [Docker Hub](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/176), [one-click templates](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/177), [Codex distribution](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/178), [Claude Code package](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/179).

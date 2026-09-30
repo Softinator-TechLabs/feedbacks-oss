@@ -5,35 +5,50 @@
   let soloPlayer;
   let motionChoice;
   try {
-    motionChoice = sessionStorage.getItem("feedbacks-motion");
+    motionChoice = localStorage.getItem("feedbacks-motion");
   } catch {}
-  let allPaused =
-    motionChoice === "paused" ||
-    (!motionChoice && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  let allPaused = motionChoice === "paused";
+  const saveMotionChoice = (paused) => {
+    motionChoice = paused ? "paused" : "playing";
+    try {
+      localStorage.setItem("feedbacks-motion", motionChoice);
+    } catch {}
+  };
   const updateMotionState = () => {
     const paused = players.size
       ? [...players].every((player) => player.paused)
       : allPaused;
     document.documentElement.dataset.feedbacksMotion = paused ? "paused" : "playing";
   };
-  matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (event) => {
-    if (!motionChoice) {
-      allPaused = event.matches;
-      players.forEach((player) => player.setPlaybackPaused?.(allPaused));
-      updateMotionState();
-    }
-  });
-  function setAllPaused(paused) {
+  function setAllPaused(paused, persist = true) {
     soloPlayer = undefined;
     allPaused = paused;
-    motionChoice = paused ? "paused" : "playing";
-    try {
-      sessionStorage.setItem("feedbacks-motion", motionChoice);
-    } catch {}
+    if (persist) saveMotionChoice(paused);
     players.forEach((player) => player.setPlaybackPaused?.(paused));
     updateMotionState();
   }
+  window.addEventListener("storage", (event) => {
+    if (event.key === "feedbacks-motion" || event.key === null) {
+      motionChoice = event.newValue;
+      setAllPaused(event.newValue === "paused", false);
+    }
+  });
   const scenes = {
+    recording: {
+      duration: 10000,
+      frames: [
+        {
+          kind: "recording",
+          caption:
+            "Follow the cursor from the click to the failed request and console error.",
+        },
+      ],
+      moments: [
+        { at: 2000, label: "0:02 · Click" },
+        { at: 4000, label: "0:04 · Request fails" },
+        { at: 5000, label: "0:05 · Console error" },
+      ],
+    },
     github: {
       kind: "server",
       steps: [
@@ -595,13 +610,15 @@
     mount() {
       this.cleanup?.();
       const scene = scenes[this.getAttribute("step")];
+      const frameDuration = scene?.duration ?? duration;
       if (!scene) return;
       this.index = 0;
       this.motion = matchMedia("(prefers-reduced-motion: reduce)");
-      this.paused =
-        (allPaused && soloPlayer !== this) || (this.motion.matches && !motionChoice);
+      this.paused = allPaused && soloPlayer !== this;
       players.add(this);
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-3"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      let disposed = false,
+        recordingRuntime;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-4"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         frameBox = q(".frame"),
@@ -610,7 +627,7 @@
         dialog = q("dialog"),
         hit = q(".screen-hit"),
         zoom = q(".zoom");
-      let elapsed = this.paused ? duration : 0,
+      let elapsed = this.paused && !scene.moments ? frameDuration : 0,
         visible = false,
         raf = 0,
         last = 0,
@@ -618,31 +635,40 @@
         mounted = false;
       const setPaused = (value) => {
         this.paused = value;
-        if (!value && elapsed >= duration) elapsed = 0;
+        if (!value && elapsed >= frameDuration) elapsed = 0;
         renderControls();
+        paint(elapsed / frameDuration);
         schedule();
       };
       this.setPlaybackPaused = setPaused;
       const toggle = () => {
         const shouldPlay = this.paused;
-        setAllPaused(true);
+        setAllPaused(true, !shouldPlay);
         if (shouldPlay) {
+          saveMotionChoice(false);
           soloPlayer = this;
           setPaused(false);
         }
       };
-      const steps = scene.frames.map((frame, index) => {
+      const steps = (scene.moments ?? scene.frames).map((frame, index) => {
         const b = document.createElement("button");
         b.className = "step";
         b.type = "button";
-        b.textContent = String(index + 1);
-        b.setAttribute("aria-label", frame.caption);
+        b.textContent = frame.label ?? String(index + 1);
+        b.setAttribute("aria-label", frame.label ?? frame.caption);
         b.onclick = () => {
-          this.index = index;
-          elapsed = duration;
-          this.paused = true;
-          render();
-          schedule();
+          if (scene.moments) {
+            elapsed = frame.at;
+            setPaused(true);
+            paint(elapsed / frameDuration);
+            recordingRuntime?.seek(frame.at);
+          } else {
+            this.index = index;
+            elapsed = frameDuration;
+            this.paused = true;
+            render();
+            schedule();
+          }
         };
         controls.append(b);
         return b;
@@ -666,7 +692,17 @@
           "aria-label",
           this.paused ? "Play animation" : "Pause all animations",
         );
-        steps.forEach((b, i) => b.setAttribute("aria-pressed", String(i === this.index)));
+        steps.forEach((b, i) =>
+          b.setAttribute(
+            "aria-pressed",
+            String(
+              scene.moments
+                ? elapsed >= scene.moments[i].at &&
+                    elapsed < (scene.moments[i + 1]?.at ?? frameDuration + 1)
+                : i === this.index,
+            ),
+          ),
+        );
         updateMotionState();
       };
       const pin =
@@ -675,16 +711,55 @@
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h3a3 3 0 1 1 6 0h3v6a3 3 0 1 0 0 6v4h-6a3 3 0 1 0-6 0H4v-7a3 3 0 1 0 0-6V4h4"/></svg>';
       const refreshMotion = () => {
         screen.querySelector(".motion-layer")?.remove();
-        paint = actionLayer(screen, scene.frames[this.index], scene);
-        paint(elapsed / duration);
+        if (recordingRuntime)
+          paint = (progress) => recordingRuntime.paint(progress, !this.paused);
+        else {
+          const drawAction = actionLayer(screen, scene.frames[this.index], scene);
+          paint = (progress) => drawAction(this.motion.matches ? 1 : progress);
+        }
+        paint(elapsed / frameDuration);
       };
       const render = () => {
         const f = scene.frames[this.index];
         caption.textContent = f.caption;
+        recordingRuntime?.dispose();
+        recordingRuntime = undefined;
         frameBox.replaceChildren();
-        zoom.hidden = !f.image;
+        hit.hidden = f.kind === "recording";
+        zoom.hidden = !f.image && f.kind !== "recording";
         screen.dataset.kind = f.image ? "capture" : "diagram";
-        if (f.image) {
+        if (f.kind === "recording") {
+          screen.dataset.kind = "recording";
+          const poster = document.createElement("img");
+          poster.className = "recording-poster";
+          poster.src = "/media/story/recording-desktop-0.webp";
+          poster.alt = "Actual Feedbacks recording review with sample events";
+          frameBox.append(poster);
+          const generation = this.index;
+          import(base + "recording-runtime.js?v=20260930-4")
+            .then(({ mountRecording }) => {
+              if (disposed || this.index !== generation || !poster.isConnected) return;
+              poster.remove();
+              recordingRuntime = mountRecording(frameBox, {
+                base,
+                onSeek: (ms) => {
+                  elapsed = Math.max(0, Math.min(frameDuration, ms));
+                  setPaused(true);
+                  paint(elapsed / frameDuration);
+                },
+                onPlay: () => {
+                  if (this.paused) toggle();
+                },
+                onPause: () => setPaused(true),
+              });
+              refreshMotion();
+            })
+            .catch(() => {
+              if (!disposed)
+                caption.textContent =
+                  "The walkthrough could not load. Reload this page to try again.";
+            });
+        } else if (f.image) {
           const wrap = document.createElement("div");
           wrap.className = "image";
           const action = actions[f.image],
@@ -753,12 +828,14 @@
       const tick = (now) => {
         if (last) elapsed += Math.min(now - last, 100);
         last = now;
-        if (elapsed >= duration) {
+        if (elapsed >= frameDuration) {
           elapsed = 0;
           this.index = (this.index + 1) % scene.frames.length;
-          render();
+          if (scene.moments) recordingRuntime?.paint(0, true);
+          else render();
         }
-        paint(elapsed / duration);
+        paint(elapsed / frameDuration);
+        if (scene.moments) renderControls();
         raf = requestAnimationFrame(tick);
       };
       const schedule = () => {
@@ -766,6 +843,7 @@
         last = 0;
         if (visible && !this.paused && !document.hidden)
           raf = requestAnimationFrame(tick);
+        else recordingRuntime?.paint(elapsed / frameDuration, false);
       };
       const observer = new IntersectionObserver(
         ([entry]) => {
@@ -786,25 +864,33 @@
       const visibility = () => schedule();
       document.addEventListener("visibilitychange", visibility);
       const reduce = () => {
-        if (this.motion.matches) {
-          elapsed = duration;
-          setPaused(true);
-          if (mounted) paint(1);
-        }
+        if (mounted) refreshMotion();
       };
       this.motion.addEventListener("change", reduce);
+      const figure = q("figure");
+      let placeholder;
       zoom.onclick = () => {
-        setPaused(true);
-        const f = scene.frames[this.index];
-        q("dialog img").src = base + f.image + ".webp?v=20260930-3";
-        q("dialog img").alt = f.caption;
+        if (dialog.open) return;
+        placeholder = document.createElement("div");
+        placeholder.className = "expanded-placeholder";
+        placeholder.style.height = `${figure.getBoundingClientRect().height}px`;
+        figure.before(placeholder);
+        q(".expanded-player").append(figure);
         dialog.showModal();
+        q(".close").focus();
       };
-      q("dialog button").onclick = () => dialog.close();
-      dialog.addEventListener("close", () => zoom.focus());
+      q(".close").onclick = () => dialog.close();
+      dialog.addEventListener("close", () => {
+        placeholder?.replaceWith(figure);
+        placeholder = undefined;
+        zoom.focus();
+      });
       caption.textContent = scene.frames[0].caption;
       renderControls();
       this.cleanup = () => {
+        disposed = true;
+        if (dialog.open) dialog.close();
+        recordingRuntime?.dispose();
         players.delete(this);
         this.setPlaybackPaused = undefined;
         updateMotionState();

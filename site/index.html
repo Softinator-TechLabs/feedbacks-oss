@@ -35,8 +35,6 @@
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/landing.css" />
     <link rel="stylesheet" href="/product-story.css" />
-    <link rel="stylesheet" href="/learn/evidence.css" />
-    <script defer src="/learn/evidence.js?v=20260930-1"></script>
     <link
       rel="preload"
       href="/fonts/manrope-800.ttf"
@@ -71,7 +69,7 @@
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
     </script>
-    <script defer src="/learn/demo.js?v=20260930-3"></script>
+    <script defer src="/learn/demo.js?v=20260930-4"></script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -119,12 +117,12 @@
           <p class="product-footnote">The complete product, on your infrastructure.</p>
         </div>
         <div class="product-hero-demo">
-          <feedbacks-evidence
+          <feedbacks-demo step="recording"
             ><img
               src="/media/story/recording-desktop-0.webp"
               width="900"
               height="655"
-              alt="Actual Feedbacks video review with a shared timeline and timestamped activity." /></feedbacks-evidence
+              alt="Actual Feedbacks video review with a shared timeline and timestamped activity." /></feedbacks-demo
           ><a class="demo-guide" href="/docs/guide/session-replay"
             >Video, replay &amp; the debugging timeline
             <span aria-hidden="true">→</span></a
@@ -212,19 +210,17 @@
           >
         </div>
         <figure class="product-figure recording-figure">
-          <a
-            href="/media/story/recording-inspector.webp"
-            aria-label="Open the complete recording inspector screenshot"
-            ><img
+          <feedbacks-demo step="recording">
+            <img
               src="/media/story/recording-inspector.webp"
               width="760"
               height="689"
               loading="lazy"
-              alt="Actual Feedbacks recording inspector with timestamped Activity, Network, Console and Performance events in its Everything feed."
-          /></a>
+              alt="Actual Feedbacks recording inspector with timestamped activity, requests and console events."
+            />
+          </feedbacks-demo>
           <figcaption>
-            Actual recording inspector with synthetic events. Select an event to inspect
-            its moment.
+            Actual recording review with a synthetic checkout session.
           </figcaption>
         </figure>
       </section>
@@ -420,8 +416,12 @@
             </li>
           </ol>
           <p class="server-tip">
-            Already have a server? <strong>Setup → Copy server URL.</strong> Paste it into
-            the extension.
+            Team already has a setup?
+            <a
+              href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
+              >Install the Chrome extension</a
+            >, then open <strong>Setup → Copy server URL</strong> in your Feedbacks app.
+            Paste it into the extension.
           </p>
         </div>
       </section>

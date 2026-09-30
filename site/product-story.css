@@ -215,7 +215,7 @@
 }
 @media (min-width: 801px) and (max-height: 760px) {
   .product-hero {
-    padding: 16px 0 20px;
+    padding: 16px 0 12px;
   }
 }
 @media (max-width: 1050px) {
@@ -302,5 +302,26 @@
   }
   .product-actions {
     gap: 15px;
+  }
+}
+
+.product-hero-demo feedbacks-demo[step="recording"] {
+  --recording-preview-height: 170px;
+  --demo-caption-display: none;
+  --recording-mode-display: none;
+  --recording-guide-display: none;
+  --recording-event-height: 80px;
+  --demo-controls-gap: 0;
+}
+@media (max-width: 800px) {
+  .product-hero-demo feedbacks-demo[step="recording"] {
+    --recording-preview-height: 180px;
+    --recording-event-height: 140px;
+  }
+}
+
+@media (min-width: 801px) and (max-height: 760px) {
+  .product-hero {
+    padding: 16px 0 12px;
   }
 }
