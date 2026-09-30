@@ -17,7 +17,9 @@
     <div class="settings-layout">
       <nav aria-label="Settings sections">
         <a href="#connection">Server &amp; account</a><a href="#access">Website access</a
-        ><a href="#defaults">Review defaults</a><a href="#shortcuts">Keyboard shortcuts</a
+        ><a href="#defaults">Review defaults</a
+        ><a href="#recording-audio">Recording &amp; audio</a
+        ><a href="#shortcuts">Keyboard shortcuts</a
         ><a href="#updates">Updates &amp; help</a>
       </nav>
       <main>
@@ -166,11 +168,13 @@
               resolved points</label
             >
           </div>
-          <h3>Recording defaults</h3>
+        </section>
+        <section id="recording-audio" aria-labelledby="recording-title">
+          <h2 id="recording-title">Recording &amp; audio</h2>
           <p class="hint">
             Record video + session starts on the current tab. Session-only recording is
-            available in Page Controls → Options. Chrome may ask for microphone access the
-            first time.
+            available in Page Controls → Options. Tab sound and microphone are on by
+            default; turn either off for future recordings here.
           </p>
           <div class="preference-list">
             <label class="check"
@@ -194,6 +198,59 @@
               network bodies</label
             >
           </div>
+          <h3>Microphone access</h3>
+          <p id="microphone-state" role="status">Checking microphone permission…</p>
+          <div class="actions">
+            <button id="microphone-test">Allow microphone</button>
+            <button id="microphone-settings">Chrome microphone settings</button>
+          </div>
+          <p id="audio-message" role="status" aria-live="polite"></p>
+          <details id="audio-help">
+            <summary>Fix microphone or tab sound</summary>
+            <p>
+              First use: choose <strong>Allow microphone</strong>, approve Chrome’s
+              prompt, then return to the website and start recording. This check
+              immediately stops the microphone and saves no audio.
+            </p>
+            <p>
+              Previously blocked? Open <strong>Chrome microphone settings</strong>, find
+              Feedbacks under “Not allowed”, and change it to Allow or remove its blocked
+              entry. Chrome cannot show a new prompt while that permission is blocked.
+              Return here and choose <strong>Check microphone again</strong>.
+            </p>
+            <p class="hint">
+              Your extension’s address: <code id="microphone-origin"></code>
+            </p>
+            <p>
+              Still blocked or unavailable? Select your input device in Chrome’s
+              microphone settings. On macOS, allow Chrome in System Settings → Privacy
+              &amp; Security → Microphone. On Windows, enable microphone access for
+              desktop apps in Settings → Privacy &amp; security → Microphone. Restart
+              Chrome if your computer requests it, then test again. A managed browser may
+              require your administrator.
+            </p>
+            <p>
+              Tab sound uses the website tab’s audio, independently of the microphone. A
+              silent website produces a silent track. In Chrome’s tab picker, enable Share
+              tab audio. If a source is unavailable, you can explicitly turn it off above
+              and record the remaining sources.
+            </p>
+            <p>
+              <a
+                href="https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/docs/extension.md#recording-audio"
+                target="_blank"
+                rel="noreferrer"
+                >Recording audio help</a
+              >
+              ·
+              <a
+                href="https://support.google.com/chrome/answer/2693767?hl=en"
+                target="_blank"
+                rel="noreferrer"
+                >Chrome’s microphone guide</a
+              >
+            </p>
+          </details>
           <div class="preference-list">
             <label class="check"
               ><input

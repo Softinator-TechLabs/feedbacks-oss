@@ -1,4 +1,5 @@
 import { reviewDefaults } from "./review-preferences.js";
+import { recordingDefaults } from "../recordings/audio-access.js";
 import { diagnosticCollector } from "../diagnostics/diagnostics.js";
 import { accountFingerprint } from "../diagnostics/identity.js";
 import { installSelectionStyles, removeSelectionStyles } from "./selection-access.js";
@@ -100,7 +101,7 @@ export function createReviewController({ get, set, authenticated, defaultServer 
         type: "activate",
         reviewShortcuts: state.reviewShortcuts !== false,
         reviewDefaults: reviewDefaults(state.reviewDefaults),
-        recordingOptions: state.videoRecordingOptions || {},
+        recordingOptions: recordingDefaults(state.videoRecordingOptions),
         recordingRedirectOrigins: state.recordingRedirectOrigins?.[origin] || [],
         project: {
           id: project.id,
@@ -184,7 +185,7 @@ export function createReviewController({ get, set, authenticated, defaultServer 
       type: "activate",
       reviewShortcuts: latest.reviewShortcuts !== false,
       reviewDefaults: reviewDefaults(latest.reviewDefaults),
-      recordingOptions: latest.videoRecordingOptions || {},
+      recordingOptions: recordingDefaults(latest.videoRecordingOptions),
       recordingRedirectOrigins: latest.recordingRedirectOrigins?.[origin] || [],
       project: {
         id: project.id,

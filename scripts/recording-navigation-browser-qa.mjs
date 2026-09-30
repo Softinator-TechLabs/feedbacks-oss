@@ -309,6 +309,12 @@ try {
       );
     });
   assert.equal(await video.locator("#debug-context").isChecked(), true);
+  assert.equal(await video.locator("#tab-audio").isChecked(), true);
+  assert.equal(await video.locator("#microphone").isChecked(), true);
+  // This navigation fixture supplies video-only canvas frames. Explicitly opt
+  // out of audio; real audio permission/mixing is verified by the audio suite.
+  await video.locator("#tab-audio").uncheck();
+  await video.locator("#microphone").uncheck();
   await page.waitForFunction(() => !!window.qaCaptureHandle);
   const handle = await page.evaluate(() => window.qaCaptureHandle);
   // The picker is replaced with a real canvas MediaStream; Chrome messaging,

@@ -1,6 +1,12 @@
 import { finalizeWebmMetadata } from "./video/video-metadata.js";
 import { VIDEO_MAX_BYTES, VIDEO_MAX_MS, recordingOptions } from "./video/video-media.js";
 import { putVideoDraft } from "./video-draft-store.js";
+import {
+  recordingDefaults,
+  requireMicrophonePermission,
+  captureMicrophone,
+  audioAccessError,
+} from "./recordings/audio-access.js";
 
 const port = chrome.runtime.connect({ name: "feedbacks-video-offscreen" });
 let capture = null;
@@ -59,7 +65,7 @@ async function start(message) {
     reviewId: message.reviewId,
     debugStarted: message.debugStarted,
     streamId: message.streamId,
-    options: message.options || {},
+    options: recordingDefaults(message.options),
     state: "starting",
     startedAt: 0,
     stoppedAt: 0,
@@ -73,6 +79,7 @@ async function start(message) {
   capture = current;
   publish(current, "starting");
   try {
+    if (current.options.microphone) await requireMicrophonePermission();
     let stream = await navigator.mediaDevices.getUserMedia({
       video: {
         mandatory: {
@@ -92,9 +99,7 @@ async function start(message) {
     });
     current.stream = stream;
     if (current.options.tabAudio && !stream.getAudioTracks().length)
-      throw Error(
-        "Tab audio was not captured. Turn it off in recording options and retry.",
-      );
+      throw audioAccessError("tab-audio-missing");
     if (stream.getAudioTracks().length) {
       current.audioContext = new AudioContext();
       current.audioContext
@@ -103,10 +108,7 @@ async function start(message) {
       await current.audioContext.resume();
     }
     if (current.options.microphone) {
-      current.microphone = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-        video: false,
-      });
+      current.microphone = await captureMicrophone();
       current.audioContext ||= new AudioContext();
       const destination = current.audioContext.createMediaStreamDestination();
       if (stream.getAudioTracks().length)
@@ -168,7 +170,7 @@ async function start(message) {
   } catch (error) {
     release(current);
     await send({ type: "sessionDiscard" }).catch(() => {});
-    publish(current, "idle", { error: error.message });
+    publish(current, "idle", { error: error.message, audioCode: error.audioCode });
     capture = null;
   }
 }
