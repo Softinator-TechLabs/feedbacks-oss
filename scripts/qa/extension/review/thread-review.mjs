@@ -138,7 +138,7 @@ export async function verifyThreadReview({
   assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
   const mainImage = inlineThreadPage.locator(".review-main-capture");
   assert.equal(await mainImage.locator(".review-image-pin").count(), 2);
-  await mainImage.getByRole("button", { name: "Expand image", exact: true }).click();
+  await mainImage.getByRole("button", { name: "Review image", exact: true }).click();
   const expanded = inlineThreadPage.getByRole("dialog");
   await expanded.getByRole("button", { name: "Hide points" }).click();
   assert.equal(await mainImage.locator(".review-image-pin").count(), 0);

@@ -43,7 +43,6 @@ export function EvidenceScreenshot({
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [expanded, setExpanded] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const identity = asset.baseAssetId ?? asset.id;
   const [zoom, setZoom] = useState(0);
@@ -54,7 +53,6 @@ export function EvidenceScreenshot({
   useEffect(() => {
     setExpanded(false);
     setZoom(0);
-    setEditing(false);
   }, [identity]);
   const points =
     asset.rendition === "screenshot"
@@ -161,24 +159,13 @@ export function EvidenceScreenshot({
           className="review-pin-toggle"
           onClick={() => setExpanded(true)}
         >
-          <Icon name="expand" /> Expand image
+          <Icon name="image" /> Review image
         </button>
-        {onSaved && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(true);
-              setExpanded(true);
-            }}
-          >
-            <Icon name="edit" /> Edit annotations
-          </button>
-        )}
       </div>
       <button
         type="button"
         className="review-image-frame review-image-open"
-        aria-label={`Expand image: ${imageLabel(asset)}`}
+        aria-label={`Review image: ${imageLabel(asset)}`}
         onClick={() => setExpanded(true)}
         style={
           maxHeight && asset.width && asset.height
@@ -192,15 +179,10 @@ export function EvidenceScreenshot({
         ref={dialog}
         className="evidence-image-dialog"
         aria-labelledby={titleId}
-        onClose={() => {
-          setExpanded(false);
-          setEditing(false);
-        }}
+        onClose={() => setExpanded(false)}
         onCancel={(event) => {
-          if (editing || saving) {
-            event.preventDefault();
-            if (!saving) setEditing(false);
-          } else setExpanded(false);
+          if (saving) event.preventDefault();
+          else setExpanded(false);
         }}
       >
         {expanded && (
@@ -210,18 +192,13 @@ export function EvidenceScreenshot({
               <button
                 type="button"
                 autoFocus
-                disabled={editing || saving}
+                disabled={saving}
                 onClick={() => setExpanded(false)}
               >
                 Close
               </button>
             </header>
             <div className="evidence-image-controls">
-              {onSaved && !editing && (
-                <button type="button" onClick={() => setEditing(true)}>
-                  <Icon name="edit" /> Edit annotations
-                </button>
-              )}
               {layerControls}
               <label>
                 Zoom
@@ -242,12 +219,12 @@ export function EvidenceScreenshot({
             {embeddedPins && (
               <p className="review-legacy-pins">Points are saved in this image.</p>
             )}
-            {editing && onSaved ? (
+            {onSaved ? (
               <ScreenshotMarkup
                 thread={thread}
                 target={{ kind: "asset", asset }}
                 onSaved={onSaved}
-                onClose={() => setEditing(false)}
+                onClose={() => setExpanded(false)}
                 embedded={{ zoom, hiddenLayers, onBusyChange: setSaving }}
               />
             ) : (
