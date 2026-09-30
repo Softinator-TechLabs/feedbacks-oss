@@ -18,7 +18,15 @@ import {
   documentOutput,
 } from "../output-common.js";
 
+const githubAppMetadata = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  owners: z.array(z.string()).max(20),
+});
+
 export const projectsInputs = {
+  "github.apps": z.object({}),
   "projects.context.get": z.object({ projectId: id }),
   "projects.context.save": z.object({ projectId: id, ...contextTextInput }),
   "projects.list": z.object({}),
@@ -39,6 +47,14 @@ export const projectsInputs = {
     documentId: id,
     page: z.number().int().min(1).max(25),
     cursor: id.optional(),
+  }),
+  "github.appSelect": z.object({
+    projectId: id,
+    revision,
+    appId: z
+      .string()
+      .regex(/^[1-9]\d{0,19}$/)
+      .nullable(),
   }),
   "github.connection": z.object({ projectId: id }),
   "github.issueState": z.object({ threadId: id }),
@@ -117,6 +133,10 @@ export const projectsInputs = {
 };
 
 export const projectsOutputs = {
+  "github.apps": z.object({
+    defaultAppId: z.string().nullable(),
+    apps: z.array(githubAppMetadata).max(21),
+  }),
   "projects.context.get": contextTextOutput,
   "projects.context.save": contextTextOutput,
   "documents.upload": documentOutput,
@@ -144,6 +164,11 @@ export const projectsOutputs = {
   "projects.taxonomy.get": projectTaxonomyOutput,
   "projects.taxonomy.update": projectTaxonomyOutput.extend({ project: projectOutput }),
   "github.connection": z.object({
+    appId: z.string().nullable(),
+    appName: z.string().nullable(),
+    approvedAccounts: z.array(z.string()).max(20),
+    canSelectApp: z.boolean(),
+    apps: z.array(githubAppMetadata).max(21),
     configured: z.boolean(),
     connected: z.boolean(),
     statusSyncEnabled: z.boolean(),
@@ -171,6 +196,7 @@ export const projectsOutputs = {
     issueUrl: z.string().nullable(),
     canAbandon: z.boolean(),
   }),
+  "github.appSelect": projectOutput,
   "github.connect": projectOutput,
   "github.disconnect": projectOutput,
   "github.repositoryConnect": projectOutput,

@@ -11,11 +11,43 @@ Feedbacks can create a verified Issue in selected GitHub repositories across mul
 
 Only a project maintainer can connect or disconnect. Use a repository whose access policy matches the feedback you will put in Issues.
 
+### Different private Apps on the same Feedbacks server
+
+Keep each App private when it only needs its owning GitHub account. DevOps can
+configure additional Apps on the same Feedbacks server with the deployment
+secret `GITHUB_APPS_JSON`. A signed-in Feedbacks server owner selects the App
+in each project's **GitHub App** field and chooses **Save App**. Project
+maintainers can then connect repositories for that App's approved GitHub
+accounts; they cannot change the project's App assignment.
+
+This supports separate GitHub logins: use the login allowed to install the
+selected App, choose its owning organization, and select the intended
+repositories. Return to Feedbacks and connect those repositories. A different
+login does not bypass GitHub's private-App installation restriction.
+
+Changing the project's App disconnects its repositories and turns off status
+sync. Reconnect using the newly selected App. Existing verified Issue links
+and pending requests keep their original App identity for refresh/recovery.
+Reconcile pending writes before changing App. The server pauses sync for an
+Issue from a different App; it never substitutes another App's credentials.
+
+For independent self-hosted servers, create an App and key for each server's
+operator. Keep keys in that server's deployment secrets; never distribute a
+shared App private key to other operators. [Deployment configuration](/reference/manual/self-hosting#multiple-github-apps).
+
+The server owner can open **Setup → Manage GitHub Apps** for the central
+**Configured Apps** list. It shows approved accounts, assigned projects and
+installation links. Open a listed project to choose/change its App. Projects
+with removed credentials are shown separately; restore that App or change the
+assignment. The page's setup steps explain GitHub registration, server secrets
+and project selection. App keys are managed by the server operator, never shown
+or entered on this page.
+
 ### More than one GitHub organization or repository
 
 A GitHub App installation belongs to a GitHub **account** (a personal account or one organization). Selecting three repositories in Softinator-TechLabs grants access only to those three repositories in that organization. To use another organization, [install the same App there separately](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app) and choose its repositories. The Feedbacks server requests a token for the exact repository when it creates an Issue; it does not reuse an installation token from another organization.
 
-If your App is **private**, GitHub permits installation only on the account that owns it. To install it in other organizations, the App owner must [change its visibility](https://docs.github.com/en/apps/maintaining-github-apps/modifying-a-github-app-registration) in the App's **Advanced → Danger zone → Make public** settings. This makes the installation page available to other accounts; each installation still needs an owner to choose and approve repositories. GitHub warns that a public App installed on other accounts cannot be made private again until those installations are removed. Review the App's requested permissions and availability before making that change. You do not need to create one App per organization.
+If your App is **private**, GitHub permits installation only on the account that owns it. To install it in other organizations, the App owner must [change its visibility](https://docs.github.com/en/apps/maintaining-github-apps/modifying-a-github-app-registration) in the App's **Advanced → Danger zone → Make public** settings. This makes the installation page available to other accounts; each installation still needs an owner to choose and approve repositories. GitHub warns that a public App installed on other accounts cannot be made private again until those installations are removed. Review the App's requested permissions and availability before making that change. For the same public App, you do not need to create one App per organization. Separate private Apps are an alternative when each belongs to its own organization.
 
 A Feedbacks project can connect multiple repositories across these installations. Use **Manage App installations** to install the same App on another organization, then **Add another repository** in the project. Separate Feedbacks projects keep independent repository selections. When a thread has more than one possible destination, choose the repository before creating its Issue.
 
