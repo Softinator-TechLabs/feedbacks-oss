@@ -2,7 +2,6 @@
 (() => {
   const base = new URL(".", document.currentScript.src).href;
   const players = new Set();
-  let soloPlayer;
   let motionChoice;
   try {
     motionChoice = localStorage.getItem("feedbacks-motion");
@@ -21,7 +20,6 @@
     document.documentElement.dataset.feedbacksMotion = paused ? "paused" : "playing";
   };
   function setAllPaused(paused, persist = true) {
-    soloPlayer = undefined;
     allPaused = paused;
     if (persist) saveMotionChoice(paused);
     players.forEach((player) => player.setPlaybackPaused?.(paused));
@@ -829,13 +827,13 @@
       if (!scene) return;
       this.index = 0;
       this.motion = matchMedia("(prefers-reduced-motion: reduce)");
-      this.paused = allPaused && soloPlayer !== this;
+      this.paused = allPaused;
       players.add(this);
       let disposed = false,
         stylesReady = false,
         recordingRuntime;
       const template = document.createElement("template");
-      template.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-9"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
+      template.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-10"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
       // Keep loaded styles connected across scene changes. Replacing the link
       // would briefly expose the fallback and reflow the page on every tab click.
       for (const node of [...this.shadowRoot.childNodes]) {
@@ -868,16 +866,16 @@
           });
       };
       const stylesheets = [
-        this.shadowRoot.querySelector(`link[href="${base}demo.css?v=20260930-9"]`),
+        this.shadowRoot.querySelector(`link[href="${base}demo.css?v=20260930-10"]`),
       ];
       if (this.getAttribute("step") === "recording") {
         let reviewStyle = this.shadowRoot.querySelector(
-          `link[href="${base}recording-review.css?v=20260930-9"]`,
+          `link[href="${base}recording-review.css?v=20260930-10"]`,
         );
         if (!reviewStyle) {
           reviewStyle = document.createElement("link");
           reviewStyle.rel = "stylesheet";
-          reviewStyle.href = base + "recording-review.css?v=20260930-9";
+          reviewStyle.href = base + "recording-review.css?v=20260930-10";
           this.shadowRoot.prepend(reviewStyle);
         }
         stylesheets.push(reviewStyle);
@@ -895,24 +893,28 @@
         raf = 0,
         last = 0,
         paint = () => {},
-        mounted = false;
+        mounted = false,
+        interactionHeld = false;
+      const holdInteraction = () => {
+        interactionHeld = true;
+        schedule();
+      };
+      const releaseInteraction = () => {
+        if (!interactionHeld) return;
+        interactionHeld = false;
+        if (!this.paused && elapsed >= frameDuration) elapsed = 0;
+        schedule();
+      };
       const setPaused = (value) => {
         this.paused = value;
+        interactionHeld = false;
         if (!value && elapsed >= frameDuration) elapsed = 0;
         renderControls();
         paint(elapsed / frameDuration);
         schedule();
       };
       this.setPlaybackPaused = setPaused;
-      const toggle = () => {
-        const shouldPlay = this.paused;
-        setAllPaused(true, !shouldPlay);
-        if (shouldPlay) {
-          saveMotionChoice(false);
-          soloPlayer = this;
-          setPaused(false);
-        }
-      };
+      const toggle = () => setAllPaused(!this.paused);
       const steps = (scene.moments ?? scene.frames).map((frame, index) => {
         const b = document.createElement("button");
         b.className = "step";
@@ -922,13 +924,13 @@
         b.onclick = () => {
           if (scene.moments) {
             elapsed = frame.at;
-            setPaused(true);
+            holdInteraction();
             paint(elapsed / frameDuration);
             recordingRuntime?.seek(frame.at);
           } else {
             this.index = index;
             elapsed = frameDuration;
-            this.paused = true;
+            holdInteraction();
             render();
             schedule();
           }
@@ -941,7 +943,7 @@
       play.className = "play";
       play.onclick = toggle;
       controls.append(play);
-      hit.onclick = toggle;
+      hit.onclick = holdInteraction;
       const renderControls = () => {
         const action = this.paused ? "Play" : "Pause";
         play.textContent = action;
@@ -951,10 +953,7 @@
             ? `Play ${this.getAttribute("step")} walkthrough`
             : "Pause all animations",
         );
-        hit.setAttribute(
-          "aria-label",
-          this.paused ? "Play animation" : "Pause all animations",
-        );
+        hit.setAttribute("aria-label", "Inspect animation");
         steps.forEach((b, i) =>
           b.setAttribute(
             "aria-pressed",
@@ -975,7 +974,8 @@
       const refreshMotion = () => {
         screen.querySelector(".motion-layer")?.remove();
         if (recordingRuntime)
-          paint = (progress) => recordingRuntime.paint(progress, !this.paused);
+          paint = (progress) =>
+            recordingRuntime.paint(progress, !this.paused && !interactionHeld);
         else {
           const drawAction = actionLayer(screen, scene.frames[this.index], scene);
           paint = (progress) => drawAction(this.motion.matches ? 1 : progress);
@@ -994,20 +994,20 @@
         if (f.kind === "recording") {
           screen.dataset.kind = "recording";
           const generation = this.index;
-          import(base + "recording-runtime.js?v=20260930-9")
+          import(base + "recording-runtime.js?v=20260930-10")
             .then(async ({ mountRecording }) => {
               if (disposed || this.index !== generation) return;
               recordingRuntime = mountRecording(frameBox, {
                 base,
                 onSeek: (ms) => {
                   elapsed = Math.max(0, Math.min(frameDuration, ms));
-                  setPaused(true);
+                  holdInteraction();
                   paint(elapsed / frameDuration);
                 },
                 onPlay: () => {
                   if (this.paused) toggle();
                 },
-                onPause: () => setPaused(true),
+                onPause: holdInteraction,
               });
               const [ready] = await Promise.all([
                 recordingRuntime.ready,
@@ -1105,6 +1105,11 @@
       const depth = interactiveDepth(this, q(".depth-stage"), dialog);
       const tick = (now) => {
         depth?.tick(now);
+        if (interactionHeld) {
+          last = 0;
+          raf = requestAnimationFrame(tick);
+          return;
+        }
         if (last) elapsed += Math.min(now - last, 100);
         last = now;
         if (elapsed >= frameDuration) {
@@ -1128,9 +1133,10 @@
           visible &&
           !this.paused &&
           !document.hidden;
-        this.toggleAttribute("data-motion-running", running);
+        this.toggleAttribute("data-motion-running", running && !interactionHeld);
         if (running) raf = requestAnimationFrame(tick);
-        else recordingRuntime?.paint(elapsed / frameDuration, false);
+        if (!running || interactionHeld)
+          recordingRuntime?.paint(elapsed / frameDuration, false);
       };
       const observer = new IntersectionObserver(
         ([entry]) => {
@@ -1178,6 +1184,54 @@
       };
       this.motion.addEventListener("change", reduce);
       const figure = q("figure");
+      const interactionEvents = new AbortController();
+      const options = { signal: interactionEvents.signal };
+      const explicitPlayback = (target) => target.closest?.(".play");
+      const keyboardInspecting = () => {
+        const focused = this.shadowRoot.activeElement;
+        return focused?.matches(":focus-visible") && !explicitPlayback(focused);
+      };
+      figure.addEventListener(
+        "pointerdown",
+        (event) => {
+          if (!explicitPlayback(event.target)) holdInteraction();
+        },
+        { ...options, capture: true },
+      );
+      figure.addEventListener(
+        "pointerleave",
+        () => {
+          if (!keyboardInspecting()) releaseInteraction();
+        },
+        options,
+      );
+      figure.addEventListener(
+        "pointerup",
+        (event) => {
+          if (event.pointerType !== "mouse")
+            setTimeout(() => {
+              if (!disposed) releaseInteraction();
+            }, 0);
+        },
+        options,
+      );
+      figure.addEventListener(
+        "focusin",
+        () => {
+          if (keyboardInspecting()) holdInteraction();
+        },
+        options,
+      );
+      figure.addEventListener(
+        "focusout",
+        () => {
+          queueMicrotask(() => {
+            if (!disposed && !keyboardInspecting() && !figure.matches(":hover"))
+              releaseInteraction();
+          });
+        },
+        options,
+      );
       let placeholder;
       zoom.onclick = () => {
         if (dialog.open) return;
@@ -1199,6 +1253,7 @@
       renderControls();
       this.cleanup = () => {
         disposed = true;
+        interactionEvents.abort();
         depth?.dispose();
         if (dialog.open) dialog.close();
         recordingRuntime?.dispose();
