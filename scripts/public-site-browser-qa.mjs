@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { readFile, stat, mkdir } from "node:fs/promises";
+import { readFile, stat, mkdir, readdir } from "node:fs/promises";
 import { resolve, extname, sep } from "node:path";
 import { chromium } from "playwright";
 const root = resolve("dist/site");
@@ -53,12 +53,9 @@ try {
   const pages = [
     "/",
     "/docs/",
-    "/docs/guide/session-replay",
-    "/docs/guide/debug-bundles",
-    "/docs/guide/text-suggestions",
-    "/docs/guide/agent-context",
-    "/docs/guide/more-ways-to-review",
-    "/docs/guide/github",
+    ...(await readdir("site-docs/guide"))
+      .filter((file) => file.endsWith(".md"))
+      .map((file) => `/docs/guide/${file.slice(0, -3)}`),
     "/compare/",
     "/compare/openreplay.html",
   ];
@@ -67,6 +64,7 @@ try {
       viewport: { width, height: 900 },
       reducedMotion: "reduce",
     });
+    await page.addInitScript(() => localStorage.setItem("feedbacks-motion", "paused"));
     page.on("pageerror", (e) => failures.push(e.message));
     page.on("response", (r) => {
       if (r.status() >= 400) failures.push(`${r.status()} ${r.url()}`);
@@ -91,6 +89,20 @@ try {
         );
       });
       assert.equal(await page.locator("h1").count(), 1, path);
+      if (path.startsWith("/docs/")) {
+        const flow = page.getByRole("list", { name: "Workflow at a glance" });
+        assert.equal(await flow.count(), 1, path);
+        assert.ok((await flow.locator("li").count()) >= 3, path);
+        const markdown = await readFile(
+          await localFile(path.replace(/\/$/, "/index") + ".md"),
+          "utf8",
+        );
+        assert.ok(
+          !markdown.includes("<DocPath"),
+          "Agent Markdown includes readable steps",
+        );
+        assert.match(markdown, /1\. .+\n2\. /);
+      }
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - innerWidth,
       );
@@ -178,14 +190,52 @@ try {
         );
         await page.evaluate(() => scrollTo(0, 0));
       }
-      if (path === "/docs/" || path === "/docs/guide/session-replay") {
+      if (path === "/docs/") {
+        assert.equal(await page.locator("feedbacks-demo").count(), 1);
+        assert.ok(
+          await page
+            .locator("feedbacks-demo")
+            .getByRole("button", { name: "Play capture walkthrough", exact: true })
+            .isVisible(),
+        );
+      }
+      if (path === "/docs/guide/session-replay") {
         assert.equal(
-          await page.locator("feedbacks-evidence .evidence-play").count(),
+          await page.locator('feedbacks-demo[step="recording"] .play').count(),
           1,
           "Docs hydration must preserve the interactive example",
         );
       }
       if (path === "/") {
+        assert.equal(
+          await page.locator(".product-figure figcaption, .demo-guide").count(),
+          0,
+        );
+        assert.equal(await page.locator("feedbacks-demo[depth]").count(), 2);
+        assert.equal(
+          await page.locator("#recordings feedbacks-demo").getAttribute("depth"),
+          null,
+          "Thread handoff remains flat",
+        );
+        assert.equal(
+          await page.getByText("Team already has a setup?", { exact: true }).count(),
+          1,
+        );
+        assert.equal(
+          await page.locator(".existing-team-action a").getAttribute("href"),
+          "https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo",
+        );
+        for (const arrow of await page
+          .locator(".text-link > span, .story-note .link-arrow")
+          .all()) {
+          assert.equal(
+            await arrow.evaluate(
+              (el) => getComputedStyle(el.parentElement).textDecorationLine,
+            ),
+            "none",
+            "Guide arrows do not inherit underlines",
+          );
+        }
         assert.deepEqual(
           await page
             .locator("main > section")
@@ -195,83 +245,83 @@ try {
                 .map((section) => section.getAttribute("aria-labelledby")),
             ),
           ["hero-title", "capture-title", "recordings-title"],
-          "Show point capture immediately after the hero, then recording evidence",
+          "Show point capture immediately after the hero, then team discussion",
         );
-        const demo = page.locator("feedbacks-evidence");
+        const demo = page.locator('feedbacks-demo[step="recording"]').first();
         assert.equal(
           (await page.locator("body").innerText()).match(/Apache-2.0/g)?.length,
           1,
           "State licensing once on the landing",
         );
-        await demo.locator(".evidence-screen").evaluate((img) => img.decode());
-        await demo
-          .getByRole("button", { name: "Enlarge the actual Feedbacks recording review" })
-          .click();
-        assert.equal(await demo.locator("dialog").evaluate((el) => el.open), true);
-        assert.ok(
-          await demo
-            .locator(".evidence-full")
-            .evaluate((img) => img.src.includes("recording-")),
+        await demo.locator(".recording-inspector .review-follow").waitFor();
+        assert.equal(await demo.locator(".caption").isVisible(), false);
+        assert.equal(await demo.locator(".play").innerText(), "Play");
+        assert.equal(
+          await page.locator('a[href$=".webp"]').count(),
+          0,
+          "Playback stays on the page",
         );
+        await demo.locator(".zoom").click();
+        assert.equal(await demo.locator("dialog").evaluate((el) => el.open), true);
+        assert.ok(await demo.locator("dialog .recording-inspector").isVisible());
         await page.keyboard.press("Escape");
         assert.equal(await demo.locator("dialog").evaluate((el) => el.open), false);
-        assert.equal(
-          await demo.getByRole("button", { name: "Play example", exact: true }).count(),
-          1,
-        );
-        await demo.getByRole("button", { name: "00:04 Request fails" }).click();
-        assert.deepEqual(
-          await demo
-            .locator("button[data-moment]")
-            .evaluateAll((buttons) =>
-              buttons.map((button) => button.getAttribute("aria-pressed")),
-            ),
-          ["false", "true", "false"],
-          "Selected moment must match the actual screen",
-        );
-        assert.match(await demo.locator(".evidence-event").innerText(), /500/);
+        await demo
+          .getByRole("button", { name: "0:04 · Request fails", exact: true })
+          .click();
         assert.match(
-          await demo.locator(".evidence-screen").getAttribute("src"),
-          /recording-desktop-1.webp/,
+          await demo.locator(".review-event[aria-current=true]").innerText(),
+          /POST.*503/,
         );
-        await demo.getByRole("button", { name: "00:05 Console error" }).focus();
+        await demo
+          .getByRole("button", { name: "0:05 · Console error", exact: true })
+          .focus();
         await page.keyboard.press("Enter");
-        assert.match(await demo.locator(".evidence-event").innerText(), /Console/);
-        assert.deepEqual(
-          await demo
-            .locator("button[data-moment]")
-            .evaluateAll((buttons) =>
-              buttons.map((button) => button.getAttribute("aria-pressed")),
-            ),
-          ["false", "false", "true"],
-        );
-        await demo.getByRole("button", { name: "00:02 Click", exact: true }).click();
-        await demo.locator(".evidence-screen").evaluate((img) => img.decode());
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await page.screenshot({
-          path: `.impeccable/review/${width === 1440 ? "desktop" : "mobile"}.png`,
-          fullPage: true,
-        });
-        await page.screenshot({ path: `.impeccable/review/hero-${width}.png` });
-        await demo.getByRole("button", { name: "Play example", exact: true }).click();
-        await page.waitForTimeout(2500);
-        assert.match(await demo.locator(".evidence-event").innerText(), /500/);
         assert.match(
-          await demo.locator(".evidence-screen").getAttribute("src"),
-          /recording-desktop-1.webp/,
+          await demo.locator(".review-event[aria-current=true]").innerText(),
+          /Unable to place order/,
         );
-        await page.locator("#features").scrollIntoViewIfNeeded();
-        await page.waitForTimeout(100);
-        assert.equal(
-          await demo.getByRole("button", { name: "Play example", exact: true }).count(),
-          1,
+        assert.ok(
+          await demo.locator(".review-event[aria-current=true]").evaluate((row) => {
+            const list = row.closest(".review-events").getBoundingClientRect(),
+              box = row.getBoundingClientRect();
+            return box.top >= list.top - 1 && box.bottom <= list.bottom + 1;
+          }),
+          "Seeking a moment brings its event into view",
         );
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: `.impeccable/review/hero-${width}.png` });
+        const discussion = page.locator("#recordings feedbacks-demo");
+        await discussion.scrollIntoViewIfNeeded();
+        assert.equal(await discussion.getAttribute("step"), "discussion");
+        assert.equal(await page.locator('feedbacks-demo[step="recording"]').count(), 1);
+        await discussion
+          .getByRole("button", {
+            name: "Paste",
+            exact: true,
+          })
+          .click();
+        assert.ok(await discussion.locator(".handoff-paste").isVisible());
+        assert.ok(await discussion.locator(".handoff-ready").isVisible());
+        await discussion.locator(".play").click();
+        await page.waitForTimeout(500);
+        assert.equal(await discussion.locator(".play").innerText(), "Pause");
+        await discussion.locator(".play").click();
+        assert.equal(await discussion.locator(".play").innerText(), "Play");
       }
       if (path === "/compare/")
         await page.screenshot({ path: `.impeccable/review/matrix-${width}.png` });
-      if (path === "/docs/guide/session-replay" || path === "/compare/openreplay.html")
+      if (
+        [
+          "/docs/",
+          "/docs/guide/mcp",
+          "/docs/guide/github",
+          "/docs/guide/session-replay",
+          "/compare/openreplay.html",
+        ].includes(path)
+      )
         await page.screenshot({
-          path: `.impeccable/review/${path.includes("docs") ? "docs" : "compare"}-${width}.png`,
+          path: `.impeccable/review/${path.includes("docs") ? "docs-" + (path.split("/").filter(Boolean).at(-1) === "docs" ? "index" : path.split("/").at(-1)) : "compare"}-${width}.png`,
           fullPage: true,
         });
     }
@@ -283,8 +333,23 @@ try {
   });
   await nojs.goto(origin);
   assert.match(await nojs.locator("main").innerText(), /Apache-2.0/);
-  assert.equal(await nojs.locator("feedbacks-evidence img").count(), 1);
+  assert.equal(await nojs.locator('feedbacks-demo[step="recording"] img').count(), 1);
+  assert.equal(await nojs.locator('feedbacks-demo[step="discussion"] img').count(), 1);
   assert.ok(await nojs.locator("#recordings").isVisible());
+  await nojs.goto(origin + "/docs/");
+  assert.ok(await nojs.getByRole("list", { name: "Workflow at a glance" }).isVisible());
+  assert.ok(
+    await nojs.locator("feedbacks-demo img").isVisible(),
+    "Actual capture remains without JavaScript",
+  );
+  await nojs.goto(origin + "/docs/guide/review-feedback");
+  const help = nojs.locator(".vp-doc details").first();
+  await help.locator("summary").focus();
+  await nojs.keyboard.press("Enter");
+  assert.ok(
+    await help.evaluate((el) => el.open),
+    "Deep guidance opens from the keyboard without JavaScript",
+  );
   await nojs.goto(origin + "/compare/");
   const fallback = nojs.locator(
     '#matrix-highlights tr[data-tool="feedbacks"] td[data-feature="apacheLicense"] details',
@@ -297,6 +362,24 @@ try {
   assert.match(await fallback.innerText(), /30 September 2026/);
   assert.ok(await fallback.getByRole("link", { name: /Read source/ }).isVisible());
   await nojs.close();
+  const dark = await browser.newPage({
+    viewport: { width: 390, height: 900 },
+    colorScheme: "dark",
+    reducedMotion: "reduce",
+  });
+  for (const path of [
+    "/docs/guide/mcp",
+    "/docs/guide/session-replay",
+    "/docs/guide/access-privacy",
+  ]) {
+    await dark.goto(origin + path, { waitUntil: "networkidle" });
+    assert.ok(await dark.locator("html").evaluate((el) => el.classList.contains("dark")));
+    assert.ok(
+      await dark.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+    );
+  }
+  await dark.screenshot({ path: ".impeccable/review/docs-dark-390.png", fullPage: true });
+  await dark.close();
   for (const width of [320, 768, 1024]) {
     const narrow = await browser.newPage({ viewport: { width, height: 900 } });
     await narrow.goto(origin + "/compare/bugherd.html");
@@ -313,7 +396,7 @@ try {
   }
   assert.deepEqual([...new Set(failures)], []);
   console.log(
-    "Public site browser QA passed: 10 routes at desktop/mobile, same-origin links/assets, timeline mouse/keyboard/playback/offscreen, reduced-motion start and no-JavaScript fallback.",
+    `Public site browser QA passed: ${pages.length} routes at desktop/mobile, visual guide flows and Markdown, dark mode, keyboard/no-JavaScript disclosure, same-origin links/assets and recording playback.`,
   );
 } finally {
   await browser.close();

@@ -1,45 +1,35 @@
+---
+description: Deploy one Feedbacks server for your organization, verify private media and hand it to the team.
+---
+
 # DevOps: one server for the team
+
+One installation serves one organization. Deploy a shared HTTPS server; reviewers connect to it from the extension.
+
+<DocPath :steps="['Provision', 'Deploy', 'Verify', 'Hand over']" />
 
 <Demo step="server" />
 
-One Feedbacks installation serves one organization. The application needs PostgreSQL and private S3-compatible storage in production. The public docs website is a separate static build and needs no database or storage credentials.
+## Bring the server online
 
-This guide is for the person deploying Feedbacks for the company. Reviewers and clients use the [extension guide](/guide/chrome-extension); developers resolving feedback use the [MCP guide](/guide/mcp). A shared server runs once for the team, on company infrastructure or a managed cloud VM. Each reviewer does not need a local server.
+1. Provision **PostgreSQL**, **private S3-compatible storage** and an HTTPS reverse proxy.
+2. Set private deployment secrets using the [production configuration](/reference/manual/self-hosting#production-configuration): origin, database, stable organization UUID, storage credentials and the actual proxy path.
+3. Run `docker compose up -d --build --wait`. Route the internal app port through HTTPS; production Compose does not publish the app or database directly.
+4. [Bootstrap the first owner](/reference/manual/self-hosting#create-the-first-owner), supplying the password on standard input.
 
-## Production outline
+Keep credentials out of Git. Scope bucket access to this installation's object prefix. The public docs website is a separate static build and needs no application database or storage credentials.
 
-1. Provision a PostgreSQL database, a private S3-compatible bucket and an HTTPS reverse proxy.
-2. Supply a private `.env` or deployment secrets for `APP_ORIGIN`, `DATABASE_URL`, `ORGANIZATION_ID`, `ASSET_DRIVER=s3`, `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. Use a unique, stable organization UUID. Configure `TRUST_PROXY_HOPS` for the actual proxy path.
-3. Run `docker compose up -d --build --wait`. Production Compose does not publish the app or database directly to the host; route the internal app port through HTTPS.
-4. Bootstrap the first owner once through the built CLI, supplying the password on standard input. The [self-hosting guide](/reference/manual/self-hosting#create-the-first-owner) gives the exact command.
-5. Sign in, create a project, upload a **synthetic** screenshot and verify authorized readback. Check backup and restore independently of `/healthz` and `/readyz`.
+## Verify before handoff
 
-Wasabi, AWS S3 and compatible private providers use the same settings, but endpoint configuration alone does not prove upload/readback or recovery. Keep bucket credentials out of Git and scope them to this installation’s object prefix. Optional Turnstile keys enable guest links and surveys. Optional GitHub App keys enable [GitHub Issues](/guide/github).
+| Check         | Required proof                                            |
+| ------------- | --------------------------------------------------------- |
+| App health    | `/healthz` and `/readyz`                                  |
+| Private media | Upload a synthetic screenshot; verify authorized readback |
+| Recovery      | Test backup and restore separately                        |
+| Team access   | Open the exact HTTPS URL from another approved device     |
 
-The complete [self-hosting](/reference/manual/self-hosting), [operations](/reference/manual/operations) and [verification](/reference/manual/verification) guides are available here in the docs.
+Health endpoints do not prove storage or recovery. A developer's `localhost` is not a shared team address.
 
-## Hand off a working installation
+Privately hand the owner the server URL and initial sign-in details. Continue with [project and member setup](/guide/team-setup). Optional [GitHub Apps](/guide/github), guest links and surveys have separate configuration.
 
-Give the owner the exact HTTPS server URL and initial sign-in details privately. The owner then follows [project and member setup](/guide/team-setup). Everyone installs the same Chrome extension and connects to this URL; **Setup → Copy server URL** provides the address to paste.
-
-Verify readiness, synthetic screenshot upload and authorized readback before handing it over. If clients access an internal server, they need an approved network route to it. A developer's `localhost` URL is not a shared address for other machines.
-
-## Optional GitHub App setup
-
-If the team wants native Issue creation, configure the App credentials as server secrets and have a GitHub account owner install the App on the selected repositories. Then a project maintainer connects those repositories in Feedbacks. Follow the separate [GitHub App guide](/guide/github).
-
-## Local development
-
-Use Node.js 22.12+ or 24, Docker with Compose and a checkout of the [open-source repository](https://github.com/Softinator-TechLabs/feedbacks-oss).
-
-```sh
-git clone https://github.com/Softinator-TechLabs/feedbacks-oss.git
-cd feedbacks-oss
-npm ci
-cp .env.example .env
-docker compose -f compose.dev.yaml up -d
-npm run build
-npm run dev:server
-```
-
-The example environment is for local development. Keep `.env` private and never reuse example passwords in production. The development database binds to loopback and assets use local private files. For an isolated disposable app without external services, run `npm run harness:dev` instead; it prints a pointer to local access details under ignored `.local/`.
+For a disposable local app, use `npm run harness:dev`. For persistent development, follow the [development manual](/reference/manual/development) with Node 22.12+ or 24 and locked dependencies.

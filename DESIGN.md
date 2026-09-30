@@ -98,8 +98,8 @@ The application and extension keep their focused system-font interface, Oxford a
 
 - Actual product pixels; capture provenance belongs in the asset documentation.
 - Brief handwritten notes and target-pointing pencil marks.
-- Flat scene surfaces with a small tilt on desktop screenshots.
-- Direct setup guidance and deliberate, user-started motion.
+- Quiet tonal scenes with a translucent backing and restrained moving perspective on landing walkthroughs.
+- Direct setup guidance and autoplay with a remembered Pause preference.
 
 ## Colors
 
@@ -137,7 +137,7 @@ Application forms group related controls; optional settings use disclosure secti
 
 ## Elevation & Depth
 
-The landing relies on flat tonal scenes, thin screenshot borders and a small desktop screenshot tilt. Pencil marks sit over the captured image without altering its pixels. No hard offset shadow is part of the landing system. Application overlays retain their existing shadows where depth separates floating controls from review content; ordinary Help sections use rules and spacing.
+Landing walkthroughs sit above a translucent backing, a soft ground shadow and a fading mirrored reflection below the panel. The front plane has no surrounding drop shadow. A six-second alternating desktop perspective sweep reaches seven degrees and about ten pixels while keeping the actual interface readable. Mobile retains the smaller sweep (under two degrees and three pixels) and seven-second timing. Desktop mouse movement gently steers the held plane, glass highlight and ground shadow together. Scroll contributes at most twelve pixels of eased vertical depth. Hover holds the autonomous sweep; pointer or keyboard interaction with controls freezes all depth effects while playback continues. The same playback clock and Pause/visibility state govern these effects; touch and small screens omit pointer and scroll depth. Reduced motion and expanded inspection use a stable front plane. Supporting diagrams share gentle static elevation. Pencil marks sit over captured evidence without altering its pixels; no hard offset shadow is part of the system. Application overlays retain their existing shadows where depth separates floating controls from review content; ordinary Help sections use rules and spacing.
 
 ## Shapes
 
@@ -157,7 +157,7 @@ The primary landing action is **Set up Feedbacks**, linking to the website's own
 
 The walkthrough follows **Point it out**, **Check & send** and **Fix with your agent** through actual extension and app captures of the fictional Good Form project. Save point is a local draft; Review & send opens the evidence review; Send feedback shares checked notes and screenshots. The server thread shows the submitted request, not proof that an agent fixed it. [Asset provenance](docs/website-assets.md) records the screenshot source and font licenses.
 
-Native landing step buttons expose `aria-pressed`; selection updates the shared player, short note and guide link together. The selected sequence plays automatically: the cursor approaches the real control, a left/right click is visible, the field types the note, and a red pencil stroke draws attention to the action. Each action takes 3.6 seconds. **Pause** / **Play** and clicking the image hold/resume the same moment; numbered controls select completed actions. Playback pauses offscreen/in hidden tabs and starts paused for reduced motion. A separate expand icon opens the full screenshot in a native dialog. Frame crops and motion cues share the same original-pixel coordinates. The stage stays the same size within each sequence. Keep the interface focused on the task: no display-mode switch, demo-account label or media-production notes.
+Native landing step buttons expose `aria-pressed`; selection updates the shared player, short note and guide link together. The selected sequence plays automatically: the cursor approaches the real control, a left/right click is visible, the field types the note, and a red pencil stroke draws attention to the action. Each action takes 3.6 seconds. **Pause** / **Play** and clicking the image hold/resume the same moment; numbered controls select completed actions. Playback stops offscreen/in hidden tabs. Default autoplay continues until explicit Pause; origin-scoped localStorage remembers that choice across pages and visits, with open-tab synchronization. Reduced motion removes spatial cues without changing that choice. A separate expand icon opens the full screenshot in a native dialog. Frame crops and motion cues share the same original-pixel coordinates. The stage stays the same size within each sequence. Keep the interface focused on the task: no display-mode switch, demo-account label or media-production notes.
 
 The first scene and its copy exist in the initial HTML. The [shared player](public/learn/demo.js) is reused in docs and optional Help disclosures; source and capture provenance are in [website assets](docs/website-assets.md).
 
@@ -193,7 +193,7 @@ Navigation preserves applied filters and protects unsaved drafts. Thread rows ke
 - Don't apply marketing display styles to the application or extension.
 - Don't treat reviewer guidance or weights as authorization.
 
-The landing opening is a two-column composition on desktop: positioning and setup action on the left, a compact recording timeline illustration on the right. At 800px and below it stacks. Keep the three capture-walkthrough choices and player controls visible together. Comparisons are an open section and primary navigation destination. The capture walkthrough on landing, docs and Help exposes a shared Pause all / Play all control; the illustrative recording timeline has its own Play example / Pause example control.
+The landing opening is a two-column composition on desktop: positioning and setup action on the left, a compact recording timeline illustration on the right. At 800px and below it stacks. Keep the three capture-walkthrough choices and player controls visible together. Comparisons are an open section and primary navigation destination. Landing, docs and Help use the same walkthrough player. Pause stops all players; Play resumes the selected player and restores autoplay on future pages.
 
 All native selects inherit the shared form control border, surface and 44px minimum height. Their 16px chevron sits 12px inside the right edge, with room for selected text; forced-colors mode uses the system arrow. The Help project switcher uses a 48px full-width field; review evidence keeps the Points filter labelled and responsive beside its counts, with each screenshot shown inline by its point. Keep native keyboard and mobile selection behavior.
 
@@ -201,8 +201,8 @@ Thread screenshots captured with separate point metadata draw the reviewer's cho
 
 ## Public feature storytelling
 
-The landing now opens with concise free Apache-2.0 positioning beside a user-started walkthrough of actual recording-review captures. Three selectable events connect a click, failed request and console error. The existing product-capture walkthrough follows in its own section. Alternating editorial sections show exact text suggestions, portable evidence and approved project context; a compact linked directory exposes the remaining review workflows. The setup order remains server first.
+The landing now opens with concise free Apache-2.0 positioning beside an automatically playing walkthrough built from the actual recording inspector. Three selectable events connect a click, failed request and console error. The existing product-capture walkthrough follows in its own section. Alternating editorial sections show exact text suggestions, portable evidence and approved project context; a compact linked directory exposes the remaining review workflows. The setup order remains server first.
 
-Landing diagrams use the established green, peach and blue scene colors, clear geometry and ordinary product vocabulary. Explanatory diagrams are labelled as illustrative. The hero uses screenshots of the actual extension video-review renderer, with its native timeline and diagnostic tabs; only the recording data is synthetic. The full screenshot opens through Enlarge. Real captures retain their original pixels and provenance. Docs use Manrope and warm paper with a rust link color in light mode, preserving accessible dark mode. Shared diagrams and short task guides link to canonical reference manuals. Motion is optional and off by default for the new timeline; manual controls always work.
+Landing diagrams use the established green, peach and blue scene colors, clear geometry and ordinary product vocabulary. Explanatory diagrams are labelled as illustrative. The hero uses the actual recording inspector, timeline and diagnostic tabs with a synthetic checkout preview. Enlarge opens the same live player on the page. Real captures retain their original pixels and provenance. Docs use Manrope and warm paper with a rust link color in light mode, preserving accessible dark mode. Shared diagrams and short task guides link to canonical reference manuals. Motion starts when visible unless the visitor previously paused it; manual controls always work. Landing examples omit production labels and repeated below-image captions. Synthetic evidence is documented in asset provenance. Guide links keep their arrow undecorated.
 
 Keep promotional claims distinct: the landing states free Apache-2.0 licensing once in its hero. Later sections explain separate capabilities and setup; avoid repeating a licensing banner or the same setup links as a second role menu.

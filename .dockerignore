@@ -39,3 +39,6 @@
 !public/learn
 !public/learn/**
 !scripts/prepare-walkthroughs.mjs
+
+!scripts/walkthrough-recording.js
+!scripts/walkthrough-recording.css

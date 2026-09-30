@@ -35,8 +35,6 @@
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/landing.css" />
     <link rel="stylesheet" href="/product-story.css" />
-    <link rel="stylesheet" href="/learn/evidence.css" />
-    <script defer src="/learn/evidence.js?v=20260930-1"></script>
     <link
       rel="preload"
       href="/fonts/manrope-800.ttf"
@@ -71,7 +69,7 @@
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
     </script>
-    <script defer src="/learn/demo.js?v=20260930-3"></script>
+    <script defer src="/learn/demo.js?v=20260930-8"></script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -110,25 +108,25 @@
           <div class="product-actions">
             <a class="start-button" href="/docs/guide/getting-started"
               >Set up Feedbacks <span aria-hidden="true">↗</span></a
-            ><a
-              class="source-link"
-              href="https://github.com/Softinator-TechLabs/feedbacks-oss"
-              >Explore the source</a
             >
+            <div class="existing-team-action">
+              <span>Team already has a setup?</span>
+              <a
+                href="https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo"
+                >Install the Chrome extension</a
+              >
+            </div>
           </div>
           <p class="product-footnote">The complete product, on your infrastructure.</p>
         </div>
         <div class="product-hero-demo">
-          <feedbacks-evidence
+          <feedbacks-demo step="recording" depth
             ><img
               src="/media/story/recording-desktop-0.webp"
               width="900"
               height="655"
-              alt="Actual Feedbacks video review with a shared timeline and timestamped activity." /></feedbacks-evidence
-          ><a class="demo-guide" href="/docs/guide/session-replay"
-            >Video, replay &amp; the debugging timeline
-            <span aria-hidden="true">→</span></a
-          >
+              alt="Feedbacks video review with a shared timeline and timestamped activity."
+          /></feedbacks-demo>
         </div>
       </section>
       <section class="capture-section wrap" aria-labelledby="capture-title">
@@ -162,7 +160,7 @@
           </div>
           <div class="story-stage" data-active="0">
             <div class="screen-stack">
-              <feedbacks-demo id="story-demo" step="capture"
+              <feedbacks-demo id="story-demo" step="capture" depth
                 ><img
                   src="/media/workflow/point.png"
                   width="1440"
@@ -184,7 +182,7 @@
         </section>
       </section>
       <nav class="feature-nav wrap" aria-label="Explore product capabilities">
-        <a href="#recordings">Replay the moment</a
+        <a href="#recordings">Discuss &amp; hand off</a
         ><a href="#text-changes">Suggest the words</a
         ><a href="#debug-bundle">Take the evidence</a
         ><a href="#agent-context">Give your agent context</a>
@@ -195,37 +193,25 @@
         aria-labelledby="recordings-title"
       >
         <div class="product-section-copy">
-          <h2 id="recordings-title">
-            “It broke when I clicked here.”<br />Now you can see why.
-          </h2>
+          <h2 id="recordings-title">Discuss it together.<br />Hand it to your agent.</h2>
           <p>
-            Record a tab video with its session, or capture the session alone. Jump from a
-            click to the request, console message or frame at that moment.
+            Keep decisions beside the evidence. Copy the thread into Codex or Claude, with
+            your team's discussion and page context attached.
           </p>
-          <ul class="plain-features">
-            <li>One timeline for video, replay and diagnostics</li>
-            <li>Screenshot comments and annotated frames</li>
-            <li>Review, trim and send when you’re ready</li>
-          </ul>
-          <a class="text-link" href="/docs/guide/session-replay"
-            >Explore session recording <span aria-hidden="true">→</span></a
+          <a class="text-link" href="/docs/guide/mcp"
+            >Connect your agent <span aria-hidden="true">→</span></a
           >
         </div>
         <figure class="product-figure recording-figure">
-          <a
-            href="/media/story/recording-inspector.webp"
-            aria-label="Open the complete recording inspector screenshot"
-            ><img
-              src="/media/story/recording-inspector.webp"
-              width="760"
-              height="689"
+          <feedbacks-demo step="discussion">
+            <img
+              src="/learn/thread-ready.webp"
+              width="2304"
+              height="1180"
               loading="lazy"
-              alt="Actual Feedbacks recording inspector with timestamped Activity, Network, Console and Performance events in its Everything feed."
-          /></a>
-          <figcaption>
-            Actual recording inspector with synthetic events. Select an event to inspect
-            its moment.
-          </figcaption>
+              alt="Feedbacks thread with Maya and Leo discussing a checkout fix and the Copy task for agent action."
+            />
+          </feedbacks-demo>
         </figure>
       </section>
       <section
@@ -253,9 +239,6 @@
               loading="lazy"
               alt="Illustrative text suggestion replacing ‘every room’ with ‘your favourite corner’, preserving the original."
           /></picture>
-          <figcaption>
-            A precise suggestion, ready to review. Your live page stays unchanged.
-          </figcaption>
         </figure>
       </section>
       <section
@@ -284,9 +267,6 @@
               loading="lazy"
               alt="A portable thread archive contains conversation, media, recordings, diagnostics and a checksummed manifest."
           /></picture>
-          <figcaption>
-            Portable evidence for investigation, even outside Feedbacks.
-          </figcaption>
         </figure>
       </section>
       <section
@@ -317,9 +297,6 @@
               loading="lazy"
               alt="Assigned work, priority flags, evidence and approved guidance help Codex or Claude recommend a task."
           /></picture>
-          <figcaption>
-            Choose the work. Keep its evidence and instructions together.
-          </figcaption>
         </figure>
       </section>
       <section
@@ -420,8 +397,8 @@
             </li>
           </ol>
           <p class="server-tip">
-            Already have a server? <strong>Setup → Copy server URL.</strong> Paste it into
-            the extension.
+            To connect the extension, open <strong>Setup → Copy server URL</strong> in
+            your Feedbacks app, then paste it into the extension.
           </p>
         </div>
       </section>

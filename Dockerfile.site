@@ -7,7 +7,9 @@ COPY .prettierrc.json ./
 COPY scripts/generate-comparisons.mjs ./scripts/
 COPY scripts/export-docs.mjs ./scripts/
 COPY scripts/publish-docs.mjs ./scripts/
-COPY scripts/prepare-walkthroughs.mjs ./scripts/
+COPY scripts/prepare-walkthroughs.mjs scripts/walkthrough-recording.js scripts/walkthrough-recording.css ./scripts/
+COPY extension/session-review.js extension/session-review.css ./extension/
+COPY extension/session ./extension/session
 COPY public/learn ./public/learn
 COPY docs ./docs
 COPY plugins ./plugins

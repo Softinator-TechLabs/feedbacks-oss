@@ -18,7 +18,15 @@ for (const path of files.sort()) {
   const name = relative(source.pathname, path);
   const target = join(output.pathname, name);
   await mkdir(dirname(target), { recursive: true });
-  const markdown = await readFile(path, "utf8");
+  const markdown = (await readFile(path, "utf8")).replace(
+    /<DocPath\s+:steps="\[([\s\S]*?)\]"\s*\/>/g,
+    (_tag, values) => {
+      const steps = [...values.matchAll(/'([^']*)'|"([^"]*)"/g)].map(
+        (match) => match[1] ?? match[2],
+      );
+      return steps.map((step, i) => `${i + 1}. ${step}`).join("\n");
+    },
+  );
   await writeFile(target, markdown);
   const heading = markdown.match(/^# (.+)$/m)?.[1] ?? name;
   links.push(`- [${heading}](https://feedbacks.softinator.ai/docs/${name}): ${heading}`);

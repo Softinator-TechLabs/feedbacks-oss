@@ -6,6 +6,8 @@ description: "Find your role in Feedbacks: install the team server, prepare proj
 
 Feedbacks turns a UI request into screenshots, page details and project context your developer’s AI agent can use.
 
+<DocPath :steps="['One team server', 'Projects and people', 'Capture and review', 'Fix and verify']" />
+
 <Demo step="server" />
 
 | Who you are                     | What you do                                                                    |
@@ -15,6 +17,6 @@ Feedbacks turns a UI request into screenshots, page details and project context 
 | **Client, colleague or tester** | [Connect the extension. Point out a change. Send it.](/guide/chrome-extension) |
 | **Developer fixing feedback**   | [Connect your coding agent. Read, fix and verify.](/guide/mcp)                 |
 
-**Already have a team server?** Open its Setup page. Your setup status and connection buttons are there.
+**Team already has a setup?** [Install the Chrome extension](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo), then open **Setup** in your Feedbacks app to copy the server URL and connect.
 
 Clients and reviewers don’t need MCP or an AI subscription. Each developer connects their own agent with their own key.

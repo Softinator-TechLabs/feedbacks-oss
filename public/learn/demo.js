@@ -5,35 +5,77 @@
   let soloPlayer;
   let motionChoice;
   try {
-    motionChoice = sessionStorage.getItem("feedbacks-motion");
+    motionChoice = localStorage.getItem("feedbacks-motion");
   } catch {}
-  let allPaused =
-    motionChoice === "paused" ||
-    (!motionChoice && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  let allPaused = motionChoice === "paused";
+  const saveMotionChoice = (paused) => {
+    motionChoice = paused ? "paused" : "playing";
+    try {
+      localStorage.setItem("feedbacks-motion", motionChoice);
+    } catch {}
+  };
   const updateMotionState = () => {
     const paused = players.size
       ? [...players].every((player) => player.paused)
       : allPaused;
     document.documentElement.dataset.feedbacksMotion = paused ? "paused" : "playing";
   };
-  matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (event) => {
-    if (!motionChoice) {
-      allPaused = event.matches;
-      players.forEach((player) => player.setPlaybackPaused?.(allPaused));
-      updateMotionState();
-    }
-  });
-  function setAllPaused(paused) {
+  function setAllPaused(paused, persist = true) {
     soloPlayer = undefined;
     allPaused = paused;
-    motionChoice = paused ? "paused" : "playing";
-    try {
-      sessionStorage.setItem("feedbacks-motion", motionChoice);
-    } catch {}
+    if (persist) saveMotionChoice(paused);
     players.forEach((player) => player.setPlaybackPaused?.(paused));
     updateMotionState();
   }
+  window.addEventListener("storage", (event) => {
+    if (event.key === "feedbacks-motion" || event.key === null) {
+      motionChoice = event.newValue;
+      setAllPaused(event.newValue === "paused", false);
+    }
+  });
   const scenes = {
+    discussion: {
+      duration: 1500,
+      frames: [
+        {
+          image: "thread-discuss",
+          label: "Discuss",
+          caption: "Reply beside the feedback. Keep the decision in the thread.",
+        },
+        {
+          image: "thread-ready",
+          label: "Agree",
+          caption: "Your teammate picks up the fix.",
+        },
+        {
+          image: "thread-ready",
+          action: "thread-copy",
+          label: "Copy",
+          caption: "Choose Copy task for agent. The discussion goes with it.",
+        },
+        {
+          kind: "quick-handoff",
+          label: "Paste",
+          caption:
+            "Paste into Codex or Claude. Your agent starts with the team's context.",
+        },
+      ],
+    },
+    recording: {
+      duration: 10000,
+      frames: [
+        {
+          kind: "recording",
+          caption:
+            "Follow the cursor from the click to the failed request and console error.",
+        },
+      ],
+      moments: [
+        { at: 2000, label: "0:02 · Click" },
+        { at: 4000, label: "0:04 · Request fails" },
+        { at: 5000, label: "0:05 · Console error" },
+      ],
+    },
     github: {
       kind: "server",
       steps: [
@@ -156,6 +198,52 @@
   // Coordinates use the original capture pixels, so the cursor and text stay
   // attached to the real controls at every responsive size.
   const actions = {
+    "thread-discuss": {
+      size: [2304, 1180],
+      view: [1270, 160, 1034, 880],
+      camera: [
+        [0, 0, 0, 2304, 1180],
+        [0.24, 1270, 160, 1034, 880],
+      ],
+      points: [
+        [0, 1570, 570],
+        [0.2, 1630, 595],
+        [0.65, 2160, 955],
+      ],
+      clicks: [[0.76, 2160, 955]],
+      type: {
+        box: [1480, 541, 780, 130],
+        x: 1490,
+        y: 588,
+        font: 32,
+        line: 44,
+        lines: ["I’ll fix the checkout request", "and verify it."],
+        from: 0.25,
+        to: 0.58,
+      },
+    },
+    "thread-ready": {
+      size: [2304, 1180],
+      view: [1320, 125, 984, 738],
+      points: [
+        [0, 2140, 910],
+        [0.2, 1900, 485],
+      ],
+    },
+    "thread-copy": {
+      size: [2304, 1180],
+      view: [1210, 0, 1094, 820],
+      camera: [
+        [0, 1320, 125, 984, 738],
+        [0.25, 1210, 0, 1094, 820],
+      ],
+      points: [
+        [0, 1900, 485],
+        [0.3, 1760, 62],
+      ],
+      clicks: [[0.37, 1760, 62]],
+      mark: [1715, 18, 90, 87],
+    },
     "capture-1": {
       size: [810, 680],
       points: [
@@ -357,7 +445,7 @@
     return el;
   };
   function actionLayer(screen, frame, scene) {
-    let action = actions[frame.image];
+    let action = actions[frame.action ?? frame.image];
     if (!action) {
       const width = screen.clientWidth,
         height = screen.clientHeight;
@@ -393,6 +481,14 @@
         clicks: scene.kind === "server" ? [] : [[0.47, x + w * 0.6, y + h * 0.5]],
         mark: [x, y, w, h],
       };
+      if (frame.kind === "quick-handoff") {
+        action.points = [
+          [0, width * 0.25, height * 0.8],
+          [0.16, x + 25, y + 30],
+        ];
+        action.clicks = [[0.18, x + 25, y + 30]];
+        delete action.mark;
+      }
     }
     const [width, height] = action.size,
       view = action.view ?? [0, 0, width, height],
@@ -497,6 +593,33 @@
     let previousCount = -1;
     return (progress) => {
       const p = clamp(progress);
+      if (action.camera) {
+        let start = action.camera[0],
+          end = start;
+        for (const key of action.camera) {
+          if (key[0] <= p) start = end = key;
+          else {
+            end = key;
+            break;
+          }
+        }
+        const ease =
+          start === end
+            ? 1
+            : 1 - Math.pow(1 - clamp((p - start[0]) / (end[0] - start[0])), 3);
+        const viewBox = start
+          .slice(1)
+          .map((value, i) => value + (end[i + 1] - value) * ease)
+          .join(" ");
+        layer.setAttribute("viewBox", viewBox);
+        screen.querySelector(".capture-image")?.setAttribute("viewBox", viewBox);
+      }
+      if (frame.kind === "quick-handoff") {
+        const pasted = p >= 0.22;
+        screen.querySelector(".handoff-paste").hidden = !pasted;
+        screen.querySelector(".handoff-placeholder").hidden = pasted;
+        screen.querySelector(".handoff-ready").hidden = p < 0.48;
+      }
       if (scene.kind === "pin") {
         const clicked = p >= 0.47;
         const menu = screen.querySelector(".chrome-card");
@@ -575,6 +698,113 @@
         );
     };
   }
+  // Reuse the playback clock: decorative depth never starts its own loop.
+  function interactiveDepth(host, stage, dialog) {
+    if (!host.hasAttribute("depth")) return;
+    const finePointer = matchMedia(
+      "(hover: hover) and (pointer: fine) and (min-width: 801px)",
+    );
+    const abort = new AbortController();
+    const options = { passive: true, signal: abort.signal };
+    let targetX = 0,
+      targetY = 0,
+      targetScroll = 0;
+    let x = 0,
+      y = 0,
+      scroll = 0,
+      previous = 0;
+    let boundsDirty = true,
+      overControl = false;
+    const clamp = (value) => Math.max(-1, Math.min(1, value));
+    const control = (target) =>
+      target instanceof Element &&
+      !!target.closest(
+        "button:not(.screen-hit), a, input, select, textarea, summary, [role=button], .controls",
+      );
+    const markBounds = () => {
+      boundsDirty = true;
+    };
+    stage.addEventListener(
+      "pointermove",
+      (event) => {
+        if (
+          event.pointerType !== "mouse" ||
+          !finePointer.matches ||
+          host.motion.matches ||
+          host.paused
+        )
+          return;
+        overControl = control(event.target);
+        if (overControl) return;
+        const rect = stage.getBoundingClientRect();
+        targetX = clamp(((event.clientX - rect.left) / rect.width) * 2 - 1);
+        targetY = clamp(((event.clientY - rect.top) / rect.height) * 2 - 1);
+      },
+      options,
+    );
+    stage.addEventListener(
+      "pointerleave",
+      () => {
+        targetX = targetY = 0;
+        overControl = false;
+      },
+      options,
+    );
+    window.addEventListener("scroll", markBounds, options);
+    window.addEventListener("resize", markBounds, options);
+    finePointer.addEventListener("change", markBounds, options);
+    const write = () => {
+      stage.style.setProperty(
+        "--depth-tilt",
+        `${-y} ${x || 0.00001} 0 ${Math.hypot(x, y) * 3}deg`,
+      );
+      stage.style.setProperty("--depth-scroll", `${scroll}px`);
+      stage.style.setProperty("--depth-light-x", `${50 + x * 32}%`);
+      stage.style.setProperty("--depth-light-y", `${20 + y * 20}%`);
+      stage.style.setProperty("--depth-shadow-x", `${x * 9}px`);
+      stage.style.setProperty("--depth-shadow-scale", String(1 - scroll / 160));
+    };
+    return {
+      tick(now) {
+        const delta = previous ? Math.min(now - previous, 64) : 16;
+        previous = now;
+        if (host.motion.matches || !finePointer.matches) {
+          if (x || y || scroll) {
+            x = y = scroll = targetX = targetY = targetScroll = 0;
+            write();
+          }
+          return;
+        }
+        // Freeze immediately over controls or keyboard focus; no chasing targets.
+        if (overControl || stage.matches(":focus-within") || dialog.open) return;
+        if (boundsDirty) {
+          const rect = stage.getBoundingClientRect();
+          targetScroll =
+            clamp((innerHeight / 2 - rect.top - rect.height / 2) / innerHeight) * -12;
+          boundsDirty = false;
+        }
+        if (
+          Math.abs(targetX - x) +
+            Math.abs(targetY - y) +
+            Math.abs(targetScroll - scroll) <
+          0.001
+        )
+          return;
+        const ease = 1 - Math.exp(-delta / 150);
+        x += (targetX - x) * ease;
+        y += (targetY - y) * ease;
+        scroll += (targetScroll - scroll) * ease;
+        write();
+      },
+      refresh() {
+        previous = 0;
+        boundsDirty = true;
+      },
+      dispose() {
+        abort.abort();
+      },
+    };
+  }
   class FeedbacksDemo extends HTMLElement {
     static observedAttributes = ["step"];
     constructor() {
@@ -595,13 +825,15 @@
     mount() {
       this.cleanup?.();
       const scene = scenes[this.getAttribute("step")];
+      const frameDuration = scene?.duration ?? duration;
       if (!scene) return;
       this.index = 0;
       this.motion = matchMedia("(prefers-reduced-motion: reduce)");
-      this.paused =
-        (allPaused && soloPlayer !== this) || (this.motion.matches && !motionChoice);
+      this.paused = allPaused && soloPlayer !== this;
       players.add(this);
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-3"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      let disposed = false,
+        recordingRuntime;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-8"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         frameBox = q(".frame"),
@@ -610,7 +842,7 @@
         dialog = q("dialog"),
         hit = q(".screen-hit"),
         zoom = q(".zoom");
-      let elapsed = this.paused ? duration : 0,
+      let elapsed = this.paused && !scene.moments ? frameDuration : 0,
         visible = false,
         raf = 0,
         last = 0,
@@ -618,31 +850,40 @@
         mounted = false;
       const setPaused = (value) => {
         this.paused = value;
-        if (!value && elapsed >= duration) elapsed = 0;
+        if (!value && elapsed >= frameDuration) elapsed = 0;
         renderControls();
+        paint(elapsed / frameDuration);
         schedule();
       };
       this.setPlaybackPaused = setPaused;
       const toggle = () => {
         const shouldPlay = this.paused;
-        setAllPaused(true);
+        setAllPaused(true, !shouldPlay);
         if (shouldPlay) {
+          saveMotionChoice(false);
           soloPlayer = this;
           setPaused(false);
         }
       };
-      const steps = scene.frames.map((frame, index) => {
+      const steps = (scene.moments ?? scene.frames).map((frame, index) => {
         const b = document.createElement("button");
         b.className = "step";
         b.type = "button";
-        b.textContent = String(index + 1);
-        b.setAttribute("aria-label", frame.caption);
+        b.textContent = frame.label ?? String(index + 1);
+        b.setAttribute("aria-label", frame.label ?? frame.caption);
         b.onclick = () => {
-          this.index = index;
-          elapsed = duration;
-          this.paused = true;
-          render();
-          schedule();
+          if (scene.moments) {
+            elapsed = frame.at;
+            setPaused(true);
+            paint(elapsed / frameDuration);
+            recordingRuntime?.seek(frame.at);
+          } else {
+            this.index = index;
+            elapsed = frameDuration;
+            this.paused = true;
+            render();
+            schedule();
+          }
         };
         controls.append(b);
         return b;
@@ -666,7 +907,17 @@
           "aria-label",
           this.paused ? "Play animation" : "Pause all animations",
         );
-        steps.forEach((b, i) => b.setAttribute("aria-pressed", String(i === this.index)));
+        steps.forEach((b, i) =>
+          b.setAttribute(
+            "aria-pressed",
+            String(
+              scene.moments
+                ? elapsed >= scene.moments[i].at &&
+                    elapsed < (scene.moments[i + 1]?.at ?? frameDuration + 1)
+                : i === this.index,
+            ),
+          ),
+        );
         updateMotionState();
       };
       const pin =
@@ -675,19 +926,61 @@
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h3a3 3 0 1 1 6 0h3v6a3 3 0 1 0 0 6v4h-6a3 3 0 1 0-6 0H4v-7a3 3 0 1 0 0-6V4h4"/></svg>';
       const refreshMotion = () => {
         screen.querySelector(".motion-layer")?.remove();
-        paint = actionLayer(screen, scene.frames[this.index], scene);
-        paint(elapsed / duration);
+        if (recordingRuntime)
+          paint = (progress) => recordingRuntime.paint(progress, !this.paused);
+        else {
+          const drawAction = actionLayer(screen, scene.frames[this.index], scene);
+          paint = (progress) => drawAction(this.motion.matches ? 1 : progress);
+        }
+        paint(elapsed / frameDuration);
       };
       const render = () => {
         const f = scene.frames[this.index];
         caption.textContent = f.caption;
+        recordingRuntime?.dispose();
+        recordingRuntime = undefined;
         frameBox.replaceChildren();
-        zoom.hidden = !f.image;
+        hit.hidden = f.kind === "recording";
+        zoom.hidden = !f.image && f.kind !== "recording";
         screen.dataset.kind = f.image ? "capture" : "diagram";
-        if (f.image) {
+        if (f.kind === "recording") {
+          screen.dataset.kind = "recording";
+          const poster = document.createElement("img");
+          poster.className = "recording-poster";
+          poster.src = "/media/story/recording-desktop-0.webp";
+          poster.alt = "Actual Feedbacks recording review with sample events";
+          frameBox.append(poster);
+          const generation = this.index;
+          import(base + "recording-runtime.js?v=20260930-8")
+            .then(({ mountRecording }) => {
+              if (disposed || this.index !== generation || !poster.isConnected) return;
+              poster.remove();
+              recordingRuntime = mountRecording(frameBox, {
+                base,
+                onSeek: (ms) => {
+                  elapsed = Math.max(0, Math.min(frameDuration, ms));
+                  setPaused(true);
+                  paint(elapsed / frameDuration);
+                },
+                onPlay: () => {
+                  if (this.paused) toggle();
+                },
+                onPause: () => setPaused(true),
+              });
+              refreshMotion();
+            })
+            .catch(() => {
+              if (!disposed) {
+                caption.dataset.error = "true";
+                caption.setAttribute("role", "alert");
+                caption.textContent =
+                  "The walkthrough could not load. Reload this page to try again.";
+              }
+            });
+        } else if (f.image) {
           const wrap = document.createElement("div");
           wrap.className = "image";
-          const action = actions[f.image],
+          const action = actions[f.action ?? f.image],
             view = action.view ?? [0, 0, ...action.size];
           const art = svgNode(
             "svg",
@@ -741,6 +1034,9 @@
                   `<div class="${i === f.active ? "active" : ""}">${step.title}<small>${step.detail}</small></div>`,
               )
               .join("")}</div>`;
+          else if (f.kind === "quick-handoff")
+            box.innerHTML =
+              '<div class="quick-handoff"><div class="handoff-heading"><strong>Your coding agent</strong><span>Codex / Claude</span></div><div class="prompt-input"><span class="handoff-placeholder">Paste the Feedbacks task…</span><div class="handoff-paste" hidden><p>Fix this Feedbacks task and verify it.</p><p class="handoff-task">Checkout fails after clicking Place order.</p><div class="handoff-context"><span>Task</span><span>Discussion</span><span>Page context</span></div></div></div><div class="handoff-ready" hidden>Context pasted. Ready to send.</div></div>';
           else
             box.innerHTML =
               '<div class="agent-note"><strong>Your coding agent</strong><div class="prompt-input"><span class="typed-prompt"></span></div><small>Screenshot · page · element · project context</small></div>';
@@ -750,22 +1046,29 @@
         refreshMotion();
         renderControls();
       };
+      const depth = interactiveDepth(this, q(".depth-stage"), dialog);
       const tick = (now) => {
+        depth?.tick(now);
         if (last) elapsed += Math.min(now - last, 100);
         last = now;
-        if (elapsed >= duration) {
+        if (elapsed >= frameDuration) {
           elapsed = 0;
           this.index = (this.index + 1) % scene.frames.length;
-          render();
+          if (scene.moments) recordingRuntime?.paint(0, true);
+          else render();
         }
-        paint(elapsed / duration);
+        paint(elapsed / frameDuration);
+        if (scene.moments) renderControls();
         raf = requestAnimationFrame(tick);
       };
       const schedule = () => {
         cancelAnimationFrame(raf);
         last = 0;
-        if (visible && !this.paused && !document.hidden)
-          raf = requestAnimationFrame(tick);
+        depth?.refresh();
+        const running = visible && !this.paused && !document.hidden;
+        this.toggleAttribute("data-motion-running", running);
+        if (running) raf = requestAnimationFrame(tick);
+        else recordingRuntime?.paint(elapsed / frameDuration, false);
       };
       const observer = new IntersectionObserver(
         ([entry]) => {
@@ -786,26 +1089,36 @@
       const visibility = () => schedule();
       document.addEventListener("visibilitychange", visibility);
       const reduce = () => {
-        if (this.motion.matches) {
-          elapsed = duration;
-          setPaused(true);
-          if (mounted) paint(1);
-        }
+        if (mounted) refreshMotion();
       };
       this.motion.addEventListener("change", reduce);
+      const figure = q("figure");
+      let placeholder;
       zoom.onclick = () => {
-        setPaused(true);
-        const f = scene.frames[this.index];
-        q("dialog img").src = base + f.image + ".webp?v=20260930-3";
-        q("dialog img").alt = f.caption;
+        if (dialog.open) return;
+        placeholder = document.createElement("div");
+        placeholder.className = "expanded-placeholder";
+        placeholder.style.height = `${figure.getBoundingClientRect().height}px`;
+        figure.before(placeholder);
+        q(".expanded-player").append(figure);
         dialog.showModal();
+        q(".close").focus();
       };
-      q("dialog button").onclick = () => dialog.close();
-      dialog.addEventListener("close", () => zoom.focus());
+      q(".close").onclick = () => dialog.close();
+      dialog.addEventListener("close", () => {
+        placeholder?.replaceWith(figure);
+        placeholder = undefined;
+        zoom.focus();
+      });
       caption.textContent = scene.frames[0].caption;
       renderControls();
       this.cleanup = () => {
+        disposed = true;
+        depth?.dispose();
+        if (dialog.open) dialog.close();
+        recordingRuntime?.dispose();
         players.delete(this);
+        this.removeAttribute("data-motion-running");
         this.setPlaybackPaused = undefined;
         updateMotionState();
         cancelAnimationFrame(raf);

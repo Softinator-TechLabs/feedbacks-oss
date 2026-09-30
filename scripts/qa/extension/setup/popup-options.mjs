@@ -123,6 +123,17 @@ export async function verifyPopupOptions({
     async () =>
       (await chrome.storage.local.get("reviewShortcuts")).reviewShortcuts === false,
   );
+  // Storage persistence and the options save RPC have separate completion
+  // boundaries. Wait for the settings API too; a permanent wrong value still fails.
+  await control.waitForFunction(
+    async () => {
+      const result = await chrome.runtime.sendMessage({ type: "settings" });
+      if (!result?.ok) throw Error(result?.error || "No extension response");
+      return result.data.reviewShortcuts === false;
+    },
+    undefined,
+    { timeout: 30000, polling: 100 },
+  );
   assert.equal((await send({ type: "settings" })).reviewShortcuts, false);
   await options.locator("#review-shortcuts").check();
   await options.waitForFunction(

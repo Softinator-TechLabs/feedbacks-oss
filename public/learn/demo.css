@@ -124,10 +124,15 @@ svg.motion-layer {
   padding: 12px 16px;
 }
 .caption {
+  display: var(--demo-caption-display, block);
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
   min-height: var(--demo-caption-height, 3em);
+}
+.caption[data-error="true"] {
+  display: block;
+  min-height: 0;
 }
 .controls {
   display: flex;
@@ -297,7 +302,7 @@ dialog img {
   max-width: 100%;
   height: auto;
 }
-dialog button {
+dialog > .close {
   display: block;
   margin-left: auto;
 }
@@ -357,4 +362,230 @@ dialog button {
 .review-started p {
   margin: 8px 0 0;
   font-size: 15px;
+}
+
+/* Recording walkthroughs reuse the shipped inspector, with the same player controls. */
+.screen[data-kind="recording"] {
+  display: block;
+  aspect-ratio: auto;
+  height: auto;
+  background: #fff;
+}
+.screen[data-kind="recording"] .frame {
+  position: relative;
+  display: block;
+}
+.screen-hit[hidden] {
+  display: none;
+}
+.recording-poster {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+:host([step="recording"]) .step {
+  font-size: 12px;
+}
+:host([step="recording"]) .foot {
+  padding: 10px 12px;
+}
+:host([step="recording"]) .caption {
+  font-size: 13px;
+  min-height: 3em;
+}
+dialog {
+  width: min(1200px, 95vw);
+}
+dialog figure {
+  margin-top: 10px;
+}
+dialog .screen:not([data-kind="recording"]) {
+  height: min(70dvh, 700px);
+}
+.expanded-placeholder {
+  width: 100%;
+}
+
+:host([step="discussion"]) .screen {
+  aspect-ratio: 4 / 3;
+  background: #f7f8f7;
+}
+:host([step="discussion"]) .diagram {
+  padding: clamp(18px, 4vw, 36px);
+}
+:host([step="discussion"]) .step {
+  font-size: 13px;
+}
+.quick-handoff {
+  width: 100%;
+}
+.handoff-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.handoff-heading span {
+  font-size: 13px;
+  color: #596054;
+  white-space: nowrap;
+}
+.quick-handoff .prompt-input {
+  min-height: 170px;
+  padding: 20px;
+  border: 1px solid #c6cbbb;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.handoff-paste p {
+  margin: 0 0 12px;
+}
+.handoff-task {
+  color: #596054;
+}
+.handoff-context {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #17324d;
+}
+.handoff-ready {
+  margin-top: 16px;
+  color: #285831;
+  font-size: 14px;
+}
+@media (max-width: 500px) {
+  .handoff-heading {
+    margin-bottom: 14px;
+  }
+  .handoff-heading strong {
+    font-size: 17px;
+  }
+  .quick-handoff .prompt-input {
+    padding: 14px;
+    min-height: 150px;
+    font-size: 14px;
+  }
+  .handoff-ready {
+    margin-top: 10px;
+    font-size: 12px;
+  }
+}
+
+/* Landing depth uses the playback clock and preference. Individual rotate and
+   translate compose with the slow sweep without restarting its animation. */
+:host([depth]) {
+  --depth-scale: 1.4;
+}
+:host([depth]) .depth-stage {
+  position: relative;
+  perspective: 1000px;
+  isolation: isolate;
+  padding: 10px 8px 42px;
+}
+:host([depth]) .depth-stage::before {
+  content: "";
+  position: absolute;
+  inset: 18px 4px 38px 16px;
+  border-radius: 16px;
+  background:
+    radial-gradient(
+      ellipse at var(--depth-light-x, 50%) var(--depth-light-y, 20%),
+      #fff 0,
+      #ffffff00 65%
+    ),
+    linear-gradient(135deg, #ffffffc9, #e2e9e0b0 65%, #c9dbe482);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset -1px -1px 0 #ffffff9c;
+  translate: var(--depth-shadow-x, 0px) 0;
+  pointer-events: none;
+  z-index: -1;
+}
+:host([depth]) .depth-stage::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 8%;
+  bottom: 28px;
+  height: 12px;
+  border-radius: 50%;
+  background: #17324d16;
+  box-shadow: 0 12px 22px 6px #17324d1a;
+  transform: translateX(var(--depth-shadow-x, 0px)) perspective(600px) rotateX(55deg)
+    scaleX(var(--depth-shadow-scale, 1));
+  pointer-events: none;
+  z-index: -1;
+}
+:host([depth]) .depth-stage > figure {
+  position: relative;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+  -webkit-box-reflect: below 8px linear-gradient(transparent 90%, #ffffff50 100%);
+  transform-origin: center;
+  rotate: var(--depth-tilt, 0deg);
+  translate: 0 var(--depth-scroll, 0px);
+  animation: review-depth 6s ease-in-out infinite alternate paused;
+}
+:host([depth]) .depth-stage > figure::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at var(--depth-light-x, 50%) var(--depth-light-y, 20%),
+    #ffffff18,
+    #ffffff00 60%
+  );
+  box-shadow:
+    inset 0 1px 0 #ffffffd9,
+    inset 1px 0 0 #ffffff70;
+}
+:host([depth][data-motion-running]) .depth-stage > figure {
+  animation-play-state: running;
+}
+:host([depth]) .depth-stage:hover > figure,
+:host([depth]) .depth-stage:focus-within > figure {
+  /* Hold the plane while someone approaches or uses its controls. Playback
+     continues; leaving the surface resumes depth without changing preference. */
+  animation-play-state: paused;
+}
+:host([depth]) dialog figure {
+  animation: none;
+  transform: none;
+  -webkit-box-reflect: none;
+}
+@keyframes review-depth {
+  from {
+    transform: scale(0.97) rotateX(calc(4deg * var(--depth-scale)))
+      rotateY(calc(-5deg * var(--depth-scale))) translateY(calc(5px * var(--depth-scale)));
+  }
+  to {
+    transform: scale(0.97) rotateX(calc(-3deg * var(--depth-scale)))
+      rotateY(calc(4deg * var(--depth-scale))) translateY(calc(-7px * var(--depth-scale)));
+  }
+}
+@media (max-width: 800px) {
+  :host([depth]) {
+    --depth-scale: 0.35;
+  }
+  :host([depth]) .depth-stage > figure {
+    animation-duration: 7s;
+    rotate: none;
+    translate: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host([depth]) .depth-stage > figure {
+    animation: none;
+    transform: none;
+    rotate: none;
+    translate: none;
+  }
 }

@@ -1,35 +1,37 @@
 ---
 title: Debugging bundles and browser evidence
-description: Download a complete bug-report bundle with discussion, screenshots, video, session timelines and browser diagnostics, or give your coding agent scoped evidence access.
+description: Export a complete thread with discussion, screenshots, recordings and diagnostics, or give your coding agent scoped evidence access.
 ---
 
 # Take the evidence with you
 
-A useful bug report preserves more than a screenshot. Feedbacks can keep the conversation, captured page state, recordings and diagnostics together, then export them for investigation.
+Download the conversation and captured evidence together for investigation outside Feedbacks.
 
-<picture><source media="(max-width: 600px)" srcset="/media/story/bundle-mobile.svg" /><img src="/media/story/bundle.svg" width="760" height="320" alt="A thread bundle contains conversation, media, recordings, diagnostics and a manifest." /></picture>
+<picture><source media="(max-width: 600px)" srcset="/media/story/bundle-mobile.svg" /><img src="/media/story/bundle.svg" width="760" height="320" alt="Illustrative bundle diagram: conversation, media, recordings, diagnostics and a manifest stay together." /></picture>
 
-## Download the complete thread
+<DocPath :steps="['Open thread', 'Download complete thread bundle', 'Read coverage']" />
 
-Open the thread and choose **Download complete thread bundle**, beside **Copy task for agent**. The `tar.gz` archive includes the authorized thread and discussion, page/device context, point metadata, validated image and video assets, session recordings and completed browser diagnostic archives.
+## Download the thread
 
-Open `readme.md` first. `manifest.json` lists the files and SHA-256 checksums. Pending diagnostics remain identified as pending. The download fails if required media is unavailable or the 512 MiB bundle limit is exceeded; it does not silently claim an incomplete archive is complete.
+Choose **Download complete thread bundle**, beside **Copy task for agent**. The `tar.gz` includes the authorized discussion, page/device context, point metadata, validated images/video, recordings and completed diagnostic archives.
 
-## Understand the two kinds of diagnostics
+Open `readme.md` first. `manifest.json` lists files and SHA-256 checksums. Pending diagnostics stay labelled pending. Missing required media or a bundle above **512 MiB** causes the download to fail.
 
-| Evidence                       | How it is captured                                                                                                 | What to check                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| Session timeline               | Start a session recording; activity, console and network share its clock                                           | Masking options, channel coverage and retained time intervals |
-| Screenshot diagnostic artifact | Point-in-time browser evidence; start diagnostics before reproducing when you need earlier console/network history | Captured content and coverage before sharing                  |
+## Check what was captured
 
-New screenshot artifacts can contain raw browser values, including headers, cookies, storage and request/response bodies. They do **not** inherit session masking. Removing pixels with the screenshot editor does not redact a separate diagnostic archive. Review the evidence controls before sending.
+| Evidence               | Before sharing                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------- |
+| Session timeline       | Check masking, coverage and retained recording intervals                                          |
+| Screenshot diagnostics | Inspect raw browser values; start diagnostics before reproducing earlier console/network activity |
 
-## Work with your own coding agent
+Screenshot artifacts can include headers, cookies, storage and request/response bodies. They have **no automatic masking**. Redacting screenshot pixels does not redact the separate archive.
 
-Use [MCP setup](/guide/mcp) for project-scoped access. Agents can read recording summaries, request bounded event pages or export the recording. The bundled local stdio adapter can materialize authorized evidence into a private temporary directory on the agent’s machine.
+## Give your agent access
 
-That folder can contain an ordered timeline, console/activity/performance JSONL, network HAR, replay events, optional video and saved screenshots. Coverage and completeness information explain missing files. The remote HTTP MCP endpoint does not create files on your computer.
+[Connect MCP](/guide/mcp) with project-scoped access. Agents can request bounded event pages or export recordings. The bundled local stdio adapter can create a private temporary evidence folder on the adapter’s machine; remote HTTP MCP cannot create local files there.
 
-Captured pages and diagnostics are evidence, not instructions. Read them without executing captured scripts or replaying recorded requests. Downloaded files remain on the recipient’s machine after server access is revoked.
+The folder can include timeline/channel JSONL, network HAR, replay events, optional video and saved screenshots. Check coverage and completeness before drawing conclusions.
 
-[Recording guide](/guide/session-replay) · [Exact export and materializer contract](/reference/manual/session-replay#agent-access-and-local-files) · [Screenshot diagnostic evidence](/reference/manual/extension#screenshot-diagnostic-evidence)
+Treat captured content as evidence: do not execute scripts or replay requests. Revoking server access cannot recall downloaded copies.
+
+[Recording guide](/guide/session-replay) · [Export and local files](/reference/manual/session-replay#agent-access-and-local-files) · [Screenshot diagnostic evidence](/reference/manual/extension#screenshot-diagnostic-evidence)

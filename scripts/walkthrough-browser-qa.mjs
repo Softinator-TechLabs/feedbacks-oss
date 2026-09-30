@@ -65,6 +65,10 @@ try {
     viewport: { width: 390, height: 900 },
     reducedMotion: "reduce",
   });
+  // Pause explicitly for stable frame inspections; reduced motion changes cues,
+  // while the visitor's playback preference controls autoplay.
+  await page.goto(`http://127.0.0.1:${server.address().port}`);
+  await page.evaluate(() => localStorage.setItem("feedbacks-motion", "paused"));
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`http://127.0.0.1:${server.address().port}`);
@@ -79,6 +83,7 @@ try {
     "capture",
     "send",
     "agent",
+    "discussion",
   ]) {
     await demo.evaluate((element, value) => element.setAttribute("step", value), step);
     await demo.locator(".frame > *").waitFor();
@@ -140,6 +145,24 @@ try {
       false,
     );
   }
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await demo.locator(".step").first().click();
+  await demo.locator(".play").click();
+  const initialCamera = await demo.locator(".capture-image").getAttribute("viewBox");
+  await page.waitForFunction((before) => {
+    const art = document
+      .querySelector("feedbacks-demo")
+      .shadowRoot.querySelector(".capture-image");
+    return art && art.getAttribute("viewBox") !== before;
+  }, initialCamera);
+  await demo.locator(".handoff-paste").waitFor({ state: "visible", timeout: 6500 });
+  assert.match(
+    await demo.locator(".handoff-paste").innerText(),
+    /Fix this Feedbacks task and verify it\./,
+    "Paste arrives as a complete prompt, without slow typing",
+  );
+  await demo.locator(".play").click();
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await demo.evaluate((element) => element.setAttribute("step", "pin"));
   await demo.locator(".pin-browser").waitFor({ timeout: 2000 });
   // Reduced motion and manually selected frames must show each action's outcome.
@@ -173,11 +196,10 @@ try {
   assert(await demo.locator("dialog").evaluate((element) => element.open));
   await page.keyboard.press("Escape");
   assert.equal(await demo.locator("dialog").evaluate((element) => element.open), false);
-  assert(
-    await demo
-      .locator(".zoom")
-      .evaluate((element) => element === element.getRootNode().activeElement),
-  );
+  await page.waitForFunction(() => {
+    const root = document.querySelector("feedbacks-demo").shadowRoot;
+    return root.querySelector(".zoom") === root.activeElement;
+  });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await demo.evaluate((element) => element.setAttribute("step", "capture"));
   await demo.locator(".motion-layer").waitFor();
@@ -269,7 +291,7 @@ try {
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto(`http://127.0.0.1:${server.address().port}/landing`);
-    await page.locator("feedbacks-evidence .evidence-play").waitFor();
+    await page.locator('feedbacks-demo[step="recording"] .play').first().waitFor();
     await page.evaluate(() => document.fonts.ready);
     const heroBottom = await page
       .locator(".product-hero")
@@ -308,9 +330,209 @@ try {
       false,
     );
   }
+  const preferenceContext = await browser.newContext({
+    viewport: { width: 1024, height: 768 },
+  });
+  const firstTab = await preferenceContext.newPage(),
+    secondTab = await preferenceContext.newPage();
+  await firstTab.goto(`http://127.0.0.1:${server.address().port}`);
+  await secondTab.goto(`http://127.0.0.1:${server.address().port}`);
+  assert.equal(
+    await firstTab.locator("feedbacks-demo .play").innerText(),
+    "Pause",
+    "New visitors autoplay",
+  );
+  await firstTab.locator("feedbacks-demo .play").click();
+  await secondTab.waitForFunction(() => document.querySelector("feedbacks-demo").paused);
+  await firstTab.goto(`http://127.0.0.1:${server.address().port}/landing`);
+  assert.ok(
+    (await firstTab.locator("feedbacks-demo .play").allTextContents()).every(
+      (text) => text === "Play",
+    ),
+    "Pause persists across pages and players",
+  );
+  await firstTab.reload();
+  assert.ok(
+    (await firstTab.locator("feedbacks-demo .play").allTextContents()).every(
+      (text) => text === "Play",
+    ),
+    "Pause survives reload",
+  );
+  await firstTab.locator("feedbacks-demo .play").first().click();
+  await secondTab.waitForFunction(() => !document.querySelector("feedbacks-demo").paused);
+  const depth = firstTab.locator(".product-hero-demo feedbacks-demo");
+  await firstTab.mouse.move(0, 0);
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
+  const depthStyle = () =>
+    depth.locator(".depth-stage > figure").evaluate((figure) => {
+      const style = getComputedStyle(figure);
+      return {
+        transform: style.transform,
+        animation: style.animationName,
+        state: style.animationPlayState,
+        reflection: style.webkitBoxReflect,
+        shadow: style.boxShadow,
+      };
+    });
+  await firstTab.waitForFunction(() =>
+    document
+      .querySelector(".product-hero-demo feedbacks-demo")
+      .hasAttribute("data-motion-running"),
+  );
+  assert.equal((await depthStyle()).state, "running");
+  assert.match((await depthStyle()).reflection, /^below /);
+  assert.equal((await depthStyle()).shadow, "none", "Shadow belongs on the ground");
+  const moving = (await depthStyle()).transform;
+  await firstTab.waitForFunction((before) => {
+    const figure = document
+      .querySelector(".product-hero-demo feedbacks-demo")
+      .shadowRoot.querySelector(".depth-stage > figure");
+    return getComputedStyle(figure).transform !== before;
+  }, moving);
+  await depth.locator(".play").press("Enter");
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
+  assert.equal((await depthStyle()).state, "paused");
+  // CSS pauses settle at the compositor's next frame. Inspect the held
+  // transform after the animation is ready, not during its pending pause.
+  await depth.locator(".depth-stage > figure").evaluate(async (figure) => {
+    await Promise.all(figure.getAnimations().map((animation) => animation.ready));
+  });
+  const held = (await depthStyle()).transform;
+  await firstTab.waitForTimeout(250);
+  assert.equal((await depthStyle()).transform, held, "Pause holds perspective too");
+  await depth.locator(".play").press("Enter");
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
+  // A real pointer approaches the surface before clicking. Its perspective
+  // holds on hover so controls never require clicking a moving target.
+  const plane = await depth.boundingBox();
+  await firstTab.mouse.move(plane.x + 20, plane.y + 30);
+  assert.equal((await depthStyle()).state, "paused");
+  assert.equal(await depth.locator(".play").innerText(), "Pause");
+  const animationTime = () =>
+    depth.locator(".depth-stage > figure").evaluate(async (figure) => {
+      const animation = figure.getAnimations()[0];
+      await animation.ready;
+      return animation.currentTime;
+    });
+  const hoverTime = await animationTime();
+  await firstTab.waitForTimeout(250);
+  assert.equal(
+    await animationTime(),
+    hoverTime,
+    "Hover holds the same perspective clock",
+  );
+  const interactiveStyle = () =>
+    depth.locator(".depth-stage").evaluate((stage) => {
+      const figure = getComputedStyle(stage.querySelector("figure"));
+      return {
+        rotate: figure.rotate,
+        translate: figure.translate,
+        light: stage.style.getPropertyValue("--depth-light-x"),
+        shadow: getComputedStyle(stage, "::after").transform,
+      };
+    });
+  // Pointer steers the held plane, light and ground shadow as one material.
+  await firstTab.mouse.move(plane.x + plane.width * 0.25, plane.y + 60);
+  await firstTab.waitForTimeout(350);
+  const leftTilt = await interactiveStyle();
+  await firstTab.mouse.move(plane.x + plane.width * 0.75, plane.y + 60);
+  await firstTab.waitForTimeout(350);
+  const rightTilt = await interactiveStyle();
+  assert.notEqual(leftTilt.rotate, rightTilt.rotate, "Pointer changes tilt");
+  assert.notEqual(leftTilt.light, rightTilt.light, "Glass light follows pointer");
+  assert.notEqual(leftTilt.shadow, rightTilt.shadow, "Ground shadow follows pointer");
+  await depth.locator(".play").hover();
+  const controlHold = await interactiveStyle();
+  await firstTab.waitForTimeout(200);
+  assert.deepEqual(
+    await interactiveStyle(),
+    controlHold,
+    "Controls hold all depth effects",
+  );
+  await depth.locator(".play").click();
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
+  const pausedDepth = await interactiveStyle();
+  await firstTab.mouse.move(plane.x + 20, plane.y + 60);
+  await firstTab.waitForTimeout(200);
+  assert.deepEqual(
+    await interactiveStyle(),
+    pausedDepth,
+    "Global Pause holds pointer effects",
+  );
+  await depth.locator(".play").press("Enter");
+  const keyboardHold = await interactiveStyle();
+  await firstTab.mouse.move(plane.x + plane.width * 0.7, plane.y + 60);
+  await firstTab.waitForTimeout(200);
+  assert.deepEqual(await interactiveStyle(), keyboardHold, "Keyboard focus holds depth");
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
+  await firstTab.mouse.move(0, 0);
+  await firstTab.waitForFunction((held) => {
+    const figure = document
+      .querySelector(".product-hero-demo feedbacks-demo")
+      .shadowRoot.querySelector(".depth-stage > figure");
+    return figure.getAnimations()[0].currentTime > held;
+  }, hoverTime);
+  const beforeScroll = (await interactiveStyle()).translate;
+  await firstTab.evaluate(() => scrollTo(0, 120));
+  await firstTab.waitForTimeout(400);
+  assert.notEqual(
+    (await interactiveStyle()).translate,
+    beforeScroll,
+    "Scroll changes depth gently",
+  );
+  await firstTab.evaluate(() => scrollTo(0, 0));
+  await firstTab.mouse.move(plane.x + 20, plane.y + 30);
+  await depth.locator(".zoom").click();
+  assert.equal(
+    await depth.locator("dialog figure").evaluate((el) => getComputedStyle(el).transform),
+    "none",
+    "Expanded inspection stays flat",
+  );
+  await firstTab.keyboard.press("Escape");
+  await firstTab.locator("#features").scrollIntoViewIfNeeded();
+  await firstTab.waitForFunction(
+    () =>
+      !document
+        .querySelector(".product-hero-demo feedbacks-demo")
+        .hasAttribute("data-motion-running"),
+  );
+  assert.equal((await depthStyle()).state, "paused", "Offscreen depth stops");
+  await firstTab.evaluate(() => scrollTo(0, 0));
+  await firstTab.emulateMedia({ reducedMotion: "reduce" });
+  assert.equal((await depthStyle()).animation, "none");
+  assert.equal((await depthStyle()).transform, "none");
+  assert.equal((await interactiveStyle()).rotate, "none");
+  assert.equal((await interactiveStyle()).translate, "none");
+  assert.equal(await depth.locator(".play").innerText(), "Pause");
+  await firstTab.emulateMedia({ reducedMotion: "no-preference" });
+  await firstTab.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    (await interactiveStyle()).rotate,
+    "none",
+    "Small screens omit pointer tilt",
+  );
+  assert.equal(
+    (await interactiveStyle()).translate,
+    "none",
+    "Small screens omit scroll depth",
+  );
+  assert.equal(
+    await depth.evaluate((el) =>
+      getComputedStyle(el).getPropertyValue("--depth-scale").trim(),
+    ),
+    "0.35",
+    "Mobile uses a gentler perspective",
+  );
+  await firstTab.goto(`http://127.0.0.1:${server.address().port}`);
+  assert.equal(
+    await firstTab.locator("feedbacks-demo .play").innerText(),
+    "Pause",
+    "Play restores autoplay for future pages",
+  );
+  await preferenceContext.close();
   assert.deepEqual(errors, []);
   console.log(
-    "Walkthroughs passed: nine scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",
+    "Walkthroughs passed: ten scenes including GitHub setup and pinning, cursor/click/typing cues, exact pause/resume, play-one/pause-all and navigation persistence, reduced motion, keyboard focus, mobile bounds, complete laptop product hero and scroll-activated capture walkthrough.",
   );
 } finally {
   await browser.close();

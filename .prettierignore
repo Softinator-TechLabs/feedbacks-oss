@@ -6,3 +6,7 @@ graphify-out/
 .impeccable/review/
 LICENSE
 NOTICE
+
+# Rebuilt shared recording walkthrough assets.
+public/learn/recording-runtime.js
+public/learn/recording-review.css
