@@ -207,6 +207,22 @@ try {
         );
       }
       if (path === "/") {
+        assert.equal(
+          await page.locator(".product-figure figcaption, .demo-guide").count(),
+          0,
+        );
+        assert.equal(await page.locator("feedbacks-demo[depth]").count(), 3);
+        for (const arrow of await page
+          .locator(".text-link > span, .story-note .link-arrow")
+          .all()) {
+          assert.equal(
+            await arrow.evaluate(
+              (el) => getComputedStyle(el.parentElement).textDecorationLine,
+            ),
+            "none",
+            "Guide arrows do not inherit underlines",
+          );
+        }
         assert.deepEqual(
           await page
             .locator("main > section")
@@ -225,6 +241,7 @@ try {
           "State licensing once on the landing",
         );
         await demo.locator(".recording-inspector .review-follow").waitFor();
+        assert.equal(await demo.locator(".caption").isVisible(), false);
         assert.equal(await demo.locator(".play").innerText(), "Play");
         assert.equal(
           await page.locator('a[href$=".webp"]').count(),

@@ -69,7 +69,7 @@
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
     </script>
-    <script defer src="/learn/demo.js?v=20260930-4"></script>
+    <script defer src="/learn/demo.js?v=20260930-5"></script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -117,16 +117,13 @@
           <p class="product-footnote">The complete product, on your infrastructure.</p>
         </div>
         <div class="product-hero-demo">
-          <feedbacks-demo step="recording"
+          <feedbacks-demo step="recording" depth
             ><img
               src="/media/story/recording-desktop-0.webp"
               width="900"
               height="655"
-              alt="Actual Feedbacks video review with a shared timeline and timestamped activity." /></feedbacks-demo
-          ><a class="demo-guide" href="/docs/guide/session-replay"
-            >Video, replay &amp; the debugging timeline
-            <span aria-hidden="true">→</span></a
-          >
+              alt="Feedbacks video review with a shared timeline and timestamped activity."
+          /></feedbacks-demo>
         </div>
       </section>
       <section class="capture-section wrap" aria-labelledby="capture-title">
@@ -160,7 +157,7 @@
           </div>
           <div class="story-stage" data-active="0">
             <div class="screen-stack">
-              <feedbacks-demo id="story-demo" step="capture"
+              <feedbacks-demo id="story-demo" step="capture" depth
                 ><img
                   src="/media/workflow/point.png"
                   width="1440"
@@ -210,7 +207,7 @@
           >
         </div>
         <figure class="product-figure recording-figure">
-          <feedbacks-demo step="recording">
+          <feedbacks-demo step="recording" depth>
             <img
               src="/media/story/recording-inspector.webp"
               width="760"
@@ -219,9 +216,6 @@
               alt="Actual Feedbacks recording inspector with timestamped activity, requests and console events."
             />
           </feedbacks-demo>
-          <figcaption>
-            Actual recording review with a synthetic checkout session.
-          </figcaption>
         </figure>
       </section>
       <section
@@ -249,9 +243,6 @@
               loading="lazy"
               alt="Illustrative text suggestion replacing ‘every room’ with ‘your favourite corner’, preserving the original."
           /></picture>
-          <figcaption>
-            A precise suggestion, ready to review. Your live page stays unchanged.
-          </figcaption>
         </figure>
       </section>
       <section
@@ -280,9 +271,6 @@
               loading="lazy"
               alt="A portable thread archive contains conversation, media, recordings, diagnostics and a checksummed manifest."
           /></picture>
-          <figcaption>
-            Portable evidence for investigation, even outside Feedbacks.
-          </figcaption>
         </figure>
       </section>
       <section
@@ -313,9 +301,6 @@
               loading="lazy"
               alt="Assigned work, priority flags, evidence and approved guidance help Codex or Claude recommend a task."
           /></picture>
-          <figcaption>
-            Choose the work. Keep its evidence and instructions together.
-          </figcaption>
         </figure>
       </section>
       <section

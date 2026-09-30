@@ -130,6 +130,10 @@ svg.motion-layer {
   line-height: 1.5;
   min-height: var(--demo-caption-height, 3em);
 }
+.caption[data-error="true"] {
+  display: block;
+  min-height: 0;
+}
 .controls {
   display: flex;
   align-items: center;
@@ -400,4 +404,74 @@ dialog .screen:not([data-kind="recording"]) {
 }
 .expanded-placeholder {
   width: 100%;
+}
+
+/* Landing presentations share the player's visibility and Pause state. The
+   translucent backing is painted once; only the readable front plane moves. */
+:host([depth]) {
+  --depth-scale: 1;
+}
+:host([depth]) .depth-stage {
+  position: relative;
+  perspective: 1200px;
+  isolation: isolate;
+  padding: 10px 8px 18px;
+}
+:host([depth]) .depth-stage::before {
+  content: "";
+  position: absolute;
+  inset: 20px 0 0 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffffc9, #e2e9e0b0 65%, #d9e3e982);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset -1px -1px 0 #ffffff9c,
+    0 20px 36px -24px #17324d38;
+  pointer-events: none;
+  z-index: -1;
+}
+:host([depth]) .depth-stage > figure {
+  border: 0;
+  border-radius: 12px;
+  box-shadow:
+    0 16px 30px -18px #17324d38,
+    0 3px 8px -5px #17324d26;
+  transform-origin: center;
+  animation: review-depth 12s ease-in-out infinite alternate paused;
+}
+:host([depth][data-motion-running]) .depth-stage > figure {
+  animation-play-state: running;
+}
+:host([depth]) .depth-stage:hover > figure,
+:host([depth]) .depth-stage:has(:focus-visible) > figure {
+  /* Hold the plane while someone approaches or uses its controls. Playback
+     continues; leaving the surface resumes depth without changing preference. */
+  animation-play-state: paused;
+}
+:host([depth]) dialog figure {
+  animation: none;
+  transform: none;
+}
+@keyframes review-depth {
+  from {
+    transform: rotateX(calc(2deg * var(--depth-scale)))
+      rotateY(calc(-2.2deg * var(--depth-scale)))
+      translateY(calc(2px * var(--depth-scale)));
+  }
+  to {
+    transform: rotateX(calc(-1deg * var(--depth-scale)))
+      rotateY(calc(1.5deg * var(--depth-scale)))
+      translateY(calc(-3px * var(--depth-scale)));
+  }
+}
+@media (max-width: 800px) {
+  :host([depth]) {
+    --depth-scale: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host([depth]) .depth-stage > figure {
+    animation: none;
+    transform: none;
+  }
 }

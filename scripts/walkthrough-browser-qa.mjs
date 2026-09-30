@@ -341,6 +341,77 @@ try {
   );
   await firstTab.locator("feedbacks-demo .play").first().click();
   await secondTab.waitForFunction(() => !document.querySelector("feedbacks-demo").paused);
+  const depth = firstTab.locator(".product-hero-demo feedbacks-demo");
+  await firstTab.mouse.move(0, 0);
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
+  const depthStyle = () =>
+    depth.locator(".depth-stage > figure").evaluate((figure) => {
+      const style = getComputedStyle(figure);
+      return {
+        transform: style.transform,
+        animation: style.animationName,
+        state: style.animationPlayState,
+      };
+    });
+  await firstTab.waitForFunction(() =>
+    document
+      .querySelector(".product-hero-demo feedbacks-demo")
+      .hasAttribute("data-motion-running"),
+  );
+  assert.equal((await depthStyle()).state, "running");
+  const moving = (await depthStyle()).transform;
+  await firstTab.waitForFunction((before) => {
+    const figure = document
+      .querySelector(".product-hero-demo feedbacks-demo")
+      .shadowRoot.querySelector(".depth-stage > figure");
+    return getComputedStyle(figure).transform !== before;
+  }, moving);
+  await depth.locator(".play").press("Enter");
+  assert.equal((await depthStyle()).state, "paused");
+  // CSS pauses settle at the compositor's next frame. Inspect the held
+  // transform after the animation is ready, not during its pending pause.
+  await depth.locator(".depth-stage > figure").evaluate(async (figure) => {
+    await Promise.all(figure.getAnimations().map((animation) => animation.ready));
+  });
+  const held = (await depthStyle()).transform;
+  await firstTab.waitForTimeout(250);
+  assert.equal((await depthStyle()).transform, held, "Pause holds perspective too");
+  await depth.locator(".play").press("Enter");
+  // A real pointer approaches the surface before clicking. Its perspective
+  // holds on hover so controls never require clicking a moving target.
+  const plane = await depth.boundingBox();
+  await firstTab.mouse.move(plane.x + 20, plane.y + 30);
+  assert.equal((await depthStyle()).state, "paused");
+  assert.equal(await depth.locator(".play").innerText(), "Pause");
+  await depth.locator(".zoom").click();
+  assert.equal(
+    await depth.locator("dialog figure").evaluate((el) => getComputedStyle(el).transform),
+    "none",
+    "Expanded inspection stays flat",
+  );
+  await firstTab.keyboard.press("Escape");
+  await firstTab.locator("#features").scrollIntoViewIfNeeded();
+  await firstTab.waitForFunction(
+    () =>
+      !document
+        .querySelector(".product-hero-demo feedbacks-demo")
+        .hasAttribute("data-motion-running"),
+  );
+  assert.equal((await depthStyle()).state, "paused", "Offscreen depth stops");
+  await firstTab.evaluate(() => scrollTo(0, 0));
+  await firstTab.emulateMedia({ reducedMotion: "reduce" });
+  assert.equal((await depthStyle()).animation, "none");
+  assert.equal((await depthStyle()).transform, "none");
+  assert.equal(await depth.locator(".play").innerText(), "Pause");
+  await firstTab.emulateMedia({ reducedMotion: "no-preference" });
+  await firstTab.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await depth.evaluate((el) =>
+      getComputedStyle(el).getPropertyValue("--depth-scale").trim(),
+    ),
+    "0.35",
+    "Mobile uses a gentler perspective",
+  );
   await firstTab.goto(`http://127.0.0.1:${server.address().port}`);
   assert.equal(
     await firstTab.locator("feedbacks-demo .play").innerText(),

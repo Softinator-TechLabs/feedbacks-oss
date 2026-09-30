@@ -1,6 +1,6 @@
 # Visual task guides and reliable release preparation
 
-Status: locally verified; integration CI and public deployment pending. Date: 2026-09-30.
+Status: local checks complete; integration CI pending; deployment held until explicit user request. Date: 2026-09-30.
 
 ## Outcome and scope
 
@@ -19,7 +19,7 @@ GitHub currently publishes only v0.1.0, dated 16 September 2026. Existing CI bui
 - [x] Implement release preparation and draft publishing with failure-case tests.
 - [x] Record distribution TODOs without presenting them as shipped features.
 - [x] Build, verify links/Markdown exports, desktop/mobile/dark/keyboard/no-JavaScript behavior and review the diff.
-- [ ] Pass required CI, deploy docs and verify public routes.
+- [ ] Pass required CI. Deployment and public route verification require an explicit user request.
 
 ## Motion consistency steering
 
@@ -39,6 +39,17 @@ Short guides lead with the next action. Exact configuration, recovery and protoc
 
 ## Completion receipt
 
-Local verification: formatting, harness, types, all builds, disposable smoke and release checks pass. The bounded full suite has 484 passing tests, 34 opt-in skips and zero failures, including eleven release-automation cases. Browser checks pass on 19 routes at desktop and mobile sizes, with dark, keyboard and no-JavaScript checks. Independent review findings were corrected and confirmed. Recording follow regression checks (14), common-player behavior and real-renderer runtime browser checks pass, including laptop bounds, cursor cues, exact seeks, pause persistence and cross-tab updates. Extension 0.1.55 packages the stable-row follow fix. Docker source allowlists were updated; clean container execution is verified by required CI because the local Docker daemon is unavailable. CI and public deployment receipts are recorded in the delivery PR. Registry and client distribution remain separate tracked work; draft workflow execution needs a new reviewed version tag and is not claimed from a local build.
+Local verification: formatting, harness, types, all builds, disposable smoke and release checks pass. The bounded full suite has 493 passing tests, 34 opt-in skips and zero failures, including eleven release-automation cases. Browser checks pass on 19 routes at desktop and mobile sizes, with dark, keyboard and no-JavaScript checks. Independent review findings were corrected and confirmed. Recording follow regression checks (14), common-player behavior and real-renderer runtime browser checks pass, including laptop bounds, cursor cues, exact seeks, pause persistence and cross-tab updates. Extension 0.1.55 packages the stable-row follow fix. Docker source allowlists were updated; clean container execution is verified by required CI because the local Docker daemon is unavailable. CI and public deployment receipts are recorded in the delivery PR. Registry and client distribution remain separate tracked work; draft workflow execution needs a new reviewed version tag and is not claimed from a local build.
 
 Distribution follow-ups: [next release](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/175), [Docker Hub](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/176), [one-click templates](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/177), [Codex distribution](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/178), [Claude Code package](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/179).
+
+## Landing depth refinement
+
+Scope: remove redundant hero guide and recording production labels/captions, remove the four below-illustration captions, keep link arrows free of underlines, and add gentle moving perspective on glass-like backing to the shared landing walkthroughs. Supporting illustrations retain readable static elevation. Playback/Pause persistence, offscreen suspension, reduced motion, native controls and flat expanded inspection remain shared. No dependencies or permissions change.
+
+- [x] Inspect all marked image targets and preserve actual product controls.
+- [x] Add depth presentation and remove annotated clutter.
+- [x] Verify desktop/mobile, movement, Pause, offscreen, reduced-motion, keyboard and expanded inspection.
+- [ ] Record source and required CI evidence. Deployment is outside the current authorization.
+
+Depth verification: Node 24 website/app builds and release checks pass. Shared-player browser checks prove changing perspective, stable Pause after compositor settlement, hover/keyboard interaction, offscreen suspension, flat expanded inspection, mobile scaling, persistence and smooth diagnostic following. Public browser QA passes all 19 routes in desktop/mobile with dark mode, keyboard and no-JavaScript cases. One desktop/mobile visual inspection and one confirmation were bounded; laptop preview height was corrected. The extension popup QA waits for both stored settings and the authoritative settings API; the isolated integration script passes. No production settings behavior changed. Independent depth review found no material issue. Required CI is pending; the PR is held as draft with no auto-merge or deployment.
