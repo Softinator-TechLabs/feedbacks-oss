@@ -618,7 +618,7 @@
       players.add(this);
       let disposed = false,
         recordingRuntime;
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-5"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-6"><div class="depth-stage"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge walkthrough"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure></div><dialog aria-label="Expanded walkthrough"><button class="close" type="button">Close preview</button><div class="expanded-player"></div></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         frameBox = q(".frame"),
@@ -736,7 +736,7 @@
           poster.alt = "Actual Feedbacks recording review with sample events";
           frameBox.append(poster);
           const generation = this.index;
-          import(base + "recording-runtime.js?v=20260930-5")
+          import(base + "recording-runtime.js?v=20260930-6")
             .then(({ mountRecording }) => {
               if (disposed || this.index !== generation || !poster.isConnected) return;
               poster.remove();

@@ -351,6 +351,8 @@ try {
         transform: style.transform,
         animation: style.animationName,
         state: style.animationPlayState,
+        reflection: style.webkitBoxReflect,
+        shadow: style.boxShadow,
       };
     });
   await firstTab.waitForFunction(() =>
@@ -359,6 +361,8 @@ try {
       .hasAttribute("data-motion-running"),
   );
   assert.equal((await depthStyle()).state, "running");
+  assert.match((await depthStyle()).reflection, /^below /);
+  assert.equal((await depthStyle()).shadow, "none", "Shadow belongs on the ground");
   const moving = (await depthStyle()).transform;
   await firstTab.waitForFunction((before) => {
     const figure = document
@@ -367,6 +371,7 @@ try {
     return getComputedStyle(figure).transform !== before;
   }, moving);
   await depth.locator(".play").press("Enter");
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
   assert.equal((await depthStyle()).state, "paused");
   // CSS pauses settle at the compositor's next frame. Inspect the held
   // transform after the animation is ready, not during its pending pause.
@@ -377,12 +382,35 @@ try {
   await firstTab.waitForTimeout(250);
   assert.equal((await depthStyle()).transform, held, "Pause holds perspective too");
   await depth.locator(".play").press("Enter");
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
   // A real pointer approaches the surface before clicking. Its perspective
   // holds on hover so controls never require clicking a moving target.
   const plane = await depth.boundingBox();
   await firstTab.mouse.move(plane.x + 20, plane.y + 30);
   assert.equal((await depthStyle()).state, "paused");
   assert.equal(await depth.locator(".play").innerText(), "Pause");
+  const animationTime = () =>
+    depth.locator(".depth-stage > figure").evaluate(async (figure) => {
+      const animation = figure.getAnimations()[0];
+      await animation.ready;
+      return animation.currentTime;
+    });
+  const hoverTime = await animationTime();
+  await firstTab.waitForTimeout(250);
+  assert.equal(
+    await animationTime(),
+    hoverTime,
+    "Hover holds the same perspective clock",
+  );
+  await depth.evaluate((el) => el.shadowRoot.activeElement?.blur());
+  await firstTab.mouse.move(0, 0);
+  await firstTab.waitForFunction((held) => {
+    const figure = document
+      .querySelector(".product-hero-demo feedbacks-demo")
+      .shadowRoot.querySelector(".depth-stage > figure");
+    return figure.getAnimations()[0].currentTime > held;
+  }, hoverTime);
+  await firstTab.mouse.move(plane.x + 20, plane.y + 30);
   await depth.locator(".zoom").click();
   assert.equal(
     await depth.locator("dialog figure").evaluate((el) => getComputedStyle(el).transform),
