@@ -128,7 +128,9 @@ recording loading failures still offer their existing recovery information.
 
 Choose **Review image** beside a screenshot, or click the screenshot, to open one
 image review dialog. Reviewers with thread write permission can draw or revise
-annotations immediately; read-only reviewers see the image without editing tools.
+annotations with the visible tools; read-only reviewers see the image without editing tools.
+Writable review starts in **Pan** so dragging or swiping navigates the image; choose
+**Pencil** or **Circle** to draw.
 Points, element outlines and text selection share visibility with the inline image.
 Show/hide controls are available in both places. **Fit width**, **100%** and **200%**
 control zoom; large captures scroll inside the dialog. **Open original file** opens

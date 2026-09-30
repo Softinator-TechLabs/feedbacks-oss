@@ -102,15 +102,8 @@ export function EvidenceScreenshot({
       ))}
     </span>
   );
-  const image = (
+  const evidenceOverlays = (
     <>
-      <img
-        src={asset.url}
-        alt={asset.filename || "Page capture"}
-        width={asset.width}
-        height={asset.height}
-        loading={loading}
-      />
       {overlays
         .filter((mark) => !hiddenLayers[mark.origin === "element" ? "element" : "text"])
         .map((mark, index) => (
@@ -144,6 +137,18 @@ export function EvidenceScreenshot({
           ))}
         </span>
       )}
+    </>
+  );
+  const image = (
+    <>
+      <img
+        src={asset.url}
+        alt={asset.filename || "Page capture"}
+        width={asset.width}
+        height={asset.height}
+        loading={loading}
+      />
+      {evidenceOverlays}
     </>
   );
   return (
@@ -225,7 +230,12 @@ export function EvidenceScreenshot({
                 target={{ kind: "asset", asset }}
                 onSaved={onSaved}
                 onClose={() => setExpanded(false)}
-                embedded={{ zoom, hiddenLayers, onBusyChange: setSaving }}
+                embedded={{
+                  zoom,
+                  hiddenLayers,
+                  evidenceOverlays,
+                  onBusyChange: setSaving,
+                }}
               />
             ) : (
               <div

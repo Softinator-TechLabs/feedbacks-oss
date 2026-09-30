@@ -305,6 +305,7 @@ test(
         const el = document.querySelector("canvas");
         return el && el.width === 1200;
       });
+      await viewer.getByRole("button", { name: "Pencil", exact: true }).click();
       const box = (await canvas.boundingBox())!;
       await page.mouse.move(box.x + 30, box.y + 30);
       await page.mouse.down();
@@ -363,6 +364,7 @@ test(
       await point.getByRole("button", { name: "Review image", exact: true }).click();
       const dialog = page.getByRole("dialog");
       await page.waitForFunction(() => document.querySelector("canvas")?.width === 1200);
+      await dialog.getByRole("button", { name: "Pencil", exact: true }).click();
       const box = (await dialog.locator("canvas").boundingBox())!;
       await page.mouse.move(box.x + 40, box.y + 40);
       await page.mouse.down();
@@ -500,6 +502,7 @@ test(
           await dialog.getByRole("button", { name: "Undo mark" }).isDisabled(),
           true,
         );
+        await dialog.getByRole("button", { name: "Pencil", exact: true }).click();
         const box = (await dialog.locator("canvas").boundingBox())!;
         await page.mouse.move(box.x + 30, box.y + 30);
         await page.mouse.down();
@@ -512,6 +515,66 @@ test(
         assert.equal(await review.evaluate((el) => document.activeElement === el), true);
       }
       assert.equal(f.uploads.length, 0, "discarding never saves marks");
+    } finally {
+      await browser.close();
+      await f.close();
+    }
+  },
+);
+
+test(
+  "writable image review preserves numbered markers and supports touch navigation without drawing",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const f = await evidenceViewerFixture({ writable: true });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+      });
+      await page.goto(f.url, { waitUntil: "domcontentloaded" });
+      await page.getByRole("button", { name: "Switch capture example" }).click();
+      await page
+        .locator(".review-main-capture")
+        .getByRole("button", { name: "Review image", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      assert.equal(
+        await dialog.getByRole("button", { name: "Pan", exact: true }).count(),
+        1,
+      );
+      assert.equal(
+        await dialog.locator('.review-image-pin[data-style="pin"]').textContent(),
+        "1",
+      );
+      await dialog.getByLabel("Image zoom").selectOption("1");
+      const surface = dialog.locator(".screenshot-markup-surface");
+      const box = (await surface.boundingBox())!;
+      const cdp = await page.context().newCDPSession(page);
+      const x = box.x + 100,
+        y = box.y + Math.min(220, box.height - 30);
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x, y }],
+      });
+      for (let i = 1; i <= 8; i++) {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x, y: y - i * 16 }],
+        });
+        await page.waitForTimeout(16);
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForFunction(
+        () => document.querySelector(".screenshot-markup-surface")!.scrollTop > 50,
+      );
+      assert.equal(
+        await dialog.getByRole("button", { name: "Undo mark" }).isDisabled(),
+        true,
+      );
+      assert.equal(f.uploads.length, 0);
+      await dialog.getByRole("button", { name: "Close", exact: true }).click();
     } finally {
       await browser.close();
       await f.close();

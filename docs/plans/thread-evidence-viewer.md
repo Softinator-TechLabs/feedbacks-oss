@@ -96,7 +96,12 @@ review retains the image viewer. Cancel, Close and Escape dismiss the entire dia
 and discard the current draft. Successful saves close it after updating the thread;
 failed saves preserve marks and retry identity. Saving still blocks dismissal.
 
-The six browser regressions cover single-action entry, each dismissal path, restored
+The seven browser regressions cover single-action entry, each dismissal path, restored
 focus, discarded drafts, saved-mark persistence and failed-save recovery, alongside
 the existing layer, zoom, pagination and mobile checks. Packaged extension acceptance
 uses this same entry point and verifies that Cancel leaves no dialog open.
+
+Review starts in Pan mode for native touch scrolling and mouse dragging; drawing
+requires choosing Pencil or Circle. The embedded canvas reuses the inline DOM evidence
+layer, retaining point numbers, marker styles/sizes and aligned highlights. A touch
+gesture regression verifies scrolling without drawing, alongside numbered pin readback.
