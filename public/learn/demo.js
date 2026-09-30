@@ -596,7 +596,7 @@
       this.paused =
         (allPaused && soloPlayer !== this) || (this.motion.matches && !motionChoice);
       players.add(this);
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260928-5"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-2"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         frameBox = q(".frame"),
@@ -697,7 +697,7 @@
           svgNode(
             "image",
             {
-              href: base + f.image + ".webp?v=20260928-5",
+              href: base + f.image + ".webp?v=20260930-2",
               width: action.size[0],
               height: action.size[1],
             },
@@ -791,7 +791,7 @@
       zoom.onclick = () => {
         setPaused(true);
         const f = scene.frames[this.index];
-        q("dialog img").src = base + f.image + ".webp?v=20260928-5";
+        q("dialog img").src = base + f.image + ".webp?v=20260930-2";
         q("dialog img").alt = f.caption;
         dialog.showModal();
       };

@@ -71,7 +71,7 @@
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
     </script>
-    <script defer src="/learn/demo.js?v=20260928-5"></script>
+    <script defer src="/learn/demo.js?v=20260930-2"></script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -131,51 +131,6 @@
           >
         </div>
       </section>
-      <nav class="feature-nav wrap" aria-label="Explore product capabilities">
-        <a href="#recordings">Replay the moment</a
-        ><a href="#text-changes">Suggest the words</a
-        ><a href="#debug-bundle">Take the evidence</a
-        ><a href="#agent-context">Give your agent context</a>
-      </nav>
-      <section
-        class="product-section wrap"
-        id="recordings"
-        aria-labelledby="recordings-title"
-      >
-        <div class="product-section-copy">
-          <h2 id="recordings-title">
-            “It broke when I clicked here.”<br />Now you can see why.
-          </h2>
-          <p>
-            Record a tab video with its session, or capture the session alone. Jump from a
-            click to the request, console message or frame at that moment.
-          </p>
-          <ul class="plain-features">
-            <li>One timeline for video, replay and diagnostics</li>
-            <li>Screenshot comments and annotated frames</li>
-            <li>Review, trim and send when you’re ready</li>
-          </ul>
-          <a class="text-link" href="/docs/guide/session-replay"
-            >Explore session recording <span aria-hidden="true">→</span></a
-          >
-        </div>
-        <figure class="product-figure recording-figure">
-          <a
-            href="/media/story/recording-inspector.webp"
-            aria-label="Open the complete recording inspector screenshot"
-            ><img
-              src="/media/story/recording-inspector.webp"
-              width="760"
-              height="689"
-              loading="lazy"
-              alt="Actual Feedbacks recording inspector with timestamped Activity, Network, Console and Performance events in its Everything feed."
-          /></a>
-          <figcaption>
-            Actual recording inspector with synthetic events. Select an event to inspect
-            its moment.
-          </figcaption>
-        </figure>
-      </section>
       <section class="capture-section wrap" aria-labelledby="capture-title">
         <div class="section-intro">
           <h2 id="capture-title">A small change? Just point it out.</h2>
@@ -227,6 +182,51 @@
             </div>
           </div>
         </section>
+      </section>
+      <nav class="feature-nav wrap" aria-label="Explore product capabilities">
+        <a href="#recordings">Replay the moment</a
+        ><a href="#text-changes">Suggest the words</a
+        ><a href="#debug-bundle">Take the evidence</a
+        ><a href="#agent-context">Give your agent context</a>
+      </nav>
+      <section
+        class="product-section wrap"
+        id="recordings"
+        aria-labelledby="recordings-title"
+      >
+        <div class="product-section-copy">
+          <h2 id="recordings-title">
+            “It broke when I clicked here.”<br />Now you can see why.
+          </h2>
+          <p>
+            Record a tab video with its session, or capture the session alone. Jump from a
+            click to the request, console message or frame at that moment.
+          </p>
+          <ul class="plain-features">
+            <li>One timeline for video, replay and diagnostics</li>
+            <li>Screenshot comments and annotated frames</li>
+            <li>Review, trim and send when you’re ready</li>
+          </ul>
+          <a class="text-link" href="/docs/guide/session-replay"
+            >Explore session recording <span aria-hidden="true">→</span></a
+          >
+        </div>
+        <figure class="product-figure recording-figure">
+          <a
+            href="/media/story/recording-inspector.webp"
+            aria-label="Open the complete recording inspector screenshot"
+            ><img
+              src="/media/story/recording-inspector.webp"
+              width="760"
+              height="689"
+              loading="lazy"
+              alt="Actual Feedbacks recording inspector with timestamped Activity, Network, Console and Performance events in its Everything feed."
+          /></a>
+          <figcaption>
+            Actual recording inspector with synthetic events. Select an event to inspect
+            its moment.
+          </figcaption>
+        </figure>
       </section>
       <section
         class="product-section wrap reverse"
@@ -297,9 +297,9 @@
         <div class="product-section-copy">
           <h2 id="context-title">Your agent needs<br />your team’s context, too.</h2>
           <p>
-            Keep project instructions, responsibilities and reviewer guidance beside the
-            evidence. Use MCP, API or CLI to bring your own coding agent into the
-            workflow.
+            Ask Codex or Claude what to work on next. Through MCP, it can weigh your
+            assigned work, top-priority flags and team context, then recommend where to
+            start.
           </p>
           <a class="text-link" href="/docs/guide/agent-context"
             >See how context works <span aria-hidden="true">→</span></a
@@ -309,16 +309,16 @@
           <picture
             ><source
               media="(max-width: 600px)"
-              srcset="/media/story/context-mobile.svg" />
+              srcset="/media/story/context-mobile.svg?v=20260930-2" />
             <img
-              src="/media/story/context.svg"
+              src="/media/story/context.svg?v=20260930-2"
               width="760"
               height="320"
               loading="lazy"
-              alt="Captured evidence and approved project guidance are distinct inputs to the developer and coding agent."
+              alt="Assigned work, priority flags, evidence and approved guidance help Codex or Claude recommend a task."
           /></picture>
           <figcaption>
-            Read the request. Make the agreed change. Verify before resolving.
+            Choose the work. Keep its evidence and instructions together.
           </figcaption>
         </figure>
       </section>

@@ -89,6 +89,51 @@ test(
       const dock = page.locator(".review-dock");
       const drawer = page.locator(".bar");
       const handle = page.locator(".drawer-handle");
+      // The saved-point count must stay distinct from the product icon, including
+      // multi-digit counts, instead of overlapping the draggable launcher.
+      for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: 800 });
+        for (const count of ["1", "12", "999"]) {
+          await handle.evaluate((el, value) => {
+            el.dataset.count = value;
+          }, count);
+          const spacing = await handle.evaluate((el) => {
+            const rect = el.getBoundingClientRect();
+            const icon = el.querySelector("svg:not(.drag-grip)")!.getBoundingClientRect();
+            const style = getComputedStyle(el);
+            const badge = getComputedStyle(el, "::after");
+            const badgeWidth =
+              parseFloat(badge.width) +
+              (badge.boxSizing === "border-box"
+                ? 0
+                : parseFloat(badge.paddingLeft) + parseFloat(badge.paddingRight));
+            const left =
+              rect.right -
+              badgeWidth -
+              (badge.position === "absolute"
+                ? parseFloat(badge.right)
+                : parseFloat(style.paddingRight));
+            return {
+              gap: left - icon.right,
+              iconWidth: icon.width,
+              inside: left >= rect.left && left + badgeWidth <= rect.right,
+              dockWidth: el.parentElement!.getBoundingClientRect().width,
+            };
+          });
+          assert.ok(
+            spacing.gap >= 5.99,
+            `Saved count ${count} at ${width}px needs a visible icon gap, got ${spacing.gap}`,
+          );
+          assert.equal(spacing.iconWidth, 24);
+          assert.ok(spacing.inside);
+          assert.ok(spacing.dockWidth <= width - 32);
+        }
+      }
+      await handle.evaluate((el) => {
+        el.dataset.count = "";
+      });
+      await page.setViewportSize({ width: 1280, height: 800 });
+
       await handle.hover();
       await drawer.getByText("Comments on other screen sizes (1)").waitFor();
       assert.match(await drawer.locator(".meta").innerText(), /1 comment on this page/);
