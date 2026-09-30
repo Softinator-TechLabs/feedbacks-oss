@@ -37,20 +37,25 @@
     github: {
       kind: "server",
       steps: [
-        { title: "1. GitHub · create App", detail: "Your organization · private App" },
         {
-          title: "2. Server · configure App",
-          detail: "Your operator stores its credentials",
+          title: "1. Feedbacks · add account",
+          detail: "Organization or personal account",
+        },
+        {
+          title: "2. GitHub · approve App",
+          detail: "Private App · saved automatically",
         },
         { title: "3. Project · connect", detail: "Choose App · select repositories" },
       ],
       frames: [
         {
-          caption: "Create a private App in the GitHub organization you want to connect.",
+          caption:
+            "Choose Add GitHub account in Feedbacks and enter the organization or username.",
           active: 0,
         },
         {
-          caption: "Your server operator adds the App securely to this Feedbacks server.",
+          caption:
+            "Approve the private App on GitHub. Feedbacks saves its credentials automatically.",
           active: 1,
         },
         {
@@ -596,7 +601,7 @@
       this.paused =
         (allPaused && soloPlayer !== this) || (this.motion.matches && !motionChoice);
       players.add(this);
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-2"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${base}demo.css?v=20260930-3"><figure><div class="screen"><div class="frame"></div><button class="screen-hit" type="button"></button><button class="zoom" type="button" aria-label="Enlarge screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/></svg></button></div><div class="foot"><p class="caption"></p><div class="controls"></div></div></figure><dialog aria-label="Full-size screenshot"><button type="button">Close</button><img alt=""></dialog>`;
       const q = (s) => this.shadowRoot.querySelector(s),
         screen = q(".screen"),
         frameBox = q(".frame"),
@@ -697,7 +702,7 @@
           svgNode(
             "image",
             {
-              href: base + f.image + ".webp?v=20260930-2",
+              href: base + f.image + ".webp?v=20260930-3",
               width: action.size[0],
               height: action.size[1],
             },
@@ -791,7 +796,7 @@
       zoom.onclick = () => {
         setPaused(true);
         const f = scene.frames[this.index];
-        q("dialog img").src = base + f.image + ".webp?v=20260930-2";
+        q("dialog img").src = base + f.image + ".webp?v=20260930-3";
         q("dialog img").alt = f.caption;
         dialog.showModal();
       };

@@ -54,6 +54,36 @@ export class GithubApp {
     return new GithubApp(this.config, this.fetcher, requireGithubApp(this.config, appId));
   }
 
+  withConfig(config: Config) {
+    return new GithubApp(config, this.fetcher);
+  }
+
+  private async credentials(owner?: string) {
+    const app =
+      this.selectedApp ?? requireGithubApp(this.config, this.config.githubAppId);
+    return {
+      ...this.config,
+      githubAppId: app.id,
+      githubAppPrivateKey: app.loadPrivateKey
+        ? await app.loadPrivateKey(owner)
+        : app.privateKey,
+    };
+  }
+
+  async inspectRegistration() {
+    return (await this.request("/app", appJwt(await this.credentials()))).data;
+  }
+
+  async convertManifest(code: string) {
+    return (
+      await this.request(
+        `/app-manifests/${encodeURIComponent(code)}/conversions`,
+        "",
+        "POST",
+      )
+    ).data;
+  }
+
   private async request(path: string, bearer: string, method = "GET", body?: unknown) {
     let response: Response;
     try {
@@ -61,7 +91,7 @@ export class GithubApp {
         method,
         headers: {
           Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${bearer}`,
+          ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
           "X-GitHub-Api-Version": "2026-03-10",
           ...(body ? { "Content-Type": "application/json" } : {}),
         },
@@ -97,11 +127,7 @@ export class GithubApp {
     const app =
       this.selectedApp ?? requireGithubApp(this.config, this.config.githubAppId);
     assertGithubOwner(app, repo.owner);
-    const credentials = {
-      ...this.config,
-      githubAppId: app.id,
-      githubAppPrivateKey: app.privateKey,
-    };
+    const credentials = await this.credentials(repo.owner);
     const installation = await this.request(
       `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/installation`,
       appJwt(credentials),

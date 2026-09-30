@@ -31,6 +31,7 @@ import { installInstantTooltips } from "./instant-tooltip.js";
 import { Documents, DocumentViewer } from "./documents/index.js";
 import { Surveys, SurveyPublic } from "./surveys/index.js";
 import { GithubApps } from "./github-apps.js";
+import { Integrations } from "./integrations/index.js";
 function App() {
   const pageLocation = usePageLocation();
   const path = pageLocation.split("?")[0];
@@ -294,6 +295,12 @@ function App() {
             <Pairing pairingId={params.get("pairingId") ?? ""} />
           ) : path === "/account" ? (
             <Account actor={actor} projects={projects} onSignOut={signOut} />
+          ) : path === "/integrations" ? (
+            actor.owner ? (
+              <Integrations />
+            ) : (
+              <p role="alert">Server owner access is required to manage integrations.</p>
+            )
           ) : path === "/github-apps" ? (
             actor.owner ? (
               <GithubApps projects={projects} />

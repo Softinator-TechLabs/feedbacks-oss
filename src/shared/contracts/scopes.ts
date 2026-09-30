@@ -106,6 +106,7 @@ export const agentOperations = businessOperations.filter(
     name !== "threads.review" &&
     !["threads.delete", "threads.deletions", "threads.retryDeletion"].includes(name) &&
     name !== "threads.figmaReference" &&
+    name !== "integrations.catalog" &&
     !name.startsWith("webhooks.") &&
     name !== "documents.upload" &&
     (name === "github.issueCreate" || !name.startsWith("github.")),
@@ -134,6 +135,7 @@ export const ownerEvidenceReadScopes = [
   "diagnostics.search",
 ] as const;
 const readOperations = new Set<string>([
+  "integrations.catalog",
   "assignments.delegations",
   "assignments.history",
   "assignments.list",

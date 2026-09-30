@@ -1,3 +1,4 @@
+import { currentGithubApp } from "../github-managed-apps.js";
 import type { Actor } from "../../shared/contracts.js";
 import type { Database } from "../db.js";
 import type { Config } from "../config.js";
@@ -6,11 +7,7 @@ import { access, event, ownerOnly } from "../access.js";
 import { GithubApp, githubRepo } from "../github-app.js";
 import { connectedGithubRepos, hasConnectedGithubRepo } from "../github-repositories.js";
 import { DomainError, fail } from "../errors.js";
-import {
-  configuredGithubApps,
-  projectGithubAppId,
-  requireGithubApp,
-} from "../github-app-config.js";
+import { configuredGithubApps, projectGithubAppId } from "../github-app-config.js";
 import { human } from "./operation-common.js";
 
 export const connectionOperationNames = new Set([
@@ -55,7 +52,7 @@ export async function githubConnectionOperation(
       const project = await access(tx, a, i.projectId, "maintain");
       if (project.revision !== i.revision)
         fail("CONFLICT", "Project changed; reload first", 409);
-      if (i.appId !== null) requireGithubApp(config, i.appId);
+      if (i.appId !== null) await currentGithubApp(tx, config, i.appId);
       if (project.githubAppId !== undefined && project.githubAppId === i.appId)
         return project;
       const identityChanged = projectGithubAppId(config, project) !== i.appId;
@@ -174,7 +171,7 @@ export async function githubConnectionOperation(
       if (project.revision !== i.revision)
         fail("CONFLICT", "Project changed; reload first", 409);
       const appId = projectGithubAppId(config, project);
-      requireGithubApp(config, appId);
+      await currentGithubApp(tx, config, appId);
       return { repo: githubRepo(project.repositoryUrl), appId };
     });
     const { repo, appId } = target;
@@ -190,6 +187,7 @@ export async function githubConnectionOperation(
           repo.fullName.toLowerCase()
       )
         fail("CONFLICT", "Project changed while checking GitHub", 409);
+      await currentGithubApp(tx, config, appId, repo.owner);
       if (
         !hasConnectedGithubRepo(project, repo) &&
         connectedGithubRepos(project).length >= 20
@@ -241,7 +239,7 @@ export async function githubConnectionOperation(
       )
         fail("LIMIT", "A project can connect up to 20 GitHub repositories", 400);
       const appId = projectGithubAppId(config, project);
-      requireGithubApp(config, appId);
+      await currentGithubApp(tx, config, appId, repo.owner);
       return appId;
     });
     await client.forApp(appId).check(repo);
@@ -254,6 +252,7 @@ export async function githubConnectionOperation(
         projectGithubAppId(config, project) !== appId
       )
         fail("CONFLICT", "Project changed while checking GitHub", 409);
+      await currentGithubApp(tx, config, appId, repo.owner);
       const urls = connectedGithubRepos(project).map(
         (connected) => `https://github.com/${connected.fullName}`,
       );
@@ -299,7 +298,8 @@ export async function githubConnectionOperation(
         fail("CONFLICT", "Project changed; reload first", 409);
       if (i.enabled && !project.githubConnected)
         fail("GITHUB_NOT_CONNECTED", "Connect the GitHub App first", 409);
-      if (i.enabled) requireGithubApp(config, projectGithubAppId(config, project));
+      if (i.enabled)
+        await currentGithubApp(tx, config, projectGithubAppId(config, project));
       if (project.githubStatusSync === i.enabled) return project;
       if (i.enabled)
         await tx.query(

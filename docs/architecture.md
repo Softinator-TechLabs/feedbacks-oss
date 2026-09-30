@@ -50,7 +50,7 @@ Use one codebase and separate runtime installations. A deployment represents one
 | Browser extension         | Versioned extension ZIP                | User-selected server and local connection state                       |
 | Native app integration    | Host-built Swift or Android module     | Host app pairs a reviewer device and stores its scoped token locally  |
 
-GitHub App credentials are deployment configuration, with owner-only project assignment. Additional Apps restrict repositories to approved GitHub accounts. Each native Issue reservation and verified link pins its App identity; recovery never substitutes another App. See [GitHub deployment configuration](self-hosting.md#multiple-github-apps).
+GitHub App credentials can remain in deployment secrets or be managed by human owners as encrypted PostgreSQL records with per-record keys in existing private AssetStore. The manifest handshake is single-use and session-bound; a same-origin callback bridge preserves Strict cookies and CSRF checks. Current catalog checks under the account lock and lazy key loading prevent disabled Apps from falling back to stale environment credentials. Project assignment is owner-only; approved-account policy is preserved on adoption/rotation. Each native Issue reservation and verified link pins its App identity; recovery never substitutes another App. See [GitHub deployment configuration](self-hosting.md#multiple-github-apps).
 
 Organization-specific deployment inventory and secrets should live in a separate private infrastructure repository. A separate enterprise code fork is unnecessary for the current feature set and creates duplicated fixes. If commercial-only services are introduced later, keep their interfaces explicit and their licensing separate.
 
@@ -73,3 +73,5 @@ Shared-database multi-tenancy would require tenant-scoped identity, tenant predi
 - `src/cli/mcp.ts` reuses the server MCP adapter, passing the HTTP client as its executor.
 
 These exceptions are exact file-to-file edges in [the checker](../scripts/lib/harness.mjs), not permission for arbitrary CLI imports into server internals. Extending one requires a documented reason and a regression test. The check excludes type-only and computed imports; review those explicitly. Internal domain layering within `src/server` remains a review responsibility.
+
+The common [integration catalog and credential vault](integrations.md) separate provider metadata and encrypted storage from provider-specific registration, permissions and sync. GitHub is the first implemented adapter. Future providers require their own reviewed contracts and persistence; only implemented adapters are registered in the owner catalog.

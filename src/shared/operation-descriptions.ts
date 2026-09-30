@@ -1,5 +1,19 @@
 // Shared discovery guidance for MCP and the JSON CLI; authorization stays in domain services.
 export const operationDescriptions: Record<string, string> = {
+  "integrations.catalog":
+    "List implemented integrations and safe current connection/storage counts. Human server owners only; no credentials, tokens or exchange codes are returned.",
+  "github.appSetupStart":
+    "Start a session-bound private GitHub App registration for a personal account or organization. Human server owners only. Returns a public manifest to submit to GitHub; no App key.",
+  "github.appSetupComplete":
+    "Consume a single-use registration state and exchange GitHub's temporary code. Current human owner session must match. Credentials are encrypted server-side and never returned.",
+  "github.appImport":
+    "Verify an App ID and RSA key with GitHub and store encrypted credentials. Current human owners only. Use a matching revision for rotation; never paste keys into discussion or agent prompts.",
+  "github.appAdopt":
+    "Move an existing deployment App into encrypted browser-managed configuration without returning its key. Current human server owners only.",
+  "github.appUpdate":
+    "Rename a managed GitHub App with a matching revision. Current human server owners only.",
+  "github.appEnable":
+    "Enable or disable a managed App with a matching revision. Pending Issue writes and active syncs block changes; disabled Apps cannot fall back to deployment credentials.",
   "diagnostics.begin":
     "Start a private screenshot diagnostic upload on an authorized thread. Requires an explicit new upload scope, current project write access and a matching website origin. Raw evidence is sent in bounded chunks.",
   "diagnostics.putChunk":

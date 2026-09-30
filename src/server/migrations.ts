@@ -398,5 +398,31 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       await tx.query("ALTER TABLE github_issue_requests ADD COLUMN github_app_id text");
       await tx.query("INSERT INTO migrations(version) VALUES(27)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=28"))) {
+      await tx.query(`CREATE TABLE github_managed_apps(
+        app_id text PRIMARY KEY,
+        name text NOT NULL,
+        slug text NOT NULL UNIQUE,
+        account text NOT NULL,
+        account_type text NOT NULL CHECK(account_type IN ('organization','personal')),
+        approved_accounts jsonb NOT NULL,
+        envelope jsonb NOT NULL,
+        key_object text NOT NULL,
+        enabled boolean NOT NULL DEFAULT true,
+        revision integer NOT NULL DEFAULT 1,
+        updated_by uuid NOT NULL REFERENCES users(id),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(`CREATE TABLE github_app_setups(
+        state_hash text PRIMARY KEY,
+        session_hash text NOT NULL REFERENCES sessions(hash) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(id),
+        account text NOT NULL,
+        account_type text NOT NULL CHECK(account_type IN ('organization','personal')),
+        used_at timestamptz,
+        expires_at timestamptz NOT NULL
+      )`);
+      await tx.query("INSERT INTO migrations(version) VALUES(28)");
+    }
   });
 }

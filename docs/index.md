@@ -11,6 +11,7 @@ The public, searchable user and developer guide is built from [`site-docs`](../s
 | Integrate a native app                            | [Mobile SDK](mobile-sdk.md), [API](api.md)                                                                                                 |
 | Install and operate                               | [Self-hosting](self-hosting.md), [operations and recovery](operations.md), [releases](releasing.md)                                        |
 | Deliver thread activity                           | [Signed webhooks](webhooks.md), [API](api.md)                                                                                              |
+| Add or manage external integrations               | [Integration adapters](integrations.md), [GitHub setup](../site-docs/guide/github.md), [API](api.md)                                       |
 | Check public project pages                        | [Scheduled QA and visual baselines](scheduled-qa.md), [extension](extension.md)                                                            |
 | Change code                                       | [Agent entry point](../AGENTS.md), [contributing](../CONTRIBUTING.md), [development](development.md), [architecture](architecture.md)      |
 | Run agent work                                    | [Workflow](agent-workflow.md), [client adapters and skills](agent-tools.md), [verification](verification.md)                               |

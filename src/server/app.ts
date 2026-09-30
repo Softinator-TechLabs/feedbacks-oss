@@ -15,6 +15,7 @@ import { widgetLink } from "./widget.js";
 import { remoteMcp } from "./mcp.js";
 import { helpHtml } from "./help.js";
 import { readExtensionRelease } from "./extension-release.js";
+import { registerGithubAppRoutes } from "./http/github-app-routes.js";
 
 export function createApp(config: Config, database: Database, assets: AssetStore) {
   const app = express(),
@@ -180,6 +181,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
     }
   });
   registerOperationRoute(app, config, database, ops, rate, bearer, cookie, requireOrigin);
+  registerGithubAppRoutes(app, config, database, ops, cookie, bearer);
   registerDiagnosticDownloadRoutes(app, database, assets, ops, bearer, cookie);
   registerThreadArchiveRoutes(app, database, assets, ops, bearer, cookie);
   registerAssetDownloadRoutes(app, database, assets, ops, bearer, cookie);

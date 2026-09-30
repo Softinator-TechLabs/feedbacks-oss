@@ -216,3 +216,27 @@
   padding-top: 20px;
   border-top: 1px solid var(--border);
 }
+.github-app-form,
+.github-app-management {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  max-width: 560px;
+}
+.github-app-form > button,
+.github-app-management > button {
+  justify-self: start;
+}
+.github-add-account > details,
+.github-app-management > details {
+  margin-top: 14px;
+}
+.github-add-account summary,
+.github-app-management summary {
+  min-height: 44px;
+  padding-block: 10px;
+  cursor: pointer;
+}
+.github-app-management .inline-form {
+  align-items: end;
+}

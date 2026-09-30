@@ -1,12 +1,19 @@
+import { DomainError } from "./errors.js";
 import type { Actor } from "../shared/contracts.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
 import { GithubApp, githubRepo } from "./github-app.js";
 import { accountLock } from "./auth.js";
-import { requireSyncAppId, projectGithubAppId } from "./github-app-config.js";
+import {
+  requireSyncAppId,
+  projectGithubAppId,
+  configuredGithubApps,
+} from "./github-app-config.js";
 import { event } from "./access.js";
 import { saveThread } from "./feedback.js";
 import { connectedGithubRepos, hasConnectedGithubRepo } from "./github-repositories.js";
+import type { AssetStore } from "./assets.js";
+import { managedGithubConfig, currentGithubApp } from "./github-managed-apps.js";
 
 const syncActor: Actor = {
   id: "00000000-0000-0000-0000-000000000000",
@@ -25,8 +32,12 @@ export async function pollGithubStatusSync(
   db: Database,
   config: Config,
   client: GithubApp = new GithubApp(config),
+  store?: AssetStore,
 ) {
-  const rows = await db.query(`SELECT t.id FROM threads t
+  config = await managedGithubConfig(db, config, store);
+  client = client.withConfig(config);
+  const rows = await db.query(
+    `SELECT t.id FROM threads t
     JOIN projects p ON p.id=t.project_id
     LEFT JOIN github_status_sync s ON s.thread_id=t.id
     WHERE p.data->>'githubConnected'='true' AND p.data->>'githubStatusSync'='true'
@@ -39,8 +50,11 @@ export async function pollGithubStatusSync(
           ) r(url)
           WHERE lower(e->>'repository')=lower(trim(trailing '/' from substring(r.url from '^https://github.com/(.*)$')))
         ))=1
+      AND (CASE WHEN p.data ? 'githubAppId' THEN p.data->>'githubAppId' ELSE $2 END)=ANY($1::text[])
       AND (s.thread_id IS NULL OR (s.status IN ('ready','error') AND s.next_at<=now() AND (s.lease_until IS NULL OR s.lease_until<now())))
-    ORDER BY s.next_at NULLS FIRST,t.id LIMIT 10`);
+    ORDER BY s.next_at NULLS FIRST,t.id LIMIT 10`,
+    [configuredGithubApps(config).map((app) => app.id), config.githubAppId ?? null],
+  );
   for (const candidate of rows) {
     const claimed = await db.transaction(async (tx) => {
       await accountLock(tx);
@@ -59,6 +73,20 @@ export async function pollGithubStatusSync(
       if (links.length !== 1) return null;
       const link = links[0];
       const repo = githubRepo(`https://github.com/${link.repository}`);
+      try {
+        await currentGithubApp(tx, config, projectGithubAppId(config, row.project));
+      } catch (error) {
+        if (
+          error instanceof DomainError &&
+          [
+            "GITHUB_UNAVAILABLE",
+            "GITHUB_APP_CHANGED",
+            "GITHUB_ACCOUNT_NOT_ALLOWED",
+          ].includes(error.code)
+        )
+          return null;
+        throw error;
+      }
       await tx.query(
         `INSERT INTO github_status_sync(thread_id,issue_url) VALUES($1,$2)
         ON CONFLICT(thread_id) DO NOTHING`,
@@ -140,6 +168,7 @@ export async function pollGithubStatusSync(
       if (local !== localBaseline && issue.state === baseline) {
         const reserved = await db.transaction(async (tx) => {
           await accountLock(tx);
+          await currentGithubApp(tx, config, appId, repo.owner);
           const result = await tx.one(
             `UPDATE github_status_sync SET status='uncertain',pending_target=$2,
           error_code=NULL,lease_until=clock_timestamp()+interval '2 minutes',updated_at=now()

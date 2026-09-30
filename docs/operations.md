@@ -39,3 +39,32 @@ Each deletion accepts at most 50 distinct thread IDs and their current revisions
 Thread-owned images/videos and their renditions use the configured local or S3 `remove` operation, including Wasabi-compatible storage. Shared `documents` objects are retained. A successful cleanup receipt means current-object delete requests succeeded, **not** certified physical erasure: versioned buckets may retain older versions or create delete markers; Object Lock, retention policies, backups and previously issued short-lived signed URLs require separate operator handling. No version-purge or retention-bypass permission is requested. Verify version lifecycle and retention policies separately before promising complete storage erasure.
 
 Deletion invalidates existing project export snapshots to avoid serving their deleted discussion content. A small audit tombstone retains thread IDs, actor and deletion time; cleanup receipts retain object keys. Hash/ID-only idempotency mappings are retained so delayed create/upload retries cannot resurrect deleted content. External GitHub issues are retained, and in-flight issue creation must be reconciled before deletion. Existing applied migrations and object keys are not rewritten.
+
+## GitHub App credential recovery
+
+Migration 28 stores encrypted managed App records and expiring setup requests.
+Back up PostgreSQL and the private AssetStore, including
+`feedbacks/<production|development>/organizations/<ORGANIZATION_ID>/server-secrets/github-apps/`; a database backup alone cannot recover managed
+keys. Preserve the original `ORGANIZATION_ID` and storage prefix/mode because
+managed encryption is bound to that server identity. Restore both into an isolated environment and verify a synthetic App
+connection before relying on the backup. The same store must be shared across
+replicas. Environment-managed Apps keep their existing secret/restart workflow.
+
+A human owner can upload a replacement PEM for the same App ID in **Manage App
+→ Update private key**, including while an uncertain Issue awaits reconciliation.
+The operation verifies identity/permissions, preserves account policy and
+disconnected state, and never repeats a pending Issue POST. Reconcile the
+original request after credentials recover. A failed manifest exchange consumes
+its state: start again, or import the already-created App with a new PEM.
+
+Disconnect pauses App use while retaining history and credentials; active or
+uncertain writes block it. Rotation retains prior private key objects for
+recovery; no automatic secret-object cleanup is enabled. Preserve them with
+your protected backup/retention policy. Unknown database commit outcomes also
+retain newly written objects. Ordinary asset downloads cannot address this
+prefix without authorized attachment metadata.
+
+Older application builds ignore managed overrides and may use old environment
+keys. Disable GitHub writes/sync before rollback; keep migration 28 and storage
+intact and use a compatible forward fix before resuming. See
+[storage choices and security boundaries](self-hosting.md#storage-and-security).

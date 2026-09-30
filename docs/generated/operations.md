@@ -36,8 +36,14 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `documents.list`              | Yes                  | Yes                            |
 | `documents.threads`           | Yes                  | Yes                            |
 | `documents.upload`            | No                   | No                             |
+| `github.appAdopt`             | No                   | No                             |
+| `github.appEnable`            | No                   | No                             |
+| `github.appImport`            | No                   | No                             |
 | `github.apps`                 | Yes                  | No                             |
 | `github.appSelect`            | No                   | No                             |
+| `github.appSetupComplete`     | No                   | No                             |
+| `github.appSetupStart`        | No                   | No                             |
+| `github.appUpdate`            | No                   | No                             |
 | `github.connect`              | No                   | No                             |
 | `github.connection`           | Yes                  | No                             |
 | `github.disconnect`           | No                   | No                             |
@@ -64,6 +70,7 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `guestProjectLinks.revoke`    | No                   | No                             |
 | `instructions.get`            | Yes                  | Yes                            |
 | `instructions.publish`        | No                   | No                             |
+| `integrations.catalog`        | Yes                  | No                             |
 | `members.archive`             | No                   | No                             |
 | `members.create`              | No                   | No                             |
 | `members.grant`               | No                   | No                             |

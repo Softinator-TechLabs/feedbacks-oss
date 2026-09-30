@@ -10,8 +10,10 @@ import { viewsInputs, viewsOutputs } from "./domains/views.js";
 import { recordingsInputs, recordingsOutputs } from "./domains/recordings.js";
 import { diagnosticsInputs, diagnosticsOutputs } from "./domains/diagnostics.js";
 import { assetsInputs, assetsOutputs } from "./domains/assets.js";
+import { integrationsInputs, integrationsOutputs } from "./domains/integrations.js";
 
 export const inputSchemas = {
+  ...integrationsInputs,
   "assignments.delegations": assignmentsInputs["assignments.delegations"],
   "assignments.assign": assignmentsInputs["assignments.assign"],
   "assignments.cancel": assignmentsInputs["assignments.cancel"],
@@ -55,6 +57,12 @@ export const inputSchemas = {
   "documents.get": projectsInputs["documents.get"],
   "documents.threads": projectsInputs["documents.threads"],
   "github.apps": projectsInputs["github.apps"],
+  "github.appSetupStart": projectsInputs["github.appSetupStart"],
+  "github.appSetupComplete": projectsInputs["github.appSetupComplete"],
+  "github.appImport": projectsInputs["github.appImport"],
+  "github.appAdopt": projectsInputs["github.appAdopt"],
+  "github.appUpdate": projectsInputs["github.appUpdate"],
+  "github.appEnable": projectsInputs["github.appEnable"],
   "github.appSelect": projectsInputs["github.appSelect"],
   "github.connection": projectsInputs["github.connection"],
   "github.issueState": projectsInputs["github.issueState"],
@@ -165,6 +173,7 @@ export const inputSchemas = {
 export type OperationName = keyof typeof inputSchemas;
 
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
+  ...integrationsOutputs,
   "assignments.delegations": assignmentsOutputs["assignments.delegations"],
   "assignments.assign": assignmentsOutputs["assignments.assign"],
   "assignments.cancel": assignmentsOutputs["assignments.cancel"],
@@ -209,6 +218,12 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "projects.taxonomy.get": projectsOutputs["projects.taxonomy.get"],
   "projects.taxonomy.update": projectsOutputs["projects.taxonomy.update"],
   "github.apps": projectsOutputs["github.apps"],
+  "github.appSetupStart": projectsOutputs["github.appSetupStart"],
+  "github.appSetupComplete": projectsOutputs["github.appSetupComplete"],
+  "github.appImport": projectsOutputs["github.appImport"],
+  "github.appAdopt": projectsOutputs["github.appAdopt"],
+  "github.appUpdate": projectsOutputs["github.appUpdate"],
+  "github.appEnable": projectsOutputs["github.appEnable"],
   "github.appSelect": projectsOutputs["github.appSelect"],
   "github.connection": projectsOutputs["github.connection"],
   "github.issueState": projectsOutputs["github.issueState"],

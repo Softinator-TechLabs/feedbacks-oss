@@ -76,13 +76,78 @@ For independent forks, replace the official canonical URL, sitemap, repository a
 
 ## Multiple GitHub Apps
 
-The optional GitHub integration can use a different App for each project on one
-Feedbacks server. Additional Apps are configured by DevOps in the secret
-`GITHUB_APPS_JSON`; private keys remain deployment secrets, not browser fields
-or database values. No dependency or external credential broker is required.
+One Feedbacks server can use a different GitHub App for each project. Each
+independent self-hosted server should use its own App credentials; never share
+an App private key with other operators. GitHub integration stays optional.
 
-Set a JSON array of up to 20 additional Apps. These illustrative values must be
-replaced with your own App IDs, slugs, and base64-encoded RSA PEM keys:
+### Encrypted management in Feedbacks
+
+A signed-in human server owner opens **Setup → Manage integrations → GitHub → Add GitHub
+account** and chooses **Encrypted in Feedbacks**. Enter the organization or
+personal username, then **Continue to GitHub**. Sign in with a GitHub login
+allowed to create Apps for that account. GitHub asks the owner/App manager to
+approve a private App with Metadata read and Issues read/write. Feedbacks saves
+its verified credentials automatically; no per-App environment change or
+restart is required. Install it on selected repositories, then select it in
+the project's GitHub tab and connect those repositories.
+
+The flow uses [GitHub's App manifest registration](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest)
+(checked 2026-09-30), with `public:false`, no OAuth request and inactive
+webhooks. The one-time setup state is bound to the current Feedbacks session,
+expires after 30 minutes and is consumed before code exchange. Returning from
+GitHub uses a same-origin bridge so the ordinary Strict session and CSRF
+checks remain in effect. Stay signed in to the same Feedbacks session.
+
+**Connect existing App** accepts its numeric App ID and a PEM file generated
+in GitHub App settings. It verifies the RSA key, registration owner and minimum
+permissions before saving. **Manage App** supports a local name, key replacement,
+disconnect and reconnect. A disconnected App retains its credentials and Issue
+history; it does not uninstall or delete the App on GitHub. Key replacement
+preserves disconnected state. GitHub visibility is controlled in GitHub: the
+manual import API cannot certify that an existing App is private.
+
+For an environment-configured App, **Manage here** optionally verifies and
+copies the existing key into encrypted storage, preserving approved-account
+policy and App identity. The environment remains untouched; the saved record
+overrides that App ID, including when disconnected. Keep the old configuration
+until backup and recovery have been verified.
+
+#### Storage and security
+
+| Choice                 | Credentials and changes                                                                                                                                     | Recovery                                                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Encrypted in Feedbacks | AES-256-GCM encrypted PEM in PostgreSQL; random per-record encryption key in existing private local/S3 storage. Human owners manage Apps without a restart. | Restore the database and private storage together, or upload a valid replacement key for the same App ID. |
+| Deployment environment | PEM is injected through the operator's secret environment. No managed key record is created. Changes require a server restart.                              | Restore the operator's deployment secrets and database.                                                   |
+
+Base64 is encoding, not encryption. A database dump alone cannot decrypt
+managed PEMs. Access to both the database and private key objects, or control
+of the running server, can expose them. Environment credentials are also
+available to the running server and its administrators. Neither choice protects
+against a compromised server. Limit human server owners, secure deployment and
+storage access, use HTTPS and grant only selected GitHub repositories.
+
+Managed encryption keys live under `feedbacks/<production|development>/organizations/<ORGANIZATION_ID>/server-secrets/github-apps/` in the existing
+private AssetStore. Normal attachment APIs require authorized asset metadata
+and cannot request these objects. Do not make the bucket public or exclude
+this prefix from backups. Preserve the original `ORGANIZATION_ID` and storage prefix/mode when restoring:
+encrypted credentials are bound to that server identity. Share the same database
+and private store across replicas. Credential operations fail closed if private storage is missing or
+modified; metadata lists still work. The readiness endpoint does not verify
+object storage. Old key objects are retained after rotation and unknown commit
+outcomes to avoid destroying recoverable credentials; there is no automatic
+secret-object retention or garbage collection.
+
+### Deployment environment
+
+Choose **Deployment environment** in the owner page for the manual setup
+instructions. Register an App in GitHub with Metadata read and Issues read/write,
+then install it on the required repositories. Keep a private App on its owning
+account; separate private Apps support different GitHub accounts without making
+one public. Use your deployment platform's secret editor.
+
+The legacy default uses `GITHUB_APP_ID`, `GITHUB_APP_SLUG` and
+`GITHUB_APP_PRIVATE_KEY_BASE64`. Additional Apps use `GITHUB_APPS_JSON`, a JSON
+array of up to 20 entries. Replace these synthetic values:
 
 ```json
 [
@@ -92,63 +157,43 @@ replaced with your own App IDs, slugs, and base64-encoded RSA PEM keys:
     "slug": "team-a-feedbacks",
     "privateKeyBase64": "BASE64_ENCODED_RSA_PEM",
     "owners": ["team-a"]
-  },
-  {
-    "id": "234567",
-    "name": "Team B private App",
-    "slug": "team-b-feedbacks",
-    "privateKeyBase64": "BASE64_ENCODED_RSA_PEM",
-    "owners": ["team-b"]
   }
 ]
 ```
 
-`owners` means approved GitHub organization/personal account names, **not**
-Feedbacks users or every login that manages that organization. Every additional
-App requires at least one approved account. The server denies repository access
-outside that list before sending a request to GitHub. App IDs and slugs must be
-unique, including the legacy default. The list is limited to 20 Apps, each with
-up to 20 accounts. A project chooses one App and can connect up to 20 repositories
-accessible to that App. Install each App with Metadata read and Issues read/write
-and choose only the required repositories. Webhooks and OAuth are not required.
+`owners` lists approved GitHub organization/personal account names, not human
+Feedbacks users or logins managing an organization. Additional environment Apps
+require at least one approved account (up to 20). The legacy default preserves
+its existing installation policy. Browser-created/imported Apps initially
+restrict repositories to their verified registration owner; adoption and
+rotation of an existing App preserve its approved-account policy. GitHub also
+checks every installation and selected repository.
 
-Use your deployment platform's secret editor. When using a Compose `.env` file,
-put compact JSON on one line in a single-quoted value. Protect that file from
-source control and shell history. Base64 is encoding, not encryption. Restart
-the server after changing deployment secrets. Invalid configuration fails
-startup with a generic error that does not print the secret.
+For Compose `.env`, put compact JSON on one line in a single-quoted value.
+Protect that file from source control and shell history. Restart after changing
+environment secrets. Invalid configuration fails startup without printing the
+secret. Environment Apps stay listed and usable without choosing **Manage here**.
 
-The owner can open **Setup → Manage GitHub Apps** to see configured Apps,
-approved GitHub accounts and assigned projects. Project links open App selection
-and repository connection; each App has an installation-management link. Missing
-credentials remain visible by their assigned App ID. This page works before any
-projects exist and provides empty-state setup steps. Configuration is loaded
-from deployment secrets; the page does not display or store App keys.
+### Assignment and compatibility
 
-The page reuses the Setup walkthrough player for three steps: GitHub App,
-server configuration, and project connection. App IDs and deployment details
-are available through expandable sections. For registration, follow
-[GitHub's registration guide](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)
-(checked 2026-09-30); an organization owner or authorized App manager can register
-the App under that organization.
+The catalog retains at most 21 distinct Apps across both storage choices,
+including disconnected records. App IDs and slugs must be unique. A project
+chooses one App and can connect up to 20 repositories accessible to it. Only a
+signed-in human server owner can select/clear the project's App. Maintainers
+connect repositories; agent/extension keys cannot manage Apps. Projects without
+an explicit assignment keep the legacy default; **No App selected** explicitly
+disables integration.
 
-Keep `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, and `GITHUB_APP_PRIVATE_KEY_BASE64`
-unchanged to preserve the existing default App. Projects without an explicit
-assignment keep that default. New installations using only `GITHUB_APPS_JSON`
-require the server owner to select an App in each project's GitHub tab. Only a
-signed-in human server owner can select/clear it; maintainers and agent/extension
-keys cannot assign Apps. **No App selected** explicitly disables that project's
-integration, even if a legacy default exists.
+Changing project App clears connections and sync. Pending Issue writes,
+uncertain sync and active leases block switching/disconnecting. Existing Issue
+links and requests retain their original App identity. A verified same-ID key
+replacement is allowed during pending writes so lost/revoked credentials can
+be recovered before reconciliation; it never retries the uncertain Issue POST.
+Never replace a historical App identity with another App's credentials.
 
-Changing App pauses connections/sync and requires repository reconnection.
-Pending writes or an active sync lease block switching until settled. Historical
-Issue reservations and verified links retain the original App ID. Keep legacy
-credentials available for older links without an App ID. Missing credentials
-fail closed; restore that same App ID to recover. Rotate a key under the same App
-ID to preserve routing. Do not reuse a removed App ID for a different identity.
-
-Migration 27 only adds a nullable App-ID column to existing Issue reservations;
-it does not rewrite applied migrations or existing Issue URLs. Back up the
-database and deployment secrets together. Older code does not understand
-project App selections: disable GitHub writes/sync before rolling back and
-restore a compatible release before enabling them again.
+Migration 27 adds the request App identity. Migration 28 adds encrypted managed
+records and expiring setup requests without rewriting prior data or object keys.
+Back up before upgrading. Older builds ignore managed overrides and may reuse
+environment credentials: disable GitHub writes/sync before rollback and deploy
+a compatible forward fix before resuming. Preserve the database, storage and
+original environment default for historical links.
