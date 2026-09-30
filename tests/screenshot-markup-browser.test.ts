@@ -30,7 +30,10 @@ test(
           recordingFrame: { recordingId: "11111111-1111-4111-8111-111111111111", atMs: 1200, videoTimeMs: 900 }
         });
         return target ? React.createElement(ScreenshotMarkup, {
-          thread: { id: "22222222-2222-4222-8222-222222222222", revision: 1 },
+          thread: {
+            id: "22222222-2222-4222-8222-222222222222", revision: 1,
+            context: { url: "https://example.test", viewport: { width: 320, height: 180 } }
+          },
           target,
           onSaved: (thread) => { window.savedThreads.push(thread); },
           onClose: () => setTarget(null)
@@ -157,6 +160,21 @@ test(
       assert.ok(Math.abs(uploads[1].point.x - 0.4) < 0.02);
       assert.ok(Math.abs(uploads[1].point.y - 0.6) < 0.02);
       assert.equal(uploads[1].markup[0].tool, "pencil");
+      assert.equal(uploads[1].rendition, "screenshot");
+      const cleanFrame = await sharp(
+        Buffer.from(uploads[1].imageBase64.split(",")[1], "base64"),
+      )
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const pointPixel =
+        (Math.floor(uploads[1].point.y * 180) * 320 +
+          Math.floor(uploads[1].point.x * 320)) *
+        cleanFrame.info.channels;
+      assert.deepEqual(
+        Array.from(cleanFrame.data.subarray(pointPixel, pointPixel + 3)),
+        [221, 230, 235],
+        "point geometry must stay out of saved frame pixels",
+      );
       assert.equal(uploads[1].revision, 2);
       assert.equal(await page.evaluate(() => (window as any).savedThreads.length), 2);
       await page.evaluate((markup) => {

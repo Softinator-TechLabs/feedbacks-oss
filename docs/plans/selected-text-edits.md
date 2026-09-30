@@ -1,6 +1,6 @@
 # Selected text edits and screenshot evidence layers
 
-Status: implemented; final browser acceptance and PR checks in progress. Date: 2026-09-30.
+Status: implemented and locally verified. [PR #159](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/159). Production release pending. Date: 2026-09-30.
 
 ## Outcome
 
@@ -14,7 +14,7 @@ Screenshots retain point, element and text-selection geometry separately from ap
 - [x] Add selection action, safe-field exclusions, before/after entry and draft editing.
 - [x] Add capture-editor and thread-view layer controls, including before/after presentation.
 - [x] Verify synthetic selection, keyboard, stale selection, capture/readback and responsive behavior.
-- [ ] Run required checks, inspect packaged extension and prepare the PR.
+- [x] Run required checks, inspect packaged extension and prepare the PR.
 
 ## Compatibility and verification
 
@@ -27,3 +27,6 @@ New annotation fields are optional; existing points and screenshots remain reada
 - Geometry checks cover full-page selection, ordinary inline text, boxless text, overflow clipping and transformed iframes.
 - Screenshot-editor browser QA passed drawing, crop, image/PDF/clipboard exports and permanent redaction. The evidence controls live inside the image stage so desktop thumbnails retain their own column.
 - Original and replacement text use labels and spacing, with no side accent border.
+- `npm run qa:extension-browser`: all five scripts passed, including packaged review, screenshot editor, replay, origin isolation and navigation.
+- `npm run qa:recording-browser`: 25 passed with no skips. The frame test uses a valid thread context and asserts that saved point geometry is absent from image pixels.
+- ZIP 0.1.50 matches the final source and preserves manifest permissions. SHA-256: `aec042635a9f46f88de33c5eda16abd8bd84ecae550a4367cee6d1ee4bcf83ca`.
