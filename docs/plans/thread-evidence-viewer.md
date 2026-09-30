@@ -66,4 +66,8 @@ application change restores the previous presentation without data conversion.
 - Independent follow-up review found stale navigation hashes being reapplied after
   saving. Point and asset hashes now run only on navigation, with regressions for
   planning and editing after moving to a different point.
+- Packaged extension acceptance opens the point accordions and expanded viewer
+  before using their controls, preserving layer independence, planning readback,
+  resolve/remove/restore and same-dialog editing checks. `npm run qa:extension-browser`
+  passed after updating these navigation steps.
 - CI, merge, deployment and production verification remain pending.

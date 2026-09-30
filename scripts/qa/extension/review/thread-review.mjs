@@ -35,13 +35,36 @@ export async function verifyThreadReview({
   const linkedPagePromise = context.waitForEvent("page");
   await crossSite.getByRole("link", { name: "Open feedback image" }).click();
   const linkedPage = await linkedPagePromise;
+  await linkedPage.bringToFront();
   await linkedPage
     .locator(`.review-point-figure[id="asset-${linkedOriginal.id}"]`)
     .waitFor();
-  await linkedPage.waitForFunction(() => {
-    const img = document.querySelector(".review-point-figure img");
-    return img?.complete && img.naturalWidth > 0;
-  });
+  await linkedPage
+    .waitForFunction((id) => {
+      const img = document.getElementById(`asset-${id}`)?.querySelector("img");
+      return img?.complete && img.naturalWidth > 0;
+    }, linkedOriginal.id)
+    .catch(async (error) => {
+      console.error(
+        "Linked point image diagnostics",
+        await linkedPage.evaluate((id) => {
+          const figure = document.getElementById(`asset-${id}`);
+          const img = figure?.querySelector("img");
+          return {
+            hash: location.hash,
+            open: figure?.closest("details")?.open,
+            image: img && {
+              src: img.getAttribute("src"),
+              complete: img.complete,
+              width: img.naturalWidth,
+              bounds: img.getBoundingClientRect().toJSON(),
+            },
+            figure: figure?.getBoundingClientRect().toJSON(),
+          };
+        }, linkedOriginal.id),
+      );
+      throw error;
+    });
   assert.equal(
     await linkedPage.getByRole("button", { name: "Sign in", exact: true }).count(),
     0,
@@ -88,14 +111,16 @@ export async function verifyThreadReview({
     );
   }
   await inlineThreadPage.setViewportSize({ width: 900, height: 650 });
+  await inlineThreadPage.getByRole("button", { name: "Expand all", exact: true }).click();
   const openPoint = inlineThreadPage.locator(".review-point-list li.open").first();
   await openPoint.getByLabel("Point 2 timing").selectOption("today");
   await inlineThreadPage
     .locator('.thread-heading-meta .point-progress-ring[aria-label*="1 urgent"]')
     .waitFor();
   await openPoint.getByLabel("Point 2 priority").selectOption("high");
-  await openPoint.getByText("High priority").waitFor();
+  await openPoint.getByText("High priority", { exact: true }).waitFor();
   await inlineThreadPage.reload();
+  await inlineThreadPage.getByRole("button", { name: "Expand all", exact: true }).click();
   const plannedPoint = inlineThreadPage.locator(".review-point-list li.open").first();
   assert.equal(await plannedPoint.getByLabel("Point 2 priority").inputValue(), "high");
   assert.equal(await plannedPoint.getByLabel("Point 2 timing").inputValue(), "today");
@@ -113,7 +138,9 @@ export async function verifyThreadReview({
   assert.equal(await inlineThreadPage.locator(".review-point-figure").count(), 2);
   const mainImage = inlineThreadPage.locator(".review-main-capture");
   assert.equal(await mainImage.locator(".review-image-pin").count(), 2);
-  await mainImage.getByRole("button", { name: "Hide points" }).click();
+  await mainImage.getByRole("button", { name: "Expand image", exact: true }).click();
+  const expanded = inlineThreadPage.getByRole("dialog");
+  await expanded.getByRole("button", { name: "Hide points" }).click();
   assert.equal(await mainImage.locator(".review-image-pin").count(), 0);
   assert.equal(
     await inlineThreadPage.locator(".review-point-figure .review-image-pin").count(),
@@ -134,8 +161,12 @@ export async function verifyThreadReview({
     "",
     "a point's own screenshot uses an unnumbered target ring",
   );
-  await mainImage.getByRole("button", { name: "Show points" }).click();
-  assert.equal(await mainImage.locator(".review-image-pin").count(), 2);
+  await expanded.getByRole("button", { name: "Show points" }).click();
+  assert.equal(
+    await mainImage.locator(".review-image-open .review-image-pin").count(),
+    2,
+  );
+  await expanded.getByRole("button", { name: "Close", exact: true }).click();
   assert.equal(
     await inlineThreadPage.getByRole("button", { name: "Show original view" }).count(),
     0,
