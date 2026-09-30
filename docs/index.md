@@ -4,24 +4,24 @@ This is the entry point for contributors and coding agents. Guides describe curr
 
 The public, searchable user and developer guide is built from [`site-docs`](../site-docs/index.md) at [feedbacks.softinator.ai/docs](https://feedbacks.softinator.ai/docs/). Its Markdown is exported for coding agents alongside the HTML.
 
-| Task                                              | Read                                                                                                                                       |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Understand the product                            | [Purpose](why-feedbacks.md), [product brief](../PRODUCT.md), [review workflow](review-workflow.md)                                         |
-| Use a team workspace                              | [Start here](start-here.md), [extension](extension.md), [project routing](project-routing.md)                                              |
-| Integrate a native app                            | [Mobile SDK](mobile-sdk.md), [API](api.md)                                                                                                 |
-| Install and operate                               | [Self-hosting](self-hosting.md), [operations and recovery](operations.md), [releases](releasing.md)                                        |
-| Deliver thread activity                           | [Signed webhooks](webhooks.md), [API](api.md)                                                                                              |
-| Add or manage external integrations               | [Integration adapters](integrations.md), [GitHub setup](../site-docs/guide/github.md), [API](api.md)                                       |
-| Check public project pages                        | [Scheduled QA and visual baselines](scheduled-qa.md), [extension](extension.md)                                                            |
-| Change code                                       | [Agent entry point](../AGENTS.md), [contributing](../CONTRIBUTING.md), [development](development.md), [architecture](architecture.md)      |
-| Run agent work                                    | [Workflow](agent-workflow.md), [client adapters and skills](agent-tools.md), [verification](verification.md)                               |
-| Connect an assistant to Feedbacks                 | [Assistant integration](agents.md), [key setup](agent-setup.md), [MCP contract](mcp-contract.md), [API](api.md)                            |
-| Record a browser session or export debug evidence | [Session replay](session-replay.md)                                                                                                        |
-| Inspect operation capabilities                    | [Generated operation catalog](generated/operations.md), [shared contracts](../src/shared/contracts.ts)                                     |
-| Change UI or website                              | [Design](../DESIGN.md), [website assets](website-assets.md), [source provenance](reference-provenance.md)                                  |
-| Maintain knowledge                                | [Docs instructions](maintaining-docs.md), [knowledge policy](knowledge.md), [quality gaps](quality.md), [plan template](plans/template.md) |
-| Review dependencies or security                   | [Dependencies](dependencies.md), [third-party notices](../THIRD_PARTY_NOTICES.md), [security reporting](../SECURITY.md)                    |
-| Understand contribution policy                    | [Governance](../GOVERNANCE.md), [conduct](../CODE_OF_CONDUCT.md), [trademarks](../TRADEMARKS.md)                                           |
+| Task                                              | Read                                                                                                                                                                              |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Understand the product                            | [Purpose](why-feedbacks.md), [product brief](../PRODUCT.md), [review workflow](review-workflow.md)                                                                                |
+| Use a team workspace                              | [Start here](start-here.md), [extension](extension.md), [project routing](project-routing.md)                                                                                     |
+| Integrate a native app                            | [Mobile SDK](mobile-sdk.md), [API](api.md)                                                                                                                                        |
+| Install and operate                               | [Self-hosting](self-hosting.md), [operations and recovery](operations.md), [releases](releasing.md)                                                                               |
+| Deliver thread activity                           | [Signed webhooks](webhooks.md), [API](api.md)                                                                                                                                     |
+| Add or manage external integrations               | [Integration adapters](integrations.md), [GitHub setup](../site-docs/guide/github.md), [API](api.md)                                                                              |
+| Check public project pages                        | [Scheduled QA and visual baselines](scheduled-qa.md), [extension](extension.md)                                                                                                   |
+| Change code                                       | [Agent entry point](../AGENTS.md), [contributing](../CONTRIBUTING.md), [development](development.md), [architecture](architecture.md)                                             |
+| Run agent work                                    | [Workflow](agent-workflow.md), [client adapters and skills](agent-tools.md), [verification](verification.md)                                                                      |
+| Connect an assistant to Feedbacks                 | [Assistant integration](agents.md), [key setup](agent-setup.md), [MCP contract](mcp-contract.md), [API](api.md)                                                                   |
+| Record a browser session or export debug evidence | [Session replay](session-replay.md)                                                                                                                                               |
+| Inspect operation capabilities                    | [Generated operation catalog](generated/operations.md), [shared contracts](../src/shared/contracts.ts)                                                                            |
+| Change UI or website                              | [Design](../DESIGN.md), [website assets](website-assets.md), [source provenance](reference-provenance.md), [comparison audit method](../site-docs/reference/comparison-method.md) |
+| Maintain knowledge                                | [Docs instructions](maintaining-docs.md), [knowledge policy](knowledge.md), [quality gaps](quality.md), [plan template](plans/template.md)                                        |
+| Review dependencies or security                   | [Dependencies](dependencies.md), [third-party notices](../THIRD_PARTY_NOTICES.md), [security reporting](../SECURITY.md)                                                           |
+| Understand contribution policy                    | [Governance](../GOVERNANCE.md), [conduct](../CODE_OF_CONDUCT.md), [trademarks](../TRADEMARKS.md)                                                                                  |
 
 Documentation checks enforce links and index reachability. They do not prove that every prose claim is current. Maintainers and agents must inspect the implementation when a relevant behavior changes.
 
