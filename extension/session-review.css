@@ -402,6 +402,8 @@
 .review-workspace[data-layout="side"] {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr);
+  /* A tall inspector must not expand the video row away from its timeline. */
+  grid-template-rows: auto min-content minmax(0, 1fr);
   column-gap: 16px;
   row-gap: 0;
 }

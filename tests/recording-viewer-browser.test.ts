@@ -717,6 +717,9 @@ test(
         "large",
       );
       await page.getByRole("button", { name: "Beside", exact: true }).click();
+      await page.locator(".recording-diagnostics").evaluate((element: HTMLElement) => {
+        element.style.minHeight = "680px";
+      });
       const besideVideo = (await page.locator(".recording-media video").boundingBox())!;
       const besideEvents = (await page.locator(".recording-diagnostics").boundingBox())!;
       const besideTimeline = (await page.locator(".recording-timeline").boundingBox())!;
@@ -728,6 +731,18 @@ test(
       );
       assert.ok(Math.abs(besideTimeline.x - besideVideo.x) <= 4);
       assert.ok(Math.abs(besideTimeline.width - besideVideo.width) <= 4);
+      assert.ok(
+        Math.abs(besideTimeline.y - (besideVideo.y + besideVideo.height)) <= 2,
+        `timeline must touch video with a tall side inspector: ${JSON.stringify({ besideVideo, besideTimeline })}`,
+      );
+      await page.getByRole("button", { name: "Smaller", exact: true }).click();
+      const compactVideo = (await page.locator(".recording-media video").boundingBox())!;
+      const compactTimeline = (await page.locator(".recording-timeline").boundingBox())!;
+      assert.ok(
+        Math.abs(compactTimeline.y - (compactVideo.y + compactVideo.height)) <= 2,
+        "the compact thread video stays joined to its timeline",
+      );
+      await page.getByRole("button", { name: "Larger", exact: true }).click();
       assert.ok(
         besideFootnote.y >=
           Math.max(

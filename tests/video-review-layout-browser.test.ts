@@ -94,6 +94,9 @@ test(
       await page.locator(".review-workspace").evaluate((element: HTMLElement) => {
         element.dataset.layout = "side";
       });
+      await page.locator("#capture-inspector").evaluate((element: HTMLElement) => {
+        element.style.minHeight = "650px";
+      });
       const sideVideo = (await page.locator("#preview").boundingBox())!;
       const sideInspector = (await page.locator("#capture-inspector").boundingBox())!;
       const sideTimeline = (await page.locator("#editing").boundingBox())!;
@@ -103,6 +106,18 @@ test(
       assert.ok(Math.abs(sideInspector.y - sideVideo.y) <= 4);
       assert.ok(Math.abs(sideTimeline.x - sideVideo.x) <= 4);
       assert.ok(Math.abs(sideTimeline.width - sideVideo.width) <= 4);
+      assert.ok(
+        Math.abs(sideTimeline.y - (sideVideo.y + sideVideo.height)) <= 2,
+        `timeline must touch video with a tall side inspector: ${JSON.stringify({ sideVideo, sideTimeline })}`,
+      );
+      await page.evaluate(() => document.body.classList.add("video-large"));
+      const largeVideo = (await page.locator("#preview").boundingBox())!;
+      const largeTimeline = (await page.locator("#editing").boundingBox())!;
+      assert.ok(
+        Math.abs(largeTimeline.y - (largeVideo.y + largeVideo.height)) <= 2,
+        "the larger preview stays joined to its timeline",
+      );
+      await page.evaluate(() => document.body.classList.remove("video-large"));
       assert.ok(
         sideTools.y >=
           Math.max(
@@ -122,6 +137,13 @@ test(
           .evaluate((tabs) => tabs.scrollWidth <= tabs.clientWidth),
         true,
       );
+      await mkdir("output/playwright/video-review-layout", { recursive: true });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.screenshot({
+        path: "output/playwright/video-review-layout/beside-dark.png",
+        fullPage: true,
+      });
+      await page.emulateMedia({ colorScheme: "light" });
       await page.locator(".review-workspace").evaluate((element: HTMLElement) => {
         element.dataset.layout = "stack";
       });
