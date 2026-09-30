@@ -24,8 +24,8 @@
       </p>
       <fieldset id="audio-options" class="audio-options">
         <legend>Audio</legend>
-        <label><input id="tab-audio" type="checkbox" /> Tab audio</label>
-        <label><input id="microphone" type="checkbox" /> Microphone</label>
+        <label><input id="tab-audio" type="checkbox" checked /> Tab audio</label>
+        <label><input id="microphone" type="checkbox" checked /> Microphone</label>
       </fieldset>
       <fieldset id="debug-options" class="audio-options before-recording">
         <legend>Debug context</legend>
@@ -254,6 +254,13 @@
             </div>
           </section>
           <p id="status" role="status"></p>
+          <a
+            id="audio-recovery"
+            href="options.html#recording-audio"
+            target="_blank"
+            hidden
+            >Open recording &amp; audio settings</a
+          >
           <a id="thread" hidden target="_blank" rel="noreferrer">Open feedback</a>
         </div>
       </div>

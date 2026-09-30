@@ -113,7 +113,9 @@ test(
           },
           storage: {
             local: {
-              get: async () => ({ videoRecordingOptions: {} }),
+              get: async () => ({
+                videoRecordingOptions: { tabAudio: false, microphone: false },
+              }),
               set: async () => {},
             },
           },

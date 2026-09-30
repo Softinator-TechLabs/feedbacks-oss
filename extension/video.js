@@ -1,5 +1,10 @@
 import { prepareCaptureOrigins } from "./session/session-origins.js";
 import {
+  recordingDefaults,
+  captureMicrophone,
+  audioAccessError,
+} from "./recordings/audio-access.js";
+import {
   createSessionReview,
   reviewTime,
   uploadReviewFrames,
@@ -37,7 +42,7 @@ const pendingTabStream = autoStart
   ? chrome.storage.local
       .get("videoRecordingOptions")
       .then(async (saved) => {
-        captureDefaults = saved.videoRecordingOptions || {};
+        captureDefaults = recordingDefaults(saved.videoRecordingOptions);
         const result = await chrome.runtime.sendMessage({
           type: "videoStreamId",
           sourceTabId,
@@ -495,6 +500,7 @@ function startError(error) {
       ? `${error.message} Return to the website and choose Record video again.`
       : error.message,
   );
+  $("audio-recovery").hidden = !error.audioCode;
   if (autoStart)
     void chrome.tabs
       .getCurrent()
@@ -590,9 +596,7 @@ $("start").onclick = async () => {
         "The selected video source could not be verified as the review tab. Select that exact tab, or turn off debug context to capture video only.",
       );
     if ($("tab-audio").checked && !stream.getAudioTracks().length)
-      throw Error(
-        "Tab audio was not shared. Enable Share tab audio in Chrome’s picker, or turn Tab audio off.",
-      );
+      throw audioAccessError("tab-audio-missing");
     if (stream.getAudioTracks().length) {
       audioContext = new AudioContext();
       audioContext
@@ -601,10 +605,7 @@ $("start").onclick = async () => {
       await audioContext.resume();
     }
     if ($("microphone").checked) {
-      microphone = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-        video: false,
-      });
+      microphone = await captureMicrophone();
       if (!connected) throw Error("Review ended. Open a new recorder.");
       audioContext ||= new AudioContext();
       const destination = audioContext.createMediaStreamDestination();
@@ -972,8 +973,11 @@ else
         })
         .then(async () => {
           if (draftId) return loadDraft();
-          if (!autoStart) return;
-          await pendingTabStream;
+          if (autoStart) await pendingTabStream;
+          else if (chrome.storage?.local) {
+            const saved = await chrome.storage.local.get("videoRecordingOptions");
+            captureDefaults = recordingDefaults(saved.videoRecordingOptions);
+          } else return;
           for (const [key, id] of Object.entries({
             tabAudio: "tab-audio",
             microphone: "microphone",
@@ -983,7 +987,7 @@ else
           }))
             if (typeof captureDefaults[key] === "boolean")
               $(id).checked = captureDefaults[key];
-          $("start").click();
+          if (autoStart) $("start").click();
         });
     })
     .catch((error) => status(error.message));

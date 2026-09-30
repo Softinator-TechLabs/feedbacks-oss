@@ -1,4 +1,5 @@
 import { reviewDefaults, updateReviewDefaults } from "./review/review-preferences.js";
+import { recordingDefaults } from "./recordings/audio-access.js";
 import { createDebuggerLease } from "./diagnostics/debugger-lease.js";
 import { retireObsoleteEvidence } from "./diagnostics/cleanup.js";
 import {
@@ -141,8 +142,8 @@ async function startOffscreenVideo(sender, session) {
     streamId,
     debugStarted: capture.started,
     options: {
-      tabAudio: !!videoRecordingOptions.tabAudio,
-      microphone: !!videoRecordingOptions.microphone,
+      tabAudio: recordingDefaults(videoRecordingOptions).tabAudio,
+      microphone: recordingDefaults(videoRecordingOptions).microphone,
     },
   };
 }
@@ -1040,7 +1041,7 @@ async function route(message, sender) {
       )
         throw Error("Invalid recording options.");
       const current = (await get()).videoRecordingOptions || {};
-      const options = { ...current, ...message.options };
+      const options = { ...recordingDefaults(current), ...message.options };
       await set({ videoRecordingOptions: options });
       return options;
     }

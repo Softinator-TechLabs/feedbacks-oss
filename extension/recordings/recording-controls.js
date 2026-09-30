@@ -1,6 +1,43 @@
 // Capture can run in Chrome's hidden offscreen document; only Stop opens review.
+import { audioRecoveryCodes } from "./audio-access.js";
 export function createRecordingControls({ chrome, sessionFor, startCapture }) {
   const sessions = new Map();
+  let audioRecoveryTabId;
+  async function showAudioRecovery(code) {
+    const url = chrome.runtime.getURL(`options.html?audioIssue=${code}#recording-audio`);
+    const settingsUrl = new URL(url);
+    // tabs.get().url is unavailable without the broad tabs permission. Own
+    // extension contexts expose documentUrl and also survive worker restarts.
+    const contexts = chrome.runtime.getContexts
+      ? await chrome.runtime.getContexts({ contextTypes: ["TAB"] })
+      : [];
+    const matches = contexts.filter((context) => {
+      try {
+        const currentUrl = new URL(context.documentUrl);
+        return (
+          context.tabId >= 0 &&
+          currentUrl.pathname === settingsUrl.pathname &&
+          currentUrl.protocol === settingsUrl.protocol &&
+          currentUrl.host === settingsUrl.host
+        );
+      } catch {
+        return false;
+      }
+    });
+    const existing =
+      matches.find((context) => context.tabId === audioRecoveryTabId) || matches[0];
+    if (existing) {
+      try {
+        await chrome.tabs.update(existing.tabId, { url, active: true });
+        audioRecoveryTabId = existing.tabId;
+        return;
+      } catch {
+        // The settings tab was closed. Open one replacement below.
+      }
+    }
+    const tab = await chrome.tabs.create({ url, active: true });
+    audioRecoveryTabId = tab.id;
+  }
   const elapsed = (entry) =>
     Math.max(
       0,
@@ -156,6 +193,16 @@ export function createRecordingControls({ chrome, sessionFor, startCapture }) {
       else if (entry.pending && !["recording", "paused"].includes(entry.state))
         finishControl(entry, Error("Recording ended before the control was confirmed."));
       void notify(id, entry.state, elapsed(entry), message.error);
+      if (
+        hidden &&
+        entry.state === "idle" &&
+        message.error &&
+        audioRecoveryCodes.has(message.audioCode) &&
+        !entry.audioRecoveryOpened
+      ) {
+        entry.audioRecoveryOpened = true;
+        void showAudioRecovery(message.audioCode).catch(() => {});
+      }
       if (started && !hidden)
         void chrome.tabs.update(id, { active: true }).catch(() => {});
       if (hidden && entry.state === "ready" && message.draftId && !entry.recorderTabId) {
