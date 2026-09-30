@@ -1,0 +1,101 @@
+name: Prepare GitHub release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing application tag (v<package.json version>)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.gate.outputs.sha }}
+      tag: ${{ steps.gate.outputs.tag }}
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - name: Require an existing version tag
+        shell: bash
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?$ ]] || exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Require main ancestry and successful CI on the exact target
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/prepare-release.mjs verify "$RELEASE_TAG"
+      - run: npm install --global npm@11.6.2
+      - run: npm ci
+      - name: Build fresh public artifacts
+        run: |
+          rm -rf dist
+          npm run build
+          npm run check:release
+          npm run release:source
+          npm sbom --sbom-format cyclonedx > dist/releases/sbom.cdx.json
+      - name: Install verified Gitleaks binary
+        run: |
+          curl --fail --silent --show-error --location --output /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz' | sha256sum --check
+          mkdir /tmp/feedbacks-gitleaks
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp/feedbacks-gitleaks gitleaks
+      - name: Scan the reviewed source export
+        run: /tmp/feedbacks-gitleaks/gitleaks dir dist/releases/source --redact --no-banner
+      - name: Validate and collect versioned release assets
+        run: node scripts/prepare-release.mjs prepare "$RELEASE_TAG"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: github-draft-release
+          path: dist/releases/github/
+          if-no-files-found: error
+          retention-days: 14
+
+  draft:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Download this run's verified assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name github-draft-release --dir dist/releases/github
+      - name: Recheck target and create or retry a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/prepare-release.mjs publish-draft

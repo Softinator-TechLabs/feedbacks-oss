@@ -1,27 +1,33 @@
 ---
-description: Prepare a Feedbacks project, publish context and give your team access.
+description: Prepare a Feedbacks project, publish approved guidance and give each teammate access.
 ---
 
-# Get the project ready for your team.
+# Get the project ready for your team
 
-**For the owner or project lead.** Your [team server](/guide/self-host) should already be running.
+For the owner or project lead. Your [team server](/guide/self-host) should already be running.
 
-1. **Create a project.** Add the website origins your team will review.
-2. **Publish context.** In **Instructions**, explain the product, codebase and rules a fix should follow.
-3. **Add teammates.** Use **Members** to grant access; keep each person’s own account.
+<DocPath :steps="['Create project', 'Publish guidance', 'Add teammates', 'Try a review']" />
+
+## Prepare the project
+
+1. In **Projects → New project**, add the website's exact origins. Scheme, hostname and non-default port matter; there are no wildcard approvals.
+2. In **Instructions**, publish the product rules, design constraints and acceptance criteria a fix should follow. Keep secrets and private owner notes out.
+3. In **Members**, give each person their own account and appropriate project access. Maintainers configure the project; reviewers need permission to submit.
 
 <Demo step="project" />
 
-Reviewers can now [connect the extension](/guide/chrome-extension). Developers can [connect their own agent](/guide/mcp).
+## Check the handoff
 
-::: details Profiles and permissions
-In **People**, set each person’s expertise. Give reviewers permission to submit and developers the appropriate resolve access. Maintainers manage project configuration.
+| Person              | Next action                                                                    |
+| ------------------- | ------------------------------------------------------------------------------ |
+| Reviewer or client  | [Connect the extension](/guide/chrome-extension), then send a synthetic review |
+| Resolving developer | [Connect their own agent](/guide/mcp), then verify project access              |
+| Project lead        | Check that both can see the same submitted thread                              |
 
-For richer profiles and responsibilities, ask your authorized agent to update the member’s context. These notes guide the agent; they don’t grant access. Keep private owner notes separate from project instructions. [Member context reference](/reference/manual/agent-setup).
-:::
+## Add context as needed
 
-::: details Optional: GitHub Issue tracking
-Capture and MCP work without GitHub.
+Use **People** for expertise. An authorized agent can update member profiles, project background and responsibilities on request. These guide interpretation; they never grant access. [Context reference](/reference/manual/agent-setup#project-and-member-context-on-request).
 
-DevOps configures the GitHub App (or separate private Apps for different GitHub accounts); the Feedbacks server owner selects the App in the project’s **GitHub** tab; a GitHub account owner installs it for the selected repositories. In the project’s **GitHub** tab, save the repository and choose **Connect project**. [Full GitHub guide](/guide/github).
-:::
+GitHub is optional. The server owner selects an App; a GitHub account owner installs it on selected repositories; project maintainers connect them. Follow the [GitHub guide](/guide/github).
+
+For separate websites or moving existing feedback, see [project routing](/reference/manual/project-routing). A move requires access to both projects and does not widen membership.

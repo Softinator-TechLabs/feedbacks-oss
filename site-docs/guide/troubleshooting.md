@@ -1,23 +1,31 @@
-# Troubleshooting
+---
+description: Find the failing connection, check its permissions and retry without losing evidence or duplicating GitHub Issues.
+---
 
-## The extension cannot connect
+# Find the connection that's missing
 
-Confirm the server origin has the correct `https://` scheme and no path. Open the app in Chrome and sign in. Pairing needs Chrome permission for that server and approval in the app. A public Store install and an unpacked developer build are separate extensions; pair the one you are actually using. Browser-protected pages cannot be captured.
+Start with the failing surface. Server sign-in, Chrome pairing, agent keys and GitHub installation are separate checks.
 
-## My coding agent cannot see a project
+<DocPath :steps="['Identify the surface', 'Check access', 'Retry safely']" />
 
-Check the MCP endpoint, the key’s expiry, selected project IDs and read scopes in **Account**. Reconnect the client after changing configuration. An environment variable exported in one terminal is not automatically available to a desktop app started elsewhere. Test MCP initialization and tool discovery before assuming a client is connected. See [MCP setup](/guide/mcp).
+| Symptom                    | Check first                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Extension cannot connect   | Use the exact HTTPS server origin without a path; open the app and sign in                                 |
+| Website cannot be reviewed | Check exact project origin, write access and Chrome permission; protected browser pages cannot be captured |
+| Agent cannot see a project | Check endpoint, key expiry, selected project IDs and read scopes in **Account**                            |
+| GitHub says not connected  | In the project's **GitHub** tab, check App, repository installation and **Connect project**                |
+| Media link fails           | Open the Issue's Source thread link; current project access is still required                              |
 
-## GitHub says not connected
+## Reconnect the right client
 
-Open the project’s **GitHub** tab. It distinguishes a server App that is not configured, a repository without an installation, and a project that has not been connected. Save the exact repository URL, install the App on that repository and choose **Connect project**. If installation access was revoked after connection, the tab marks the state as needing attention. See [GitHub setup](/guide/github).
+A Store extension and an unpacked build are separate: pair the one you use. Approve pairing in the app and allow Chrome access to that server.
 
-## Issue creation is pending
+After agent configuration changes, reconnect and verify MCP initialization and tool discovery. A variable exported in one terminal does not automatically reach a desktop app started elsewhere. [Agent setup](/guide/mcp).
 
-Do not click again with a new key or manually create a second Issue. Check the connected repository for an Issue with the Feedbacks request marker. A maintainer can verify and link the actual Issue. If none exists, wait for the ten-minute settlement period and then clear the request with the explicit confirmation in the thread.
+## An Issue request is pending
 
-## A media link expired
+Do not create a second Issue or retry with a new key. Check GitHub for the Feedbacks request marker. A maintainer can verify and link the actual Issue. If none exists, wait for the **ten-minute settlement period**, then clear the request with explicit confirmation. [GitHub recovery](/reference/manual/api#optional-github-app).
 
-New GitHub Issues link directly to the attachment inside its Feedbacks thread. These links do not expire and reuse your existing sign-in. Older Issues may contain raw `/api/assets/` links that show `Sign in required` when opened from GitHub, or direct storage links that expire after seven days. Use the Issue’s Source thread link to open those attachments. If project access was removed, ask a project maintainer.
+New Issue attachment links use your Feedbacks sign-in and do not expire. Older raw API links may require sign-in; older storage links may expire after seven days.
 
-For server health, migrations and backup/restore, use the [operator guide](/reference/manual/operations).
+[Extension setup](/guide/chrome-extension) · [GitHub setup](/guide/github) · [Server health and recovery](/reference/manual/operations)

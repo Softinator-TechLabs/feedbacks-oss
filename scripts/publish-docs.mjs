@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "site-docs/reference/manual");
 const queue = [
   "self-hosting",
+  "development",
   "operations",
   "verification",
   "api",

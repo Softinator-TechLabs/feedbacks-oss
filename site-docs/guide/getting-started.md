@@ -6,6 +6,8 @@ description: "Find your role in Feedbacks: install the team server, prepare proj
 
 Feedbacks turns a UI request into screenshots, page details and project context your developer’s AI agent can use.
 
+<DocPath :steps="['One team server', 'Projects and people', 'Capture and review', 'Fix and verify']" />
+
 <Demo step="server" />
 
 | Who you are                     | What you do                                                                    |

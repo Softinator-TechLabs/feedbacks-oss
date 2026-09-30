@@ -65,3 +65,85 @@
 .vp-doc :not(.evidence-demo) > img {
   max-width: 100%;
 }
+
+/* Read the next action first; deeper reference stays one disclosure away. */
+.vp-doc .doc-path {
+  display: flex;
+  list-style: none;
+  padding: 20px 0;
+  margin: 24px 0;
+  border-block: 1px solid var(--vp-c-divider);
+  gap: 12px;
+}
+.vp-doc .doc-path li {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.doc-path-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-variant-numeric: tabular-nums;
+}
+.doc-path svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  margin-left: auto;
+  fill: none;
+  stroke: var(--vp-c-text-2);
+  stroke-width: 1.5;
+}
+.vp-doc .doc-start {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
+.vp-doc .doc-start a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.vp-doc .custom-block.details {
+  margin: 28px 0;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: transparent;
+}
+.vp-doc .custom-block.details summary {
+  padding-block: 4px;
+}
+.vp-doc picture img {
+  width: 100%;
+  height: auto;
+}
+@media (max-width: 640px) {
+  .vp-doc .doc-path {
+    flex-direction: column;
+    gap: 18px;
+  }
+  .vp-doc .doc-path li {
+    position: relative;
+  }
+  .doc-path svg {
+    position: absolute;
+    left: 4px;
+    top: 26px;
+    transform: rotate(90deg);
+    width: 16px;
+    height: 16px;
+  }
+  .vp-doc .doc-path li strong {
+    flex: 1;
+  }
+}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { readFile, stat, mkdir } from "node:fs/promises";
+import { readFile, stat, mkdir, readdir } from "node:fs/promises";
 import { resolve, extname, sep } from "node:path";
 import { chromium } from "playwright";
 const root = resolve("dist/site");
@@ -53,12 +53,9 @@ try {
   const pages = [
     "/",
     "/docs/",
-    "/docs/guide/session-replay",
-    "/docs/guide/debug-bundles",
-    "/docs/guide/text-suggestions",
-    "/docs/guide/agent-context",
-    "/docs/guide/more-ways-to-review",
-    "/docs/guide/github",
+    ...(await readdir("site-docs/guide"))
+      .filter((file) => file.endsWith(".md"))
+      .map((file) => `/docs/guide/${file.slice(0, -3)}`),
     "/compare/",
     "/compare/openreplay.html",
   ];
@@ -91,6 +88,20 @@ try {
         );
       });
       assert.equal(await page.locator("h1").count(), 1, path);
+      if (path.startsWith("/docs/")) {
+        const flow = page.getByRole("list", { name: "Workflow at a glance" });
+        assert.equal(await flow.count(), 1, path);
+        assert.ok((await flow.locator("li").count()) >= 3, path);
+        const markdown = await readFile(
+          await localFile(path.replace(/\/$/, "/index") + ".md"),
+          "utf8",
+        );
+        assert.ok(
+          !markdown.includes("<DocPath"),
+          "Agent Markdown includes readable steps",
+        );
+        assert.match(markdown, /1\. .+\n2\. /);
+      }
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - innerWidth,
       );
@@ -178,7 +189,16 @@ try {
         );
         await page.evaluate(() => scrollTo(0, 0));
       }
-      if (path === "/docs/" || path === "/docs/guide/session-replay") {
+      if (path === "/docs/") {
+        assert.equal(await page.locator("feedbacks-demo").count(), 1);
+        assert.ok(
+          await page
+            .locator("feedbacks-demo")
+            .getByRole("button", { name: "Play capture walkthrough", exact: true })
+            .isVisible(),
+        );
+      }
+      if (path === "/docs/guide/session-replay") {
         assert.equal(
           await page.locator("feedbacks-evidence .evidence-play").count(),
           1,
@@ -269,9 +289,17 @@ try {
       }
       if (path === "/compare/")
         await page.screenshot({ path: `.impeccable/review/matrix-${width}.png` });
-      if (path === "/docs/guide/session-replay" || path === "/compare/openreplay.html")
+      if (
+        [
+          "/docs/",
+          "/docs/guide/mcp",
+          "/docs/guide/github",
+          "/docs/guide/session-replay",
+          "/compare/openreplay.html",
+        ].includes(path)
+      )
         await page.screenshot({
-          path: `.impeccable/review/${path.includes("docs") ? "docs" : "compare"}-${width}.png`,
+          path: `.impeccable/review/${path.includes("docs") ? "docs-" + (path.split("/").filter(Boolean).at(-1) === "docs" ? "index" : path.split("/").at(-1)) : "compare"}-${width}.png`,
           fullPage: true,
         });
     }
@@ -285,6 +313,20 @@ try {
   assert.match(await nojs.locator("main").innerText(), /Apache-2.0/);
   assert.equal(await nojs.locator("feedbacks-evidence img").count(), 1);
   assert.ok(await nojs.locator("#recordings").isVisible());
+  await nojs.goto(origin + "/docs/");
+  assert.ok(await nojs.getByRole("list", { name: "Workflow at a glance" }).isVisible());
+  assert.ok(
+    await nojs.locator("feedbacks-demo img").isVisible(),
+    "Actual capture remains without JavaScript",
+  );
+  await nojs.goto(origin + "/docs/guide/review-feedback");
+  const help = nojs.locator(".vp-doc details").first();
+  await help.locator("summary").focus();
+  await nojs.keyboard.press("Enter");
+  assert.ok(
+    await help.evaluate((el) => el.open),
+    "Deep guidance opens from the keyboard without JavaScript",
+  );
   await nojs.goto(origin + "/compare/");
   const fallback = nojs.locator(
     '#matrix-highlights tr[data-tool="feedbacks"] td[data-feature="apacheLicense"] details',
@@ -297,6 +339,24 @@ try {
   assert.match(await fallback.innerText(), /30 September 2026/);
   assert.ok(await fallback.getByRole("link", { name: /Read source/ }).isVisible());
   await nojs.close();
+  const dark = await browser.newPage({
+    viewport: { width: 390, height: 900 },
+    colorScheme: "dark",
+    reducedMotion: "reduce",
+  });
+  for (const path of [
+    "/docs/guide/mcp",
+    "/docs/guide/session-replay",
+    "/docs/guide/access-privacy",
+  ]) {
+    await dark.goto(origin + path, { waitUntil: "networkidle" });
+    assert.ok(await dark.locator("html").evaluate((el) => el.classList.contains("dark")));
+    assert.ok(
+      await dark.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+    );
+  }
+  await dark.screenshot({ path: ".impeccable/review/docs-dark-390.png", fullPage: true });
+  await dark.close();
   for (const width of [320, 768, 1024]) {
     const narrow = await browser.newPage({ viewport: { width, height: 900 } });
     await narrow.goto(origin + "/compare/bugherd.html");
@@ -313,7 +373,7 @@ try {
   }
   assert.deepEqual([...new Set(failures)], []);
   console.log(
-    "Public site browser QA passed: 10 routes at desktop/mobile, same-origin links/assets, timeline mouse/keyboard/playback/offscreen, reduced-motion start and no-JavaScript fallback.",
+    `Public site browser QA passed: ${pages.length} routes at desktop/mobile, visual guide flows and Markdown, dark mode, keyboard/no-JavaScript disclosure, same-origin links/assets and recording playback.`,
   );
 } finally {
   await browser.close();

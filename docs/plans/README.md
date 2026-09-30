@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Visual task guides and reliable release preparation](visual-task-docs-and-releases.md)
+
 - [Comprehensive competitor evidence and comparison](comprehensive-comparison-audit.md)
 
 - [Thread evidence types and expanded screenshot review](thread-evidence-viewer.md)

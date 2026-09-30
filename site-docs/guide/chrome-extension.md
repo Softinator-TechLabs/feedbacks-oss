@@ -1,52 +1,33 @@
 ---
-description: Four visual steps to install Feedbacks, connect your team server, capture a point and send feedback.
+description: Install Feedbacks, connect your team server, capture a point and check the evidence before sending.
 ---
 
 # Point it out. Send it over.
 
-**For clients, reviewers and testers.** Ask your team for its server URL, your sign-in and project access. [No server yet? DevOps starts here.](/guide/self-host)
-
-## 1. Install and pin
-
-[Add Feedbacks to Chrome](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo).
-
-**Pin it. Keep review one click away.** Open Chrome’s puzzle icon → Feedbacks → **Pin**. Keep its icon in your toolbar so you can start or resume a review anytime.
-
-<Demo step="pin" />
-
-## 2. Connect your team’s server {#install-pin-and-connect}
-
-In the team app: **Setup → Copy server URL**. Paste it into the extension, choose **Connect to server**, sign in and approve.
+Ask your team for its running server URL, your sign-in and project access. [DevOps installs the server first.](/guide/self-host)
 
 <Demo step="connect" />
 
-## 3. Point out the change {#your-first-point-click-right-click-save}
+<DocPath :steps="['Install & pin', 'Connect to server', 'Save point', 'Send feedback']" />
 
-Open your website and click the pinned extension. **Right-click** the element, write the change, then **Save point**.
+## Install, pin and connect {#install-pin-and-connect}
 
-For a wording change, select the page text and choose **Suggest edit**. Check the original, enter its replacement, then **Save suggestion**. Leave the replacement empty to request deletion. The website stays unchanged.
+1. [Add Feedbacks to Chrome](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo). Open Chrome’s puzzle icon and pin Feedbacks to your toolbar.
+2. In the team app, choose **Setup → Copy server URL**. Paste it into the extension.
+3. Choose **Connect to server**, allow server access, sign in and approve pairing.
 
-Review mode also enables selection on pages that block dragging or double-clicking text. Exit review to restore the site's behavior. Editable/private content remains excluded, and recording mode keeps the site's normal interactions.
+## Your first point {#your-first-point-click-right-click-save}
 
-<Demo step="capture" />
+Open your website and click the pinned icon. Right-click an element, write the change and choose **Save point**. For wording changes, [select text and suggest a replacement](/guide/text-suggestions).
 
-**Default shortcut:** Mac **⌘ Shift Y** · Windows **Ctrl Shift Y** starts or resumes review. Change it in extension **Settings → Keyboard shortcuts**. If another extension uses that combination, choose a different one there.
+The default review shortcut is **⌘ Shift Y** on Mac or **Ctrl Shift Y** on Windows. Change it in **Settings → Keyboard shortcuts** if it conflicts.
 
-## 4. Check and send {#finalize-and-send-to-feedbacks}
+## Check and send {#finalize-and-send-to-feedbacks}
 
-Choose **Review & send**, check the screenshots, then **Send feedback**. Your developer receives the context for the fix. **Points**, **Element outline** and **Text selection** can each be shown or hidden in the editor and the thread images.
+Choose **Review & send**, inspect the screenshots, then **Send feedback**. Points stay local until sending. You can show or hide **Points**, **Element outline** and **Text selection** separately.
 
-New screenshot reviews include captured page diagnostics by default. The review panel shows a short preview, channel coverage and a **Download diagnostics** archive; uncheck **Include captured diagnostics** to send only the feedback and screenshots. Change the default in extension **Settings → Review defaults**. To include earlier console and network activity, use **Start diagnostics** before reproducing the issue. The complete artifact stays private to the project; an interrupted send can be resumed with **Retry Send**.
+New screenshot reviews include captured diagnostics by default. Check their preview and coverage, or **Download diagnostics**. Raw values can include cookies, storage and request bodies; screenshot redaction does not redact that archive. Uncheck **Include captured diagnostics** to omit it; change future defaults in **Settings → Review defaults**.
 
-<Demo step="send" />
+Use **Start diagnostics** before reproducing earlier console/network activity. If uploading is interrupted, keep the draft open and choose **Retry Send**.
 
-**Save point is only a draft.** Nothing is shared until you send it.
-
-::: details Stuck? Three quick answers
-
-- **No project?** Ask the owner for project access and the correct website origin.
-- **Stop reviewing?** Press **Esc** or **R**. Esc closes an open point first; press again to exit. Saved points stay on the page.
-- **Upload interrupted?** Use **Retry Send** in the same draft.
-  :::
-
-[Capture tools, permissions and keyboard shortcuts](/reference/manual/extension) · [Troubleshooting](/guide/troubleshooting)
+[Capture tools, permissions, exit controls and shortcuts](/reference/manual/extension) · [Troubleshooting](/guide/troubleshooting)
