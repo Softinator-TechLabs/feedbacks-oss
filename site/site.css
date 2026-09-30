@@ -1,24 +1,5 @@
-@font-face {
-  font-family: Manrope;
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/manrope-400.ttf") format("truetype");
-}
-@font-face {
-  font-family: Manrope;
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("/fonts/manrope-600.ttf") format("truetype");
-}
-@font-face {
-  font-family: Manrope;
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url("/fonts/manrope-800.ttf") format("truetype");
-}
+@import "./fonts.css";
+
 :root {
   color-scheme: light;
   --ink: #202020;

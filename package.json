@@ -43,7 +43,7 @@
     "check:harness": "node scripts/check-harness.mjs && npm run docs:check",
     "docs:generate": "node --import tsx scripts/generate-operation-docs.ts && node scripts/generate-agent-guides.mjs",
     "docs:check": "node --import tsx scripts/generate-operation-docs.ts --check && node scripts/generate-agent-guides.mjs --check",
-    "qa:public-site": "node scripts/public-site-browser-qa.mjs",
+    "qa:public-site": "node scripts/public-site-browser-qa.mjs && node scripts/public-site-performance-qa.mjs",
     "qa:walkthrough-browser": "node scripts/walkthrough-browser-qa.mjs && node scripts/recording-walkthrough-browser-qa.mjs",
     "qa:github-apps": "node scripts/github-apps-browser-qa.mjs"
   },

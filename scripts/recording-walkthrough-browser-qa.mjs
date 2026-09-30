@@ -127,6 +127,35 @@ try {
     await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
     false,
   );
+  // Playback must follow the selected category instead of undoing each click.
+  const playerHeight = await page
+    .locator(".recording-demo")
+    .evaluate((el) => el.offsetHeight);
+  await page.evaluate(() => player.paint(0.75, true));
+  for (const channel of [
+    "Activity",
+    "Network",
+    "Console",
+    "Performance",
+    "Environment",
+  ]) {
+    const tab = page.getByRole("tab", { name: new RegExp("^" + channel) });
+    await tab.click();
+    await page.evaluate(() => player.paint(0.8, true));
+    assert.equal(
+      await tab.getAttribute("aria-selected"),
+      "true",
+      `${channel} stays selected during playback`,
+    );
+    const height = await page
+      .locator(".recording-demo")
+      .evaluate((el) => el.offsetHeight);
+    assert.ok(
+      Math.abs(height - playerHeight) <= 1,
+      `${channel} must not move the page below the player (${playerHeight} → ${height})`,
+    );
+  }
+  await page.getByRole("tab", { name: /^Everything/ }).click();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.evaluate(() => player.paint(0.98, true));
   await page.waitForTimeout(150);

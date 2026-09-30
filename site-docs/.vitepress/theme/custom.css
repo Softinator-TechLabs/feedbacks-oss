@@ -1,17 +1,5 @@
-@font-face {
-  font-family: Manrope;
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/manrope-400.ttf") format("truetype");
-}
-@font-face {
-  font-family: Manrope;
-  font-style: normal;
-  font-weight: 600 800;
-  font-display: swap;
-  src: url("/fonts/manrope-800.ttf") format("truetype");
-}
+@import "../../../site/fonts.css";
+
 :root {
   --vp-c-brand-1: #a43e17;
   --vp-c-brand-2: #8b321b;

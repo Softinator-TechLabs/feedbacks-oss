@@ -102,6 +102,7 @@
   margin: 5px 0;
 }
 .recording-demo .review-events {
+  height: var(--recording-event-height, 160px);
   max-height: var(--recording-event-height, 160px);
   scrollbar-color: #9caca0 #f6f7f3;
   scrollbar-width: thin;

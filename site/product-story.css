@@ -336,13 +336,24 @@
   }
 }
 
+.product-hero-demo {
+  min-width: 0;
+}
+/* Reserve the styled inspector footprint before custom-element/CSS upgrade. */
 .product-hero-demo feedbacks-demo[step="recording"] {
+  display: block;
+  min-height: calc(var(--recording-preview-height) + 370px);
   --recording-preview-height: 170px;
   --demo-caption-display: none;
   --recording-mode-display: none;
   --recording-guide-display: none;
   --recording-event-height: 80px;
   --demo-controls-gap: 0;
+}
+feedbacks-demo > img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 @media (max-width: 800px) {
   .product-hero-demo feedbacks-demo[step="recording"] {

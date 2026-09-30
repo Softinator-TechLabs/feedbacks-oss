@@ -1,10 +1,3 @@
-@font-face {
-  font-family: Caveat;
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("/fonts/caveat-600.ttf") format("truetype");
-}
 /* Landing: a marked-up review desk. Product screenshots carry the explanation. */
 .landing-page {
   --paper: #fff;
