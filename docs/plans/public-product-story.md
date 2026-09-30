@@ -28,7 +28,7 @@ Visitors see free Apache-2.0 positioning, what gets captured, and the server-fir
 
 ## Compatibility and recovery
 
-Static website and documentation only. No migrations, application permissions or extension changes. The static website image can be rebuilt from the previous source revision for rollback. The site remains useful without animation or JavaScript.
+The initial refresh changes static website and documentation only. The follow-up also adjusts the extension launcher count spacing; no migrations or application permissions change. The static website image can be rebuilt from the previous source revision for rollback. The site remains useful without animation or JavaScript.
 
 ## Decision log
 
@@ -49,3 +49,9 @@ Rendered landing evidence: [previous public page](../screenshots/public-product-
 Independent review identified blocked inline comparison widths under production CSP; external CSS classes fix the issue and mobile arrow behavior is now asserted. Shared example rendering uses a shadow root so documentation hydration preserves its controls. Mobile diagrams use separate readable compositions.
 
 Source base: `28ff478`. New source commit, required CI, deployment and live verification are tracked in the pull request. Public search indexing and traffic effects remain unverified.
+
+## Follow-up: launcher and landing sequence
+
+The saved-point badge now occupies its own flex slot beside the full-size extension icon. Browser coverage checks one-, two- and three-digit counts at desktop and mobile widths. Extension version 0.1.53 includes the fix; the affected capture screenshots are regenerated from the real extension with synthetic data and versioned to refresh cached walkthrough images.
+
+The landing introduces point capture immediately after the hero, followed by recording evidence. Agent copy, diagrams and the context guide explain how MCP assignment, top-priority and planning signals help Codex or Claude recommend the next task. This does not promise unattended work triggered by assignment.

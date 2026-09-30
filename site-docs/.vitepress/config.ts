@@ -10,7 +10,7 @@ export default defineConfig({
   outDir: "../dist/site/docs",
   sitemap: { hostname: "https://feedbacks.softinator.ai" },
   head: [
-    ["script", { src: "/learn/demo.js?v=20260928-5", defer: "" }],
+    ["script", { src: "/learn/demo.js?v=20260930-2", defer: "" }],
     ["script", { src: "/learn/evidence.js?v=20260930-1", defer: "" }],
     ["link", { rel: "stylesheet", href: "/learn/evidence.css" }],
     ["meta", { name: "theme-color", content: "#fffdfa" }],
