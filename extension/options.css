@@ -132,6 +132,18 @@ kbd {
 #message[data-kind="error"] {
   color: var(--error);
 }
+#audio-message[data-kind="success"] {
+  color: var(--success);
+}
+#audio-message[data-kind="error"] {
+  color: var(--error);
+}
+#audio-message:empty {
+  display: none;
+}
+#microphone-origin {
+  overflow-wrap: anywhere;
+}
 @media (max-width: 700px) {
   .settings-layout {
     display: block;

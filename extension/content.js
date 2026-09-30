@@ -139,6 +139,7 @@
       if (
         !bar.matches(":hover") &&
         !reviewDock.matches(":hover") &&
+        !bar.contains(root.activeElement) &&
         !root.activeElement?.matches("textarea,input,select,[contenteditable]") &&
         !draftEditing
       )

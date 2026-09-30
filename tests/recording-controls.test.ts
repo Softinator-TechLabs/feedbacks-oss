@@ -2,6 +2,71 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createRecordingControls } from "../extension/recordings/recording-controls.js";
 
+test("microphone failure opens recovery once and keeps the error on the source tab", async () => {
+  let connect: any, receive: any;
+  const created: any[] = [],
+    updated: any[] = [],
+    notices: any[] = [];
+  const controller = createRecordingControls({
+    chrome: {
+      runtime: {
+        getURL: (path: string) => `chrome-extension://test/${path}`,
+        onConnect: { addListener: (fn: any) => (connect = fn) },
+      },
+      tabs: {
+        sendMessage: async (...args: any[]) => notices.push(args),
+        get: async () => ({ url: created[0].url }),
+        update: async (...args: any[]) => updated.push(args),
+        create: async (input: any) => {
+          created.push(input);
+          return { id: 21 };
+        },
+      },
+    },
+    sessionFor: async () => ({ reviewId: "review-a" }),
+    startCapture: async () => ({}),
+  });
+  await controller.open({ tab: { id: 10 } });
+  connect({
+    name: "feedbacks-video-offscreen",
+    sender: { url: "chrome-extension://test/offscreen-video.html" },
+    onMessage: { addListener: (fn: any) => (receive = fn) },
+    onDisconnect: { addListener() {} },
+    postMessage() {},
+    disconnect() {},
+  });
+  const failure = {
+    sourceTabId: 10,
+    reviewId: "review-a",
+    state: "idle",
+    error: "Allow the microphone in Settings, then start recording again.",
+    audioCode: "microphone-permission",
+  };
+  receive(failure);
+  receive(failure);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(controller.state(10), "idle");
+  assert.equal(notices.at(-1)[1].error, failure.error);
+  assert.equal(created.length, 1);
+  assert.match(
+    created[0].url,
+    /options\.html\?audioIssue=microphone-permission#recording-audio$/,
+  );
+  await controller.open({ tab: { id: 10 } });
+  connect({
+    name: "feedbacks-video-offscreen",
+    sender: { url: "chrome-extension://test/offscreen-video.html" },
+    onMessage: { addListener: (fn: any) => (receive = fn) },
+    onDisconnect: { addListener() {} },
+    postMessage() {},
+    disconnect() {},
+  });
+  receive({ ...failure, audioCode: "microphone-blocked" });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(created.length, 1, "retry reuses the permission page");
+  assert.equal(updated[0][0], 21);
+});
+
 test("one-click video starts hidden capture and opens review only after Stop", async () => {
   let connect: any, receive: any;
   const created: any[] = [],

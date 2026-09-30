@@ -1,4 +1,6 @@
 import { checkForUpdates, releaseLinks } from "./connection/updates.js";
+import { recordingDefaults } from "./recordings/audio-access.js";
+import { createAudioSettings } from "./recordings/audio-settings.js";
 const $ = (id) => document.getElementById(id);
 const manifest = chrome.runtime.getManifest();
 const send = async (message) => {
@@ -10,6 +12,7 @@ let state,
   edited = false,
   refreshing = false;
 $("version").textContent = `Version ${manifest.version}`;
+const audioSettings = createAudioSettings({ document, chrome });
 function action(id, work) {
   $(id).onclick = async () => {
     $(id).disabled = true;
@@ -56,7 +59,9 @@ async function refresh() {
       ? extensionTheme
       : "system";
     for (const input of document.querySelectorAll("[data-video-default]"))
-      input.checked = videoRecordingOptions[input.dataset.videoDefault] === true;
+      input.checked =
+        recordingDefaults(videoRecordingOptions)[input.dataset.videoDefault] === true;
+    await audioSettings.refresh();
     $("connection-status").textContent = state.pending
       ? "Approve the connection in Feedbacks."
       : state.connected
