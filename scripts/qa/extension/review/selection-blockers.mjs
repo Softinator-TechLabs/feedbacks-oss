@@ -55,6 +55,10 @@ export async function verifySelectionBlockers({
   );
   await page.locator("#inline-blocked").dblclick({ position: { x: 25, y: 8 } });
   assert.match(await page.evaluate(() => String(getSelection())), /Selection/);
+  // Dismiss the previous floating action before selecting the adjacent line.
+  await page.mouse.click(800, 600);
+  for (let n = 0; n < 30 && (await actionVisible()); n++) await page.waitForTimeout(100);
+  assert.equal(await actionVisible(), false);
   const boxless = page.locator("#boxless-blocked");
   const glyph = await boxless.evaluate((el) => {
     const range = el.ownerDocument.createRange();
