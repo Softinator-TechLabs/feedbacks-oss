@@ -56,6 +56,13 @@ export function ThreadListRow({
   apply,
 }: Props) {
   const { category, tag } = filters;
+  const textEdit = t.context.annotations?.find(
+    (point) => point.textEdit && t.annotationStates?.[point.id]?.state !== "removed",
+  )?.textEdit;
+  const snippet = (text: string) => {
+    const compact = text.replace(/\s+/g, " ").trim();
+    return compact.length > 160 ? `${compact.slice(0, 160)}…` : compact;
+  };
   const image =
     t.assets?.find(
       (asset) => asset.contentType === "image/webp" && asset.rendition === "thumbnail",
@@ -95,6 +102,19 @@ export function ThreadListRow({
           )}
           <div className="thread-summary">
             <h2>{t.body}</h2>
+            {textEdit && (
+              <p className="thread-text-edit-preview" aria-label="Suggested text edit">
+                <span>
+                  <strong>Original:</strong> {snippet(textEdit.original)}
+                </span>
+                <span>
+                  <strong>Suggested:</strong>{" "}
+                  {textEdit.replacement
+                    ? snippet(textEdit.replacement)
+                    : "Remove selected text"}
+                </span>
+              </p>
+            )}
             {t.workPlan &&
               (t.workPlan.priority !== "normal" ||
                 t.workPlan.schedule !== "unscheduled") && (

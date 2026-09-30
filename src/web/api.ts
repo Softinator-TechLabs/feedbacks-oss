@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { inputSchemas, OperationName } from "../shared/contracts.js";
+import type { inputSchemas, contextSchema, OperationName } from "../shared/contracts.js";
 export class ApiError extends Error {
   constructor(
     public code: string,
@@ -201,6 +201,9 @@ export type Context = {
     styles?: Record<string, string>;
   };
   annotations?: Array<{
+    textEdit?: NonNullable<
+      z.infer<typeof contextSchema>["annotations"]
+    >[number]["textEdit"];
     id: string;
     body: string;
     anchor: {
@@ -347,7 +350,7 @@ export type Thread = {
       endpoints: Array<{ x: number; y: number }>;
       number?: number;
       annotationId?: string;
-      origin?: "element";
+      origin?: "element" | "text-selection";
       text?: string;
     }>;
   }>;

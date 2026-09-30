@@ -129,7 +129,15 @@ export async function startTask(
   };
   const incomplete: string[] = [];
   if (thread.body.length > 800) incomplete.push("body");
-  if (points.length > 3 || points.some((p: any) => p.body.length > 240))
+  if (
+    points.length > 3 ||
+    points.some(
+      (p: any) =>
+        p.body.length > 240 ||
+        (p.textEdit &&
+          (p.textEdit.original.length > 240 || p.textEdit.replacement.length > 240)),
+    )
+  )
     incomplete.push("points");
   const replies = thread.replies ?? [];
   if (replies.length > 1 || replies.some((r: any) => r.body.length > 400))
@@ -332,6 +340,14 @@ export async function startTask(
               id: p.id,
               number: allPoints.findIndex((item: any) => item.id === p.id) + 1,
               text: p.body.slice(0, 240),
+              ...(p.textEdit
+                ? {
+                    textEdit: {
+                      original: p.textEdit.original.slice(0, 240),
+                      replacement: p.textEdit.replacement.slice(0, 240),
+                    },
+                  }
+                : {}),
               state: effectiveState(p),
               ...(thread.annotationPlans?.[p.id]
                 ? { workPlan: thread.annotationPlans[p.id] }

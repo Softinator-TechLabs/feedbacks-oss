@@ -75,3 +75,5 @@ The initial harness decision is recorded in [Decision 0001](../decisions/0001-re
 - [Clear setup and agent-context onboarding](clear-onboarding.md)
 
 - [Move feedback between projects](move-feedback-projects.md) — scoped thread transfer with stable evidence and simple UI.
+
+- [Selected text edits and screenshot evidence layers](selected-text-edits.md) — selection entry, structured suggestions and independent screenshot overlays.

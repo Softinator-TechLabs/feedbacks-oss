@@ -1,3 +1,4 @@
+import { verifySelectedText } from "./qa/extension/review/selected-text.mjs";
 import { verifyFullpageScopes } from "./qa/extension/capture/fullpage-scopes.mjs";
 import { verifySharedPins } from "./qa/extension/review/shared-pins.mjs";
 import { verifyPendingPoints } from "./qa/extension/review/pending-points.mjs";
@@ -88,7 +89,7 @@ try {
     sandbox.once("exit", () => reject(Error("Sandbox exited during startup")));
   });
   const access = JSON.parse(await readFile(accessPath, "utf8"));
-  const post = async (name, input, auth = {}) => {
+  const post = async (name, input, auth = {}, renew = true) => {
     const response = await fetch(`${access.url}/api/${name}`, {
       method: "POST",
       headers: {
@@ -100,6 +101,13 @@ try {
       signal: AbortSignal.timeout(10000),
     });
     const result = await response.json();
+    // A browser tab can renew this same cookie session while the harness runs.
+    if (result.error?.code === "CSRF" && auth.cookie && renew && name !== "auth.me") {
+      const refreshed = await post("auth.me", {}, auth, false);
+      auth.csrf = refreshed.data.csrf;
+      if (refreshed.cookie) auth.cookie = refreshed.cookie;
+      return post(name, input, auth, false);
+    }
     if (!response.ok || !result.ok)
       throw Error(`${name}: ${result.error?.message || response.status}`);
     return {
@@ -140,7 +148,8 @@ try {
     context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
   const extensionId = new URL(worker.url()).host;
 
-  await verifySetup({ context, worker, post, access, extensionId, root });
+  if (!process.env.FEEDBACKS_QA_SELECTED_TEXT_ONLY)
+    await verifySetup({ context, worker, post, access, extensionId, root });
   await worker.evaluate(
     ({ server, token }) =>
       chrome.storage.local.set({
@@ -176,44 +185,46 @@ try {
   };
   const results = {};
 
-  await verifyPublicCapture({
-    context,
-    page,
-    publicCaptureUrl,
-    tabId,
-    send,
-    draft,
-    extensionId,
-    post,
-    auth,
-    results,
-  });
+  if (!process.env.FEEDBACKS_QA_SELECTED_TEXT_ONLY) {
+    await verifyPublicCapture({
+      context,
+      page,
+      publicCaptureUrl,
+      tabId,
+      send,
+      draft,
+      extensionId,
+      post,
+      auth,
+      results,
+    });
 
-  await verifyPopupOptions({
-    context,
-    control,
-    extensionId,
-    access,
-    worker,
-    send,
-    page,
-    tabId,
-    root,
-    toFixture,
-  });
-  await verifyDiagnosticDom({ page, control, toFixture, tabId, send, draft, results });
-  await verifyLargeVisibleCapture({
-    context,
-    page,
-    toFixture,
-    tabId,
-    send,
-    draft,
-    extensionId,
-    post,
-    auth,
-    results,
-  });
+    await verifyPopupOptions({
+      context,
+      control,
+      extensionId,
+      access,
+      worker,
+      send,
+      page,
+      tabId,
+      root,
+      toFixture,
+    });
+    await verifyDiagnosticDom({ page, control, toFixture, tabId, send, draft, results });
+    await verifyLargeVisibleCapture({
+      context,
+      page,
+      toFixture,
+      tabId,
+      send,
+      draft,
+      extensionId,
+      post,
+      auth,
+      results,
+    });
+  }
   await page.bringToFront();
   const id = await tabId();
   const exposeReviewRoot = () =>
@@ -311,7 +322,7 @@ try {
     assert.equal(result.ready, true, `Inline comment field did not open: ${body}`);
     return (await waitReview((state) => state.points === before + 1)).points;
   };
-  const sendFromReview = await verifyReviewInteractions({
+  await verifySelectedText({
     page,
     fixture,
     toFixture,
@@ -322,23 +333,15 @@ try {
     draft,
     results,
     waitReview,
-    inspectReview,
+    root,
+    context,
+    extensionId,
+    post,
+    auth,
+    access,
   });
-  await verifyCaptureSafety({
-    page,
-    fixture,
-    toFixture,
-    exposeReviewRoot,
-    send,
-    id,
-    worker,
-    draft,
-    results,
-    waitReview,
-    inspectReview,
-  });
-  const { inlineThreadId, inlineThread, setCaptureMarker } = await verifyInlineSubmission(
-    {
+  if (!process.env.FEEDBACKS_QA_SELECTED_TEXT_ONLY) {
+    const sendFromReview = await verifyReviewInteractions({
       page,
       fixture,
       toFixture,
@@ -350,220 +353,247 @@ try {
       results,
       waitReview,
       inspectReview,
-      saveInlinePoint,
+    });
+    await verifyCaptureSafety({
+      page,
+      fixture,
+      toFixture,
+      exposeReviewRoot,
+      send,
+      id,
+      worker,
+      draft,
+      results,
+      waitReview,
+      inspectReview,
+    });
+    const { inlineThreadId, inlineThread, setCaptureMarker } =
+      await verifyInlineSubmission({
+        page,
+        fixture,
+        toFixture,
+        exposeReviewRoot,
+        send,
+        id,
+        worker,
+        draft,
+        results,
+        waitReview,
+        inspectReview,
+        saveInlinePoint,
+        root,
+        context,
+        extensionId,
+        post,
+        auth,
+      });
+    const teammateAuth = await verifySharedPins({
+      page,
+      worker,
+      id,
+      send,
+      results,
       root,
-      context,
-      extensionId,
       post,
       auth,
-    },
-  );
-  const teammateAuth = await verifySharedPins({
-    page,
-    worker,
-    id,
-    send,
-    results,
-    root,
-    post,
-    auth,
-    access,
-    inlineThreadId,
-    inlineThread,
-    paired,
-  });
-  await verifyPendingPoints({
-    fixture,
-    toFixture,
-    exposeReviewRoot,
-    send,
-    id,
-    page,
-    root,
-    worker,
-    context,
-    extensionId,
-    draft,
-    post,
-    auth,
-    teammateAuth,
-    access,
-    saveInlinePoint,
-    setCaptureMarker,
-    results,
-  });
-  await verifyMultiscrollReview({
-    setCaptureMarker,
-    page,
-    saveInlinePoint,
-    worker,
-    id,
-    send,
-    draft,
-    results,
-    context,
-    extensionId,
-    root,
-    previewDimensions,
-    toFixture,
-    exposeReviewRoot,
-    waitReview,
-    inspectReview,
-  });
-  await verifyFullpageScopes({
-    fixture,
-    page,
-    toFixture,
-    send,
-    id,
-    draft,
-    results,
-    root,
-  });
-  const { seriesThreadId, seriesThread } = await verifyOrderedCapture({
-    fixture,
-    page,
-    toFixture,
-    send,
-    id,
-    draft,
-    context,
-    extensionId,
-    previewDimensions,
-    results,
-    root,
-    worker,
-    access,
-    post,
-    auth,
-  });
-  await verifyPageReview({
-    fixture,
-    toFixture,
-    send,
-    id,
-    draft,
-    context,
-    extensionId,
-    results,
-    previewDimensions,
-    worker,
-    post,
-    auth,
-    access,
-  });
-  await verifyChangingCapture({
-    page,
-    fixture,
-    toFixture,
-    exposeReviewRoot,
-    send,
-    id,
-    saveInlinePoint,
-    worker,
-    draft,
-    context,
-    extensionId,
-    results,
-  });
-  await verifyDiagnostics({
-    page,
-    fixture,
-    toFixture,
-    exposeReviewRoot,
-    send,
-    id,
-    root,
-    worker,
-    context,
-    extensionId,
-    draft,
-    post,
-    auth,
-    results,
-    access,
-  });
-  assert.equal(results.qa.captured, true, JSON.stringify(results.qa));
-  assert.deepEqual(results.qaDraft, {
-    hasAltFinding: true,
-    hasBrokenLink: true,
-    hasImage: true,
-  });
-  for (const scope of ["short", "long", "clipped"]) {
-    assert.equal(results[scope].captured, true);
-    assert.equal(results[scope].scope, "fullPage");
-    assert.equal(results[scope].hasImage, false);
-    assert.ok(results[scope].pageCount >= 1);
-    assert.equal(results[scope].scrollRestored, true);
-  }
-  assert.ok(results.long.pageCount > 1);
-  assert.equal(results.tall.captured, true);
-  assert.equal(results.tall.scope, "fullPage");
-  assert.equal(results.tall.hasImage, false);
-  assert.ok(results.tall.pageCount > 8);
-  assert.ok(results.tall.firstHeight <= 800);
-  assert.match(results.tall.notice, /ordered screenshots/);
-  assert.equal(results.tall.scrollRestored, true);
-  assert.equal(results.tooLong.captured, true);
-  assert.equal(results.tooLong.scope, "fullPage");
-  assert.equal(results.tooLong.hasImage, false);
-  assert.ok(results.tooLong.pageCount > results.tall.pageCount);
-  assert.equal(results.tooLong.scrollRestored, true);
-  assert.equal(results.changing.captured, false);
-  assert.equal(results.changing.hasImage, false);
-  assert.equal(results.changing.scrollRestored, true);
-  assert.match(results.changing.error, /page (moved|changed) during full-page capture/);
-  assert.deepEqual(results.diagnostics, {
-    checked: true,
-    download: true,
-    boundedPreview: true,
-    localArchive: true,
-    submitted: true,
-    draftCleared: true,
-  });
-  await verifyThreadReview({
-    context,
-    auth,
-    access,
-    inlineThread,
-    inlineThreadId,
-    root,
-    results,
-  });
-  const threadPage = await context.newPage();
-  await threadPage.goto(
-    `${access.url}/threads/${seriesThreadId}#asset-${seriesThread.assets[2].id}`,
-  );
-  await threadPage
-    .getByText("Full-page capture · 4 numbered images")
-    .waitFor({ timeout: 15000 });
-  results.seriesReview.galleryImages = await threadPage
-    .locator(".capture-page-grid figure")
-    .count();
-  await threadPage.screenshot({
-    path: join(root, ".local/remaining-todos-qa/thread-gallery.png"),
-  });
-  assert.equal(results.seriesReview.galleryImages, 4);
-  await verifyGithubToolbar({
-    context,
-    access,
-    seriesThreadId,
-    seriesThread,
-    root,
-    results,
-  });
-  await verifyRecordingControls({
-    page,
-    send,
-    id,
-    sendFromReview,
-    context,
-    root,
-    results,
-    worker,
-  });
+      access,
+      inlineThreadId,
+      inlineThread,
+      paired,
+    });
+    await verifyPendingPoints({
+      fixture,
+      toFixture,
+      exposeReviewRoot,
+      send,
+      id,
+      page,
+      root,
+      worker,
+      context,
+      extensionId,
+      draft,
+      post,
+      auth,
+      teammateAuth,
+      access,
+      saveInlinePoint,
+      setCaptureMarker,
+      results,
+    });
+    await verifyMultiscrollReview({
+      setCaptureMarker,
+      page,
+      saveInlinePoint,
+      worker,
+      id,
+      send,
+      draft,
+      results,
+      context,
+      extensionId,
+      root,
+      previewDimensions,
+      toFixture,
+      exposeReviewRoot,
+      waitReview,
+      inspectReview,
+    });
+    await verifyFullpageScopes({
+      fixture,
+      page,
+      toFixture,
+      send,
+      id,
+      draft,
+      results,
+      root,
+    });
+    const { seriesThreadId, seriesThread } = await verifyOrderedCapture({
+      fixture,
+      page,
+      toFixture,
+      send,
+      id,
+      draft,
+      context,
+      extensionId,
+      previewDimensions,
+      results,
+      root,
+      worker,
+      access,
+      post,
+      auth,
+    });
+    await verifyPageReview({
+      fixture,
+      toFixture,
+      send,
+      id,
+      draft,
+      context,
+      extensionId,
+      results,
+      previewDimensions,
+      worker,
+      post,
+      auth,
+      access,
+    });
+    await verifyChangingCapture({
+      page,
+      fixture,
+      toFixture,
+      exposeReviewRoot,
+      send,
+      id,
+      saveInlinePoint,
+      worker,
+      draft,
+      context,
+      extensionId,
+      results,
+    });
+    await verifyDiagnostics({
+      page,
+      fixture,
+      toFixture,
+      exposeReviewRoot,
+      send,
+      id,
+      root,
+      worker,
+      context,
+      extensionId,
+      draft,
+      post,
+      auth,
+      results,
+      access,
+    });
+    assert.equal(results.qa.captured, true, JSON.stringify(results.qa));
+    assert.deepEqual(results.qaDraft, {
+      hasAltFinding: true,
+      hasBrokenLink: true,
+      hasImage: true,
+    });
+    for (const scope of ["short", "long", "clipped"]) {
+      assert.equal(results[scope].captured, true);
+      assert.equal(results[scope].scope, "fullPage");
+      assert.equal(results[scope].hasImage, false);
+      assert.ok(results[scope].pageCount >= 1);
+      assert.equal(results[scope].scrollRestored, true);
+    }
+    assert.ok(results.long.pageCount > 1);
+    assert.equal(results.tall.captured, true);
+    assert.equal(results.tall.scope, "fullPage");
+    assert.equal(results.tall.hasImage, false);
+    assert.ok(results.tall.pageCount > 8);
+    assert.ok(results.tall.firstHeight <= 800);
+    assert.match(results.tall.notice, /ordered screenshots/);
+    assert.equal(results.tall.scrollRestored, true);
+    assert.equal(results.tooLong.captured, true);
+    assert.equal(results.tooLong.scope, "fullPage");
+    assert.equal(results.tooLong.hasImage, false);
+    assert.ok(results.tooLong.pageCount > results.tall.pageCount);
+    assert.equal(results.tooLong.scrollRestored, true);
+    assert.equal(results.changing.captured, false);
+    assert.equal(results.changing.hasImage, false);
+    assert.equal(results.changing.scrollRestored, true);
+    assert.match(results.changing.error, /page (moved|changed) during full-page capture/);
+    assert.deepEqual(results.diagnostics, {
+      checked: true,
+      download: true,
+      boundedPreview: true,
+      localArchive: true,
+      submitted: true,
+      draftCleared: true,
+    });
+    await verifyThreadReview({
+      context,
+      auth,
+      access,
+      inlineThread,
+      inlineThreadId,
+      root,
+      results,
+    });
+    const threadPage = await context.newPage();
+    await threadPage.goto(
+      `${access.url}/threads/${seriesThreadId}#asset-${seriesThread.assets[2].id}`,
+    );
+    await threadPage
+      .getByText("Full-page capture · 4 numbered images")
+      .waitFor({ timeout: 15000 });
+    results.seriesReview.galleryImages = await threadPage
+      .locator(".capture-page-grid figure")
+      .count();
+    await threadPage.screenshot({
+      path: join(root, ".local/remaining-todos-qa/thread-gallery.png"),
+    });
+    assert.equal(results.seriesReview.galleryImages, 4);
+    await verifyGithubToolbar({
+      context,
+      access,
+      seriesThreadId,
+      seriesThread,
+      root,
+      results,
+    });
+    await verifyRecordingControls({
+      page,
+      send,
+      id,
+      sendFromReview,
+      context,
+      root,
+      results,
+      worker,
+    });
 
-  await verifyReviewDefaults({ page, tabId, send, worker, post, access, results });
+    await verifyReviewDefaults({ page, tabId, send, worker, post, access, results });
+  }
   console.log(JSON.stringify(results));
 } finally {
   if (context) await context.close();

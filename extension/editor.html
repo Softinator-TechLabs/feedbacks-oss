@@ -249,6 +249,38 @@
             hidden
           ></div>
           <div class="image-stage">
+            <div
+              id="evidence-layers"
+              class="evidence-layers"
+              role="group"
+              aria-label="Screenshot evidence visibility"
+              hidden
+            >
+              <button
+                type="button"
+                data-layer="points"
+                data-label="points"
+                aria-pressed="true"
+              >
+                Hide points
+              </button>
+              <button
+                type="button"
+                data-layer="element"
+                data-label="element outline"
+                aria-pressed="false"
+              >
+                Show element outline
+              </button>
+              <button
+                type="button"
+                data-layer="text"
+                data-label="text selection"
+                aria-pressed="true"
+              >
+                Hide text selection
+              </button>
+            </div>
             <label class="text-label" for="annotation" hidden
               >Text to place
               <input

@@ -74,6 +74,7 @@ test(
         "utils.js",
         "frame-dom.js",
         "review/anchor-evidence.js",
+        "review/text-selection.js",
         "content.js",
       ])
         await page.addScriptTag({ path: `extension/${file}` });
@@ -657,6 +658,7 @@ test(
         "utils.js",
         "frame-dom.js",
         "review/anchor-evidence.js",
+        "review/text-selection.js",
         "content.js",
       ])
         await page.addScriptTag({ path: `extension/${file}` });

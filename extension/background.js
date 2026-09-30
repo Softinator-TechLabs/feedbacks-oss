@@ -36,6 +36,7 @@ import {
 } from "./capture/markings.js";
 import { capturedVideoTarget, captureOrigins } from "./session/session-capture.js";
 import { createSessionCoordinator } from "./session/session-coordinator.js";
+import { evidenceLayer } from "./capture/evidence-layers.js";
 import { createRecordingAnnotations } from "./recordings/recording-annotations.js";
 import { createRecordingControls } from "./recordings/recording-controls.js";
 import {
@@ -671,7 +672,12 @@ async function saveDraft(message) {
           item?.id !== original[index].id ||
           typeof item.body !== "string" ||
           !item.body.trim() ||
-          item.body.trim().length > 4000,
+          item.body.trim().length > 4000 ||
+          (original[index].textEdit
+            ? typeof item.replacement !== "string" ||
+              item.replacement.length > 4000 ||
+              item.replacement === original[index].textEdit.original
+            : item.replacement !== undefined),
       )
     )
       throw Error("Point comments changed unexpectedly. Reopen the saved draft.");
@@ -681,6 +687,14 @@ async function saveDraft(message) {
         annotations: original.map((item, index) => ({
           ...item,
           body: message.annotations[index].body.trim(),
+          ...(item.textEdit
+            ? {
+                textEdit: {
+                  ...item.textEdit,
+                  replacement: message.annotations[index].replacement,
+                },
+              }
+            : {}),
         })),
       };
   }
@@ -706,12 +720,22 @@ async function capturePage(message) {
   const index = message.index;
   if (!Number.isInteger(index) || index < 0 || index >= (draft.capturePages?.length || 0))
     throw Error("Select a valid screenshot page.");
-  const blob = await getPage(
-    draft.id,
-    index,
-    draft.frozen && !draft.noImage ? "approved" : "source",
-  );
-  return { image: await pageDataUrl(blob), page: draft.capturePages[index] };
+  const raw =
+    draft.frozen && !draft.noImage && (await getPage(draft.id, index, "without-pins"));
+  const blob =
+    raw ||
+    (await getPage(
+      draft.id,
+      index,
+      draft.frozen && !draft.noImage ? "approved" : "source",
+    ));
+  return {
+    image: await pageDataUrl(blob),
+    page: draft.capturePages[index],
+    evidenceLayers: raw
+      ? (draft.pageToolStates?.[index] || []).filter(evidenceLayer)
+      : [],
+  };
 }
 async function captureThumbnail(message) {
   const { draft } = await get();
