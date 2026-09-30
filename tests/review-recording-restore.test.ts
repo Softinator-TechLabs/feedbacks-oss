@@ -45,7 +45,8 @@ function fixture(t: test.TestContext) {
   const messages: any[] = [],
     injections: any[] = [],
     writes: any[] = [],
-    requests: any[] = [];
+    requests: any[] = [],
+    styles: any[] = [];
   let afterProjects = () => {},
     afterInjection = () => {},
     afterCss = () => {};
@@ -60,6 +61,10 @@ function fixture(t: test.TestContext) {
       },
     },
     scripting: {
+      removeCSS: async () => {},
+      insertCSS: async (request: any) => {
+        styles.push(request);
+      },
       executeScript: async (request: any) => {
         injections.push(request);
         afterInjection();
@@ -99,6 +104,7 @@ function fixture(t: test.TestContext) {
     injections,
     writes,
     requests,
+    styles,
     server,
     originalOrigin,
     redirectOrigin,
@@ -153,6 +159,9 @@ test("same-origin navigation restores ordinary review using the original-origin 
   const { allowedOrigins, ...target } = f.target;
   await f.controller.restoreRecording(7, target);
   assert.equal(f.messages[0].recordingOnly, false);
+  assert.equal(f.styles.length, 1, "restore styles destroyed by navigation");
+  assert.equal(f.styles[0].origin, "USER");
+  assert.deepEqual(f.styles[0].target, { tabId: 7, allFrames: true });
   assert.equal(f.messages[0].reviewId, "review");
   assert.equal(f.messages[0].project.id, "original");
   assert.deepEqual(f.writes, []);
@@ -225,6 +234,7 @@ for (const [label, mutate] of [
     mutate(f);
     await assert.rejects(f.controller.restoreRecording(7, f.target));
     assert.deepEqual(f.messages, []);
+    assert.deepEqual(f.styles, []);
     assert.deepEqual(f.injections, []);
     assert.deepEqual(f.writes, []);
   });
@@ -265,6 +275,7 @@ for (const [label, install] of [
     install(f);
     await assert.rejects(f.controller.restoreRecording(7, f.target));
     assert.deepEqual(f.messages, []);
+    assert.deepEqual(f.styles, []);
     assert.deepEqual(f.writes, []);
   });
 }

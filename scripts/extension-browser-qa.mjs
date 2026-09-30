@@ -1,4 +1,6 @@
 import { verifySelectedText } from "./qa/extension/review/selected-text.mjs";
+import { verifySelectionBlockers } from "./qa/extension/review/selection-blockers.mjs";
+import { verifyLiveSelection } from "./qa/extension/review/live-selection.mjs";
 import { verifyFullpageScopes } from "./qa/extension/capture/fullpage-scopes.mjs";
 import { verifySharedPins } from "./qa/extension/review/shared-pins.mjs";
 import { verifyPendingPoints } from "./qa/extension/review/pending-points.mjs";
@@ -120,6 +122,17 @@ try {
     password: access.password,
   });
   const auth = { cookie: login.cookie, csrf: login.data.csrf };
+  for (const origin of new Set(
+    (process.env.FEEDBACKS_QA_SELECTION_URLS || "")
+      .split(",")
+      .filter(Boolean)
+      .map((url) => new URL(url).origin),
+  ))
+    await post(
+      "projects.create",
+      { name: `Selection QA ${new URL(origin).hostname}`, origins: [origin] },
+      auth,
+    );
   if (process.env.FEEDBACKS_QA_PUBLIC_CAPTURE === "1")
     await post(
       "projects.create",
@@ -322,6 +335,16 @@ try {
     assert.equal(result.ready, true, `Inline comment field did not open: ${body}`);
     return (await waitReview((state) => state.points === before + 1)).points;
   };
+  await verifySelectionBlockers({
+    page,
+    fixture,
+    toFixture,
+    exposeReviewRoot,
+    send,
+    id,
+    worker,
+    results,
+  });
   await verifySelectedText({
     page,
     fixture,
@@ -340,6 +363,7 @@ try {
     auth,
     access,
   });
+  await verifyLiveSelection({ page, send, id, worker, exposeReviewRoot, root, results });
   if (!process.env.FEEDBACKS_QA_SELECTED_TEXT_ONLY) {
     const sendFromReview = await verifyReviewInteractions({
       page,

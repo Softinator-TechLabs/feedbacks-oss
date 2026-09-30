@@ -22,7 +22,7 @@ for (let index = 0; index < 3; index++) {
     }
     res.setHeader("Content-Type", "text/html");
     res.end(
-      `<!doctype html><title>Capture origin ${index}</title><h1>Origin ${index}</h1><input aria-label="Navigation input"><a href="${origins[1]}/next">Go to approved site</a><button onclick="console.error('navigation-probe-${index}');fetch('/probe')">Site action</button><script>setTimeout(() => { console.log('page-load-${index}'); fetch('/load-probe'); }, 20);</script>`,
+      `<!doctype html><title>Capture origin ${index}</title><style>h1{user-select:none!important}</style><h1>Origin ${index}</h1><script>document.addEventListener("mousedown",event=>{if(event.target.closest("h1"))event.preventDefault()},true)</script><input aria-label="Navigation input"><a href="${origins[1]}/next">Go to approved site</a><button onclick="console.error('navigation-probe-${index}');fetch('/probe')">Site action</button><script>setTimeout(() => { console.log('page-load-${index}'); fetch('/load-probe'); }, 20);</script>`,
     );
   });
   server.listen(0, "127.0.0.1");
@@ -224,9 +224,19 @@ try {
   await page.goto(origins[1] + "/return");
   await page.getByRole("button", { name: "Stop session", exact: true }).waitFor();
   await page.getByLabel("Navigation input").fill("Session resumed input");
+  await page.goto(origins[0] + "/selection-return");
+  await page.getByRole("button", { name: "Stop session", exact: true }).waitFor();
+  assert.equal(
+    await page.locator("h1").evaluate((el) => getComputedStyle(el).userSelect),
+    "none",
+    "recording preserves copy locks after navigation",
+  );
   await page.getByRole("button", { name: "Stop session", exact: true }).click();
   await recorder.getByRole("region", { name: "Recorded moments" }).waitFor();
   await page.getByRole("button", { name: "Review session", exact: true }).waitFor();
+  await page.locator("h1").dblclick({ position: { x: 20, y: 15 } });
+  assert.match(await page.evaluate(() => String(getSelection())), /Origin/);
+  await page.getByRole("button", { name: "Suggest edit", exact: true }).waitFor();
   await page.getByRole("button", { name: "Review session", exact: true }).click();
   let state = await send({ type: "sessionStatus" });
   assert.equal(state.target.projectId, target.projectId);
