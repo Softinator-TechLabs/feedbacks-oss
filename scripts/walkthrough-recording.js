@@ -251,6 +251,10 @@ export function mountRecording(
   }
   draw();
   return {
+    ready: chair.decode().then(
+      () => true,
+      () => false,
+    ),
     paint(progress, isPlaying = false) {
       if (disposed) return;
       const next = clamp(progress) * durationMs;

@@ -130,12 +130,20 @@
         </div>
         <div class="product-hero-demo">
           <feedbacks-demo step="recording" depth
-            ><img
-              src="/media/story/recording-desktop-0.webp"
-              width="900"
-              height="655"
-              alt="Feedbacks video review with a shared timeline and timestamped activity."
-          /></feedbacks-demo>
+            ><picture>
+              <source
+                media="(max-width: 800px)"
+                srcset="/media/story/loading-mobile.webp"
+                width="708"
+                height="1346"
+              />
+              <img
+                src="/media/story/loading-desktop.webp"
+                width="1254"
+                height="1080"
+                alt="Feedbacks video review with a shared timeline and timestamped activity."
+              /> </picture
+          ></feedbacks-demo>
         </div>
       </section>
       <section class="capture-section wrap" aria-labelledby="capture-title">

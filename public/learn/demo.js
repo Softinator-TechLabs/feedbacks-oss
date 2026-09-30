@@ -983,18 +983,10 @@
         screen.dataset.kind = f.image ? "capture" : "diagram";
         if (f.kind === "recording") {
           screen.dataset.kind = "recording";
-          const poster = document.createElement("img");
-          poster.className = "recording-poster";
-          poster.width = 900;
-          poster.height = 655;
-          poster.src = "/media/story/recording-desktop-0.webp";
-          poster.alt = "Actual Feedbacks recording review with sample events";
-          frameBox.append(poster);
           const generation = this.index;
           import(base + "recording-runtime.js?v=20260930-9")
-            .then(({ mountRecording }) => {
-              if (disposed || this.index !== generation || !poster.isConnected) return;
-              poster.remove();
+            .then(async ({ mountRecording }) => {
+              if (disposed || this.index !== generation) return;
               recordingRuntime = mountRecording(frameBox, {
                 base,
                 onSeek: (ms) => {
@@ -1007,7 +999,14 @@
                 },
                 onPause: () => setPaused(true),
               });
+              const ready = await recordingRuntime.ready;
+              if (!ready || disposed || this.index !== generation) return;
+              // Reveal the preview, inspector and footer together, only after the
+              // real first frame has decoded. No intermediate poster or raw controls.
+              stage.hidden = false;
+              fallback.remove();
               refreshMotion();
+              schedule();
             })
             .catch(() => {
               if (!disposed) {
@@ -1106,7 +1105,12 @@
         last = 0;
         depth?.refresh();
         const running =
-          stylesReady && mounted && visible && !this.paused && !document.hidden;
+          stylesReady &&
+          !stage.hidden &&
+          mounted &&
+          visible &&
+          !this.paused &&
+          !document.hidden;
         this.toggleAttribute("data-motion-running", running);
         if (running) raf = requestAnimationFrame(tick);
         else recordingRuntime?.paint(elapsed / frameDuration, false);
@@ -1139,8 +1143,10 @@
         .then(() => {
           if (disposed) return;
           stylesReady = true;
-          stage.hidden = false;
-          fallback.remove();
+          if (scene.frames[0].kind !== "recording") {
+            stage.hidden = false;
+            fallback.remove();
+          }
           if (visible && !mounted) render();
           schedule();
         })

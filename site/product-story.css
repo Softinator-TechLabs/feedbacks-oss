@@ -350,7 +350,9 @@
   --recording-event-height: 80px;
   --demo-controls-gap: 0;
 }
-feedbacks-demo > img {
+feedbacks-demo > picture,
+feedbacks-demo > img,
+feedbacks-demo > picture > img {
   display: block;
   width: 100%;
   height: auto;

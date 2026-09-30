@@ -12,7 +12,7 @@ Landing links to other pages open a new tab with `noopener noreferrer`, includin
 
 ## Evidence and approach
 
-Delayed browser loading reproduced large shifts when the custom element replaced its static image, then rendered the recording canvas before its shadow styles arrived. Keep the original picture until both player stylesheets are ready, reserve the hero footprint and give the intermediate poster intrinsic dimensions. Retain the existing Google Fonts families with self-hosted WOFF2 subsets and serve a smaller WebP fallback for the capture scene.
+Delayed browser loading reproduced large shifts when the custom element replaced its static image, then rendered the recording canvas before its shadow styles arrived. Keep the original picture until both player stylesheets are ready, reserve the hero footprint and reveal the fully decoded first frame and controls together. Retain the existing Google Fonts families with self-hosted WOFF2 subsets and serve a smaller WebP fallback for the capture scene.
 
 ## Steps and progress
 
@@ -32,8 +32,14 @@ The delayed cold-load regression must keep accumulated layout shifts below 0.1 a
 
 ## Verification receipt
 
-- Delayed-load regression before the fix: CLS 1.3778 / 1.3603 / 1.7699 at desktop/laptop/mobile. After: 0.0163 / 0.0122 / 0.0137. The regression also verifies tab selection while playing, stable following-section position and readable fallback when CSS fails.
+- Delayed-load regression before the fix: CLS 1.3778 / 1.3603 / 1.7699 at desktop/laptop/mobile. After the complete-player loading refinement: 0.0000 / 0.0118 / 0.0000. The regression also verifies tab selection while playing, stable following-section position and readable fallback when CSS fails.
 - Controlled 150 ms latency, 200 KB/s, 4× CPU-throttled loading: font transfers fell from about 539 KB to 77 KB; the current capture fallback is about 35 KB rather than the original 321 KB PNG. These measurements are local and are not production PageSpeed scores.
 - Repository check chain passed with two test workers: 493 tests passed, 34 opt-in checks skipped, type/format/harness checks, all builds, sandbox smoke and release checks. Focused native-inspector browser tests passed 13/13.
 - All ten shared walkthrough scenes and the actual recording runtime passed; public browser QA passed 19 routes on desktop/mobile, keyboard, dark and no-JavaScript behavior. Desktop/mobile screenshots retained the existing depth/reflective presentation. A real Docs click opened an isolated new tab while retaining the landing page.
 - No deployment or Store publication performed. Required CI, including container and native PostgreSQL checks, remains the integration gate. Production mobile LCP and CDN cache behavior require a new public audit after deployment; local Docker was unavailable.
+
+## Integration follow-up
+
+The first Linux CI run exposed a remaining tab-wrap jump: selected labels became bold and changed the row count at some widths. The demo now retains constant label weight, with selection shown by color/underline. A 280–640px width sweep with alternate font metrics reproduces and guards the failure.
+
+The loading experience now keeps a responsive still of the current first frame, rather than the previous full-editor screenshot, until the whole recording player is ready. Styles, decoded artwork, inspector and footer become visible together; image-delivery failure retains the still. Existing motion resumes from the beginning. User-visible smoothness takes priority over a synthetic score.

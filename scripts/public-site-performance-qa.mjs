@@ -124,10 +124,50 @@ try {
     }
     await page.close();
   }
+  const loadingPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  let releaseImage;
+  const imageGate = new Promise((resolve) => {
+    releaseImage = resolve;
+  });
+  await loadingPage.route("**/learn/studio-chair.webp", async (route) => {
+    await imageGate;
+    await route.continue();
+  });
+  try {
+    await loadingPage.goto(`http://127.0.0.1:${server.address().port}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await loadingPage
+      .locator(".product-hero-demo .recording-demo")
+      .waitFor({ state: "attached" });
+    assert.ok(
+      await loadingPage
+        .locator(".product-hero-demo feedbacks-demo > picture img")
+        .isVisible(),
+      "keep the stable preview until the complete player is ready",
+    );
+    assert.equal(
+      await loadingPage.locator(".product-hero-demo .depth-stage").isVisible(),
+      false,
+      "never show an incomplete recording canvas",
+    );
+  } finally {
+    releaseImage();
+  }
+  await loadingPage.locator(".product-hero-demo canvas").waitFor({ state: "visible" });
+  assert.equal(
+    await loadingPage
+      .locator(".product-hero-demo feedbacks-demo > picture img")
+      .isVisible(),
+    false,
+  );
+  await loadingPage.close();
   const fallbackPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await fallbackPage.route("**/learn/*.css*", (route) => route.abort());
   await fallbackPage.goto(`http://127.0.0.1:${server.address().port}`);
-  const fallback = fallbackPage.locator(".product-hero-demo feedbacks-demo > img");
+  const fallback = fallbackPage.locator(
+    ".product-hero-demo feedbacks-demo > picture img",
+  );
   assert.ok(
     await fallback.isVisible(),
     "failed styles retain the readable static picture",
