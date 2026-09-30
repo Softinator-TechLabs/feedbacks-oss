@@ -394,5 +394,9 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       );
       await tx.query("INSERT INTO migrations(version) VALUES(26)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=27"))) {
+      await tx.query("ALTER TABLE github_issue_requests ADD COLUMN github_app_id text");
+      await tx.query("INSERT INTO migrations(version) VALUES(27)");
+    }
   });
 }

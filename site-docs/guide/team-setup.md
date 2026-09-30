@@ -23,5 +23,5 @@ For richer profiles and responsibilities, ask your authorized agent to update th
 ::: details Optional: GitHub Issue tracking
 Capture and MCP work without GitHub.
 
-DevOps configures the GitHub App; a GitHub account owner installs it for the selected repositories. In the project’s **GitHub** tab, save the repository and choose **Connect project**. [Full GitHub guide](/guide/github).
+DevOps configures the GitHub App (or separate private Apps for different GitHub accounts); the Feedbacks server owner selects the App in the project’s **GitHub** tab; a GitHub account owner installs it for the selected repositories. In the project’s **GitHub** tab, save the repository and choose **Connect project**. [Full GitHub guide](/guide/github).
 :::

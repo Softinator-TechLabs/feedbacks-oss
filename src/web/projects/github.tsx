@@ -18,6 +18,11 @@ export function ProjectGithub({
 }) {
   const action = useAction();
   const connection = useLoad<{
+    appId: string | null;
+    appName: string | null;
+    approvedAccounts: string[];
+    canSelectApp: boolean;
+    apps: { id: string; name: string; slug: string; owners: string[] }[];
     configured: boolean;
     connected: boolean;
     statusSyncEnabled: boolean;
@@ -56,6 +61,92 @@ export function ProjectGithub({
             </p>
           </div>
         </div>
+        {connection.data && (
+          <div className="github-app-selection">
+            {connection.data.canSelectApp ? (
+              <form
+                className="github-repository-form"
+                key={connection.data.appId ?? "none"}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const appId =
+                    String(new FormData(event.currentTarget).get("appId") ?? "") || null;
+                  void action.run(async () => {
+                    onSaved(
+                      await api<Project>("github.appSelect", {
+                        projectId: project.id,
+                        revision: project.revision,
+                        appId,
+                      }),
+                    );
+                  }, "GitHub App saved. Connect the selected repositories to continue.");
+                }}
+              >
+                <Field label="GitHub App">
+                  <select
+                    name="appId"
+                    aria-describedby="github-app-hint"
+                    defaultValue={connection.data.appId ?? ""}
+                    disabled={action.busy}
+                  >
+                    <option value="">No App selected</option>
+                    {connection.data.appId &&
+                      !connection.data.apps.some(
+                        (app) => app.id === connection.data!.appId,
+                      ) && (
+                        <option value={connection.data.appId}>
+                          Unavailable App (ID {connection.data.appId})
+                        </option>
+                      )}
+                    {connection.data.apps.map((app) => (
+                      <option value={app.id} key={app.id}>
+                        {app.name}
+                        {app.owners.length ? ` — ${app.owners.join(", ")}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <button type="submit" disabled={action.busy}>
+                  Save App
+                </button>
+                <small id="github-app-hint" className="github-repository-hint">
+                  Choose the App configured for this project's GitHub account.
+                </small>
+              </form>
+            ) : (
+              <p>
+                <strong>GitHub App:</strong>{" "}
+                {connection.data.appName ??
+                  (connection.data.appId
+                    ? "Configured App unavailable"
+                    : "No App selected")}
+                . Ask the server owner to change the App.
+              </p>
+            )}
+            {connection.data.approvedAccounts.length > 0 && (
+              <p className="muted">
+                Approved GitHub accounts: {connection.data.approvedAccounts.join(", ")}.
+              </p>
+            )}
+            {connection.data.canSelectApp && project.githubConnected && (
+              <p className="muted">
+                Changing App disconnects this project's repositories and turns off status
+                sync. Existing Issue links stay available through their original App.
+              </p>
+            )}
+            <details>
+              <summary>Use a private App from another GitHub account</summary>
+              <p>
+                Each private App belongs to one GitHub account or organization. Ask DevOps
+                to configure that account's App on this server, then select it here. Sign
+                in to GitHub with an account allowed to install that App.
+              </p>
+              <a href="https://feedbacks.softinator.ai/docs/guide/github">
+                GitHub App setup guide
+              </a>
+            </details>
+          </div>
+        )}
         <ol
           className="github-steps"
           aria-label="GitHub connection status"
@@ -185,12 +276,10 @@ export function ProjectGithub({
               }, "Repository connected.");
             }}
           >
-            <Field
-              label="Add another repository"
-              hint="The App must be installed on this exact repository."
-            >
+            <Field label="Add another repository">
               <input
                 name="additionalRepositoryUrl"
+                aria-describedby="github-add-repository-hint"
                 type="url"
                 placeholder="https://github.com/owner/repository"
                 required
@@ -199,6 +288,9 @@ export function ProjectGithub({
             <button type="submit" disabled={action.busy}>
               Add repository
             </button>
+            <small id="github-add-repository-hint" className="github-repository-hint">
+              The App must be installed on this exact repository.
+            </small>
           </form>
         )}
         <div className="github-connection-actions">

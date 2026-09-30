@@ -1,6 +1,11 @@
 import { createPrivateKey, sign } from "node:crypto";
 import type { Config } from "./config.js";
 import { fail } from "./errors.js";
+import {
+  assertGithubOwner,
+  requireGithubApp,
+  type GithubAppConfig,
+} from "./github-app-config.js";
 
 export type GithubRepo = { owner: string; repo: string; fullName: string };
 
@@ -42,7 +47,12 @@ export class GithubApp {
   constructor(
     private config: Config,
     private fetcher: typeof fetch = fetch,
+    private selectedApp?: GithubAppConfig,
   ) {}
+
+  forApp(appId: string | null | undefined) {
+    return new GithubApp(this.config, this.fetcher, requireGithubApp(this.config, appId));
+  }
 
   private async request(path: string, bearer: string, method = "GET", body?: unknown) {
     let response: Response;
@@ -84,15 +94,23 @@ export class GithubApp {
   }
 
   async installationToken(repo: GithubRepo, permission: "read" | "write") {
+    const app =
+      this.selectedApp ?? requireGithubApp(this.config, this.config.githubAppId);
+    assertGithubOwner(app, repo.owner);
+    const credentials = {
+      ...this.config,
+      githubAppId: app.id,
+      githubAppPrivateKey: app.privateKey,
+    };
     const installation = await this.request(
       `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/installation`,
-      appJwt(this.config),
+      appJwt(credentials),
     );
     if (!Number.isSafeInteger(installation.data.id) || installation.data.id <= 0)
       fail("GITHUB_UNAVAILABLE", "GitHub returned an invalid installation", 503);
     const token = await this.request(
       `/app/installations/${installation.data.id}/access_tokens`,
-      appJwt(this.config),
+      appJwt(credentials),
       "POST",
       { repositories: [repo.repo], permissions: { issues: permission } },
     );

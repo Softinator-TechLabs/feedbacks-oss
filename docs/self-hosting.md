@@ -73,3 +73,68 @@ Keep encrypted off-host PostgreSQL backups and an independent object-storage rec
 Build `npm run build:site` and host `dist/site` as static files, or use `docker compose -f compose.site.yaml up -d --build`. The site container listens on loopback port 8080 for a host reverse proxy. A container-based ingress can connect to its internal port instead. Terminate HTTPS at the ingress and configure HSTS there. The website needs no application database, storage keys or account session.
 
 For independent forks, replace the official canonical URL, sitemap, repository and contact links under `site/` with your own before publishing.
+
+## Multiple GitHub Apps
+
+The optional GitHub integration can use a different App for each project on one
+Feedbacks server. Additional Apps are configured by DevOps in the secret
+`GITHUB_APPS_JSON`; private keys remain deployment secrets, not browser fields
+or database values. No dependency or external credential broker is required.
+
+Set a JSON array of up to 20 additional Apps. These illustrative values must be
+replaced with your own App IDs, slugs, and base64-encoded RSA PEM keys:
+
+```json
+[
+  {
+    "id": "123456",
+    "name": "Team A private App",
+    "slug": "team-a-feedbacks",
+    "privateKeyBase64": "BASE64_ENCODED_RSA_PEM",
+    "owners": ["team-a"]
+  },
+  {
+    "id": "234567",
+    "name": "Team B private App",
+    "slug": "team-b-feedbacks",
+    "privateKeyBase64": "BASE64_ENCODED_RSA_PEM",
+    "owners": ["team-b"]
+  }
+]
+```
+
+`owners` means approved GitHub organization/personal account names, **not**
+Feedbacks users or every login that manages that organization. Every additional
+App requires at least one approved account. The server denies repository access
+outside that list before sending a request to GitHub. App IDs and slugs must be
+unique, including the legacy default. The list is limited to 20 Apps, each with
+up to 20 accounts. A project chooses one App and can connect up to 20 repositories
+accessible to that App. Install each App with Metadata read and Issues read/write
+and choose only the required repositories. Webhooks and OAuth are not required.
+
+Use your deployment platform's secret editor. When using a Compose `.env` file,
+put compact JSON on one line in a single-quoted value. Protect that file from
+source control and shell history. Base64 is encoding, not encryption. Restart
+the server after changing deployment secrets. Invalid configuration fails
+startup with a generic error that does not print the secret.
+
+Keep `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, and `GITHUB_APP_PRIVATE_KEY_BASE64`
+unchanged to preserve the existing default App. Projects without an explicit
+assignment keep that default. New installations using only `GITHUB_APPS_JSON`
+require the server owner to select an App in each project's GitHub tab. Only a
+signed-in human server owner can select/clear it; maintainers and agent/extension
+keys cannot assign Apps. **No App selected** explicitly disables that project's
+integration, even if a legacy default exists.
+
+Changing App pauses connections/sync and requires repository reconnection.
+Pending writes or an active sync lease block switching until settled. Historical
+Issue reservations and verified links retain the original App ID. Keep legacy
+credentials available for older links without an App ID. Missing credentials
+fail closed; restore that same App ID to recover. Rotate a key under the same App
+ID to preserve routing. Do not reuse a removed App ID for a different identity.
+
+Migration 27 only adds a nullable App-ID column to existing Issue reservations;
+it does not rewrite applied migrations or existing Issue URLs. Back up the
+database and deployment secrets together. Older code does not understand
+project App selections: disable GitHub writes/sync before rolling back and
+restore a compatible release before enabling them again.

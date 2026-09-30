@@ -2,6 +2,8 @@ import type { Actor } from "../shared/contracts.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
 import { GithubApp, githubRepo } from "./github-app.js";
+import { accountLock } from "./auth.js";
+import { requireSyncAppId, projectGithubAppId } from "./github-app-config.js";
 import { event } from "./access.js";
 import { saveThread } from "./feedback.js";
 import { connectedGithubRepos, hasConnectedGithubRepo } from "./github-repositories.js";
@@ -24,7 +26,6 @@ export async function pollGithubStatusSync(
   config: Config,
   client: GithubApp = new GithubApp(config),
 ) {
-  if (!config.githubAppId || !config.githubAppPrivateKey || !config.githubAppSlug) return;
   const rows = await db.query(`SELECT t.id FROM threads t
     JOIN projects p ON p.id=t.project_id
     LEFT JOIN github_status_sync s ON s.thread_id=t.id
@@ -42,6 +43,7 @@ export async function pollGithubStatusSync(
     ORDER BY s.next_at NULLS FIRST,t.id LIMIT 10`);
   for (const candidate of rows) {
     const claimed = await db.transaction(async (tx) => {
+      await accountLock(tx);
       const row = await tx.one(
         "SELECT t.*,p.data AS project FROM threads t JOIN projects p ON p.id=t.project_id WHERE t.id=$1 FOR UPDATE OF t",
         [candidate.id],
@@ -74,7 +76,9 @@ export async function pollGithubStatusSync(
     if (!claimed) continue;
     const { repo, link } = claimed;
     try {
-      const issue = await client.readIssue(repo, link.number);
+      const appId = requireSyncAppId(config, claimed.row.project, link);
+      const selectedClient = client.forApp(appId);
+      const issue = await selectedClient.readIssue(repo, link.number);
       if (issue.url !== link.url) throw new Error("GITHUB_ISSUE_INVALID");
       const fresh = await db.one(
         `SELECT t.*,p.data AS project,s.feedbacks_state,s.github_state,s.status AS sync_status,s.issue_url AS sync_issue_url,
@@ -89,7 +93,8 @@ export async function pollGithubStatusSync(
         fresh.sync_issue_url !== link.url ||
         fresh.claim_token !== claimed.sync.claim_token ||
         (fresh.sync_status !== "ready" && fresh.sync_status !== "error") ||
-        !hasConnectedGithubRepo(fresh.project, repo)
+        !hasConnectedGithubRepo(fresh.project, repo) ||
+        projectGithubAppId(config, fresh.project) !== appId
       )
         continue;
       const row = fresh;
@@ -134,6 +139,7 @@ export async function pollGithubStatusSync(
       }
       if (local !== localBaseline && issue.state === baseline) {
         const reserved = await db.transaction(async (tx) => {
+          await accountLock(tx);
           const result = await tx.one(
             `UPDATE github_status_sync SET status='uncertain',pending_target=$2,
           error_code=NULL,lease_until=clock_timestamp()+interval '2 minutes',updated_at=now()
@@ -151,7 +157,7 @@ export async function pollGithubStatusSync(
               row.id,
               local,
               row.revision,
-              row.project.repositoryUrl,
+              `https://github.com/${repo.fullName}`,
               issue.url,
               claimed.sync.claim_token,
             ],
@@ -172,7 +178,7 @@ export async function pollGithubStatusSync(
         });
         if (!reserved) continue;
         try {
-          await client.setIssueState(repo, link.number, local);
+          await selectedClient.setIssueState(repo, link.number, local);
         } catch {
           // A PATCH can succeed despite a timeout. A maintainer reconciles it.
           await db.query(
@@ -280,6 +286,7 @@ async function applyOutcome(
   claimToken: string,
 ) {
   await db.transaction(async (tx) => {
+    await accountLock(tx);
     const row = await tx.one(
       "SELECT t.*,p.data AS project FROM threads t JOIN projects p ON p.id=t.project_id WHERE t.id=$1 FOR UPDATE OF t",
       [threadId],

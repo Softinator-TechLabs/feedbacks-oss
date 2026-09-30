@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Multiple GitHub Apps per server](multiple-github-apps.md)
+
 - [Reliable agent task intake and completion](agent-task-flow.md)
 
 - [Discussion comment edit and delete](discussion-comment-management.md)
