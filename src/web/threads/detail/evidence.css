@@ -291,7 +291,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: 8px;
   padding-right: 8px;
 }
 .review-image-caption > a {
@@ -300,10 +300,20 @@
 .review-image-caption > button:last-child {
   margin-left: auto;
 }
-.review-pin-toggle {
-  min-height: 30px;
-  padding: 3px 9px;
-  font-size: 0.82rem;
+.review-image-caption button,
+.evidence-image-dialog button,
+.evidence-image-controls select {
+  min-height: 44px;
+  font-size: 1rem;
+  line-height: 1.4;
+  border-radius: 7px;
+}
+.review-image-caption button,
+.evidence-image-dialog button {
+  padding: 8px 14px;
+}
+.evidence-image-controls select {
+  padding: 8px 38px 8px 12px;
 }
 .review-legacy-pins {
   font-size: 0.78rem;
@@ -584,7 +594,7 @@
 .review-layer-controls {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 .review-image-overlay {
   position: absolute;
@@ -667,7 +677,12 @@ button.review-image-open:enabled:hover {
 }
 .evidence-image-controls {
   justify-content: flex-start;
-  font-size: 0.86rem;
+  font-size: 1rem;
+}
+.evidence-image-controls > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 .evidence-image-controls label {
   display: inline-flex;
