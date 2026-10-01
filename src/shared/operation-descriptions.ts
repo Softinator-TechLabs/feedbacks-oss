@@ -106,6 +106,10 @@ export const operationDescriptions: Record<string, string> = {
     "List full feedback records with pagination. Prefer feedbacks_queue for bounded summaries. Filter assignedTo for active delegated open work (whole thread or still-open existing selected points), authorId, createdAfter (inclusive), createdBefore (exclusive), activityAfter, workState (an exact state or closed for resolved/declined), topPriority, page URL or search (body/replies/points). Sort workPlan with explicit local planningDate puts due/today/unscheduled first, future next, Later last, then human priority and stable date order (omitted planningDate uses UTC today). Sort priority needs policy access; topPriority sorts explicit flags without policy weights. Today requires timezone-derived midnight bounds; includeSummary counts threads/points independently of pagination.",
   "threads.neighbors":
     "Find previous and next thread in the same filtered and sorted inbox, across pagination. Returns null neighbors if the thread is outside current filters. This is a live view, not an immutable queue.",
+  "threads.status":
+    "Update authorized work state using the current revision. Resolve only verified agreed work; use ready_for_review when required checks remain. Keep note short: testing readiness (source-only/deployment pending or deployed/testing ready when verified), exact verification target, remaining gates and one retest step when ready. A commit/PR or state alone does not prove live readiness. Use note rather than routine discussion replies.",
+  "threads.reply":
+    "Post a discussion reply for an explicitly requested update or an important blocker/decision needing human attention within the authorized task; not routine progress, test or PR/merge announcements. A reply does not update work status.",
   "threads.editReply":
     "Edit only your own human or extension-authored discussion reply with a signed-in human session and current project write access. Requires current thread revision and stable idempotencyKey. Keeps original creation time and records editedAt; cannot change author or intent.",
   "threads.deleteReply":

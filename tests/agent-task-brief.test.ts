@@ -19,6 +19,40 @@ const base = () => ({
   externalIssues: [],
   fixEvidence: [],
 });
+
+test("start retains the current testing-readiness note without a discussion read", async () => {
+  const f: any = base();
+  f.work = {
+    state: "ready_for_review",
+    note: "Source-only; testing not ready. Local synthetic regression passed; deployment pending.",
+    history: [],
+  };
+  const calls: Array<{ op: string; input: any }> = [];
+  const first = await runAgentTool(executor(f, calls), "start", {
+    threadId: id,
+    snapshotRevision: 2,
+  });
+  assert.equal(first.task.work.note, f.work.note);
+  assert.equal(first.task.work.noteTrust, "untrusted_work_note");
+  assert.equal(first.snapshot.matches, false);
+  assert.ok(!calls.some((c) => c.op === "threads.reply"));
+  f.revision = 4;
+  f.work.note =
+    "Deployed; testing ready on the isolated form copy. Retest: submit, reload. Storage delivery remains unverified.";
+  const fresh = await runAgentTool(executor(f, []), "start", {
+    threadId: id,
+    snapshotRevision: 3,
+  });
+  assert.equal(fresh.task.work.note, f.work.note);
+  assert.equal(fresh.task.revision, 4);
+
+  f.work.note = "x".repeat(12000);
+  const large = await runAgentTool(executor(f, []), "start", { threadId: id });
+  assert.ok(large.task.work.note.length <= 600);
+  assert.equal(large.task.work.noteTruncated, true);
+  assert.ok(large.task.incomplete.includes("workNote"));
+  assert.equal(large.next.input.section, "workNote");
+});
 function executor(thread: any, calls: Array<{ op: string; input: any }>) {
   return async (op: string, input: any) => {
     calls.push({ op, input });

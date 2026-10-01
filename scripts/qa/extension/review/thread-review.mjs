@@ -133,7 +133,7 @@ export async function verifyThreadReview({
     .getByText("1 of 2 points resolved · 1 open", { exact: true })
     .waitFor();
   const remainingPoint = progressRow.locator(".thread-point-status-list li").filter({
-    has: progressRow.getByRole("link", { name: /^#2 / }),
+    hasText: "#2",
   });
   await remainingPoint.getByText("Open", { exact: true }).waitFor();
   await progressRow.screenshot({

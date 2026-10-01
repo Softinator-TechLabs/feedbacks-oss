@@ -157,10 +157,9 @@ try {
   await capture("thread-ready");
   await page.getByRole("button", { name: "Copy task for agent", exact: true }).click();
   await page
-    .getByText(
-      "Task copied. Paste it to authorize work and progress replies in this thread.",
-      { exact: true },
-    )
+    .getByText("Task copied. Paste it to review and discuss next steps.", {
+      exact: true,
+    })
     .waitFor();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   if (
