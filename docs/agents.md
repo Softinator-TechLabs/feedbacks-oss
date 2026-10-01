@@ -8,7 +8,16 @@ Your team needs a server and a prepared project first. Sign in as yourself, open
 
 ## Codex plugin
 
-From the repository root, with Node.js 22.12+ or 24:
+Install from the [public Feedbacks marketplace](https://github.com/Softinator-TechLabs/feedbacks-plugins), with Node.js 22.12+ or 24 and Git available:
+
+```sh
+codex plugin marketplace add Softinator-TechLabs/feedbacks-plugins
+codex plugin add feedbacks@feedbacks
+```
+
+Codex CLI 0.159.3 was verified installing version 0.2.1 from that repository, discovering the MCP server in a fresh native session and reading an allowed synthetic thread and its image. A valid write with the read key was denied for its missing operation scope. This checks the client/tool connection; it does not certify every client version or a model's implementation work.
+
+For a local source build, from the repository root:
 
 ```sh
 npm ci
@@ -17,13 +26,22 @@ codex plugin marketplace add ./dist/codex-plugin
 codex plugin add feedbacks@feedbacks-local
 ```
 
-The build produces `dist/codex-plugin/feedbacks` and `dist/feedbacks-codex-plugin.zip`. It bundles the existing stdio adapter, its dependencies and license notices. No runtime npm installation or lifecycle hooks are needed. Keep the local marketplace folder available while the client uses it. Install commands depend on the Codex version; check `codex plugin --help` if they differ. The plugin is prepared for local installation; public directory submission and approval are separate.
+The build produces `dist/codex-plugin/feedbacks` and `dist/feedbacks-codex-plugin.zip`. It bundles the existing stdio adapter, its dependencies and license notices. No runtime npm installation or lifecycle hooks are needed. Keep the local marketplace folder available while the client uses it. Install commands depend on the Codex version; check `codex plugin --help` if they differ. Public directory submission and approval are separate from the publisher's marketplace.
 
 Configure your chosen server and a scoped agent key from the application’s agent-key settings. Provide `FEEDBACKS_URL` and `FEEDBACKS_TOKEN` to the plugin process, or use an owner-only `~/.config/feedbacks/config.json` file with `url` and `token` fields. The CLI rejects shared/unsafe configuration file permissions; use mode `0600`. Never put a key in the plugin manifest, a prompt, a public repository or a screenshot. Environment variables must reach the actual Codex process; a terminal export does not automatically configure a running desktop app.
 
 Begin with read access to the required projects. Add reply, attachment or status scopes only for actions you want the assistant to perform. Existing keys do not automatically gain new operation scopes. The plugin's review skill does not grant access itself.
 
 ## Claude Code plugin
+
+Install the publisher's native marketplace:
+
+```sh
+claude plugin marketplace add Softinator-TechLabs/feedbacks-plugins
+claude plugin install feedbacks@feedbacks
+```
+
+Claude Code 2.1.286 passed strict manifest/catalog validation and installed/discovered version 0.2.1 from the public repository in an isolated client configuration. Verify the actual allowed thread/image read in your own fresh session after configuring your key.
 
 From a source checkout with Node.js 22.12+ or 24, build the same adapter and add its native Claude marketplace:
 
