@@ -10,7 +10,149 @@ import {
   outputSchemas,
   operationRegistry,
 } from "../src/shared/contracts.js";
-import { readFilters, filterQuery, readOffset } from "../src/web/review-filters.js";
+import {
+  readFilters,
+  filterQuery,
+  readOffset,
+  matchesWorkStatus,
+} from "../src/web/review-filters.js";
+
+test("closed filtering finds terminal work across lists, navigation, summaries and saved views", async () => {
+  const pg = new PGlite(),
+    db = new Database(pg as any);
+  try {
+    await migrate(db);
+    const ops = new Operations(db, {} as any, {} as any);
+    const owner = await ops.auth.bootstrap(
+      "owner@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const project = await ops.executeOperation(owner, "projects.create", {
+      name: "Status recovery",
+      origins: ["https://example.test"],
+    });
+    const threads = new Map<string, any>();
+    for (const state of [
+      "open",
+      "in_progress",
+      "ready_for_review",
+      "resolved",
+      "declined",
+    ]) {
+      const created = await ops.executeOperation(owner, "threads.create", {
+        projectId: project.id,
+        body: `Status sample ${state}`,
+        tags: ["status"],
+        context: { url: "https://example.test/", viewport: { width: 1440, height: 900 } },
+        idempotencyKey: `status-sample-${state}`,
+      });
+      threads.set(
+        state,
+        state === "open"
+          ? created
+          : await ops.executeOperation(owner, "threads.status", {
+              threadId: created.id,
+              revision: created.revision,
+              state,
+            }),
+      );
+    }
+    const filters = {
+      projectId: project.id,
+      workState: "closed",
+      search: "Status sample",
+      tag: "status",
+      includeSummary: true,
+    };
+    for (const showResolved of [false, true]) {
+      const list = await ops.executeOperation(owner, "threads.list", {
+        ...filters,
+        showResolved,
+      });
+      assert.equal(list.total, 2);
+      assert.deepEqual(
+        new Set(list.items.map((item: any) => item.work.state)),
+        new Set(["resolved", "declined"]),
+      );
+      assert.equal(list.summary.threads.closed, 2);
+      assert.equal(list.summary.threads.open, 0);
+      const neighbors = await ops.executeOperation(owner, "threads.neighbors", {
+        ...filters,
+        showResolved,
+        threadId: list.items[0].id,
+      });
+      assert.equal(neighbors.next, list.items[1].id);
+    }
+    for (const state of threads.keys()) {
+      const list = await ops.executeOperation(owner, "threads.list", {
+        projectId: project.id,
+        workState: state,
+      });
+      assert.equal(list.total, 1);
+      assert.equal(list.items[0].id, threads.get(state).id);
+    }
+    const invite = await ops.executeOperation(owner, "members.invite", {
+      email: "reviewer@example.test",
+      projectId: project.id,
+      role: "reviewer",
+    });
+    await ops.auth.acceptInvite(invite.token, "Reviewer", "Correct-Horse-Battery-123");
+    const reviewer = (
+      await ops.auth.login("reviewer@example.test", "Correct-Horse-Battery-123")
+    ).actor;
+    assert.equal(
+      (await ops.executeOperation(reviewer, "threads.list", filters)).total,
+      2,
+    );
+    for (const state of ["resolved", "declined"])
+      await assert.rejects(
+        ops.executeOperation(reviewer, "threads.status", {
+          threadId: threads.get("open").id,
+          revision: threads.get("open").revision,
+          state,
+        }),
+        { code: "FORBIDDEN" },
+      );
+    const saved = await ops.executeOperation(owner, "reviewViews.save", {
+      projectId: project.id,
+      name: "Closed feedback",
+      revision: 0,
+      filters: { workState: "closed" },
+    });
+    assert.equal(saved.filters.workState, "closed");
+    assert.equal(readFilters(filterQuery(saved.filters)).workState, "closed");
+    await assert.rejects(
+      ops.executeOperation(owner, "threads.status", {
+        threadId: threads.get("open").id,
+        revision: threads.get("open").revision,
+        state: "closed",
+      }),
+      { code: "VALIDATION" },
+    );
+  } finally {
+    await pg.close();
+  }
+});
+
+test("list recovery respects exact status filters as well as active and closed views", () => {
+  for (const state of [
+    "open",
+    "in_progress",
+    "ready_for_review",
+    "resolved",
+    "declined",
+  ]) {
+    const closed = ["resolved", "declined"].includes(state);
+    assert.equal(matchesWorkStatus(state, readFilters("")), !closed);
+    assert.equal(matchesWorkStatus(state, readFilters("showResolved=true")), true);
+    assert.equal(matchesWorkStatus(state, readFilters("workState=closed")), closed);
+    assert.equal(
+      matchesWorkStatus(state, readFilters("workState=open&showResolved=true")),
+      state === "open",
+    );
+  }
+});
 
 test("review navigation crosses pages with identical filters; tags and personal views enforce permissions and revisions", async () => {
   const pg = new PGlite(),

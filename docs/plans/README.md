@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Status filters and recovery](status-filter-recovery.md)
+
 - [Verified client installation and onboarding](verified-client-onboarding.md)
 
 - [Stable, lighter landing-page loading](landing-load-performance.md)

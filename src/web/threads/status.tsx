@@ -64,23 +64,20 @@ export function ThreadStatus({
               void save({ ...current, state: e.target.value as StatusDraft["state"] })
             }
           >
-            {[
-              "open",
-              "in_progress",
-              "ready_for_review",
-              ...(canResolve ? ["resolved", "declined"] : []),
-              ...(!canResolve && ["resolved", "declined"].includes(thread.work.state)
-                ? [thread.work.state]
-                : []),
-            ].map((state) => (
-              <option
-                value={state}
-                key={state}
-                disabled={!canResolve && ["resolved", "declined"].includes(state)}
-              >
-                {labels[state]}
-              </option>
-            ))}
+            {["open", "in_progress", "ready_for_review", "resolved", "declined"].map(
+              (state) => (
+                <option
+                  value={state}
+                  key={state}
+                  disabled={!canResolve && ["resolved", "declined"].includes(state)}
+                >
+                  {labels[state]}
+                  {!canResolve && ["resolved", "declined"].includes(state)
+                    ? " (permission required)"
+                    : ""}
+                </option>
+              ),
+            )}
           </select>
         </Field>
         {canResolve && thread.work.state !== "resolved" && (
