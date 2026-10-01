@@ -16,9 +16,17 @@ Use the [illustrated storage guide](/guide/storage) to prepare a server, domain,
 
 ## Bring the server online
 
+The [public Docker Hub image](https://hub.docker.com/r/softinator/feedbacks) supports `linux/amd64` and `linux/arm64`. Download `compose.registry.yaml` from the [0.2.1 release source](https://github.com/Softinator-TechLabs/feedbacks-oss/releases/tag/v0.2.1), then set this reviewed image in your private deployment environment:
+
+```sh
+FEEDBACKS_IMAGE=softinator/feedbacks@sha256:f7d759e671b48906a4aa5deff92b4644a73a6a4239f32b4cebba5cfcef8cc97b
+```
+
+After configuring the prerequisites below, run `docker compose -f compose.registry.yaml up -d --wait`. In Dokploy, choose **Docker Compose**, import that file, set its environment values and route service `app`, port `3000`, through your HTTPS domain. The supplied file keeps PostgreSQL private and persistent. Source builds remain available with `compose.yaml`.
+
 1. Provision **PostgreSQL**, **private S3-compatible storage** and an HTTPS reverse proxy.
 2. Set private deployment secrets using the [production configuration](/reference/manual/self-hosting#production-configuration): origin, database, stable organization UUID, storage credentials and the actual proxy path.
-3. Run `docker compose up -d --build --wait`. Route the internal app port through HTTPS; production Compose does not publish the app or database directly.
+3. Start the registry Compose above, or run `docker compose up -d --build --wait` for a source build. Route the internal app port through HTTPS; production Compose does not publish the app or database directly.
 4. [Bootstrap the first owner](/reference/manual/self-hosting#create-the-first-owner), supplying the password on standard input.
 
 Keep credentials out of Git. Scope bucket access to this installation's object prefix. The public docs website is a separate static build and needs no application database or storage credentials.

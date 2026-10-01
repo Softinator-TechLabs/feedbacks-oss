@@ -43,6 +43,8 @@ For live client edits, run `npm run dev:web` in another terminal and set `APP_OR
 
 Production requires HTTPS, PostgreSQL and private S3-compatible storage. Follow the [deployment guide](docs/self-hosting.md) for configuration, first-owner setup and recovery.
 
+For a registry deployment, use the [public Docker Hub image](https://hub.docker.com/r/softinator/feedbacks) and [registry Compose](compose.registry.yaml). The [illustrated storage guide](site-docs/guide/storage.md) maps the five prerequisites to their environment fields. Developers can install the bundled [Claude Code and Codex plugins](https://github.com/Softinator-TechLabs/feedbacks-plugins) in two commands, then connect their own scoped key.
+
 ## Browser extension
 
 Build with `npm run build:extension`. Load the `dist/extension/unpacked/` directory from Chrome's **Load unpacked**, or use the ZIP in `dist/extension/`. Enter your own Feedbacks server address and approve pairing in the web application. Website-wide permission is a separate optional action. Existing saved server connections remain available.

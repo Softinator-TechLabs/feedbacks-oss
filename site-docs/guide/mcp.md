@@ -34,4 +34,22 @@ Open a thread → **Copy task for agent** → paste with your request. The agent
 
 ## Native plugins
 
-Use the [native Codex and Claude Code installation instructions](/reference/manual/agents#codex-plugin) to build and install the bundled adapter with both reusable skills. Configure a personal scoped key, restart the client and verify the plugin inventory. Directory listings and marketplace installation are separate distribution paths.
+Install Node.js 22.12+ or 24 and Git on the client machine, then choose your client. These commands use the [public Feedbacks marketplace](https://github.com/Softinator-TechLabs/feedbacks-plugins); no server checkout or `npm ci` is needed.
+
+**Claude Code**
+
+```sh
+claude plugin marketplace add Softinator-TechLabs/feedbacks-plugins
+claude plugin install feedbacks@feedbacks
+```
+
+**Codex**
+
+```sh
+codex plugin marketplace add Softinator-TechLabs/feedbacks-plugins
+codex plugin add feedbacks@feedbacks
+```
+
+Continue with your personal URL/key configuration above, restart the client and verify the plugin inventory. Both packages include `review-feedback`, `manage-feedbacks-context` and the bundled MCP adapter. The install commands were verified with Claude Code 2.1.286 and Codex CLI 0.159.3. The publisher's own marketplace is separate from reviewed official directories.
+
+For source builds, standalone ZIPs and private configuration, use the [native client reference](/reference/manual/agents#codex-plugin).
