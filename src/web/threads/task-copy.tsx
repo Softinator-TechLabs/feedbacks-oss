@@ -35,7 +35,7 @@ export function ThreadTaskCopy({
           showToast(
             result.truncated
               ? "Task preview copied. Your agent can read more when needed."
-              : "Task copied. Paste it to authorize work and progress replies in this thread.",
+              : "Task copied. Paste it to authorize work and status updates.",
           );
         } catch {
           setManual(result.text);
@@ -53,9 +53,7 @@ export function ThreadTaskCopy({
         className="thread-icon-button"
         aria-label={action.busy ? "Preparing task…" : "Copy task for agent"}
         data-tooltip={
-          action.busy
-            ? "Preparing task…"
-            : "Copy task: authorize work and progress replies"
+          action.busy ? "Preparing task…" : "Copy task: authorize work and status updates"
         }
         disabled={action.busy}
         onClick={() => void copy()}
@@ -67,7 +65,8 @@ export function ThreadTaskCopy({
         <h2 id="task-copy-title">Copy task for agent</h2>
         <p>
           Your browser blocked clipboard access. Select and copy this task text. Pasting
-          it into your agent authorizes work and progress replies in this thread.
+          it into your agent authorizes work and status updates. Discussion replies are
+          reserved for important blockers or decisions, unless you request updates.
         </p>
         <textarea
           aria-label="Task prompt"

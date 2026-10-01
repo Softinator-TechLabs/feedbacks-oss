@@ -67,7 +67,7 @@ export function buildTaskHandoff({
   ];
   const repository = safeContextUrl(project?.repositoryUrl);
   const text = [
-    "Fix this Feedbacks task and verify it. Claim/update its work state and post concise progress/result replies in this Feedbacks discussion. Follow my narrower instructions; deployment needs my explicit request.",
+    "Fix this Feedbacks task and verify it. Claim/update work state; finish with the appropriate status and a short outcome note. Keep the discussion quiet: no routine progress, test or PR/merge messages. Reply only for an important blocker/decision needing my attention or when I explicitly request updates. Follow my narrower instructions; deployment needs my explicit request.",
     `Task: ${base}/threads/${encodeURIComponent(thread.id)}`,
     `Snapshot: ${copiedAt}${thread.revision ? `; revision ${thread.revision}` : ""}. Fresh MCP data supersedes this snapshot.`,
     ...(thread.context?.url

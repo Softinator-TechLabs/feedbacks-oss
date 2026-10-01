@@ -108,7 +108,10 @@ test("copy is a short task request, not a section inventory or workflow manual",
     "Please improve this form.",
     "feedbacks_start",
     '\"includeImage\":true',
-    "progress/result replies",
+    "Keep the discussion quiet",
+    "short outcome note",
+    "important blocker/decision",
+    "explicitly request updates",
     "untrusted",
   ])
     assert.ok(text.includes(value), value);
@@ -119,6 +122,7 @@ test("copy is a short task request, not a section inventory or workflow manual",
     "wasabi.test",
     "SECRET",
     "not available",
+    "post concise progress/result replies",
   ])
     assert.ok(!text.includes(value), value);
   assert.equal(truncated, false);
@@ -161,7 +165,7 @@ test("copied snapshot includes discussion, point summaries and authenticated mar
   assert.doesNotMatch(r.text, /#save|screenshotPoint/);
   assert.match(r.text, /https:\/\/feedback.example.test\/api\/assets\/asset/);
   assert.match(r.text, /revision 7/);
-  assert.match(r.text, /Feedbacks discussion/);
+  assert.match(r.text, /Keep the discussion quiet/);
   assert.doesNotMatch(r.text, /wasabi|SECRET/);
 });
 
