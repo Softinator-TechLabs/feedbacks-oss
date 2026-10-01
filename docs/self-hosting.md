@@ -53,7 +53,7 @@ For an embeddable website widget, configure the Cloudflare Turnstile site key fo
 
 ## Create the first owner
 
-The production image includes `dist/cli/bootstrap.js`. Bootstrap runs once and refuses to replace an existing owner. Supply the password through standard input, not a command-line argument or an image layer:
+The production image includes `dist/cli/bootstrap.js`. Bootstrap runs once and refuses to replace an existing owner. Run the command from your installation directory. The example assumes the deployed file is named `compose.yaml`; if you used `compose.registry.yaml`, use `docker compose -f compose.registry.yaml exec` instead. Supply the password through standard input, not a command-line argument or an image layer:
 
 ```sh
 # Read privately using your shell's hidden-input facility or a secret manager.
