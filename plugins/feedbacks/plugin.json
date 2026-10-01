@@ -10,12 +10,7 @@
   "homepage": "https://feedbacks.softinator.ai",
   "repository": "https://github.com/Softinator-TechLabs/feedbacks-oss",
   "license": "Apache-2.0",
-  "keywords": [
-    "feedback",
-    "screenshots",
-    "mcp",
-    "code-review"
-  ],
+  "keywords": ["feedback", "screenshots", "mcp", "code-review"],
   "extensions": {
     "com.openai": {
       "interface": {
@@ -24,10 +19,7 @@
         "longDescription": "Connect to your chosen Feedbacks server. Read screenshots, complete discussion and approved reviewer guidance; reply and attach evidence within your granted project scope.",
         "developerName": "Softinator TechLabs",
         "category": "Productivity",
-        "capabilities": [
-          "Read",
-          "Write"
-        ],
+        "capabilities": ["Read", "Write"],
         "websiteURL": "https://feedbacks.softinator.ai",
         "privacyPolicyURL": "https://feedbacks.softinator.ai/privacy.html",
         "defaultPrompt": "Read the Feedbacks thread for this task, including its screenshot, discussion and approved reviewer guidance. Summarize the request before making authorized changes.",
