@@ -14,6 +14,13 @@ export async function installVideoPageModules(context: vm.Context): Promise<void
   context.recordingDefaults = recordingDefaults;
   context.captureMicrophone = () => captureMicrophone(context.navigator);
   context.audioAccessError = audioAccessError;
+  // Member-picker DOM/keyboard behavior is exercised in packaged browser QA.
+  // This fixture focuses on recorder state and approved submission snapshots.
+  context.createCaptureTriage = () => ({
+    value: () => context.captureTriageValue,
+    reset() {},
+    setDisabled() {},
+  });
   for (const module of ["capture-health", "crop-controls"]) {
     const source = await readFile(
       new URL(`../../extension/video/${module}.js`, import.meta.url),

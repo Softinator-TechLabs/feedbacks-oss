@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 export async function verifyCaptureTriage({
@@ -74,22 +74,32 @@ export async function verifyCaptureTriage({
     throw Error("Capture draft did not reach its expected saved state");
   };
   const selectDeveloper = async (editor) => {
-    const picker = editor.getByRole("combobox", { name: "Assign to" });
-    await picker.waitFor();
-    await editor.locator(".capture-triage input:not([disabled])").waitFor();
-    await picker.click();
+    const picker = editor.getByRole("combobox", { name: "Search project members" });
+    await editor.getByRole("button", { name: "Assign to", exact: true }).waitFor();
+    await editor.locator(".capture-assignee-trigger:not([disabled])").waitFor();
+    await editor.getByRole("button", { name: "Assign to", exact: true }).click();
     await editor.getByRole("option", { name: "Developer 010", exact: true }).waitFor();
-    assert.equal(await editor.getByRole("listbox").getByRole("option").count(), 10);
+    assert.equal(await editor.getByRole("listbox").locator("[data-member]").count(), 10);
     await editor.getByRole("button", { name: "More", exact: true }).click();
     await editor.getByRole("option", { name: "Developer 020", exact: true }).waitFor();
-    assert.equal(await editor.getByRole("listbox").getByRole("option").count(), 10);
+    assert.equal(await editor.getByRole("listbox").locator("[data-member]").count(), 10);
+    await editor.getByRole("button", { name: "Previous", exact: true }).click();
+    await editor.getByRole("option", { name: "Developer 010", exact: true }).waitFor();
     await picker.fill("dEvElOpEr 099");
     await editor.getByRole("option", { name: "Developer 099", exact: true }).waitFor();
-    assert.equal(await editor.getByRole("listbox").getByRole("option").count(), 1);
+    assert.equal(await editor.getByRole("listbox").locator("[data-member]").count(), 1);
     await picker.press("ArrowDown");
     await picker.press("Enter");
-    assert.equal(await picker.inputValue(), "Developer 099");
-    assert.equal(await picker.getAttribute("aria-expanded"), "false");
+    assert.match(
+      await editor.getByRole("button", { name: "Assign to", exact: true }).textContent(),
+      /Developer 099/,
+    );
+    assert.equal(
+      await editor
+        .getByRole("button", { name: "Assign to", exact: true })
+        .getAttribute("aria-expanded"),
+      "false",
+    );
     await editor.getByLabel("Priority", { exact: true }).selectOption("high");
   };
   await toFixture();
@@ -98,17 +108,6 @@ export async function verifyCaptureTriage({
   for (const previous of context.pages())
     if (previous.url().startsWith(`chrome-extension://${extensionId}/editor.html`))
       await previous.close();
-  await worker.evaluate(() => {
-    globalThis.captureTriageMessages = [];
-    chrome.runtime.onMessage.addListener((message, sender) => {
-      if (message.type === "saveDraft")
-        globalThis.captureTriageMessages.push({
-          tab: sender.tab?.id,
-          triage: message.triage,
-          name: message.triageName,
-        });
-    });
-  });
   await send({ type: "popupAction", tabId: sourceTabId, action: "capture" });
   const editor =
     context
@@ -119,6 +118,18 @@ export async function verifyCaptureTriage({
   await editor.waitForURL(`chrome-extension://${extensionId}/editor.html*`);
   await editor.locator("#project").selectOption(project.id);
   await selectDeveloper(editor);
+  const assigneeButton = editor.getByRole("button", { name: "Assign to", exact: true });
+  await assigneeButton.press("ArrowDown");
+  assert.equal(
+    await editor.getByRole("combobox", { name: "Search project members" }).isVisible(),
+    true,
+  );
+  await editor.locator("#body").click();
+  assert.equal(await assigneeButton.getAttribute("aria-expanded"), "false");
+  await assigneeButton.click();
+  await editor.getByRole("option", { name: "Unassigned", exact: true }).click();
+  assert.equal(await assigneeButton.locator("span").first().textContent(), "Unassigned");
+  await selectDeveloper(editor);
   await editor.locator("#body").fill("Synthetic assigned screenshot");
   await waitDraft(
     (draft) =>
@@ -127,31 +138,38 @@ export async function verifyCaptureTriage({
       draft.body === "Synthetic assigned screenshot",
   );
   await editor.reload();
-  await editor.locator(".capture-triage input:not([disabled])").waitFor();
+  await editor.locator(".capture-assignee-trigger:not([disabled])").waitFor();
   const reopenedDraft = await worker.evaluate(async () => {
     const { draft } = await chrome.storage.local.get("draft");
     return {
       triage: draft?.triage,
       name: draft?.triageName,
-      saves: globalThis.captureTriageMessages,
     };
   });
   assert.equal(
-    await editor.getByRole("combobox", { name: "Assign to" }).inputValue(),
+    await editor
+      .getByRole("button", { name: "Assign to", exact: true })
+      .locator("span")
+      .first()
+      .textContent(),
     "Developer 099",
     JSON.stringify(reopenedDraft),
   );
   assert.equal(await editor.getByLabel("Priority", { exact: true }).inputValue(), "high");
   await editor.locator("#project").selectOption(other.id);
-  await editor.locator(".capture-triage input:not([disabled])").waitFor();
+  await editor.locator(".capture-assignee-trigger:not([disabled])").waitFor();
   assert.equal(
-    await editor.getByRole("combobox", { name: "Assign to" }).inputValue(),
-    "",
+    await editor
+      .getByRole("button", { name: "Assign to", exact: true })
+      .locator("span")
+      .first()
+      .textContent(),
+    "Unassigned",
   );
-  await editor.getByRole("combobox", { name: "Assign to" }).click();
+  await editor.getByRole("button", { name: "Assign to", exact: true }).click();
   await editor.getByText("1–1 of 1 members", { exact: true }).waitFor();
-  assert.equal(await editor.getByRole("listbox").getByRole("option").count(), 1);
-  await editor.getByRole("combobox", { name: "Assign to" }).press("Escape");
+  assert.equal(await editor.getByRole("listbox").locator("[data-member]").count(), 1);
+  await editor.getByRole("combobox", { name: "Search project members" }).press("Escape");
   await editor.locator("#project").selectOption(project.id);
   await selectDeveloper(editor);
   for (const [name, width, height] of [
@@ -159,7 +177,7 @@ export async function verifyCaptureTriage({
     ["mobile", 390, 844],
   ]) {
     await editor.setViewportSize({ width, height });
-    await editor.getByRole("combobox", { name: "Assign to" }).click();
+    await editor.getByRole("button", { name: "Assign to", exact: true }).click();
     await editor.getByRole("option", { name: "Developer 010", exact: true }).waitFor();
     await editor.screenshot({
       path: join(directory, `screenshot-${name}.png`),
@@ -168,7 +186,9 @@ export async function verifyCaptureTriage({
     assert.ok(
       await editor.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     );
-    await editor.getByRole("combobox", { name: "Assign to" }).press("Escape");
+    await editor
+      .getByRole("combobox", { name: "Search project members" })
+      .press("Escape");
   }
   await worker.evaluate(() => {
     const original = globalThis.fetch;
@@ -191,7 +211,7 @@ export async function verifyCaptureTriage({
   await editor.getByRole("button", { name: "Retry Send", exact: true }).first().waitFor();
   assert.equal(await editor.getByLabel("Priority", { exact: true }).isDisabled(), true);
   assert.equal(
-    await editor.getByRole("combobox", { name: "Assign to" }).isDisabled(),
+    await editor.getByRole("button", { name: "Assign to", exact: true }).isDisabled(),
     true,
   );
   await editor.locator("#send").click();
@@ -225,13 +245,17 @@ export async function verifyCaptureTriage({
   // a desktop recording or changing the shipped extension's permissions.
   const recorderControl = await context.newPage();
   await recorderControl.goto(`chrome-extension://${extensionId}/popup.html`);
+  await recorderControl.bringToFront();
   const draftId = await recorderControl.evaluate(async (target) => {
     const canvas = document.createElement("canvas");
     canvas.width = 320;
     canvas.height = 180;
+    document.body.append(canvas);
     const paint = canvas.getContext("2d");
+    paint.fillStyle = "#345";
+    paint.fillRect(0, 0, 320, 180);
     const stream = canvas.captureStream(20);
-    const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+    const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp8" });
     const chunks = [];
     recorder.ondataavailable = (event) => {
       if (event.data.size) chunks.push(event.data);
@@ -240,7 +264,7 @@ export async function verifyCaptureTriage({
       recorder.onstop = resolve;
     });
     const videoStartWall = Date.now();
-    recorder.start();
+    recorder.start(100);
     const timer = setInterval(() => {
       paint.fillStyle = `hsl(${Date.now() % 360},50%,50%)`;
       paint.fillRect(0, 0, 320, 180);
@@ -252,14 +276,26 @@ export async function verifyCaptureTriage({
     stream.getTracks().forEach((track) => track.stop());
     const id = crypto.randomUUID();
     const { putVideoDraft } = await import("./video-draft-store.js");
+    await import("./webm-duration.js");
+    const { finalizeWebmMetadata } = await import("./video/video-metadata.js");
+    const durationMs = Date.now() - videoStartWall;
+    const blob = await finalizeWebmMetadata(
+      new Blob(chunks, { type: "video/webm" }),
+      durationMs,
+    );
     await putVideoDraft(id, {
       ...target,
-      blob: new Blob(chunks, { type: "video/webm" }),
-      durationMs: Date.now() - videoStartWall,
+      blob,
+      durationMs,
       videoStartWall,
     });
     return id;
   }, localDraft);
+  const videoBytes = await recorderControl.evaluate(async (id) => {
+    const { getVideoDraft } = await import("./video-draft-store.js");
+    return [...new Uint8Array(await (await getVideoDraft(id)).blob.arrayBuffer())];
+  }, draftId);
+  await writeFile(join(directory, "synthetic.webm"), Buffer.from(videoBytes));
   const video = await context.newPage();
   await video.goto(
     `chrome-extension://${extensionId}/video.html?sourceTabId=${sourceTabId}&reviewId=${localDraft.reviewId}&draftId=${draftId}`,
@@ -276,13 +312,13 @@ export async function verifyCaptureTriage({
   await video.locator("#comment").fill("Synthetic assigned video");
   await video.locator("#debug-context").uncheck();
   await video.setViewportSize({ width: 390, height: 844 });
-  await video.getByRole("combobox", { name: "Assign to" }).click();
+  await video.getByRole("button", { name: "Assign to", exact: true }).click();
   await video.getByRole("option", { name: "Developer 010", exact: true }).waitFor();
   await video.screenshot({ path: join(directory, "video-mobile.png"), fullPage: true });
   assert.ok(
     await video.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
   );
-  await video.getByRole("combobox", { name: "Assign to" }).press("Escape");
+  await video.getByRole("combobox", { name: "Search project members" }).press("Escape");
   await worker.evaluate(() => {
     const original = globalThis.fetch;
     let lose = true;
@@ -304,13 +340,18 @@ export async function verifyCaptureTriage({
   await video.getByRole("button", { name: "Retry Send video", exact: true }).waitFor();
   assert.equal(await video.getByLabel("Priority", { exact: true }).isDisabled(), true);
   assert.equal(
-    await video.getByRole("combobox", { name: "Assign to" }).isDisabled(),
+    await video.getByRole("button", { name: "Assign to", exact: true }).isDisabled(),
     true,
   );
   await video.locator("#send").click();
   await video
     .getByRole("link", { name: "Open feedback with recording", exact: true })
-    .waitFor({ timeout: 20000 });
+    .waitFor({ timeout: 20000 })
+    .catch(async (error) => {
+      throw Error(
+        `${error.message}\nVideo status: ${await video.locator("#status").textContent()}`,
+      );
+    });
   const videos = (await post("threads.list", { projectId: project.id }, auth)).data.items;
   const createdVideo = videos.find((item) => item.body === "Synthetic assigned video");
   assert.ok(createdVideo);
@@ -326,7 +367,7 @@ export async function verifyCaptureTriage({
   assert.equal(videoAssignments.total, 1);
   assert.equal(videoAssignments.items[0].userId, developer.id);
   const uploaded = (await post("threads.get", { threadId: createdVideo.id }, auth)).data;
-  assert.ok(uploaded.assets.some((asset) => asset.type === "video/webm"));
+  assert.ok(uploaded.assets.some((asset) => asset.contentType === "video/webm"));
   results.captureTriage = {
     members: 100,
     maxVisible: 10,

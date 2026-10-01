@@ -7,9 +7,49 @@ import path from "node:path";
 import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
-import { LocalAssets } from "../src/server/assets.js";
+import { LocalAssets, prepareVideoUpload } from "../src/server/assets.js";
 import { createApp } from "../src/server/app.js";
 import sharp from "sharp";
+
+test("WebM upload accepts grouped frames and still rejects empty or malformed media", async () => {
+  const element = (id: string, payload: Buffer) =>
+    Buffer.concat([
+      Buffer.from(id, "hex"),
+      Buffer.from([0x80 | payload.length]),
+      payload,
+    ]);
+  const recording = (frame: Buffer, trackType = 1) =>
+    Buffer.concat([
+      element("1a45dfa3", element("4282", Buffer.from("webm"))),
+      Buffer.from("18538067ff", "hex"),
+      element("1654ae6b", element("ae", element("83", Buffer.from([trackType])))),
+      element("1f43b675", Buffer.concat([element("e7", Buffer.from([0])), frame])),
+    ]);
+  const config = {
+    production: false,
+    organizationId: "00000000-0000-4000-8000-000000000001",
+  } as any;
+  const prepare = (bytes: Buffer) =>
+    prepareVideoUpload(
+      {
+        threadId: "00000000-0000-4000-8000-000000000002",
+        videoBase64: bytes.toString("base64"),
+        durationMs: 1000,
+      },
+      config,
+      "00000000-0000-4000-8000-000000000003",
+    );
+  const frame = Buffer.from([0x81, 0, 0, 0x80, 1, 2, 3]);
+  await prepare(recording(element("a3", frame)));
+  await prepare(recording(element("a0", element("a1", frame))));
+  for (const bytes of [
+    recording(element("a0", Buffer.alloc(0))),
+    recording(element("a0", element("a1", Buffer.alloc(0)))),
+    recording(element("a0", Buffer.from("a1ff00", "hex"))),
+    recording(element("a0", element("a1", frame)), 2),
+  ])
+    await assert.rejects(prepare(bytes), { code: "INVALID_VIDEO" });
+});
 
 test("video feedback stays in the authorized project and rejects invalid media", async () => {
   const pg = new PGlite();

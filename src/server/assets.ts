@@ -412,7 +412,19 @@ function isWebmRecording(bytes: Buffer) {
   const cluster = children.find((item) => item.id === 0x1f43b675);
   if (!tracks || !cluster || cluster.end === cluster.start) return false;
   const blocks = webmElements(bytes, cluster.start, cluster.end);
-  if (!blocks?.some((item) => item.id === 0xa3 && item.end > item.start)) return false;
+  // Chrome can encode video frames as BlockGroup/Block instead of SimpleBlock.
+  // Parse the group boundaries; a group without actual frame bytes is not media.
+  if (
+    !blocks?.some((item) =>
+      item.id === 0xa3
+        ? item.end > item.start
+        : item.id === 0xa0 &&
+          webmElements(bytes, item.start, item.end)?.some(
+            (block) => block.id === 0xa1 && block.end > block.start,
+          ),
+    )
+  )
+    return false;
   const trackEntries = webmElements(bytes, tracks.start, tracks.end);
   return !!trackEntries?.some((entry) => {
     if (entry.id !== 0xae) return false;
