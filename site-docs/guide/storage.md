@@ -1,6 +1,12 @@
+---
+description: Prepare a server, domain, database and private media storage for your team's Feedbacks installation.
+---
+
 # Storage and prerequisites
 
 Prepare these once for your company. Reviewers only need the server URL and access to a project.
+
+<DocPath :steps="['Gather', 'Create the bucket', 'Configure', 'Verify']" />
 
 ![Reviewers connect through HTTPS to Feedbacks. Feedbacks stores records in PostgreSQL and media in a private S3 bucket. Back up both together.](/storage-setup.svg)
 
