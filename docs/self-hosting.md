@@ -35,6 +35,8 @@ Start with the [illustrated storage and prerequisites walkthrough](../site-docs/
 
 For a Wasabi bucket in `eu-central-1`, the endpoint is `https://s3.eu-central-1.wasabisys.com` and the region is `eu-central-1`. For an AWS bucket in `eu-west-1`, use `https://s3.eu-west-1.amazonaws.com` and `eu-west-1`. Match the endpoint to your actual bucket region. An independently operated S3-compatible service must use HTTPS in production, with a certificate trusted by the runtime.
 
+For generic Wasabi bucket, scoped-key and disposable readback commands, use the [illustrated storage guide](../site-docs/guide/storage.md#wasabi-lower-storage-cost-for-retained-evidence). It also compares provider billing and retention.
+
 Keep the bucket private and require transport encryption. Grant the application only object read/write/delete for its installation prefix, such as `feedbacks/production/organizations/<ORGANIZATION_ID>/*`. The application does not need bucket administration, ACL changes, public access or deletion of historical object versions. `DeleteObject` is needed for thread deletion and failed-upload cleanup. Enable provider-side encryption, retention and backups according to your requirements. Do not share bucket credentials across customer organizations.
 
 After bootstrap, upload a synthetic screenshot and verify an authorized read, rejection for an unrelated project member, and persistence after restarting the application. Endpoint configuration alone does not prove provider compatibility or a recoverable backup.
