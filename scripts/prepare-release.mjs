@@ -107,6 +107,11 @@ export async function prepareRelease({ root: base = root, tag, sha }) {
       `feedbacks-codex-plugin-${plugin.version}.zip`,
       true,
     ],
+    [
+      "dist/feedbacks-claude-plugin.zip",
+      `feedbacks-claude-plugin-${plugin.version}.zip`,
+      true,
+    ],
     ["dist/releases/sbom.cdx.json", `feedbacks-sbom-${version}.cdx.json`, false],
   ];
   const assets = [];
@@ -131,6 +136,15 @@ export async function prepareRelease({ root: base = root, tag, sha }) {
   const zipPlugin = JSON.parse(
     command("unzip", ["-p", join(base, inputs[2][0]), "plugin.json"], base),
   );
+  const zipClaudePlugin = JSON.parse(
+    command(
+      "unzip",
+      ["-p", join(base, inputs[3][0]), ".claude-plugin/plugin.json"],
+      base,
+    ),
+  );
+  if (zipClaudePlugin.version !== plugin.version)
+    throw new Error("Claude plugin archive version mismatch.");
   if (sourcePackage.version !== version)
     throw new Error("Source archive version mismatch.");
   if (zipExtension.version !== extension.version)
@@ -146,7 +160,7 @@ export async function prepareRelease({ root: base = root, tag, sha }) {
     release.bytes !== assets[1].bytes
   )
     throw new Error("Extension download metadata does not match the release artifact.");
-  const sbom = await jsonFile(join(base, inputs[3][0]));
+  const sbom = await jsonFile(join(base, inputs[4][0]));
   if (
     sbom.bomFormat !== "CycloneDX" ||
     sbom.metadata?.component?.version !== version ||
@@ -181,7 +195,7 @@ export async function prepareRelease({ root: base = root, tag, sha }) {
   await writeFile(join(output, "release.json"), JSON.stringify(manifest, null, 2) + "\n");
   await writeFile(
     join(output, "release-notes.md"),
-    `Feedbacks ${tag}\n\nSource commit: ${sha}\n\n- Application and source: ${version}\n- Chrome extension: ${extension.version}\n- Codex plugin: ${plugin.version}\n\nThese components have separate version schemes. The Git tag follows the application version.\n\nAssets include the reviewed source export, public extension ZIP, standalone plugin and CycloneDX dependency inventory. Verify SHA256SUMS before installation.\n\nThis is a draft for release review. Record upgrade instructions, compatibility and known limitations before publishing. Container registry publication, hosted deployment and Chrome Web Store upload/review are separate steps; this workflow does not perform them.\n`,
+    `Feedbacks ${tag}\n\nSource commit: ${sha}\n\n- Application and source: ${version}\n- Chrome extension: ${extension.version}\n- Codex and Claude Code plugins: ${plugin.version}\n\nThese components have separate version schemes. The Git tag follows the application version.\n\nAssets include the reviewed source export, public extension ZIP, standalone plugins and CycloneDX dependency inventory. Verify SHA256SUMS before installation.\n\nThis is a draft for release review. Record upgrade instructions, compatibility and known limitations before publishing. Container registry publication, hosted deployment and Chrome Web Store upload/review are separate steps; this workflow does not perform them.\n`,
   );
   const names = [
     ...assets.map((asset) => asset.name),
@@ -253,6 +267,7 @@ export async function publishDraft({
     `feedbacks-source-${manifest.versions.application}.tar.gz`,
     `feedbacks-extension-${manifest.versions.extension}.zip`,
     `feedbacks-codex-plugin-${manifest.versions.plugin}.zip`,
+    `feedbacks-claude-plugin-${manifest.versions.plugin}.zip`,
     `feedbacks-sbom-${manifest.versions.application}.cdx.json`,
   ];
   if (

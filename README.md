@@ -6,7 +6,7 @@ Show the problem with a screenshot, exact text suggestion or video + session rec
 
 **Set up a team server first.** The order is: server → install and connect the Chrome extension → project context, optional GitHub App and members → each developer's personal MCP setup. One installation serves your team; the extension does not host a server. Follow the [complete setup flow](site-docs/guide/getting-started.md), or the separate [DevOps installation guide](site-docs/guide/self-host.md).
 
-[Website](https://feedbacks.softinator.ai) · [Why Feedbacks](docs/why-feedbacks.md) · [Self-hosting](docs/self-hosting.md) · [Extension](docs/extension.md) · [Coding assistants & Codex plugin](docs/agents.md) · [API & MCP](docs/api.md) · [Roadmap](https://github.com/orgs/Softinator-TechLabs/projects/4) · [Contributing](CONTRIBUTING.md)
+[Website](https://feedbacks.softinator.ai) · [Why Feedbacks](docs/why-feedbacks.md) · [Self-hosting](docs/self-hosting.md) · [Extension](docs/extension.md) · [Coding assistants & plugins](docs/agents.md) · [API & MCP](docs/api.md) · [Roadmap](https://github.com/orgs/Softinator-TechLabs/projects/4) · [Contributing](CONTRIBUTING.md)
 
 ## What it does
 
@@ -49,18 +49,18 @@ Build with `npm run build:extension`. Load the `dist/extension/unpacked/` direct
 
 ## Repository map
 
-| Path          | Responsibility                                                                    |
-| ------------- | --------------------------------------------------------------------------------- |
-| `src/server/` | Authentication, project access, business operations, persistence and transports   |
-| `src/shared/` | Typed operation inputs, outputs and descriptions                                  |
-| `src/web/`    | Authenticated React application                                                   |
-| `src/cli/`    | Bootstrap, JSON CLI and stdio MCP adapter                                         |
-| `plugins/`    | Codex plugin manifests and review skill; standalone MCP bundle generated at build |
-| `extension/`  | Chrome Manifest V3 capture and review extension                                   |
-| `site/`       | Independently deployable public website                                           |
-| `tests/`      | Isolated authorization, transport and database tests                              |
-| `ops/`        | Generic deployment configuration                                                  |
-| `docs/`       | Public contributor and operator documentation                                     |
+| Path          | Responsibility                                                                          |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `src/server/` | Authentication, project access, business operations, persistence and transports         |
+| `src/shared/` | Typed operation inputs, outputs and descriptions                                        |
+| `src/web/`    | Authenticated React application                                                         |
+| `src/cli/`    | Bootstrap, JSON CLI and stdio MCP adapter                                               |
+| `plugins/`    | Codex and Claude Code plugin packages and review skills; MCP bundles generated at build |
+| `extension/`  | Chrome Manifest V3 capture and review extension                                         |
+| `site/`       | Independently deployable public website                                                 |
+| `tests/`      | Isolated authorization, transport and database tests                                    |
+| `ops/`        | Generic deployment configuration                                                        |
+| `docs/`       | Public contributor and operator documentation                                           |
 
 ## Agent development
 

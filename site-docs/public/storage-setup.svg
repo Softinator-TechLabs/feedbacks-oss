@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 540" role="img" aria-labelledby="title desc">
+<title id="title">One server, two private stores</title><desc id="desc">Reviewers and agents connect over HTTPS to Feedbacks. The server uses PostgreSQL for records and private S3 for media. Keep both in a matching off-host recovery set.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8" fill="#17324d"/></marker></defs>
+<rect width="560" height="540" rx="16" fill="#fffdfa"/>
+<g fill="none" stroke="#17324d" stroke-width="2" marker-end="url(#arrow)"><path d="M280 104v48"/><path d="M280 254v28H140v31"/><path d="M280 282h140v31"/><path d="M140 410v42h132"/><path d="M420 410v42H288"/></g>
+<g font-family="Arial,sans-serif" text-anchor="middle" fill="#202020">
+<rect x="55" y="20" width="450" height="84" rx="12" fill="#f3efe9"/><text x="280" y="56" font-size="23" font-weight="700">Reviewers + coding agents</text><text x="280" y="85" font-size="19">One company server URL</text>
+<text x="325" y="138" font-size="18" fill="#17324d">HTTPS</text>
+<rect x="55" y="160" width="450" height="94" rx="12" fill="#17324d"/><text x="280" y="198" font-size="25" font-weight="700" fill="#fffdfa">Feedbacks server</text><text x="280" y="230" font-size="19" fill="#fffdfa">Docker + ingress + stable organization ID</text>
+<rect x="20" y="320" width="240" height="90" rx="12" fill="#f3efe9"/><text x="140" y="356" font-size="23" font-weight="700">PostgreSQL</text><text x="140" y="385" font-size="18">People · threads · access</text>
+<rect x="300" y="320" width="240" height="90" rx="12" fill="#f3efe9"/><text x="420" y="356" font-size="23" font-weight="700">Private S3 bucket</text><text x="420" y="385" font-size="18">Screenshots · recordings</text>
+<rect x="55" y="472" width="450" height="50" rx="12" fill="#e5ecef"/><text x="280" y="504" font-size="21" font-weight="700">Back up + restore both together</text>
+<path d="M280 452v18" stroke="#17324d" stroke-width="2" marker-end="url(#arrow)"/>
+</g></svg>

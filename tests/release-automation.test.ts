@@ -129,11 +129,16 @@ async function fixture() {
   ]);
   await put("dist/extension/feedbacks-extension-0.9.8.zip", extension);
   await put("dist/feedbacks-codex-plugin.zip", plugin);
+  const claudePlugin = zipFiles([
+    { name: ".claude-plugin/plugin.json", data: Buffer.from(json({ version: "0.4.0" })) },
+  ]);
+  await put("dist/feedbacks-claude-plugin.zip", claudePlugin);
   const hash = (data: Buffer) => createHash("sha256").update(data).digest("hex");
   for (const path of [
     "dist/releases/feedbacks-source-1.2.3.tar.gz",
     "dist/extension/feedbacks-extension-0.9.8.zip",
     "dist/feedbacks-codex-plugin.zip",
+    "dist/feedbacks-claude-plugin.zip",
   ])
     await put(
       path + ".sha256",
@@ -197,6 +202,7 @@ test("preparation includes only versioned verified artifacts and records separat
         "feedbacks-source-1.2.3.tar.gz",
         "feedbacks-extension-0.9.8.zip",
         "feedbacks-codex-plugin-0.4.0.zip",
+        "feedbacks-claude-plugin-0.4.0.zip",
         "feedbacks-sbom-1.2.3.cdx.json",
       ],
     );
@@ -356,7 +362,7 @@ test("draft publication retries known assets and preserves unrelated draft asset
       request,
     };
     await publishDraft(options);
-    assert.equal(writes.length, 8); // One draft and seven allowlisted uploads.
+    assert.equal(writes.length, 9); // One draft and eight allowlisted uploads.
     writes.length = 0;
     await publishDraft(options);
     assert.deepEqual(writes, []); // Matching checksums make retries idempotent.

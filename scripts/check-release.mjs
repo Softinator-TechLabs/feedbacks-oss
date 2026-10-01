@@ -68,6 +68,28 @@ for (const directory of ["plugins/feedbacks", "dist/codex-plugin/feedbacks"]) {
   if (portable.name !== compatibility.name || portable.version !== compatibility.version)
     errors.push("Plugin manifests have inconsistent identities");
 }
+const claudeZip = await readFile(join(root, "dist/feedbacks-claude-plugin.zip"));
+const claudeDigest = (
+  await readFile(join(root, "dist/feedbacks-claude-plugin.zip.sha256"), "utf8")
+).split(/\s/)[0];
+if (claudeDigest !== createHash("sha256").update(claudeZip).digest("hex"))
+  errors.push("Claude plugin checksum does not match its ZIP");
+const claudeManifest = JSON.parse(
+  await readFile(
+    join(root, "dist/claude-plugin/plugins/feedbacks/.claude-plugin/plugin.json"),
+    "utf8",
+  ),
+);
+const pluginManifest = JSON.parse(
+  await readFile(join(root, "plugins/feedbacks/plugin.json"), "utf8"),
+);
+if (
+  claudeManifest.name !== pluginManifest.name ||
+  claudeManifest.version !== pluginManifest.version
+)
+  errors.push("Claude plugin identity differs from the portable plugin");
+await lstat(join(root, "dist/claude-plugin/plugins/feedbacks/mcp.mjs"));
+await lstat(join(root, "dist/claude-plugin/.claude-plugin/marketplace.json"));
 await lstat(join(root, "dist/codex-plugin/feedbacks/mcp.mjs"));
 await lstat(join(root, "dist/codex-plugin/.agents/plugins/marketplace.json"));
 for (const file of [

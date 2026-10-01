@@ -10,6 +10,10 @@ One installation serves one organization. Deploy a shared HTTPS server; reviewer
 
 <Demo step="server" />
 
+## Gather the prerequisites
+
+Use the [illustrated storage guide](/guide/storage) to prepare a server, domain, PostgreSQL, private bucket and dedicated application key. It maps each value to its deployment field and includes the storage policy and recovery checks.
+
 ## Bring the server online
 
 1. Provision **PostgreSQL**, **private S3-compatible storage** and an HTTPS reverse proxy.

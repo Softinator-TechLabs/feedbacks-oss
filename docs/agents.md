@@ -23,6 +23,22 @@ Configure your chosen server and a scoped agent key from the application’s age
 
 Begin with read access to the required projects. Add reply, attachment or status scopes only for actions you want the assistant to perform. Existing keys do not automatically gain new operation scopes. The plugin's review skill does not grant access itself.
 
+## Claude Code plugin
+
+From a source checkout with Node.js 22.12+ or 24, build the same adapter and add its native Claude marketplace:
+
+```sh
+npm ci
+npm run build:plugin
+claude plugin validate --strict ./dist/claude-plugin
+claude plugin marketplace add ./dist/claude-plugin
+claude plugin install feedbacks@feedbacks
+```
+
+The build produces `dist/claude-plugin/plugins/feedbacks` and `dist/feedbacks-claude-plugin.zip`. It includes the same two skills, bundled adapter and license notices as the Codex package; its native `.claude-plugin/plugin.json` and `.mcp.json` use `${CLAUDE_PLUGIN_ROOT}`. Keep the marketplace directory available, restart the client and check `claude plugin details feedbacks@feedbacks` for both skills and the MCP server. Supply your chosen server URL and scoped key using the same private configuration described above.
+
+An installable marketplace is separate from inclusion in Anthropic's official directory. See the [Claude plugin reference](https://code.claude.com/docs/en/plugins-reference) for version-specific validation and installation.
+
 ## Other MCP clients
 
 Feedbacks exposes Streamable HTTP at `https://your-feedbacks.example/mcp`, authenticated with an `Authorization: Bearer …` header. Use your client's secure token configuration. For clients that need stdio, launch `npm run mcp` from the source checkout, or the built plugin's `node mcp.mjs`, with the same URL/key configuration. Remote servers require HTTPS; loopback HTTP is allowed for development.

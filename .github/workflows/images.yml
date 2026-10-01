@@ -1,0 +1,141 @@
+name: Publish Docker images
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing reviewed application tag (v<version>)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: images-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.gate.outputs.sha }}
+      version: ${{ steps.version.outputs.version }}
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Validate tag before checkout
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?$ ]]
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Require main ancestry and successful exact-target CI
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/prepare-release.mjs verify "$RELEASE_TAG"
+      - id: version
+        run: echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+
+  native:
+    needs: gate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    env:
+      IMAGE_NAMESPACE: ${{ vars.DOCKERHUB_NAMESPACE }}
+      VERSION: ${{ needs.gate.outputs.version }}
+      ARCH: ${{ matrix.arch }}
+      SOURCE_SHA: ${{ needs.gate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Require a publisher namespace and unused version tags
+        run: |
+          [[ "$IMAGE_NAMESPACE" =~ ^[a-z0-9][a-z0-9_-]+$ ]]
+          for repo in feedbacks feedbacks-site; do
+            status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://hub.docker.com/v2/repositories/$IMAGE_NAMESPACE/$repo/tags/$VERSION-$ARCH/")
+            [[ "$status" == 404 ]] || { echo "Refusing existing or unverifiable tag ($status)"; exit 1; }
+          done
+      - name: Build and smoke-test on the native architecture
+        run: |
+          [[ "$(docker version --format '{{.Server.Arch}}')" == "$ARCH" ]]
+          docker build -t feedbacks-app:check .
+          docker build -f Dockerfile.site -t feedbacks-site:check .
+          npm run test:containers
+      - name: Registry login
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+      - name: Create isolated attestation builder
+        run: docker buildx create --name feedbacks-release --driver docker-container --use
+      - name: Publish versioned native images with SBOM and provenance
+        run: |
+          for spec in 'feedbacks Dockerfile' 'feedbacks-site Dockerfile.site'; do
+            read -r repo file <<< "$spec"
+            docker buildx build --platform "linux/$ARCH" --file "$file" --push --sbom=true --provenance=mode=max \
+              --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+              --label "org.opencontainers.image.revision=$SOURCE_SHA" \
+              --label "org.opencontainers.image.version=$VERSION" \
+              --tag "$IMAGE_NAMESPACE/$repo:$VERSION-$ARCH" .
+          done
+      - name: Remove registry session
+        if: always()
+        run: docker logout
+
+  manifests:
+    needs: [gate, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      IMAGE_NAMESPACE: ${{ vars.DOCKERHUB_NAMESPACE }}
+      VERSION: ${{ needs.gate.outputs.version }}
+    steps:
+      - name: Registry login
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+      - name: Publish multi-platform manifests after both native tests
+        run: |
+          mkdir -p image-receipts
+          for repo in feedbacks feedbacks-site; do
+            status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://hub.docker.com/v2/repositories/$IMAGE_NAMESPACE/$repo/tags/$VERSION/")
+            [[ "$status" == 404 ]] || { echo "Refusing existing or unverifiable tag ($status)"; exit 1; }
+            docker buildx imagetools create --tag "$IMAGE_NAMESPACE/$repo:$VERSION" \
+              "$IMAGE_NAMESPACE/$repo:$VERSION-amd64" "$IMAGE_NAMESPACE/$repo:$VERSION-arm64"
+            docker buildx imagetools inspect "$IMAGE_NAMESPACE/$repo:$VERSION" --raw > "image-receipts/$repo.json"
+            docker buildx imagetools inspect "$IMAGE_NAMESPACE/$repo:$VERSION" > "image-receipts/$repo.txt"
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: published-image-manifests
+          path: image-receipts/
+          if-no-files-found: error
+      - name: Remove registry session
+        if: always()
+        run: docker logout

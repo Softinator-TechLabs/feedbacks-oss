@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-10-01
+
+- Build native Claude Code and Codex plugin packages from the same MCP adapter and skills, with independent platform manifests and versioned release checksums.
+- Add a gated Docker Hub publication workflow with native AMD64/ARM64 container tests, SBOM/provenance attestations and registry Compose installation.
+- Add an illustrated storage/prerequisites guide with configuration mapping, private bucket provisioning and recovery checks. Correct the application storage policy to include object deletion used by cleanup.
+
+No database migration or extension change is introduced by this release. Preserve the existing database volume, organization ID and private storage when updating.
+
 ## 0.2.0 — 2026-09-30
 
 - Capture video and browser sessions with a shared activity, console, network and performance timeline; retain screenshot diagnostics and downloadable debugging evidence.

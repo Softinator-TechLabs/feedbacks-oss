@@ -46,6 +46,7 @@ test("source and packaged stdio adapters materialize evidence on the adapter mac
     for (const args of [
       ["--import", "tsx", "src/cli/mcp.ts"],
       ["dist/codex-plugin/feedbacks/mcp.mjs"],
+      ["dist/claude-plugin/plugins/feedbacks/mcp.mjs"],
     ]) {
       const client = new Client({ name: "materializer-integration", version: "1" });
       let directory: string | undefined;
