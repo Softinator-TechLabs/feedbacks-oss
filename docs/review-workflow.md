@@ -12,6 +12,8 @@ Project maintainers can mark or unmark **Top priority** directly on a feedback r
 
 ## Update work status
 
+Feedback rows show how many numbered points are resolved, with each point's original number, a text preview and **Open**, **Resolved** or **Closed** label. The first three appear directly in the list; **Show more points** expands the rest there without opening the discussion. Removed points are omitted without renumbering the remaining points. Select a point preview to open that point in its discussion, preserving the current filters. A resolved thread shows its remaining points as resolved; a declined thread shows them as closed. **Ready for review** does not imply that open points have been resolved. Replies alone do not change point completion.
+
 The status selector at the top of a thread saves as soon as you choose a state. **Resolve** closes the thread in one click for members with resolution permission; **Reopen** opens it again. Notes are optional. Use **Add a note or duplicate link** when there is extra context to record.
 
 The status stays above the feedback. On a narrow screen the screenshot appears before discussion and queue navigation. On desktop, discussion sits beside the evidence. The top icon actions open optional notes, review decisions, guest links, linked issues and details. A GitHub Issue action appears only after a maintainer connects this project to a repository; setup stays in project settings. On narrow screens menus open at the bottom of the viewport. Each icon has an accessible name and a label on hover or keyboard focus.

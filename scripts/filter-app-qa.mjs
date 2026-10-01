@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { readFile, mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
@@ -497,6 +498,105 @@ try {
     assert.match(await option.textContent(), /permission required/);
   }
   await reviewerContext.close();
+  const progressPage = await context.newPage();
+  const points = Array.from({ length: 5 }, (_, i) => ({
+    id: randomUUID(),
+    body:
+      i === 2
+        ? `Point 3 request with a long unbroken address ${"example".repeat(24)}`
+        : `Point ${i + 1} request`,
+    anchor: { selector: "main", tagName: "MAIN" },
+  }));
+  let pointThread = await post("threads.create", {
+    projectId: access.projectId,
+    body: "Numbered point progress sample",
+    context: {
+      url: "https://example.com/",
+      viewport: { width: 1440, height: 900 },
+      annotations: points,
+    },
+    idempotencyKey: "list-point-progress-fixture",
+  });
+  for (const [index, state] of [
+    [0, "resolved"],
+    [1, "removed"],
+  ]) {
+    pointThread = await post("threads.annotationStatus", {
+      threadId: pointThread.id,
+      revision: pointThread.revision,
+      annotationId: points[index].id,
+      state,
+    });
+  }
+  pointThread = await post("threads.status", {
+    threadId: pointThread.id,
+    revision: pointThread.revision,
+    state: "ready_for_review",
+  });
+  await progressPage.setViewportSize({ width: 1440, height: 900 });
+  await progressPage.goto(
+    `${access.url}/projects/${access.projectId}?search=Numbered&workState=ready_for_review`,
+  );
+  const progressRow = progressPage.locator(".thread-row").filter({
+    has: progressPage.getByRole("heading", { name: "Numbered point progress sample" }),
+  });
+  await progressRow
+    .getByText("1 of 4 points resolved · 3 open", { exact: true })
+    .waitFor();
+  const pointRows = progressRow.locator(".thread-point-status-list li");
+  assert.match(await pointRows.nth(0).textContent(), /#1.*Resolved/);
+  assert.match(await pointRows.nth(1).textContent(), /#3.*Open/);
+  assert.equal(
+    await progressRow.getByText("Point 2 request", { exact: true }).count(),
+    0,
+  );
+  const morePoints = progressRow.getByText("Show 1 more point", { exact: true });
+  await morePoints.focus();
+  await progressPage.keyboard.press("Enter");
+  assert.equal(await pointRows.nth(3).isVisible(), true);
+  await progressPage.screenshot({
+    path: "output/playwright/point-progress-desktop.png",
+    fullPage: true,
+  });
+  await progressPage.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await progressPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+  );
+  for (const badge of await pointRows.locator(".badge").all()) {
+    assert.equal(await badge.isVisible(), true);
+    assert.equal(
+      await badge.evaluate((el) => el.getBoundingClientRect().right <= innerWidth),
+      true,
+    );
+  }
+  await progressPage.screenshot({
+    path: "output/playwright/point-progress-mobile.png",
+    fullPage: true,
+  });
+  await progressPage.setViewportSize({ width: 1440, height: 900 });
+  await pointRows.nth(0).getByRole("link").click();
+  await progressPage.waitForURL((url) => url.hash === `#point-${points[0].id}`);
+  await progressPage.locator(`#point-${points[0].id}`).waitFor();
+  assert.equal(
+    new URL(progressPage.url()).searchParams.get("workState"),
+    "ready_for_review",
+  );
+  for (const [state, summary] of [
+    ["resolved", "4 of 4 points resolved"],
+    ["declined", "0 of 4 points resolved · 4 closed"],
+    ["open", "1 of 4 points resolved · 3 open"],
+  ]) {
+    pointThread = await post("threads.status", {
+      threadId: pointThread.id,
+      revision: pointThread.revision,
+      state,
+    });
+    await progressPage.goto(
+      `${access.url}/projects/${access.projectId}?search=Numbered&showResolved=true`,
+    );
+    await progressRow.getByText(summary, { exact: true }).waitFor();
+  }
   process.stdout.write("Filter UI QA passed\n");
 } finally {
   if (browser) await browser.close();
