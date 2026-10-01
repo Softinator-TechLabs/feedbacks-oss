@@ -1,6 +1,6 @@
 {
   "name": "feedbacks",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Visual website feedback, team discussion and reviewer context for coding assistants.",
   "author": {
     "name": "Softinator TechLabs",
@@ -17,7 +17,10 @@
     "longDescription": "Connect to your chosen Feedbacks server. Read screenshots, complete discussion and approved reviewer guidance; reply and attach evidence within your granted project scope.",
     "developerName": "Softinator TechLabs",
     "category": "Productivity",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://feedbacks.softinator.ai",
     "privacyPolicyURL": "https://feedbacks.softinator.ai/privacy.html",
     "defaultPrompt": "Read the Feedbacks thread for this task, including its screenshot, discussion and approved reviewer guidance. Summarize the request before making authorized changes.",
