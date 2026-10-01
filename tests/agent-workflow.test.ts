@@ -41,6 +41,70 @@ const thread: any = {
   ],
 };
 
+test("status and overview retain a bounded outcome note; other sections stay compact", async () => {
+  const note =
+    "Source-only; testing not ready. Target: local synthetic regression. Deployment pending.";
+  const current = { ...thread, work: { state: "ready_for_review", note, history: [] } };
+  const overview = await runAgentTool(async () => current, "thread", { threadId });
+  const status = await runAgentTool(async () => current, "execute", {
+    operation: "threads.status",
+    input: { threadId, revision: 4, state: "ready_for_review", note },
+  });
+  for (const result of [overview, status]) {
+    assert.equal(result.work.note, note);
+    assert.equal(result.work.noteTrust, "untrusted_work_note");
+    assert.equal(result.revision, 4);
+  }
+  const discussion = await runAgentTool(async () => current, "thread", {
+    threadId,
+    section: "discussion",
+    limit: 1,
+  });
+  assert.equal(discussion.work.note, undefined);
+  const queue = await runAgentTool(
+    async () => ({ items: [current], total: 1 }),
+    "queue",
+    { projectId },
+  );
+  assert.equal(queue.items[0].work.note, undefined);
+});
+
+test("long escaped work notes are bounded and recoverable through revision-pinned text reads", async () => {
+  const note = '\u0000"\\'.repeat(2000);
+  const current = { ...thread, work: { state: "ready_for_review", note, history: [] } };
+  const execute = async () => current;
+  const overview = await runAgentTool(execute, "thread", { threadId });
+  assert.equal(overview.work.noteTruncated, true);
+  assert.ok(JSON.stringify(overview.work.note).length <= 800);
+  assert.ok(overview.sections.includes("workNote"));
+  let page = await runAgentTool(execute, "thread", {
+    threadId,
+    section: "workNote",
+    textLimit: 4000,
+  });
+  const first = page;
+  assert.equal(first.trust, "untrusted_work_note");
+  let recovered = page.text;
+  while (page.next) {
+    page = await runAgentTool(execute, "thread", page.next.input);
+    recovered += page.text;
+  }
+  assert.equal(recovered, note);
+  current.work.note += "changed";
+  await assert.rejects(runAgentTool(execute, "thread", first.next.input), {
+    code: "CONFLICT",
+  });
+  current.revision++;
+  await assert.rejects(
+    runAgentTool(execute, "thread", {
+      threadId,
+      section: "workNote",
+      expectedRevision: 4,
+    }),
+    { code: "CONFLICT" },
+  );
+});
+
 test("workspace matches SSH remotes against connected repositories; ambiguous and weak matches stay explicit", async () => {
   const projects = [
     {

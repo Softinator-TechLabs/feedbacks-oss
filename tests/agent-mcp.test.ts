@@ -251,6 +251,19 @@ for (const profile of ["full", "compact"] as const)
         /no routine progress, test or PR\/merge replies/,
       );
       assert.match(client.getInstructions() ?? "", /short outcome note/);
+      assert.match(
+        client.getInstructions() ?? "",
+        /Review requests: separate bugs\/suggestions/,
+      );
+      assert.match(
+        client.getInstructions() ?? "",
+        /fix-all instructions authorize that scope; do not reconfirm/,
+      );
+      assert.ok(
+        JSON.stringify(
+          tools.find((tool) => tool.name === "feedbacks_thread")?.inputSchema,
+        ).includes('"workNote"'),
+      );
       if (profile === "full") {
         const reply = tools.find((tool) => tool.name === "threads.reply");
         assert.match(reply?.description ?? "", /important blocker\/decision/);
@@ -270,6 +283,7 @@ for (const profile of ["full", "compact"] as const)
         (guide.contents[0] as any).text,
         /Permission to reply is not a requirement to reply/,
       );
+      assert.match((guide.contents[0] as any).text, /Suggestions need human acceptance/);
     } finally {
       await client.close();
       await server.close();

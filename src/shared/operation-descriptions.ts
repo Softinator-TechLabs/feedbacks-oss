@@ -107,7 +107,7 @@ export const operationDescriptions: Record<string, string> = {
   "threads.neighbors":
     "Find previous and next thread in the same filtered and sorted inbox, across pagination. Returns null neighbors if the thread is outside current filters. This is a live view, not an immutable queue.",
   "threads.status":
-    "Update authorized work state using the current revision. Resolve only verified agreed work; use ready_for_review when required checks remain. Put a short outcome, verification limits and useful final link in note rather than posting a routine discussion reply.",
+    "Update authorized work state using the current revision. Resolve only verified agreed work; use ready_for_review when required checks remain. Keep note short: testing readiness (source-only/deployment pending or deployed/testing ready when verified), exact verification target, remaining gates and one retest step when ready. A commit/PR or state alone does not prove live readiness. Use note rather than routine discussion replies.",
   "threads.reply":
     "Post a discussion reply for an explicitly requested update or an important blocker/decision needing human attention within the authorized task; not routine progress, test or PR/merge announcements. A reply does not update work status.",
   "threads.editReply":

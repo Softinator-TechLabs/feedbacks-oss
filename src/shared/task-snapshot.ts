@@ -27,6 +27,21 @@ export function pointAnchor(anchor: any) {
   };
   return Object.keys(result).length ? result : undefined;
 }
+export function workSnapshot(
+  work: { state: string; note?: string | null },
+  includeNote = true,
+): { state: string; note?: string; noteTrust?: string; noteTruncated?: true } {
+  if (!includeNote || !work.note) return { state: work.state };
+  let note = work.note.slice(0, 600);
+  while (JSON.stringify(note).length > 800)
+    note = note.slice(0, Math.floor(note.length * 0.9));
+  return {
+    state: work.state,
+    note,
+    noteTrust: "untrusted_work_note",
+    ...(note.length < work.note.length ? { noteTruncated: true as const } : {}),
+  };
+}
 export function discussionSnapshot(replies: any[] = [], budget = 3000) {
   if (!replies.length) return undefined;
   const items: any[] = [];

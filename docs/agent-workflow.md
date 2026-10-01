@@ -8,6 +8,8 @@ Use [Superpowers](agent-tools.md) for planning, systematic debugging, regression
 
 ## Work in isolation
 
+For Feedbacks review intake, discuss confirmed bugs and suggestions with brief plans in the coding chat before implementation. Human selection accepts the scope; explicit specific-fix or fix-all requests already authorize it. Do not repeat acceptance questions per item or treat unrelated new suggestions as approved.
+
 Preserve unrelated changes. Use a dedicated branch/worktree for parallel changes. Run `npm ci`, then `npm run harness:dev` for a disposable app with its own database, assets and automatically allocated loopback port. It does not read `.env` or use external databases/storage. Stop it with Ctrl+C; the instance's files are removed. SIGKILL may leave an ignored sandbox directory; remove only that instance's directory after confirming its process has stopped.
 
 The sandbox runs the built application. Rebuild/restart after source changes. It uses PGlite for convenient reproduction, not for PostgreSQL concurrency certification. Persistent local PostgreSQL and live frontend development remain available through [development](development.md).

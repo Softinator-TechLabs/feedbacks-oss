@@ -157,7 +157,7 @@ try {
   await capture("thread-ready");
   await page.getByRole("button", { name: "Copy task for agent", exact: true }).click();
   await page
-    .getByText("Task copied. Paste it to authorize work and status updates.", {
+    .getByText("Task copied. Paste it to review and discuss next steps.", {
       exact: true,
     })
     .waitFor();

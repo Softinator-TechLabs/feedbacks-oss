@@ -4,6 +4,7 @@ import {
   pointAnchor,
   assetSnapshot,
   safeContextUrl,
+  workSnapshot,
 } from "./task-snapshot.js";
 import type { AgentExecutor } from "./agent-workflow.js";
 import { presentTaskCounts, reviewedPage } from "./agent-task-context.js";
@@ -138,6 +139,8 @@ export async function startTask(
           : state;
   };
   const incomplete: string[] = [];
+  const work = workSnapshot(thread.work);
+  if (work.noteTruncated) incomplete.push("workNote");
   if (thread.body.length > 800) incomplete.push("body");
   if (
     points.length > 20 ||
@@ -438,7 +441,7 @@ export async function startTask(
       revision: thread.revision,
       ...(scope.length ? { annotationIds: scope } : {}),
       ...(thread.archived ? { archived: true } : {}),
-      work: { state: thread.work.state },
+      work,
       ...(thread.workPlan ? { workPlan: thread.workPlan } : {}),
       body: thread.body.slice(0, 800),
       ...(points.length

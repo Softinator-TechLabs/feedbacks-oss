@@ -6,7 +6,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
-- [Quiet agent discussion](quiet-agent-discussion.md)
+- [Human-led, quiet agent handoffs](quiet-agent-discussion.md)
 
 - [Verified client installation and onboarding](verified-client-onboarding.md)
 
