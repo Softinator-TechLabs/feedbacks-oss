@@ -113,3 +113,84 @@ await writeFile(
     2,
   ) + "\n",
 );
+
+// Native Claude Code packaging reuses the same reviewed adapter and skills.
+// Only the platform manifests differ; runtime business rules remain in the server.
+const claude = join(root, "dist/claude-plugin/plugins/feedbacks");
+await rm(join(root, "dist/claude-plugin"), { recursive: true, force: true });
+await cp(out, claude, { recursive: true });
+for (const file of ["plugin.json", "mcp.json", ".codex-plugin", ".mcp.json"])
+  await rm(join(claude, file), { recursive: true, force: true });
+const portable = JSON.parse(await readFile(join(out, "plugin.json"), "utf8"));
+const native = Object.fromEntries(
+  [
+    "name",
+    "version",
+    "description",
+    "author",
+    "homepage",
+    "repository",
+    "license",
+    "keywords",
+  ].map((key) => [key, portable[key]]),
+);
+await mkdir(join(claude, ".claude-plugin"), { recursive: true });
+await writeFile(
+  join(claude, ".claude-plugin/plugin.json"),
+  JSON.stringify(native, null, 2) + "\n",
+);
+await writeFile(
+  join(claude, ".mcp.json"),
+  JSON.stringify(
+    {
+      mcpServers: {
+        feedbacks: { command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/mcp.mjs"] },
+      },
+    },
+    null,
+    2,
+  ) + "\n",
+);
+const claudeMarket = join(root, "dist/claude-plugin/.claude-plugin");
+await mkdir(claudeMarket, { recursive: true });
+await writeFile(
+  join(claudeMarket, "marketplace.json"),
+  JSON.stringify(
+    {
+      name: "feedbacks",
+      owner: portable.author,
+      metadata: { description: "Feedbacks native Claude Code plugin and review skills." },
+      plugins: [
+        {
+          name: "feedbacks",
+          source: "./plugins/feedbacks",
+          description: portable.description,
+        },
+      ],
+    },
+    null,
+    2,
+  ) + "\n",
+);
+await writeFile(
+  join(claude, "README.md"),
+  `# Feedbacks for Claude Code
+
+This native package bundles the Feedbacks MCP adapter and both reusable skills. It requires Node.js 22.12+ or 24.
+
+Configure your chosen server URL and a personal project-scoped key through private FEEDBACKS_URL/FEEDBACKS_TOKEN environment values, or an owner-only ~/.config/feedbacks/config.json (mode 0600). Never put credentials in this package.
+
+See https://feedbacks.softinator.ai/docs/reference/manual/agents#claude-code-plugin for installation and verification. Official directory inclusion is separate.
+`,
+);
+entries.length = 0;
+await walk(claude);
+const claudeArchive = join(root, "dist/feedbacks-claude-plugin.zip");
+await writeFile(claudeArchive, zipFiles(entries));
+await writeFile(
+  claudeArchive + ".sha256",
+  createHash("sha256")
+    .update(await readFile(claudeArchive))
+    .digest("hex") + "  feedbacks-claude-plugin.zip\n",
+);
+console.log(`Built standalone Claude Code plugin (${entries.length} files).`);

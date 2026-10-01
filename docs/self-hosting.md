@@ -2,7 +2,7 @@
 
 This is the server operator reference. Install one Feedbacks server for your company before connecting extensions or agents. The [DevOps walkthrough](../site-docs/guide/self-host.md) separates deployment from [owner project/member setup](../site-docs/guide/team-setup.md), [reviewer installation](../site-docs/guide/chrome-extension.md) and [developer MCP setup](../site-docs/guide/mcp.md).
 
-Use your own domain, PostgreSQL database and S3-compatible object storage. Wasabi, AWS S3 and other compatible providers can be configured through the same environment variables. Compatibility depends on support for authenticated `PutObject` and `GetObject` requests with path-style addressing; verify upload and authorized readback with your chosen provider. No Softinator storage account is required.
+Use your own domain, PostgreSQL database and S3-compatible object storage. Wasabi, AWS S3 and other compatible providers can be configured through the same environment variables. Compatibility depends on support for authenticated `PutObject`, `GetObject` and `DeleteObject` requests with path-style addressing; verify upload and authorized readback with your chosen provider. No Softinator storage account is required.
 
 ## Local development
 
@@ -17,9 +17,13 @@ Follow the README. For video contact sheets outside Docker, install `ffmpeg` and
 5. Configure a TLS reverse proxy and set `TRUST_PROXY_HOPS` to the exact number of trusted proxy hops. The app process defaults to `0`; production Compose defaults to `1` only if the variable is absent. Change the `0` from `.env.example` for your deployment. Restrict the app port to that ingress and have it overwrite forwarded headers. With a single proxy, use `1`.
 6. Run `docker compose up -d --build --wait`. Map the app's internal port 3000 through the proxy; Compose does not publish it or the database to the host.
 
+For a published image, use [registry Compose](../compose.registry.yaml), set `FEEDBACKS_IMAGE` to a reviewed registry digest and run `docker compose -f compose.registry.yaml up -d --wait` without a source build. See [image publication](releasing.md#docker-hub-images) for native architecture verification.
+
 The standard image runs as a non-root user. Production Compose drops capabilities, uses a read-only root filesystem and provides temporary memory-backed space. Persistent records remain in PostgreSQL and object storage.
 
 ## Bring your own S3-compatible storage
+
+Start with the [illustrated storage and prerequisites walkthrough](../site-docs/guide/storage.md) for bucket creation, scoped credentials and the exact configuration mapping.
 
 | Variable               | What to supply                                  |
 | ---------------------- | ----------------------------------------------- |
@@ -31,7 +35,7 @@ The standard image runs as a non-root user. Production Compose drops capabilitie
 
 For a Wasabi bucket in `eu-central-1`, the endpoint is `https://s3.eu-central-1.wasabisys.com` and the region is `eu-central-1`. For an AWS bucket in `eu-west-1`, use `https://s3.eu-west-1.amazonaws.com` and `eu-west-1`. Match the endpoint to your actual bucket region. An independently operated S3-compatible service must use HTTPS in production, with a certificate trusted by the runtime.
 
-Keep the bucket private and require transport encryption. Grant the application only object read/write for its installation prefix, such as `feedbacks/production/organizations/<ORGANIZATION_ID>/*`. The application does not need bucket administration, ACL changes, public access or object deletion permission. Enable provider-side encryption, retention and backups according to your requirements. Do not share bucket credentials across customer organizations.
+Keep the bucket private and require transport encryption. Grant the application only object read/write/delete for its installation prefix, such as `feedbacks/production/organizations/<ORGANIZATION_ID>/*`. The application does not need bucket administration, ACL changes, public access or deletion of historical object versions. `DeleteObject` is needed for thread deletion and failed-upload cleanup. Enable provider-side encryption, retention and backups according to your requirements. Do not share bucket credentials across customer organizations.
 
 After bootstrap, upload a synthetic screenshot and verify an authorized read, rejection for an unrelated project member, and persistence after restarting the application. Endpoint configuration alone does not prove provider compatibility or a recoverable backup.
 

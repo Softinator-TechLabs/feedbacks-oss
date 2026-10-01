@@ -43,6 +43,7 @@ export const sourceRootFiles = [
   "Dockerfile",
   "Dockerfile.site",
   "compose.yaml",
+  "compose.registry.yaml",
   "compose.dev.yaml",
   "compose.site.yaml",
   "index.html",

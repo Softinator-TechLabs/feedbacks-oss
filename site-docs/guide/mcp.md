@@ -31,3 +31,7 @@ Open a thread → **Copy task for agent** → paste with your request. The agent
 | Reusable skills and discovery          | [Client installation](/reference/manual/plugin/feedbacks/skills/review-feedback/references/install) |
 | Scopes, limits and exact operations    | [MCP contract](/reference/manual/mcp-contract)                                                      |
 | Evidence, assignments and planning     | [Agent workflow](/reference/manual/agents)                                                          |
+
+## Native plugins
+
+Use the [native Codex and Claude Code installation instructions](/reference/manual/agents#codex-plugin) to build and install the bundled adapter with both reusable skills. Configure a personal scoped key, restart the client and verify the plugin inventory. Directory listings and marketplace installation are separate distribution paths.

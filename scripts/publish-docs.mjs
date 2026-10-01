@@ -14,6 +14,7 @@ const queue = [
   "review-workflow",
   "project-routing",
   "agent-setup",
+  "agents",
   "mcp-contract",
   "extension",
   "webhooks",

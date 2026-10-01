@@ -301,6 +301,7 @@ test("HTTP session requires origin and CSRF; scoped MCP performs read after writ
         for (const adapterArgs of [
           ["--import", "tsx", "src/cli/mcp.ts"],
           ["dist/codex-plugin/feedbacks/mcp.mjs"],
+          ["dist/claude-plugin/plugins/feedbacks/mcp.mjs"],
         ]) {
           const stdio =
             era === "modern"
