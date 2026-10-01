@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 584" role="img" aria-labelledby="title desc">
+<title id="title">Two logins, one verified connection</title>
+<desc id="desc">Your model account authenticates the coding client. Your personal Feedbacks key is imported into private local configuration. The client connects over HTTPS to your team server and verifies permitted threads and marked images before work begins.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8" fill="#17324d"/></marker></defs>
+<rect width="560" height="584" rx="16" fill="#fffdfa"/>
+<g font-family="Arial,sans-serif" text-anchor="middle" fill="#202020">
+<text x="280" y="42" font-size="25" font-weight="700">Two logins. One connection.</text>
+<rect x="20" y="70" width="250" height="102" rx="12" fill="#f3efe9"/><text x="145" y="109" font-size="23" font-weight="700">Model account</text><text x="145" y="140" font-size="19">Sign in to your client</text>
+<rect x="290" y="70" width="250" height="102" rx="12" fill="#f3efe9"/><text x="415" y="109" font-size="23" font-weight="700">Feedbacks account</text><text x="415" y="140" font-size="19">Create a personal key</text>
+<rect x="290" y="218" width="250" height="83" rx="12" fill="#e5ecef"/><text x="415" y="251" font-size="22" font-weight="700">Keep key local</text><text x="415" y="280" font-size="19">Private client config</text>
+<rect x="20" y="344" width="520" height="82" rx="12" fill="#17324d"/><text x="280" y="376" font-size="24" font-weight="700" fill="#fffdfa">Your coding client + Feedbacks tools</text><text x="280" y="406" font-size="19" fill="#fffdfa">Installed, signed in, connected</text>
+<text x="420" y="464" font-size="18" fill="#17324d">HTTPS · scoped access</text>
+<rect x="20" y="487" width="520" height="77" rx="12" fill="#f3efe9"/><text x="280" y="518" font-size="23" font-weight="700">Verify on your team server</text><text x="280" y="546" font-size="19">Projects → one thread → marked image</text>
+</g>
+<g fill="none" stroke="#17324d" stroke-width="2" marker-end="url(#arrow)"><path d="M145 174v162"/><path d="M415 174v36"/><path d="M415 303v33"/><path d="M280 428v51"/></g>
+</svg>
