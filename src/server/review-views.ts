@@ -34,12 +34,14 @@ export function threadQuery(projectId: string, i: ReviewFilters) {
   }
   if (!i.showResolved && !i.workState)
     filter += " AND data->'work'->>'state' NOT IN ('resolved','declined')";
+  if (i.workState === "closed")
+    filter += " AND data->'work'->>'state' IN ('resolved','declined')";
   for (const [value, expression] of [
     [i.authorId, "data->'author'->>'userId'="],
     [i.createdAfter, "created_at>="],
     [i.createdBefore, "created_at<"],
     [i.activityAfter, "updated_at>="],
-    [i.workState, "data->'work'->>'state'="],
+    [i.workState === "closed" ? undefined : i.workState, "data->'work'->>'state'="],
   ] as const) {
     if (value === undefined) continue;
     args.push(value);

@@ -4,11 +4,16 @@ import { calendarDate, localTimeZone } from "../work-plan-model.js";
 import { ProjectAssignments } from "../assignments/project-assignments.js";
 import type { Assignee } from "../assignments/model.js";
 import { usePageLocation, navigate } from "../navigation.js";
-import { readFilters, readOffset, filterQuery } from "../review-filters.js";
-import { api, type Actor, type Project, type Thread } from "../api.js";
+import {
+  readFilters,
+  readOffset,
+  filterQuery,
+  matchesWorkStatus,
+} from "../review-filters.js";
+import { api, labels, type Actor, type Project, type Thread } from "../api.js";
 import type { ProjectTaxonomy } from "../../shared/taxonomy.js";
 import type { ReviewFilters } from "../../shared/contracts.js";
-import { Empty, ErrorNotice, Loading, useLoad } from "../ui.js";
+import { Empty, ErrorNotice, Loading, Notice, useAction, useLoad } from "../ui.js";
 import { ThreadListFilters } from "./list-filters.js";
 import { ThreadComposer } from "./composer.js";
 import { ThreadListRow } from "./list-row.js";
@@ -38,6 +43,16 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     [version, setVersion] = useState(0),
     [selected, setSelected] = useState<Set<string>>(new Set());
   const filterTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [statusRecovery, setStatusRecovery] = useState<{
+    previous: Thread;
+    updated: Thread;
+    query: string;
+    projectId: string;
+  }>();
+  const recoveryAction = useAction();
+  const canUndoStatus =
+    project.permissions.canResolve ||
+    !["resolved", "declined"].includes(statusRecovery?.previous.work.state ?? "");
   useEffect(() => setSelected(new Set()), [project.id, query]);
   useEffect(() => {
     setDraft(readFilters(query));
@@ -149,11 +164,15 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     );
     setVersion((value) => value + 1);
   };
-  const handleStatusSaved = (updated: Thread) => {
+  const handleStatusSaved = (updated: Thread, previous?: Thread) => {
+    const leavesView = !matchesWorkStatus(updated.work.state, filters);
+    if (previous && leavesView) {
+      recoveryAction.setError("");
+      setStatusRecovery({ previous, updated, query, projectId: project.id });
+    }
     setLoaded((current) => {
-      if (!current || current.query !== query) return current;
-      const leavesView =
-        !showResolved && ["resolved", "declined"].includes(updated.work.state);
+      if (!current || current.query !== query || current.projectId !== project.id)
+        return current;
       return {
         ...current,
         result: {
@@ -310,6 +329,44 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
         </>
       )}
       <ErrorNotice error={error} />
+      {statusRecovery?.query === query && statusRecovery.projectId === project.id && (
+        <>
+          <Notice>
+            Status saved: {labels[statusRecovery.updated.work.state]}. This feedback is
+            outside the current filters.{" "}
+            <a
+              href={`/threads/${statusRecovery.updated.id}${filterQuery(filters, offset)}`}
+            >
+              Open feedback
+            </a>{" "}
+            <button
+              type="button"
+              disabled={recoveryAction.busy || !canUndoStatus}
+              onClick={() =>
+                void recoveryAction.run(async () => {
+                  const updated = await api<Thread>("threads.status", {
+                    threadId: statusRecovery.updated.id,
+                    revision: statusRecovery.updated.revision,
+                    state: statusRecovery.previous.work.state,
+                    ...(statusRecovery.previous.work.note
+                      ? { note: statusRecovery.previous.work.note }
+                      : {}),
+                    ...(statusRecovery.previous.work.duplicateOf
+                      ? { duplicateOf: statusRecovery.previous.work.duplicateOf }
+                      : {}),
+                  });
+                  handleStatusSaved(updated);
+                  setStatusRecovery(undefined);
+                })
+              }
+            >
+              Undo status change
+              {!canUndoStatus && " (permission required)"}
+            </button>
+          </Notice>
+          <ErrorNotice error={recoveryAction.error} />
+        </>
+      )}
       {error && <button onClick={() => setVersion((v) => v + 1)}>Retry loading</button>}
       {!data && !error ? (
         <Loading />
@@ -329,7 +386,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                 selected={selected.has(t.id)}
                 onSelectionChange={handleSelectionChange}
                 onPrioritySaved={handlePrioritySaved}
-                onStatusSaved={handleStatusSaved}
+                onStatusSaved={(updated) => handleStatusSaved(updated, t)}
                 apply={apply}
               />
             ))}
@@ -361,6 +418,8 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
             hostname ||
             deviceClass ||
             showResolved ||
+            filters.workState ||
+            filters.assignedTo ||
             category ||
             tag
               ? "Change the filters to find other feedback."
