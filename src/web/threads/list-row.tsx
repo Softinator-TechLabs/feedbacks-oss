@@ -1,6 +1,6 @@
 import { WorkPlanSummary } from "./work-plan.js";
 import { ThreadQuickPriority, ThreadQuickStatus } from "./row-controls.js";
-import { PointProgressRing } from "../point-progress-ring.js";
+import { ThreadListPointProgress } from "./list-point-progress.js";
 import { HumanTime } from "../human-time.js";
 import { ExternalLink } from "../ui.js";
 import { filterQuery } from "../review-filters.js";
@@ -137,7 +137,6 @@ export function ThreadListRow({
             </div>
           </div>
           <div className="thread-stats">
-            <PointProgressRing thread={t} compact />
             <span>
               {t.view?.uniqueLikes ?? 0}{" "}
               {t.view?.uniqueLikes === 1 ? "view like" : "view likes"} ·{" "}
@@ -146,6 +145,10 @@ export function ThreadListRow({
             <HumanTime at={t.updatedAt} />
           </div>
         </a>
+        <ThreadListPointProgress
+          thread={t}
+          href={`/threads/${t.id}${filterQuery(filters, offset)}`}
+        />
         <div className="thread-taxonomy" aria-label="Filter by category or tag">
           <button
             type="button"

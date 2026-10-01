@@ -124,7 +124,7 @@ export const reviewFiltersSchema = z.object({
   createdBefore: z.string().datetime({ offset: true }).optional(),
   activityAfter: z.string().datetime({ offset: true }).optional(),
   workState: z
-    .enum(["open", "in_progress", "ready_for_review", "resolved", "declined"])
+    .enum(["open", "in_progress", "ready_for_review", "resolved", "declined", "closed"])
     .optional(),
   topPriority: z.boolean().optional(),
   showResolved: z.boolean().default(false),
