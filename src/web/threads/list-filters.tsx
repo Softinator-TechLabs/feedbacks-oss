@@ -167,6 +167,7 @@ export function ThreadListFilters({
             <option value="ready_for_review">Ready for review</option>
             <option value="resolved">Resolved</option>
             <option value="declined">Declined</option>
+            <option value="closed">Closed</option>
             <option value="all">All statuses</option>
           </select>
         </Field>

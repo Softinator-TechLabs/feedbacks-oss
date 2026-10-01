@@ -1,3 +1,4 @@
+import React from "react";
 import { Icon } from "../icons.js";
 import { api, labels, type Thread } from "../api.js";
 import { ActionState, useAction } from "../ui.js";
@@ -56,10 +57,9 @@ export function ThreadQuickStatus({
     "open",
     "in_progress",
     "ready_for_review",
+    "resolved",
+    "declined",
   ];
-  if (canResolve) states.push("resolved", "declined");
-  else if (["resolved", "declined"].includes(thread.work.state))
-    states.push(thread.work.state);
   return (
     <>
       <select
@@ -85,8 +85,15 @@ export function ThreadQuickStatus({
         }}
       >
         {states.map((state) => (
-          <option key={state} value={state}>
+          <option
+            key={state}
+            value={state}
+            disabled={!canResolve && ["resolved", "declined"].includes(state)}
+          >
             {labels[state]}
+            {!canResolve && ["resolved", "declined"].includes(state)
+              ? " (permission required)"
+              : ""}
           </option>
         ))}
       </select>

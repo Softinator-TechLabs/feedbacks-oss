@@ -10,6 +10,15 @@ export const categories = [
   "productWorkflow",
   "usabilityAccessibility",
 ] as const;
+export function matchesWorkStatus(
+  state: string,
+  filters: Pick<ReviewFilters, "workState" | "showResolved">,
+) {
+  const closed = ["resolved", "declined"].includes(state);
+  if (filters.workState === "closed") return closed;
+  if (filters.workState) return state === filters.workState;
+  return filters.showResolved || !closed;
+}
 export function readFilters(query: string): ReviewFilters {
   const p = new URLSearchParams(query);
   const sort = p.get("sort");

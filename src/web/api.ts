@@ -257,6 +257,7 @@ export type Thread = {
   response: { state: string };
   work: {
     state: string;
+    note?: string | null;
     duplicateOf?: string | null;
     history: Array<{
       state?: string;
