@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Verified client installation and onboarding](verified-client-onboarding.md)
+
 - [Stable, lighter landing-page loading](landing-load-performance.md)
 
 - [Visual task guides and reliable release preparation](visual-task-docs-and-releases.md)
