@@ -1,4 +1,5 @@
 import { verifySelectedText } from "./qa/extension/review/selected-text.mjs";
+import { verifyCaptureTriage } from "./qa/extension/capture/triage.mjs";
 import { verifySelectionBlockers } from "./qa/extension/review/selection-blockers.mjs";
 import { verifyLiveSelection } from "./qa/extension/review/live-selection.mjs";
 import { verifyFullpageScopes } from "./qa/extension/capture/fullpage-scopes.mjs";
@@ -618,6 +619,21 @@ try {
 
     await verifyReviewDefaults({ page, tabId, send, worker, post, access, results });
   }
+  if (!process.env.FEEDBACKS_QA_SELECTED_TEXT_ONLY)
+    await verifyCaptureTriage({
+      context,
+      worker,
+      post,
+      auth,
+      access,
+      extensionId,
+      root,
+      page,
+      toFixture,
+      tabId,
+      send,
+      results,
+    });
   console.log(JSON.stringify(results));
 } finally {
   if (context) await context.close();

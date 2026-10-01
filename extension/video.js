@@ -1,4 +1,5 @@
 import { prepareCaptureOrigins } from "./session/session-origins.js";
+import { createCaptureTriage } from "./capture-triage.js";
 import {
   recordingDefaults,
   captureMicrophone,
@@ -31,6 +32,15 @@ import {
   exportVideo,
 } from "./video/video-media.js";
 const $ = (id) => document.getElementById(id);
+const triage = createCaptureTriage($("capture-triage"), {
+  load: (query) =>
+    send({
+      type: "captureTriage",
+      server: serverOrigin,
+      projectId: target?.projectId,
+      ...query,
+    }),
+});
 const recorderUrl = new URL(location.href);
 const sourceTabId = Number(recorderUrl.searchParams.get("sourceTabId"));
 const draftId = recorderUrl.searchParams.get("draftId");
@@ -811,9 +821,11 @@ $("send").onclick = async () => {
           server: serverOrigin,
           target,
           body: $("comment").value,
+          ...(triage.value() ? { triage: triage.value() } : {}),
           idempotencyKey: createKey,
         });
         $("comment").readOnly = true;
+        triage.setDisabled(true);
         renderSavedFrames();
       }
       thread = await send(createAttempt);
@@ -953,6 +965,7 @@ else
         routeFingerprint: result.routeFingerprint,
       });
       serverOrigin = server;
+      triage.reset();
       $("target").textContent = `${project.name} · ${url}`;
       $("redirect-origins").value = (result.allowedOrigins || []).slice(1).join(", ");
       approvedRedirectOrigins = result.allowedOrigins || null;

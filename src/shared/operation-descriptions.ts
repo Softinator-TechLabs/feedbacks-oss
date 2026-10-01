@@ -1,5 +1,9 @@
 // Shared discovery guidance for MCP and the JSON CLI; authorization stays in domain services.
 export const operationDescriptions: Record<string, string> = {
+  "threads.create":
+    "Create feedback in an authorized project with an idempotencyKey. Optional capture triage atomically sets priority and a durable assignee; priority also requires threads.plan and assignment requires assignments.assign. Changed retry content is rejected.",
+  "members.list":
+    "List authorized project members. For capture assignment, pass projectId and assignees search/offset/limit (maximum 10); returns active writable members' names and IDs with total/nextOffset, excluding private profiles. Follow nextOffset or search by name.",
   "integrations.catalog":
     "List implemented integrations and safe current connection/storage counts. Human server owners only; no credentials, tokens or exchange codes are returned.",
   "github.appSetupStart":

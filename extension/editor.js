@@ -15,6 +15,7 @@ import { buildExportBlob, screenshotSurface } from "./capture/editor-export.js";
 import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
 import { cleanupPrivateDiagnosticArchives } from "./diagnostics/archive.js";
 import { createEditorDiagnostics } from "./diagnostics/editor-panel.js";
+import { createCaptureTriage } from "./capture-triage.js";
 
 const $ = (id) => document.getElementById(id);
 const diagnosticStore = createDiagnosticEvidenceStore();
@@ -24,6 +25,16 @@ const send = async (message) => {
   if (!r.ok) throw Object.assign(Error(r.error), { code: r.code });
   return r.data;
 };
+const triage = createCaptureTriage($("capture-triage"), {
+  load: (query) =>
+    send({
+      type: "captureTriage",
+      server: draft?.server,
+      projectId: $("project").value,
+      ...query,
+    }),
+  onChange: () => schedule(),
+});
 const canvas = $("canvas"),
   ctx = canvas.getContext("2d");
 let draft,
@@ -546,6 +557,8 @@ function payload() {
       ]),
     ),
     projectId: $("project").value,
+    triage: triage.value(),
+    triageName: triage.label(),
     noImage: $("no-image").checked,
     includeCombined: $("include-combined").checked,
     toolState: shapes,
@@ -1089,6 +1102,8 @@ for (const id of [
   $(id).oninput = schedule;
 $("project").addEventListener("change", () => {
   loadProjectCategories("general");
+  triage.reset();
+  schedule();
 });
 $("no-image").addEventListener("change", () => {
   canvas.style.opacity = $("no-image").checked ? ".35" : "1";
@@ -1108,6 +1123,7 @@ function lock(value) {
     "input,select,textarea,[data-tool],[data-md-format],[data-diagnostic-mask],#undo,#reset,#remove-current,#clear-crop",
   ))
     el.disabled = value;
+  triage.setDisabled(value);
   $("no-image").disabled = value || !base;
   $("include-combined").disabled = value || !base || $("no-image").checked;
   for (const el of document.querySelectorAll("[data-tool],#undo,#reset,#annotation"))
@@ -1295,6 +1311,7 @@ async function init() {
       projectCategories.set(p.id, p.taxonomy?.categories || []);
     }
   $("project").value = draft.projectId;
+  triage.reset(draft.triage, draft.triageName);
   loadProjectCategories(draft.category || "general");
   $("body").value = draft.body;
   const pointNotes = $("point-notes");

@@ -81,10 +81,22 @@ export const identityInputs = {
     currentPassword: z.string().max(1024),
     password: z.string().min(10).max(1024),
   }),
-  "members.list": z.object({
-    projectId: id.optional(),
-    includeRemoved: z.boolean().optional(),
-  }),
+  "members.list": z
+    .object({
+      projectId: id.optional(),
+      includeRemoved: z.boolean().optional(),
+      assignees: z
+        .object({
+          search: z.string().trim().max(120).default(""),
+          offset: z.number().int().min(0).max(100000).default(0),
+          limit: z.number().int().min(1).max(10).default(10),
+        })
+        .optional(),
+    })
+    .refine(
+      (input) => !input.assignees || !!input.projectId,
+      "Assignee search requires a project",
+    ),
   "members.archive": z.object({ userId: id, archived: z.boolean() }),
   "members.invite": z.object({
     email: z.string().email(),
@@ -189,6 +201,7 @@ export const identityOutputs = {
         operationScopes: z.array(z.string()),
         projectIds: z.array(id).nullable(),
         canResolve: z.boolean(),
+        captureTriage: z.boolean().optional(),
         note: z.string(),
       })
       .optional(),
@@ -201,6 +214,8 @@ export const identityOutputs = {
     signInRequired: z.boolean(),
   }),
   "members.list": z.object({
+    total: z.number().int().optional(),
+    nextOffset: z.number().int().nullable().optional(),
     items: z.array(
       z.object({
         id,

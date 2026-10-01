@@ -227,6 +227,7 @@ export function createSubmissionWorkflow({
             context: draft.context,
             category: draft.category || "general",
             tags: draft.tags || [],
+            ...(draft.triage ? { triage: draft.triage } : {}),
             ...(draft.approvedDiagnostics
               ? { diagnostics: draft.approvedDiagnostics }
               : {}),

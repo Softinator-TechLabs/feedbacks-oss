@@ -13,6 +13,8 @@ import { reportedIssue } from "./issue-links.js";
 import { documentRow } from "./documents.js";
 import { assertProjectCategory } from "./projects.js";
 import { figmaReferenceUrl } from "./figma-reference.js";
+import { delegations } from "./delegations.js";
+import { missingOperationScopes } from "../shared/contracts.js";
 import {
   annotationSummary,
   setAnnotationPlan,
@@ -172,6 +174,16 @@ export async function feedback(
   }
   if (op === "threads.create") {
     const p = await access(db, a, i.projectId, "write");
+    for (const [selected, operation] of [
+      [i.triage?.priority, "threads.plan"],
+      [i.triage?.assigneeId, "assignments.assign"],
+    ] as const)
+      if (selected && missingOperationScopes(a.scopes, operation).length)
+        fail(
+          "FORBIDDEN",
+          `Reconnect Feedbacks or grant ${operation} to set capture triage`,
+          403,
+        );
     await db.query("SELECT id FROM projects WHERE id=$1 FOR UPDATE", [i.projectId]);
     const prior = await retry(db, a, op, i);
     if (prior) return fullThread(db, a, await threadRow(db, a, prior));
@@ -231,6 +243,16 @@ export async function feedback(
         lastResponse: null,
       },
       work: { state: "open", history: [] },
+      ...(i.triage?.priority
+        ? {
+            workPlan: {
+              priority: i.triage.priority,
+              schedule: "unscheduled",
+              scheduledFor: null,
+              timeZone: "UTC",
+            },
+          }
+        : {}),
       review: { round: 1, state: "open", history: [] },
       externalIssues: [],
       figmaReference: null,
@@ -248,6 +270,19 @@ export async function feedback(
       [id, i.projectId, JSON.stringify(data)],
     );
     await remember(db, a, op, i, id);
+    if (i.triage?.assigneeId)
+      await delegations(db, a, "assignments.assign", {
+        threadId: id,
+        threadRevision: row.revision,
+        userId: i.triage.assigneeId,
+        annotationIds: [],
+        summary: i.body.slice(0, 500),
+        category: i.category,
+        tags: i.tags,
+        githubDecision: "undecided",
+        githubRationale: "Assigned during capture review; GitHub decision pending.",
+        idempotencyKey: `${id}:capture-assignee`,
+      });
     await event(db, a, i.projectId, id, "thread.created", { revision: 1 });
     return fullThread(db, a, row);
   }

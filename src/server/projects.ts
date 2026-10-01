@@ -190,6 +190,26 @@ export async function members(db: Database, a: Actor, op: string, i: any) {
     if (!i.projectId) ownerOnly(a);
     else await access(db, a, i.projectId);
     if (i.includeRemoved && !a.owner) fail("FORBIDDEN", "Owner required", 403);
+    if (i.assignees) {
+      const { search, offset, limit } = i.assignees;
+      const where =
+        "u.active=true AND u.removed_at IS NULL AND (u.owner=true OR g.role IN ('reviewer','maintainer')) AND position(lower($2) in lower(u.name))>0";
+      const from =
+        "FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1";
+      const values = [i.projectId, search];
+      const total = Number(
+        (await db.one(`SELECT count(*) ${from} WHERE ${where}`, values)).count,
+      );
+      const items = await db.query(
+        `SELECT u.id,u.name,u.active,u.owner,g.role ${from} WHERE ${where} ORDER BY lower(u.name),u.id LIMIT $3 OFFSET $4`,
+        [...values, limit, offset],
+      );
+      return {
+        items,
+        total,
+        nextOffset: offset + items.length < total ? offset + items.length : null,
+      };
+    }
     const rows = await db.query(
       i.projectId
         ? 'SELECT u.id,u.name,u.email,u.active,u.owner,u.removed_at AS "removedAt",u.classification,u.expertise,u.policy,u.policy_version,g.role,g.can_resolve,g.policy AS project_policy FROM users u LEFT JOIN grants g ON g.user_id=u.id AND g.project_id=$1 WHERE (u.owner=true OR g.user_id IS NOT NULL) AND (u.removed_at IS NULL OR $2=true)'

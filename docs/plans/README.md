@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Priority and assignment during capture review](capture-triage.md)
+
 - [Human-led, quiet agent handoffs](quiet-agent-discussion.md)
 
 - [Verified client installation and onboarding](verified-client-onboarding.md)
