@@ -1,0 +1,115 @@
+.capture-triage {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.7fr) minmax(0, 1.3fr);
+  gap: 8px 12px;
+  margin: 12px 0;
+}
+.capture-triage label {
+  display: block;
+  margin: 0 0 5px;
+}
+.capture-triage input,
+.capture-triage select {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+.capture-assignee-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+}
+.capture-assignee-trigger span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.capture-assignee-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--control-line);
+  border-radius: 6px;
+}
+.capture-assignee-search:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.capture-assignee-search svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+}
+.capture-assignee-search input {
+  border: 0;
+  padding: 8px 0;
+  box-shadow: none;
+  outline: none;
+}
+.capture-triage > .hint {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  margin: 0;
+}
+.capture-assignee {
+  position: relative;
+}
+.capture-assignee-popup {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  border: 1px solid var(--control-line);
+  border-radius: 8px;
+  background: var(--canvas);
+  box-shadow: 0 5px 18px #0002;
+  overflow: hidden;
+}
+.capture-assignee-popup [role="listbox"] {
+  max-height: 280px;
+  overflow: auto;
+}
+.capture-assignee-popup [role="option"] {
+  padding: 8px 10px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.capture-assignee-popup [role="option"]:hover,
+.capture-assignee-popup [aria-selected="true"] {
+  background: var(--hover);
+}
+.capture-assignee-navigation {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 6px;
+  border-top: 1px solid var(--line);
+}
+.capture-assignee-navigation button {
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  text-decoration: underline;
+  font-size: 12px;
+}
+.capture-assignee-count {
+  margin: 6px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 400px) {
+  .capture-triage {
+    grid-template-columns: 1fr;
+  }
+}

@@ -47,6 +47,7 @@ export async function replayableVideoCreate(
     server: message.server,
     target: message.target,
     body: message.body,
+    ...(message.triage ? { triage: message.triage } : {}),
     idempotencyKey: message.idempotencyKey,
   });
   const cached = (await storage.get(key))[key];

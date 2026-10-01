@@ -178,6 +178,7 @@ export class Operations {
               ),
               projectIds: a.projects ?? null,
               canResolve: a.kind !== "agent" || !!a.canResolve,
+              captureTriage: true,
               note: "Operation scopes and project permissions are separate. Domain checks still apply. Existing keys do not gain newly added scopes.",
             },
             actor: {

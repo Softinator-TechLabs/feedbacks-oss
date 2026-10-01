@@ -142,6 +142,17 @@ test("a validated create replays unchanged after lost acknowledgement and tab cl
   assert.equal(validations, 1);
   await assert.rejects(
     replayableVideoCreate(
+      { ...message, triage: { priority: "high", assigneeId: "member-a" } },
+      storage,
+      "account-a",
+      validate,
+      create,
+      31,
+    ),
+    /original request/i,
+  );
+  await assert.rejects(
+    replayableVideoCreate(
       { ...message, body: "Changed" },
       storage,
       "account-a",

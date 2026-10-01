@@ -90,6 +90,13 @@ export const threadsInputs = {
         .optional(),
       category: categorySchema.default("general"),
       tags: tagsSchema.default([]),
+      triage: z
+        .object({
+          priority: z.enum(["low", "normal", "high"]).optional(),
+          assigneeId: id.optional(),
+        })
+        .strict()
+        .optional(),
       diagnostics: diagnosticsSchema.optional(),
       idempotencyKey: z.string().min(8).max(200),
     })

@@ -663,6 +663,11 @@ async function saveDraft(message) {
       (draft.capturePages || []).filter((page) => !page.annotationId).length > 1,
     toolState: message.toolState,
     projectId: message.projectId,
+    triage: message.triage,
+    triageName:
+      typeof message.triageName === "string"
+        ? message.triageName.slice(0, 120)
+        : undefined,
   };
   if (message.annotations !== undefined) {
     const original = draft.context.annotations || [];
@@ -1643,6 +1648,7 @@ async function route(message, sender) {
           return {
             projectId: target.projectId,
             body: message.body,
+            ...(message.triage ? { triage: message.triage } : {}),
             context: { url: target.url, viewport: target.viewport },
             idempotencyKey: message.idempotencyKey,
           };
@@ -1668,6 +1674,48 @@ async function route(message, sender) {
     case "draftProjects":
       if (!state.draft) throw Error("No draft.");
       return authenticated("projects.list", {}, state.draft.server);
+    case "captureTriage": {
+      const editor = sender.url?.startsWith(chrome.runtime.getURL("editor.html"));
+      if (!editor && !sender.url?.startsWith(chrome.runtime.getURL("video.html")))
+        throw Error("Open capture review to choose an assignee.");
+      const origin = editor ? state.draft?.server : server;
+      if (!origin || message.server !== origin)
+        throw Error("The connection changed. Reopen capture review.");
+      const identity = await authenticated("auth.me", {}, origin);
+      const scopes = identity.credential.scopes;
+      const project = await authenticated(
+        "projects.get",
+        { projectId: message.projectId },
+        origin,
+      );
+      const permitted = (scope) =>
+        identity.credential.captureTriage &&
+        project.permissions.canWrite &&
+        (!scopes || scopes.includes(scope));
+      const canAssign =
+        permitted("assignments.assign") &&
+        permitted("members.list") &&
+        permitted("threads.plan");
+      return {
+        ...(canAssign
+          ? await authenticated(
+              "members.list",
+              {
+                projectId: message.projectId,
+                assignees: {
+                  search: message.search || "",
+                  offset: message.offset || 0,
+                  limit: 10,
+                },
+              },
+              origin,
+            )
+          : { items: [], total: 0, nextOffset: null }),
+        canAssign,
+        canPlan: permitted("threads.plan"),
+        unsupported: !identity.credential.captureTriage,
+      };
+    }
     case "saveServerDraft": {
       if (typeof message.value !== "string" || message.value.length > 2048)
         throw Error("Server address is too long.");

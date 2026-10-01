@@ -97,11 +97,17 @@ test("lost create acknowledgement retries the original comment and review target
   await new Promise((resolve) => setImmediate(resolve));
   vm.runInContext("blob = new Blob(['recording']); durationMs = 1000", context);
   nodes.comment.value = "Original comment";
+  context.captureTriageValue = {
+    priority: "high",
+    assigneeId: "00000000-0000-4000-8000-000000000001",
+  };
   await nodes.send.onclick();
   nodes.comment.value = "Edited after lost response";
+  context.captureTriageValue = { priority: "low" };
   await nodes.send.onclick();
   assert.equal(sent.length, 2);
   assert.deepEqual(sent[1], sent[0]);
+  assert.equal(sent[0].triage.priority, "high");
   assert.equal(nodes.comment.readOnly, true);
 });
 

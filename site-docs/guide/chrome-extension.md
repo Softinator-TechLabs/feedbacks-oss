@@ -26,6 +26,8 @@ The default review shortcut is **⌘ Shift Y** on Mac or **Ctrl Shift Y** on Win
 
 Choose **Review & send**, inspect the screenshots, then **Send feedback**. Points stay local until sending. You can show or hide **Points**, **Element outline** and **Text selection** separately.
 
+Before sending screenshots or video, choose **Priority** and optionally **Assign to**. Search members by name, select with arrow keys and Enter, or use **More** for the next ten results. Only active members who can work in that project appear. Normal and Unassigned remain the defaults. If these controls ask you to reconnect, update the server and approve a fresh extension connection. Assignment records who should handle the feedback; it does not start their agent automatically.
+
 New screenshot reviews include captured diagnostics by default. Check their preview and coverage, or **Download diagnostics**. Raw values can include cookies, storage and request bodies; screenshot redaction does not redact that archive. Uncheck **Include captured diagnostics** to omit it; change future defaults in **Settings → Review defaults**.
 
 Use **Start diagnostics** before reproducing earlier console/network activity. If uploading is interrupted, keep the draft open and choose **Retry Send**.
