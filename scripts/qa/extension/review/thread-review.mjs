@@ -129,7 +129,13 @@ export async function verifyThreadReview({
   const progressRow = progressList.locator(
     `.thread-row:has(a[href^="/threads/${inlineThreadId}"])`,
   );
-  await progressRow.locator('.point-progress-ring[aria-label*="1 urgent"]').waitFor();
+  await progressRow
+    .getByText("1 of 2 points resolved · 1 open", { exact: true })
+    .waitFor();
+  const remainingPoint = progressRow.locator(".thread-point-status-list li").filter({
+    has: progressRow.getByRole("link", { name: /^#2 / }),
+  });
+  await remainingPoint.getByText("Open", { exact: true }).waitFor();
   await progressRow.screenshot({
     path: join(root, ".local/remaining-todos-qa/thread-progress-list.png"),
   });
