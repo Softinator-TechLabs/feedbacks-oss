@@ -16,11 +16,11 @@ Reviewers can choose a priority and one responsible assignee before sending scre
 
 ## Verification
 
-- [ ] Atomic creation, idempotent retries, denied scopes, stale/ineligible assignees and rollback.
-- [ ] Hundred-member search/paging, minimal fields and project isolation.
-- [ ] Actual screenshot and video editor integration, keyboard, responsive UI, project changes and frozen retries.
-- [ ] Appropriate focused checks, repository gate and package inspection.
+- [x] Atomic creation, idempotent retries, denied scopes, stale/ineligible assignees and rollback.
+- [x] Hundred-member search/paging, minimal fields and project isolation.
+- [x] Actual screenshot and video editor integration, keyboard, responsive UI, project changes and frozen retries.
+- [x] Appropriate focused checks, repository gate and package inspection.
 
 ## Progress
 
-Implementation in progress. Hosted acceptance and Chrome Store publication require their respective rollout evidence.
+Source implementation and package acceptance are complete. Node 24 repository checks passed with 507 tests and 34 optional skips; the packaged editors verified a hundred-member project, internal search, paging, keyboard and outside-click/Escape controls, persisted screenshot drafts and exact screenshot/video retries. The native-video scenario uploads real MediaRecorder WebM through the isolated server and confirms one thread/assignment after a lost create acknowledgement. Full extension regression and required CI remain release gates. Hosted acceptance and Chrome Store publication require separate rollout evidence.

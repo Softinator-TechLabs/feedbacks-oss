@@ -228,11 +228,13 @@ export function createCaptureTriage(root, { load, onChange = () => {} }) {
   });
   previous.onclick = () => {
     offset = Math.max(0, offset - 10);
+    input.focus();
     void refresh();
   };
   more.onclick = () => {
     if (nextOffset !== null) {
       offset = nextOffset;
+      input.focus();
       void refresh();
     }
   };

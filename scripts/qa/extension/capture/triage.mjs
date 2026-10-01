@@ -78,13 +78,26 @@ export async function verifyCaptureTriage({
     await editor.getByRole("button", { name: "Assign to", exact: true }).waitFor();
     await editor.locator(".capture-assignee-trigger:not([disabled])").waitFor();
     await editor.getByRole("button", { name: "Assign to", exact: true }).click();
-    await editor.getByRole("option", { name: "Developer 010", exact: true }).waitFor();
+    await editor.getByRole("listbox").locator("[data-member]").nth(9).waitFor();
     assert.equal(await editor.getByRole("listbox").locator("[data-member]").count(), 10);
+    const firstPage = await editor
+      .locator("[data-member]")
+      .evaluateAll((items) => items.map((item) => item.dataset.member));
     await editor.getByRole("button", { name: "More", exact: true }).click();
-    await editor.getByRole("option", { name: "Developer 020", exact: true }).waitFor();
+    await editor.getByRole("listbox").locator("[data-member]").nth(9).waitFor();
     assert.equal(await editor.getByRole("listbox").locator("[data-member]").count(), 10);
+    const secondPage = await editor
+      .locator("[data-member]")
+      .evaluateAll((items) => items.map((item) => item.dataset.member));
+    assert.ok(secondPage.every((id) => !firstPage.includes(id)));
     await editor.getByRole("button", { name: "Previous", exact: true }).click();
-    await editor.getByRole("option", { name: "Developer 010", exact: true }).waitFor();
+    await editor.getByRole("listbox").locator("[data-member]").nth(9).waitFor();
+    assert.deepEqual(
+      await editor
+        .locator("[data-member]")
+        .evaluateAll((items) => items.map((item) => item.dataset.member)),
+      firstPage,
+    );
     await picker.fill("dEvElOpEr 099");
     await editor.getByRole("option", { name: "Developer 099", exact: true }).waitFor();
     assert.equal(await editor.getByRole("listbox").locator("[data-member]").count(), 1);
@@ -124,7 +137,7 @@ export async function verifyCaptureTriage({
     await editor.getByRole("combobox", { name: "Search project members" }).isVisible(),
     true,
   );
-  await editor.locator("#body").click();
+  await editor.getByText("Feedbacks", { exact: true }).click();
   assert.equal(await assigneeButton.getAttribute("aria-expanded"), "false");
   await assigneeButton.click();
   await editor.getByRole("option", { name: "Unassigned", exact: true }).click();
@@ -167,8 +180,24 @@ export async function verifyCaptureTriage({
     "Unassigned",
   );
   await editor.getByRole("button", { name: "Assign to", exact: true }).click();
-  await editor.getByText("1–1 of 1 members", { exact: true }).waitFor();
-  assert.equal(await editor.getByRole("listbox").locator("[data-member]").count(), 1);
+  const otherMembers = (
+    await post("members.list", { projectId: other.id, assignees: { limit: 10 } }, auth)
+  ).data;
+  await editor
+    .locator("[data-member]")
+    .nth(otherMembers.items.length - 1)
+    .waitFor();
+  assert.equal(
+    await editor.getByRole("listbox").locator("[data-member]").count(),
+    otherMembers.items.length,
+  );
+  assert.equal(
+    await editor
+      .getByRole("listbox")
+      .getByText(/Developer/)
+      .count(),
+    0,
+  );
   await editor.getByRole("combobox", { name: "Search project members" }).press("Escape");
   await editor.locator("#project").selectOption(project.id);
   await selectDeveloper(editor);
@@ -178,7 +207,7 @@ export async function verifyCaptureTriage({
   ]) {
     await editor.setViewportSize({ width, height });
     await editor.getByRole("button", { name: "Assign to", exact: true }).click();
-    await editor.getByRole("option", { name: "Developer 010", exact: true }).waitFor();
+    await editor.getByRole("listbox").locator("[data-member]").nth(9).waitFor();
     await editor.screenshot({
       path: join(directory, `screenshot-${name}.png`),
       fullPage: true,
@@ -313,7 +342,7 @@ export async function verifyCaptureTriage({
   await video.locator("#debug-context").uncheck();
   await video.setViewportSize({ width: 390, height: 844 });
   await video.getByRole("button", { name: "Assign to", exact: true }).click();
-  await video.getByRole("option", { name: "Developer 010", exact: true }).waitFor();
+  await video.getByRole("listbox").locator("[data-member]").nth(9).waitFor();
   await video.screenshot({ path: join(directory, "video-mobile.png"), fullPage: true });
   assert.ok(
     await video.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -369,7 +398,13 @@ export async function verifyCaptureTriage({
   const uploaded = (await post("threads.get", { threadId: createdVideo.id }, auth)).data;
   assert.ok(uploaded.assets.some((asset) => asset.contentType === "video/webm"));
   results.captureTriage = {
-    members: 100,
+    members: (
+      await post(
+        "members.list",
+        { projectId: project.id, assignees: { limit: 10 } },
+        auth,
+      )
+    ).data.total,
     maxVisible: 10,
     search: true,
     keyboard: true,
