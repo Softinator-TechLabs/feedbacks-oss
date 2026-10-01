@@ -233,7 +233,8 @@ for (const profile of ["full", "compact"] as const)
     try {
       await server.connect(a);
       await client.connect(b);
-      const names = (await client.listTools()).tools.map((t) => t.name);
+      const tools = (await client.listTools()).tools;
+      const names = tools.map((t) => t.name);
       for (const name of [
         "feedbacks_start",
         "feedbacks_thread",
@@ -244,6 +245,45 @@ for (const profile of ["full", "compact"] as const)
         assert.ok(names.includes(name), name);
       if (profile === "full") assert.ok(names.includes("threads.get"));
       assert.ok((client.getInstructions() ?? "").length < 1000);
+      assert.match(client.getInstructions() ?? "", /Keep Feedbacks discussions quiet/);
+      assert.match(
+        client.getInstructions() ?? "",
+        /no routine progress, test or PR\/merge replies/,
+      );
+      assert.match(client.getInstructions() ?? "", /short outcome note/);
+      assert.match(
+        client.getInstructions() ?? "",
+        /Review requests: separate bugs\/suggestions/,
+      );
+      assert.match(
+        client.getInstructions() ?? "",
+        /fix-all instructions authorize that scope; do not reconfirm/,
+      );
+      assert.ok(
+        JSON.stringify(
+          tools.find((tool) => tool.name === "feedbacks_thread")?.inputSchema,
+        ).includes('"workNote"'),
+      );
+      if (profile === "full") {
+        const reply = tools.find((tool) => tool.name === "threads.reply");
+        assert.match(reply?.description ?? "", /important blocker\/decision/);
+        assert.match(reply?.description ?? "", /not routine progress/);
+      }
+      const replySchema = await client.callTool({
+        name: "feedbacks_describe",
+        arguments: { operation: "threads.reply" },
+      });
+      assert.match(
+        (replySchema.structuredContent as any).description,
+        /not routine progress/,
+      );
+      const guide = await client.readResource({ uri: "feedbacks://guide/start" });
+      assert.match((guide.contents[0] as any).text, /Quiet discussion by default/);
+      assert.match(
+        (guide.contents[0] as any).text,
+        /Permission to reply is not a requirement to reply/,
+      );
+      assert.match((guide.contents[0] as any).text, /Suggestions need human acceptance/);
     } finally {
       await client.close();
       await server.close();
