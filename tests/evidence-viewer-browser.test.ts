@@ -5,6 +5,49 @@ import { chromium } from "playwright";
 import { evidenceViewerFixture } from "./evidence-viewer-fixture.js";
 
 test(
+  "image review dismisses only a gesture that starts and ends on the backdrop",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      for (const writable of [false, true]) {
+        const f = await evidenceViewerFixture({ writable });
+        const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+        try {
+          await page.goto(f.url);
+          const open = page.getByRole("button", { name: "Review image", exact: true });
+          const dialog = page.getByRole("dialog");
+          await open.click();
+          const box = (await dialog.boundingBox())!;
+          // Padding belongs to the dialog, even though its event target is the dialog.
+          await page.mouse.click(box.x + 2, box.y + 2);
+          assert.equal(await dialog.isVisible(), true);
+          await page.mouse.move(box.x + 2, box.y + 2);
+          await page.mouse.down();
+          await page.mouse.move(2, 2);
+          await page.mouse.up();
+          assert.equal(await dialog.isVisible(), true, "a drag out must not dismiss");
+          await page.mouse.click(2, 2);
+          await dialog.waitFor({ state: "hidden", timeout: 2000 });
+          assert.equal(await open.evaluate((el) => document.activeElement === el), true);
+          assert.equal(f.uploads.length, 0, "closing must not save annotations");
+          await page.setViewportSize({ width: 390, height: 844 });
+          await open.click();
+          // The mobile dialog fills the viewport, so use its keyboard close action.
+          await page.keyboard.press("Escape");
+          await dialog.waitFor({ state: "hidden", timeout: 2000 });
+        } finally {
+          await page.close();
+          await f.close();
+        }
+      }
+    } finally {
+      await browser.close();
+    }
+  },
+);
+
+test(
   "expanded screenshots preserve evidence layers, zoom and keyboard focus on desktop and mobile",
   { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
   async () => {
@@ -157,7 +200,36 @@ test(
       await page.mouse.down();
       await page.mouse.move(box.x + box.width * 0.4, box.y + 180, { steps: 5 });
       await page.mouse.up();
+      let releaseUpload!: () => void;
+      let uploadStarted!: () => void;
+      const uploadGate = new Promise<void>((resolve) => {
+        releaseUpload = resolve;
+      });
+      const started = new Promise<void>((resolve) => {
+        uploadStarted = resolve;
+      });
+      await page.route("**/api/assets.upload", async (route) => {
+        uploadStarted();
+        await uploadGate;
+        await route.continue();
+      });
       await dialog.getByRole("button", { name: "Save annotations", exact: true }).click();
+      await started;
+      try {
+        assert.equal(
+          await dialog.getByRole("button", { name: "Close", exact: true }).isEnabled(),
+          false,
+        );
+        await page.mouse.click(2, 2);
+        await page.keyboard.press("Escape");
+        assert.equal(
+          await dialog.isVisible(),
+          true,
+          "saving prevents backdrop and Escape dismissal",
+        );
+      } finally {
+        releaseUpload();
+      }
       await dialog.getByRole("alert").waitFor();
       assert.equal(
         await dialog.getByRole("button", { name: "Undo mark" }).isEnabled(),

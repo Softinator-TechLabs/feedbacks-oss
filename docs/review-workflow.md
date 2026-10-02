@@ -70,6 +70,11 @@ Widget links use the same expiry, submission limit and revocation controls as gu
 
 Category defaults to General. Project maintainers can add, rename and archive custom categories in **Project settings → Categories & tags**. Renaming keeps the category ID and existing feedback; archiving removes it from new selections while preserving older feedback. Categories and tags appear together in project feedback rows and thread detail.
 
+**Add category** creates a local draft. Choose **Save categories & tags** before
+leaving settings to make it available in feedback filters and category selections.
+The page shows when changes remain unsaved; fields pause while saving so later
+typing cannot be discarded by the response.
+
 Tags are optional, case-insensitive and shared with the thread. Use up to 12 tags, each 32 characters; letters, numbers, spaces, hyphens, underscores and slashes are accepted. In the app, choose an existing project tag or create one from feedback; the extension also accepts new tags during capture. Tags first used on a thread join that project's vocabulary with a stable subtle color. Maintainers can add unused tags and change any tag color in project settings. Project writers can update a thread's category and tags afterward. Thread edits use the thread revision, so concurrent edits cannot silently overwrite each other.
 
 Use **Saved views** to apply a named filter. Open **Save or remove a view** for less frequent maintenance. Views belong to you within a project, including for read-only project members. Other members cannot see or alter them. Each person can save up to 30 views per project. To revise a saved view, apply it, change filters, save a replacement and remove the old view.
@@ -143,6 +148,10 @@ saved into image pixels remain part of that image.
 and Escape discard unsaved marks and return directly to the thread, with no viewer
 left underneath. A failed save preserves the draft for retry. Closing is disabled
 while a save is in progress.
+
+On desktop, clicking the backdrop also closes image review. A drag that starts
+inside the dialog stays open, so image navigation and drawing remain safe. On
+mobile the dialog fills the screen; use **Close**, **Cancel** or Escape.
 
 Numbered points show a compact preview and **Expand / Collapse** to describe the
 accordion action. Resolved, closed or removed states and any non-normal priority

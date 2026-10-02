@@ -328,11 +328,134 @@ try {
     await memberPage.getByRole("link", { name: "Manage GitHub", exact: true }).count(),
     0,
   );
+  // Maintainers can save categories, leave settings, and reopen the saved values.
+  await memberPage.goto(config.appOrigin + `/projects/${p.id}/settings#project-taxonomy`);
+  await memberPage.getByRole("button", { name: "Add category", exact: true }).click();
+  await memberPage.getByRole("textbox", { name: "Custom category 1" }).fill("Checkout");
+  await memberPage
+    .getByRole("status")
+    .filter({ hasText: "not saved yet" })
+    .waitFor({ timeout: 2000 });
+  const taxonomy = memberPage.locator("#project-taxonomy");
+  const saveTaxonomy = taxonomy.getByRole("button", {
+    name: "Save categories & tags",
+    exact: true,
+  });
+  let releaseTaxonomy;
+  let taxonomyStarted;
+  const taxonomyGate = new Promise((resolve) => {
+    releaseTaxonomy = resolve;
+  });
+  const savingTaxonomy = new Promise((resolve) => {
+    taxonomyStarted = resolve;
+  });
+  await memberPage.route("**/api/projects.taxonomy.update", async (route) => {
+    taxonomyStarted();
+    await taxonomyGate;
+    await route.continue();
+  });
+  await saveTaxonomy.focus();
+  await memberPage.keyboard.press("Enter");
+  await savingTaxonomy;
+  try {
+    assert.equal(
+      await memberPage.getByRole("textbox", { name: "Custom category 1" }).isEnabled(),
+      false,
+    );
+    assert.equal(
+      await memberPage
+        .getByRole("button", { name: "Add category", exact: true })
+        .isEnabled(),
+      false,
+    );
+  } finally {
+    releaseTaxonomy();
+  }
+  await memberPage
+    .getByRole("status")
+    .filter({ hasText: "Categories and tags saved" })
+    .waitFor();
+  assert.equal(await taxonomy.locator('form[data-unsaved="true"]').count(), 0);
+  await memberPage.getByRole("link", { name: "Feedback", exact: true }).click();
+  await memberPage
+    .getByRole("combobox", { name: "Category", exact: true })
+    .selectOption({ label: "Checkout" });
+  await memberPage
+    .getByRole("link", { name: "Manage categories & tags", exact: true })
+    .click();
+  await memberPage.getByRole("textbox", { name: "Custom category 1" }).waitFor();
+  assert.equal(
+    await memberPage.getByRole("textbox", { name: "Custom category 1" }).inputValue(),
+    "Checkout",
+  );
+  for (const width of [1280, 390]) {
+    await memberPage.setViewportSize({ width, height: 900 });
+    assert.equal(
+      await memberPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      true,
+    );
+    await memberPage.screenshot({
+      path: path.join(screenshots, `categories-${width}.png`),
+      fullPage: true,
+    });
+  }
+  // A transient non-JSON response must offer recovery without fabricating a setup state.
+  let failConnection = true;
+  await memberPage.route("**/api/github.connection", (route) => {
+    if (!failConnection) return route.continue();
+    failConnection = false;
+    return route.fulfill({
+      status: 502,
+      contentType: "text/html",
+      body: "<h1>Synthetic proxy interruption</h1>",
+    });
+  });
+  await memberPage.goto(config.appOrigin + `/projects/${p.id}/github`);
+  await memberPage.getByRole("alert").waitFor();
+  const status = memberPage.getByRole("list", { name: "GitHub connection status" });
+  assert.equal(
+    await status.count(),
+    0,
+    "unknown connection status must not look unconfigured",
+  );
+  await memberPage
+    .getByRole("button", { name: "Retry GitHub connection", exact: true })
+    .click();
+  await memberPage.getByText("App installed on repository", { exact: true }).waitFor();
+  assert.equal(await memberPage.getByRole("alert").count(), 0);
+  assert.equal(
+    await memberPage.getByRole("combobox", { name: /^GitHub App/ }).count(),
+    0,
+    "maintainers cannot select Apps",
+  );
+  await memberPage.screenshot({
+    path: path.join(screenshots, "github-maintainer-mobile.png"),
+    fullPage: true,
+  });
+  await memberPage.setViewportSize({ width: 1280, height: 900 });
+  await memberPage.screenshot({
+    path: path.join(screenshots, "github-maintainer-desktop.png"),
+    fullPage: true,
+  });
+  const unconfigured = await ops.executeOperation(owner, "projects.create", {
+    name: "Synthetic unconfigured GitHub",
+    origins: ["https://example.test"],
+    repositoryUrl: "https://github.com/first-team/sample",
+  });
+  await ops.executeOperation(owner, "github.appSelect", {
+    projectId: unconfigured.id,
+    revision: unconfigured.revision,
+    appId: null,
+  });
+  await page.goto(config.appOrigin + `/projects/${unconfigured.id}/github`);
+  await page.getByText("Configure an App first", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("alert").count(), 0);
+  assert.equal(await page.getByText("Checking repository…", { exact: true }).count(), 0);
   await memberContext.close();
   assert.deepEqual(errors, []);
   await context.close();
   console.log(
-    "Integrations/GitHub Apps browser QA passed: common owner hub, real cross-site callback with Strict cookies; private manifest approval; both storage choices; two repositories, management/reconnect, direct walkthrough, keyboard, owner denial, desktop/mobile light/dark. GitHub responses and data are synthetic; no real App created.",
+    "Integrations/GitHub Apps browser QA passed: owner hub, Strict cross-site callback, private manifest approval, storage choices, repository management, owner denial, desktop/mobile light/dark; maintainer category draft/save/reopen/filter and save protection; GitHub non-JSON failure/retry and unconfigured state. GitHub responses and data are synthetic; no real App created.",
   );
 } finally {
   globalThis.fetch = nativeFetch;
