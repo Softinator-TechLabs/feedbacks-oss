@@ -41,6 +41,12 @@ Use [Superpowers and Impeccable](docs/agent-tools.md) for their relevant tasks w
 
 Claude Code and Gemini CLI import this file through their root adapters. Do not duplicate shared policy in those adapters. Explicit user instructions and the runtime's higher-priority safety rules take precedence over repository conventions.
 
+## Extension releases
+
+- Every PR that changes the distributed extension must bump `extension/manifest.json` above the latest `origin/main` version before merging. Recheck before merge for concurrent releases. This includes bundled dependencies and packaging inputs; documentation-only changes do not need a bump.
+- After an extension-changing merge to `main`, complete a versioned, published GitHub release with the public upload ZIP, SHA-256 checksum and source revision. Require successful complete CI on the exact merged revision, inspect the root manifest, and download the published assets to verify them. Follow [the extension release checklist](docs/releasing.md#extension-releases); a local ZIP or draft release does not complete delivery.
+- Report GitHub publication, hosted deployment and Chrome Web Store publication separately. If Store publisher access is unavailable, provide the exact versioned upload ZIP and state that Store submission/publication is pending.
+
 ## Completion
 
 Review your diff, run the appropriate checks, update affected knowledge and give a compact receipt: source revision, checks, artifacts, deployment and live proof, with pending items separate. Required CI remains the merge gate; another maintainer's approval is not mandatory. See [governance](GOVERNANCE.md). Never weaken gates or claim unperformed checks to finish a task.
