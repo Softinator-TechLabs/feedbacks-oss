@@ -17,6 +17,7 @@ export interface Config {
   organizationId: string;
   trustProxyHops: number;
   databasePoolMax: number;
+  mcpOAuthEnabled?: boolean;
   turnstileSiteKey?: string;
   turnstileSecretKey?: string;
   githubApps?: GithubAppConfig[];
@@ -37,12 +38,20 @@ export function configFromEnv(env = process.env): Config {
   const production = env.NODE_ENV === "production";
   const appOrigin = z.url().parse(env.APP_ORIGIN ?? "http://localhost:3000");
   const url = new URL(appOrigin);
+  const mcpOAuthEnabled =
+    z.enum(["true", "false"]).parse(env.MCP_OAUTH_ENABLED ?? "false") === "true";
   if (
     url.origin !== appOrigin ||
     !["http:", "https:"].includes(url.protocol) ||
     (production && url.protocol !== "https:")
   )
     throw new Error("APP_ORIGIN must be an exact HTTP origin, HTTPS in production");
+  if (
+    mcpOAuthEnabled &&
+    url.protocol !== "https:" &&
+    !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+  )
+    throw new Error("OAuth requires HTTPS except on a loopback development origin");
   const assetDriver = z
     .enum(["s3", "local"])
     .parse(env.ASSET_DRIVER ?? (production ? "s3" : "local"));
@@ -131,6 +140,7 @@ export function configFromEnv(env = process.env): Config {
       .parse(env.ORGANIZATION_ID ?? "00000000-0000-4000-8000-000000000001"),
     trustProxyHops: integer(env.TRUST_PROXY_HOPS, 0, 10, 0),
     databasePoolMax: integer(env.DATABASE_POOL_MAX, 10, 100),
+    mcpOAuthEnabled,
     turnstileSiteKey,
     turnstileSecretKey,
     githubAppId: githubFields[0],

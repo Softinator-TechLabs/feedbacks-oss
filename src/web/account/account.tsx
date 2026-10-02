@@ -26,6 +26,7 @@ type Token = {
   projects: string[];
   scopes: string[];
   canResolve: boolean;
+  oauthConnection?: { expiresAt: string } | null;
   ownerAdmin?: boolean;
   secretSuffix?: string | null;
   expiresAt: string;
@@ -97,17 +98,27 @@ export function Account({
     history.replaceState(null, "", `#${next}`);
   };
   const activeTokens = (data?.items ?? []).filter(
-    (token) => !token.revokedAt && new Date(token.expiresAt).getTime() > Date.now(),
+    (token) =>
+      !token.revokedAt &&
+      new Date(token.oauthConnection?.expiresAt ?? token.expiresAt).getTime() >
+        Date.now(),
   );
   const pastTokens = (data?.items ?? []).filter(
-    (token) => token.revokedAt || new Date(token.expiresAt).getTime() <= Date.now(),
+    (token) =>
+      token.revokedAt ||
+      new Date(token.oauthConnection?.expiresAt ?? token.expiresAt).getTime() <=
+        Date.now(),
   );
   const tokenRow = (token: Token) => (
     <article className="token-row" key={token.id}>
       <div>
         <h3>{token.name}</h3>
         <p>
-          {token.kind === "agent" ? "Agent key" : "Connected extension"}
+          {token.oauthConnection
+            ? "OAuth connection"
+            : token.kind === "agent"
+              ? "Agent key"
+              : "Connected extension"}
           {token.secretSuffix
             ? ` · ends in ${token.secretSuffix}`
             : " · ending unavailable for older keys"}
@@ -118,7 +129,8 @@ export function Account({
             </>
           ) : (
             <>
-              Expires <HumanTime at={token.expiresAt} />
+              Expires{" "}
+              <HumanTime at={token.oauthConnection?.expiresAt ?? token.expiresAt} />
             </>
           )}
         </p>

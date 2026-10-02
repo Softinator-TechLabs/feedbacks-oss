@@ -6,6 +6,11 @@ For the illustrated flow, native plugin commands and symptom-based recovery, sta
 
 ## Issue a scoped token
 
+For clients supporting browser OAuth, the operator can enable the
+[own-server OAuth flow](mcp-oauth.md). Users sign in, choose projects and approve
+read access or optional replies without copying a key into chat. This flow
+uses the existing `/mcp` endpoint; the local plugin/key workflow below remains valid.
+
 A signed-in member opens **Account → Agent setup** to create a personal key. It belongs to that Feedbacks member, regardless of a shared model-provider subscription. Advanced controls select projects, scopes, resolution and expiry (up to 90 days). Members may delegate the personal scope allowlist and, as a separate opt-in, `github.issueCreate` only when they maintain every selected project. Owners can additionally delegate reviewer policy. Setup defaults omit external issue creation. Resolution is enabled by default only when all selected current projects permit it. Members without projects can create a profile-only key. Existing keys are unchanged; newly joined projects require a new key with those IDs selected.
 
 The token is shown once. Keep it in the actual client's supported private user configuration or secret store outside Git. Never put its value in repository instructions, a committed MCP config, a screenshot, or a command-line argument. Revoke a departed employee's token in Account; current membership is checked on every call.

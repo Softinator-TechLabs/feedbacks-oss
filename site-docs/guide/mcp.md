@@ -10,6 +10,13 @@ Sign in to your team's Feedbacks server as yourself. Each developer connects the
 
 ## Connect in Setup
 
+::: tip Browser sign-in for HTTP clients
+If your team enabled OAuth, add your server's `/mcp` URL in the client, sign in
+and choose projects. Read access is required; replies are optional. Revoke in
+Account → Connections. Follow the [illustrated OAuth setup](/reference/manual/mcp-oauth)
+for commands and recovery. Local plugins and keys remain available.
+:::
+
 1. Under **Keep key local**, choose **Create & copy prompt**. Check the displayed permissions.
 2. Paste the key-free prompt into Codex, Claude Code or Antigravity. Let the agent prepare the local command for your client and OS.
 3. Return to **Copy key**, then run that command locally. Keep the key out of chat and Git.

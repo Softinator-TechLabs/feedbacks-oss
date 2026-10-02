@@ -68,6 +68,13 @@ export function Privacy() {
       <section>
         <h2>Access, retention and removal</h2>
         <p>
+          Optional OAuth connections store registered client names/callbacks, approved
+          projects and permissions, hashed credentials and connection audit records on
+          this server. The client receives access and optional refresh tokens and can read
+          approved data or reply when allowed. Its privacy policy also applies. Revoke
+          under Account → Connections. Extension pairing is separate.
+        </p>
+        <p>
           Owners manage access. You can revoke agent tokens and paired extensions in
           Account. Archiving keeps discussion and evidence; it is not erasure. Contact
           your deployment owner for exact retention, backup handling, account requests and

@@ -297,7 +297,10 @@ export class Operations {
           if (a.kind !== "human") ownerOnly(a);
           return {
             items: await db.query(
-              'SELECT id,name,kind,projects,scopes,can_resolve AS "canResolve",owner_admin AS "ownerAdmin",secret_suffix AS "secretSuffix",expires_at AS "expiresAt",revoked_at AS "revokedAt" FROM tokens WHERE user_id=$1 ORDER BY expires_at DESC',
+              `SELECT t.id,t.name,t.kind,t.projects,t.scopes,t.can_resolve AS "canResolve",t.owner_admin AS "ownerAdmin",t.secret_suffix AS "secretSuffix",t.expires_at AS "expiresAt",t.revoked_at AS "revokedAt",
+               CASE WHEN t.oauth_resource IS NOT NULL THEN jsonb_build_object('expiresAt',COALESCE(
+                 (SELECT max(r.expires_at) FROM oauth_refresh_tokens r WHERE r.token_id=t.id AND r.used_at IS NULL),t.expires_at)) ELSE NULL END AS "oauthConnection"
+               FROM tokens t WHERE t.user_id=$1 ORDER BY t.expires_at DESC`,
               [a.userId],
             ),
           };

@@ -53,6 +53,10 @@ For an embeddable website widget, configure the Cloudflare Turnstile site key fo
 
 ## Create the first owner
 
+Optional HTTP MCP browser authorization is disabled by default. Set
+`MCP_OAUTH_ENABLED=true` and recreate the app to enable
+[own-server OAuth](mcp-oauth.md). Existing local plugin keys keep working.
+
 The production image includes `dist/cli/bootstrap.js`. Bootstrap runs once and refuses to replace an existing owner. Run the command from your installation directory. The example assumes the deployed file is named `compose.yaml`; if you used `compose.registry.yaml`, use `docker compose -f compose.registry.yaml exec` instead. Supply the password through standard input, not a command-line argument or an image layer:
 
 ```sh

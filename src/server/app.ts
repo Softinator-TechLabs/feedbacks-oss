@@ -16,6 +16,7 @@ import { remoteMcp } from "./mcp.js";
 import { helpHtml } from "./help.js";
 import { readExtensionRelease } from "./extension-release.js";
 import { registerGithubAppRoutes } from "./http/github-app-routes.js";
+import { registerOAuthRoutes } from "./http/oauth-routes.js";
 
 export function createApp(config: Config, database: Database, assets: AssetStore) {
   const app = express(),
@@ -65,6 +66,8 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       if (
         req.path.startsWith("/api") ||
         req.path === "/mcp" ||
+        req.path.startsWith("/oauth/") ||
+        req.path === "/connect-agent" ||
         ["/help", "/reset", "/owner-login", "/invite", "/sign-in"].includes(
           req.path.replace(/\/$/, ""),
         )
@@ -118,12 +121,15 @@ export function createApp(config: Config, database: Database, assets: AssetStore
   const smallJson = express.json({ limit: "14mb", strict: true });
   const recordingJson = express.json({ limit: "20mb", strict: true });
   const mediaJson = express.json({ limit: "56mb", strict: true });
+  const oauthJson = express.json({ limit: "8kb", strict: true });
   app.use((req, res, next) =>
-    (req.path === "/api/assets.uploadVideo" || req.path === "/mcp"
-      ? mediaJson
-      : req.path === "/api/recordings.upload"
-        ? recordingJson
-        : smallJson)(req, res, next),
+    (req.path.startsWith("/oauth/")
+      ? oauthJson
+      : req.path === "/api/assets.uploadVideo" || req.path === "/mcp"
+        ? mediaJson
+        : req.path === "/api/recordings.upload"
+          ? recordingJson
+          : smallJson)(req, res, next),
   );
   const bearer = (req: Request) =>
     req.get("Authorization")?.match(/^Bearer ([A-Za-z0-9_-]+)$/)?.[1];
@@ -181,6 +187,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
     }
   });
   registerOperationRoute(app, config, database, ops, rate, bearer, cookie, requireOrigin);
+  const oauth = registerOAuthRoutes(app, config, database, ops, cookie, rate);
   registerGithubAppRoutes(app, config, database, ops, cookie, bearer);
   registerDiagnosticDownloadRoutes(app, database, assets, ops, bearer, cookie);
   registerThreadArchiveRoutes(app, database, assets, ops, bearer, cookie);
@@ -189,10 +196,19 @@ export function createApp(config: Config, database: Database, assets: AssetStore
     try {
       const token = bearer(req);
       if (!token) fail("UNAUTHENTICATED", "Bearer agent token required", 401);
-      const actor = await ops.auth.authenticate(token);
+      const actor = await ops.auth.authenticate(
+        token,
+        undefined,
+        config.mcpOAuthEnabled ? oauth.resource : undefined,
+      );
       if (actor.kind !== "agent") fail("FORBIDDEN", "Use an agent token for MCP", 403);
       await remoteMcp(req, res, ops, actor);
     } catch (e) {
+      if (config.mcpOAuthEnabled && e instanceof DomainError && e.status === 401)
+        res.set(
+          "WWW-Authenticate",
+          `Bearer resource_metadata="${config.appOrigin}/.well-known/oauth-protected-resource/mcp", scope="feedbacks:read"`,
+        );
       next(e);
     }
   });

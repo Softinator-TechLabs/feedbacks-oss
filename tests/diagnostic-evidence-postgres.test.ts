@@ -110,8 +110,8 @@ test(
       await Promise.all([migrate(db), migrate(db)]);
       assert.equal(
         (await db.one("SELECT max(version)::integer AS version FROM migrations")).version,
-        28,
-        28,
+        29,
+        "latest additive migration",
       );
       const objects = new Map<string, Buffer>();
       const store = {
