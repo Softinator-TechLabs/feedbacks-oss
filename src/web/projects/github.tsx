@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { api, type Project } from "../api.js";
 import {
   ActionState,
   ErrorNotice,
+  Loading,
   Field,
   useAction,
   useLoad,
@@ -17,6 +18,7 @@ export function ProjectGithub({
   onSaved: (p: Project) => void;
 }) {
   const action = useAction();
+  const [connectionVersion, setConnectionVersion] = useState(0);
   const connection = useLoad<{
     appId: string | null;
     appName: string | null;
@@ -40,7 +42,7 @@ export function ProjectGithub({
     }[];
   }>(
     () => api("github.connection", { projectId: project.id }),
-    [project.id, project.revision],
+    [project.id, project.revision, connectionVersion],
   );
   return (
     <div className="github-project-page">
@@ -51,6 +53,15 @@ export function ProjectGithub({
         </div>
       </div>
       {connection.error && <ErrorNotice error={connection.error} />}
+      {connection.error && (
+        <button
+          type="button"
+          onClick={() => setConnectionVersion((version) => version + 1)}
+        >
+          Retry GitHub connection
+        </button>
+      )}
+      {!connection.data && !connection.error && <Loading />}
       <section className="github-connection-card" aria-labelledby="github-heading">
         <div className="github-connection-heading">
           <div>
@@ -152,29 +163,31 @@ export function ProjectGithub({
             </details>
           </div>
         )}
-        <ol
-          className="github-steps"
-          aria-label="GitHub connection status"
-          aria-live="polite"
-        >
-          <li className={connection.data?.configured ? "done" : ""}>
-            {connection.data?.configured ? "App configured" : "App not configured"}
-          </li>
-          <li className={connection.data?.installation === "installed" ? "done" : ""}>
-            {connection.data?.installation === "installed"
-              ? "App installed on repository"
-              : connection.data?.installation === "not_installed"
-                ? "App not installed on repository"
-                : connection.data?.installation === "unavailable"
-                  ? "Installation check unavailable"
-                  : project.repositoryUrl
-                    ? "Checking repository…"
-                    : "Choose a repository"}
-          </li>
-          <li className={project.githubConnected ? "done" : ""}>
-            Project {project.githubConnected ? "connected" : "not connected"}
-          </li>
-        </ol>
+        {connection.data && (
+          <ol
+            className="github-steps"
+            aria-label="GitHub connection status"
+            aria-live="polite"
+          >
+            <li className={connection.data?.configured ? "done" : ""}>
+              {connection.data?.configured ? "App configured" : "App not configured"}
+            </li>
+            <li className={connection.data?.installation === "installed" ? "done" : ""}>
+              {connection.data?.installation === "installed"
+                ? "App installed on repository"
+                : connection.data?.installation === "not_installed"
+                  ? "App not installed on repository"
+                  : connection.data?.installation === "unavailable"
+                    ? "Installation check unavailable"
+                    : connection.data.installation === "not_configured"
+                      ? "Configure an App first"
+                      : "Choose a repository"}
+            </li>
+            <li className={project.githubConnected ? "done" : ""}>
+              Project {project.githubConnected ? "connected" : "not connected"}
+            </li>
+          </ol>
+        )}
         {project.permissions.canMaintain && (
           <form
             className="github-repository-form"

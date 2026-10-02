@@ -20,6 +20,10 @@ Optional: feedback and MCP work without GitHub. One project uses one App and can
 
 Only human server owners manage/select Apps; maintainers connect repositories. Adding a URL grants no GitHub access.
 
+If the connection check fails, choose **Retry GitHub connection** to load its status
+again. When no App is selected, the page asks you to configure one instead of
+leaving the repository check running.
+
 | Credential choice          | Operational requirement                       |
 | -------------------------- | --------------------------------------------- |
 | **Encrypted in Feedbacks** | Back up database and private storage together |

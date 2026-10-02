@@ -41,6 +41,7 @@ export function EvidenceScreenshot({
   onSaved?: (thread: Thread) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const backdropPointer = useRef<number | null>(null);
   const titleId = useId();
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -185,6 +186,35 @@ export function EvidenceScreenshot({
         className="evidence-image-dialog"
         aria-labelledby={titleId}
         onClose={() => setExpanded(false)}
+        onPointerDown={(event) => {
+          const bounds = event.currentTarget.getBoundingClientRect();
+          backdropPointer.current =
+            event.target === event.currentTarget &&
+            (event.clientX < bounds.left ||
+              event.clientX > bounds.right ||
+              event.clientY < bounds.top ||
+              event.clientY > bounds.bottom)
+              ? event.pointerId
+              : null;
+        }}
+        onPointerUp={(event) => {
+          const startedOutside = backdropPointer.current === event.pointerId;
+          backdropPointer.current = null;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          if (
+            !saving &&
+            startedOutside &&
+            event.target === event.currentTarget &&
+            (event.clientX < bounds.left ||
+              event.clientX > bounds.right ||
+              event.clientY < bounds.top ||
+              event.clientY > bounds.bottom)
+          )
+            setExpanded(false);
+        }}
+        onPointerCancel={() => {
+          backdropPointer.current = null;
+        }}
         onCancel={(event) => {
           if (saving) event.preventDefault();
           else setExpanded(false);
