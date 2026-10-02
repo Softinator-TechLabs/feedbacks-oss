@@ -26,6 +26,7 @@ export const purgeExpiredPairings = (db: Database) =>
     "DELETE FROM pairing WHERE id IN (SELECT id FROM pairing WHERE expires_at<=now() ORDER BY expires_at LIMIT 10000)",
   );
 export async function revokeCredentials(db: Database, userId: string) {
+  await db.query("DELETE FROM oauth_requests WHERE user_id=$1", [userId]);
   await db.query("DELETE FROM sessions WHERE user_id=$1", [userId]);
   await db.query(
     "UPDATE tokens SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL",
@@ -163,13 +164,23 @@ export class Auth {
       return { accepted: true };
     });
   }
-  async authenticate(bearer?: string, cookie?: string): Promise<Actor> {
+  async authenticate(
+    bearer?: string,
+    cookie?: string,
+    resource?: string,
+  ): Promise<Actor> {
     if (bearer) {
       const t = await this.db.one(
         "SELECT t.*,u.name AS human_name,u.owner,u.active,u.must_change_password FROM tokens t JOIN users u ON u.id=t.user_id WHERE t.hash=$1 AND revoked_at IS NULL AND expires_at>now()",
         [hash(bearer)],
       );
-      if (!t || !t.active || t.must_change_password || (t.owner_admin && !t.owner))
+      if (
+        !t ||
+        !t.active ||
+        t.must_change_password ||
+        (t.owner_admin && !t.owner) ||
+        (t.oauth_resource && t.oauth_resource !== resource)
+      )
         fail("UNAUTHENTICATED", "Token expired or revoked", 401);
       return {
         id: t.kind === "agent" ? t.id : t.user_id,
@@ -178,6 +189,7 @@ export class Auth {
         kind: t.kind,
         owner: t.owner,
         tokenId: t.id,
+        oauthResource: t.oauth_resource ?? undefined,
         projects: t.projects,
         scopes: t.scopes,
         canResolve: t.can_resolve,

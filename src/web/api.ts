@@ -134,6 +134,51 @@ export function errorText(error: unknown) {
       ? error.message
       : "Request failed. Try again.";
 }
+export async function agentConnection<T>(
+  requestId: string,
+  decision?: { approve: boolean; projectIds: string[]; reply: boolean },
+): Promise<T> {
+  const send = async () => {
+    const response = await fetch(
+      decision
+        ? "/oauth/consent"
+        : `/oauth/consent?request=${encodeURIComponent(requestId)}`,
+      {
+        method: decision ? "POST" : "GET",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrf ? { "X-CSRF-Token": csrf } : {}),
+        },
+        ...(decision
+          ? { body: JSON.stringify({ request: requestId, ...decision }) }
+          : {}),
+      },
+    );
+    const payload = await response.json();
+    if (!response.ok || payload.ok !== true)
+      throw new ApiError(
+        payload.error?.code ?? payload.error ?? "REQUEST_FAILED",
+        payload.error?.message ??
+          payload.error_description ??
+          "Connection request failed",
+        response.status,
+      );
+    return payload.data as T;
+  };
+  const execute = async () => {
+    try {
+      return await send();
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== "CSRF") throw error;
+      await request("auth.me", {});
+      return send();
+    }
+  };
+  return typeof navigator !== "undefined" && navigator.locks
+    ? navigator.locks.request("feedbacks-session-request", execute)
+    : execute();
+}
 export const uid = () => crypto.randomUUID();
 export type Actor = {
   id: string;

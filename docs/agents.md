@@ -59,6 +59,10 @@ An installable marketplace is separate from inclusion in Anthropic's official di
 
 ## Other MCP clients
 
+Operators can enable [OAuth on their own server](mcp-oauth.md) for compatible
+HTTP clients. Users approve selected projects and read/optional reply access.
+The local plugin, manual keys and advanced permission setup remain available.
+
 For clients that support [MCP bundles](https://github.com/modelcontextprotocol/mcpb), `npm run build:mcpb` creates `dist/feedbacks-mcp.mcpb` and its SHA-256 checksum. The self-contained Node adapter includes its dependency licenses and asks the client for your own server URL and personal agent key; the key is marked sensitive. The bundle does not include the native Codex/Claude Code skills. Use Node.js 22.12+ or 24 and a client that supports Node MCPB packages. Never edit the bundle to embed a credential. Registry publication and client compatibility are separate from building a valid bundle.
 
 Feedbacks exposes Streamable HTTP at `https://your-feedbacks.example/mcp`, authenticated with an `Authorization: Bearer …` header. Use your client's secure token configuration. For clients that need stdio, launch `npm run mcp` from the source checkout, or the built plugin's `node mcp.mjs`, with the same URL/key configuration. Remote servers require HTTPS; loopback HTTP is allowed for development.

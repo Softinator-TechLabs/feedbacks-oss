@@ -424,5 +424,34 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
       )`);
       await tx.query("INSERT INTO migrations(version) VALUES(28)");
     }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=29"))) {
+      await tx.query("ALTER TABLE tokens ADD COLUMN oauth_resource text");
+      await tx.query(`CREATE TABLE oauth_clients(
+        id text PRIMARY KEY, name text NOT NULL, redirect_uris jsonb NOT NULL,
+        approved boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      await tx.query(`CREATE TABLE oauth_requests(
+        hash text PRIMARY KEY, client_id text NOT NULL REFERENCES oauth_clients(id),
+        parameters jsonb NOT NULL, user_id uuid REFERENCES users(id),
+        project_ids jsonb, scopes jsonb, code_hash text UNIQUE,
+        code_expires_at timestamptz, consumed_at timestamptz,
+        token_id uuid REFERENCES tokens(id), expires_at timestamptz NOT NULL
+      )`);
+      await tx.query("CREATE INDEX oauth_requests_expiry ON oauth_requests(expires_at)");
+      await tx.query(`CREATE TABLE oauth_grants(
+        token_id uuid PRIMARY KEY REFERENCES tokens(id),
+        client_id text NOT NULL REFERENCES oauth_clients(id),
+        resource text NOT NULL, scopes jsonb NOT NULL,
+        expires_at timestamptz NOT NULL, revoked_at timestamptz
+      )`);
+      await tx.query(`CREATE TABLE oauth_refresh_tokens(
+        hash text PRIMARY KEY, token_id uuid NOT NULL REFERENCES oauth_grants(token_id) ON DELETE CASCADE,
+        used_at timestamptz, expires_at timestamptz NOT NULL
+      )`);
+      await tx.query(
+        "CREATE INDEX oauth_refresh_expiry ON oauth_refresh_tokens(expires_at)",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(29)");
+    }
   });
 }

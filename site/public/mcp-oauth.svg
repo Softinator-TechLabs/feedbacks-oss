@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 140" role="img" aria-labelledby="title desc">
+<title id="title">Connect an agent to your own server</title><desc id="desc">Enter your server URL, sign in, choose projects and access, then connect.</desc>
+<rect width="760" height="140" rx="12" fill="#f5f7f7"/>
+<g fill="#fff" stroke="#d3dce1"><rect x="18" y="22" width="164" height="96" rx="8"/><rect x="204" y="22" width="164" height="96" rx="8"/><rect x="390" y="22" width="164" height="96" rx="8"/><rect x="576" y="22" width="164" height="96" rx="8"/></g>
+<g fill="none" stroke="#17324d" stroke-width="2"><path d="M184 70h16m-5-5 5 5-5 5M370 70h16m-5-5 5 5-5 5M556 70h16m-5-5 5 5-5 5"/></g>
+<g font-family="system-ui, sans-serif" fill="#17324d"><g font-size="12" font-weight="700"><text x="34" y="46">01</text><text x="220" y="46">02</text><text x="406" y="46">03</text><text x="592" y="46">04</text></g><g font-size="16" font-weight="650"><text x="34" y="72">Your server URL</text><text x="220" y="72">Sign in</text><text x="406" y="72">Pick projects</text><text x="592" y="72">Connect</text></g><g font-size="12" fill="#53616a"><text x="34" y="94">HTTPS /mcp</text><text x="220" y="94">Your team account</text><text x="406" y="94">Read or read + reply</text><text x="592" y="94">Revoke in Account</text></g></g>
+</svg>

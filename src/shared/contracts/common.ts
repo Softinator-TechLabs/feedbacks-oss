@@ -395,6 +395,7 @@ export interface Actor {
   mustChangePassword?: boolean;
   tokenId?: string;
   sessionHash?: string;
+  oauthResource?: string;
   projects?: string[];
   scopes?: string[];
   canResolve?: boolean;

@@ -32,6 +32,7 @@ import { Documents, DocumentViewer } from "./documents/index.js";
 import { Surveys, SurveyPublic } from "./surveys/index.js";
 import { GithubApps } from "./github-apps.js";
 import { Integrations } from "./integrations/index.js";
+import { AgentConnection } from "./agent-connection.js";
 function App() {
   const pageLocation = usePageLocation();
   const path = pageLocation.split("?")[0];
@@ -178,6 +179,14 @@ function App() {
         ? threadProject.project
         : undefined,
     section = projectMatch?.[2] ?? "";
+  if (path === "/connect-agent" && actor)
+    return (
+      <AgentConnection
+        requestId={params.get("request") ?? ""}
+        projects={projects}
+        name={actor.name}
+      />
+    );
   return (
     <>
       <a className="skip-link" href="#content">

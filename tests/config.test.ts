@@ -73,3 +73,29 @@ test("CLI requires an explicit server and rejects non-local HTTP before sending 
     assert.match(body.error.message, url ? /HTTPS server origin/ : /Set FEEDBACKS_URL/);
   }
 });
+
+test("OAuth is opt-in and requires HTTPS or loopback even in development", () => {
+  const env = { DATABASE_URL: "postgres://localhost/fixture" };
+  assert.equal(configFromEnv(env).mcpOAuthEnabled, false);
+  for (const origin of [
+    "https://review.example.test",
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://[::1]:3000",
+  ])
+    assert.equal(
+      configFromEnv({ ...env, APP_ORIGIN: origin, MCP_OAUTH_ENABLED: "true" })
+        .mcpOAuthEnabled,
+      true,
+    );
+  assert.throws(
+    () =>
+      configFromEnv({
+        ...env,
+        APP_ORIGIN: "http://review.example.test",
+        MCP_OAUTH_ENABLED: "true",
+      }),
+    /OAuth requires HTTPS/,
+  );
+  assert.throws(() => configFromEnv({ ...env, MCP_OAUTH_ENABLED: "yes" }));
+});

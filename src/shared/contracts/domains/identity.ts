@@ -253,6 +253,7 @@ export const identityOutputs = {
         projects: z.array(id),
         scopes: z.array(z.string()),
         canResolve: z.boolean(),
+        oauthConnection: z.object({ expiresAt: z.string() }).nullable().optional(),
         ownerAdmin: z.boolean().optional(),
         secretSuffix: z.string().nullable().optional(),
         expiresAt: z.string(),
