@@ -114,16 +114,22 @@ try {
       return r.data;
     }, message);
   const annotate = async (owner, mode) => {
-    // Closing the point editor precedes the background recorder's async resume.
-    const waitForResume = () =>
-      owner.waitForFunction(
-        async () => {
-          const response = await chrome.runtime.sendMessage({ type: "sessionStatus" });
-          return response.ok && response.data.annotationPause === null;
-        },
-        undefined,
-        { polling: 100 },
+    // Playwright's predicate treats an async callback's Promise as truthy.
+    // Await each Chrome response in Node before accepting pause/resume readiness.
+    const waitForAnnotationPause = async (paused) => {
+      const deadline = Date.now() + 15000;
+      let state;
+      do {
+        state = await send({ type: "sessionStatus" }, owner);
+        if (paused ? !!state.annotationPause : state.annotationPause === null)
+          return state;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } while (Date.now() < deadline);
+      assert.fail(
+        `Annotation did not ${paused ? "pause" : "resume"}: ${JSON.stringify(state.annotationPause)}`,
       );
+    };
+    const waitForResume = () => waitForAnnotationPause(false);
     await page.bringToFront();
     const comment = `${mode} saved screenshot point`;
     const editor = page.getByRole("textbox", { name: "Comment on selected element" });
@@ -177,6 +183,7 @@ try {
       .click({ button: "right" });
     await editor.waitFor();
     await editor.fill("CANCELLED_EDITOR_INPUT_CANARY");
+    await waitForAnnotationPause(true);
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     await dialog.waitFor({ state: "hidden" });
     await page
@@ -249,7 +256,10 @@ try {
   await page.locator("h1").dblclick({ position: { x: 20, y: 15 } });
   assert.match(await page.evaluate(() => String(getSelection())), /Origin/);
   await page.getByRole("button", { name: "Suggest edit", exact: true }).waitFor();
-  await page.getByRole("button", { name: "Review session", exact: true }).click();
+  // Keep focus inside the auto-collapsing tools while activating this action.
+  const reviewSession = page.getByRole("button", { name: "Review session", exact: true });
+  await reviewSession.focus();
+  await reviewSession.press("Enter");
   let state = await send({ type: "sessionStatus" });
   assert.equal(state.target.projectId, target.projectId);
   assert.ok(

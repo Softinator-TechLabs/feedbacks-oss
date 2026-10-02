@@ -60,8 +60,8 @@ export async function verifyLargeVisibleCapture({
     assert.equal(await review.locator("#no-image").isChecked(), false);
     await review.locator("#body").fill("Synthetic large visible screenshot QA.");
     await review.locator("#send").click();
-    await review.locator("#completion:not([hidden])").waitFor({ timeout: 120000 });
-    const threadUrl = await review.locator("#thread").getAttribute("href");
+    await review.waitForURL("**/threads/*", { timeout: 120000 });
+    const threadUrl = review.url();
     const threadId = threadUrl?.match(/[0-9a-f-]{36}/)?.[0];
     assert.ok(threadId, "A sent screenshot must produce a thread link");
     const thread = (await post("threads.get", { threadId }, auth)).data;

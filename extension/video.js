@@ -25,6 +25,7 @@ import { createCropControls } from "./video/crop-controls.js";
 import { finalizeWebmMetadata } from "./video/video-metadata.js";
 import { uploadVideoWithProgress } from "./video-upload.js";
 import { getVideoDraft, deleteVideoDraft } from "./video-draft-store.js";
+import { createReviewNavigation } from "./submission/review-navigation.js";
 import {
   VIDEO_MAX_BYTES,
   VIDEO_MAX_MS,
@@ -43,6 +44,8 @@ const triage = createCaptureTriage($("capture-triage"), {
 });
 const recorderUrl = new URL(location.href);
 const sourceTabId = Number(recorderUrl.searchParams.get("sourceTabId"));
+const reviewNavigation = createReviewNavigation({ sourceTabId: () => sourceTabId });
+let sending = false;
 const draftId = recorderUrl.searchParams.get("draftId");
 const autoStart = recorderUrl.searchParams.get("autoStart") === "1";
 let captureDefaults = {},
@@ -422,10 +425,17 @@ function videoSendProgress(phase, percent = 0) {
     button.textContent = "Video sent";
     label.textContent = "Video and selected evidence shared";
   } else {
-    button.textContent = "Send video";
+    button.textContent = "Send & Open";
     button.style.removeProperty("--send-progress");
     label.textContent = "";
   }
+  const backgroundButton = $("send-background");
+  backgroundButton.setAttribute(
+    "aria-busy",
+    String(phase !== "idle" && phase !== "complete"),
+  );
+  backgroundButton.style.setProperty("--send-progress", `${percent}%`);
+  backgroundButton.textContent = phase === "idle" ? "Send & Return" : button.textContent;
 }
 async function uploadVideo(input) {
   const saved = await chrome.storage.local.get(["server", "accounts"]);
@@ -789,14 +799,17 @@ $("discard").onclick = async () => {
   status("Recording discarded.");
 };
 
-$("send").onclick = async () => {
+async function submitVideo(mode) {
+  if (sending) return;
   if (!blob || !$("comment").value.trim()) {
     status("Review the video and write a comment before sending.");
     return;
   }
-  $("send").disabled = true;
+  sending = true;
+  $("send").disabled = $("send-background").disabled = true;
   videoSendProgress("uploading", 0);
   try {
+    await reviewNavigation.begin(mode);
     // Snapshot the local comments before sessionSubmit consumes the worker capture.
     if (debugSession && !submittedCapture) {
       debugStopped = await debugStop;
@@ -913,12 +926,21 @@ $("send").onclick = async () => {
     if (draftId) await deleteVideoDraft(draftId).catch(() => {});
     document.body.classList.add("video-complete");
     $("start").hidden = true;
-    $("send").hidden = true;
+    $("send").hidden = $("send-background").hidden = true;
     $("thread").hidden = false;
     status("Video shared with the project.");
     publishState("sent");
     videoSendProgress("complete", 100);
+    try {
+      await reviewNavigation.complete($("thread").href);
+    } catch (error) {
+      status(`Video shared. ${error.message} You can close this tab.`);
+    }
   } catch (error) {
+    await reviewNavigation.recover();
+    videoSendProgress("idle");
+    $("send").textContent = "Retry Send video";
+    $("send-background").textContent = "Retry & Return";
     if (blob) {
       $("editing").hidden = false;
       $("trim-playback").hidden = false;
@@ -941,12 +963,13 @@ $("send").onclick = async () => {
     status(
       `${submittedCapture ? "Video and diagnostics are shared; saved frames are still pending. " : uploadedVideo ? "Video reached the draft feedback; timeline evidence and screenshot points are still pending. " : thread ? "Draft feedback was created; video and evidence are still pending. " : ""}${error.message} Keep this tab open and retry Send video.`,
     );
-    videoSendProgress("idle");
-    $("send").textContent = "Retry Send video";
   } finally {
-    $("send").disabled = false;
+    sending = false;
+    $("send").disabled = $("send-background").disabled = false;
   }
-};
+}
+$("send").onclick = () => submitVideo("thread");
+$("send-background").onclick = () => submitVideo("background");
 
 if (!Number.isInteger(sourceTabId) || sourceTabId <= 0)
   status("Open this page from the Feedbacks popup.");

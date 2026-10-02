@@ -14,10 +14,26 @@
       <strong>Feedbacks</strong><span>Review capture</span>
       <div id="review-actions" class="review-actions">
         <button id="discard">Discard draft</button>
-        <button id="send-header" class="primary send-action" disabled>
+        <button
+          id="send-background-header"
+          class="primary send-action"
+          disabled
+          title="Return to the website now. This tab closes when sending finishes."
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 3-6 18-4-8-8-4 18-6ZM11 13 21 3" />
+          </svg>
+          <span>Send &amp; Return</span>
+        </button>
+        <button
+          id="send-header"
+          class="send-action"
+          disabled
+          title="Send and open the thread in this tab when sending finishes."
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m21 3-6 18-4-8-8-4 18-6ZM11 13 21 3" /></svg
-          ><span>Send feedback</span>
+          ><span>Send &amp; Open</span>
         </button>
       </div>
     </header>
@@ -380,10 +396,26 @@
           </p>
         </div>
         <p class="hint">Your draft stays in this browser until you explicitly send it.</p>
-        <button id="send" class="primary send-action" disabled>
+        <button
+          id="send-background"
+          class="primary send-action"
+          disabled
+          title="Return to the website now. This tab closes when sending finishes."
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 3-6 18-4-8-8-4 18-6ZM11 13 21 3" />
+          </svg>
+          <span>Send &amp; Return</span>
+        </button>
+        <button
+          id="send"
+          class="send-action"
+          disabled
+          title="Send and open the thread in this tab when sending finishes."
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m21 3-6 18-4-8-8-4 18-6ZM11 13 21 3" /></svg
-          ><span>Send feedback</span>
+          ><span>Send &amp; Open</span>
         </button>
         <div id="upload-progress" class="upload-progress" hidden>
           <label id="upload-label" for="upload-meter">Preparing screenshots…</label>

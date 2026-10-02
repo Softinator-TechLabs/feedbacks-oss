@@ -282,8 +282,8 @@ export async function verifySelectedText({
     globalThis.fetch = globalThis.qaSelectionFetch;
   });
   await editor.locator("#send-header").click();
-  await editor.getByText("Feedback sent", { exact: true }).waitFor({ timeout: 120000 });
-  const url = await editor.locator("#thread").getAttribute("href");
+  await editor.waitForURL("**/threads/*", { timeout: 120000 });
+  const url = editor.url();
   const threadId = url.match(/[0-9a-f-]{36}/)[0];
   const thread = (await post("threads.get", { threadId }, auth)).data;
   assert.equal(thread.context.annotations[0].textEdit.original, before.original);

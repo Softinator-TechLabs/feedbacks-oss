@@ -365,22 +365,23 @@ export async function verifyCaptureTriage({
       return response;
     };
   });
-  await video.locator("#send").click();
+  await video.locator("#send-background").click();
   await video.getByRole("button", { name: "Retry Send video", exact: true }).waitFor();
   assert.equal(await video.getByLabel("Priority", { exact: true }).isDisabled(), true);
   assert.equal(
     await video.getByRole("button", { name: "Assign to", exact: true }).isDisabled(),
     true,
   );
-  await video.locator("#send").click();
-  await video
-    .getByRole("link", { name: "Open feedback with recording", exact: true })
-    .waitFor({ timeout: 20000 })
-    .catch(async (error) => {
-      throw Error(
-        `${error.message}\nVideo status: ${await video.locator("#status").textContent()}`,
-      );
-    });
+  const videoClosed = video.waitForEvent("close");
+  await video.locator("#send-background").click();
+  // A successful retry closes the real packaged review tab after the video is confirmed.
+  await videoClosed;
+  assert.equal(
+    await worker.evaluate(
+      async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id,
+    ),
+    sourceTabId,
+  );
   const videos = (await post("threads.list", { projectId: project.id }, auth)).data.items;
   const createdVideo = videos.find((item) => item.body === "Synthetic assigned video");
   assert.ok(createdVideo);
@@ -412,10 +413,11 @@ export async function verifyCaptureTriage({
     persistedDraft: true,
     screenshot: true,
     video: true,
+    backgroundVideo: true,
     frozenRetry: true,
     duplicateThreads: 0,
     duplicateAssignments: 0,
   };
-  await video.close();
+  if (!video.isClosed()) await video.close();
   await recorderControl.close();
 }

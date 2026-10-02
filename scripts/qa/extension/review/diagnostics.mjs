@@ -110,8 +110,8 @@ export async function verifyDiagnostics({
     archiveBytes.includes(Buffer.from("PRIVATE-123"));
   await editor.locator("#body").fill("Synthetic raw diagnostics browser check.");
   await editor.locator("#send").click();
-  await editor.getByText("Feedback sent").waitFor();
-  const threadUrl = await editor.locator("#thread").getAttribute("href");
+  await editor.waitForURL("**/threads/*");
+  const threadUrl = editor.url();
   const threadId = threadUrl?.match(/[0-9a-f-]{36}/)?.[0];
   if (!threadId) throw Error("Submitted feedback lacks a thread link");
   const saved = (await post("diagnostics.list", { threadId }, auth)).data;

@@ -278,8 +278,8 @@ export async function verifyInlineSubmission({
     `Arrow annotation was not saved: ${JSON.stringify((await draft()).toolState.map((mark) => mark.tool))}`,
   );
   await inlineEditor.locator("#send-header").click();
-  await inlineEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
-  const inlineThreadUrl = await inlineEditor.locator("#thread").getAttribute("href");
+  await inlineEditor.waitForURL("**/threads/*", { timeout: 120000 });
+  const inlineThreadUrl = inlineEditor.url();
   const inlineThreadId = inlineThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
   assert.ok(inlineThreadId);
   const inlineThread = (await post("threads.get", { threadId: inlineThreadId }, auth))

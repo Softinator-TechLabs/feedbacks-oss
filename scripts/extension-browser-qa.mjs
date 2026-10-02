@@ -1,3 +1,4 @@
+import { verifySendNavigation } from "./qa/extension/capture/send-navigation.mjs";
 import { verifySelectedText } from "./qa/extension/review/selected-text.mjs";
 import { verifyCaptureTriage } from "./qa/extension/capture/triage.mjs";
 import { verifySelectionBlockers } from "./qa/extension/review/selection-blockers.mjs";
@@ -366,6 +367,19 @@ try {
   });
   await verifyLiveSelection({ page, send, id, worker, exposeReviewRoot, root, results });
   if (!process.env.FEEDBACKS_QA_SELECTED_TEXT_ONLY) {
+    await verifySendNavigation({
+      page,
+      toFixture,
+      send,
+      id,
+      draft,
+      worker,
+      context,
+      extensionId,
+      results,
+      post,
+      auth,
+    });
     const sendFromReview = await verifyReviewInteractions({
       page,
       fixture,

@@ -246,10 +246,24 @@
               placeholder="What should change, and why?"
             ></textarea>
             <p class="hint">
-              Your recording stays in this tab until you choose Send video. Closing this
-              tab discards it.
+              Return to the website now, or wait here to open the thread. Keep this tab
+              open until sending finishes.
             </p>
-            <button id="send" class="primary">Send video</button>
+            <div class="send-actions">
+              <button
+                id="send-background"
+                class="primary"
+                title="Send in background and return to the website now. This tab closes when sending finishes."
+              >
+                Send &amp; Return
+              </button>
+              <button
+                id="send"
+                title="Send and open the thread in this tab when sending finishes."
+              >
+                Send &amp; Open
+              </button>
+            </div>
             <div id="upload-progress" class="upload-progress" role="status" hidden>
               <label id="upload-label" for="upload-meter"></label>
               <progress id="upload-meter" max="100" value="0"></progress>

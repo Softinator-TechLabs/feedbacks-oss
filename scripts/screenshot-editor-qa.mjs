@@ -24,14 +24,14 @@ const server = createServer(async (req, res) => {
     res.end(redactionFixture);
     return;
   }
-  if (path === "/fixture") {
+  if (path === "/fixture" || path === "/threads/synthetic") {
     res.end("<!doctype html><title>Synthetic capture</title>");
     return;
   }
   try {
     const name = path.slice(1);
     if (
-      !/^extension\/(?:[a-z-]+\.(?:js|css|html)|(?:capture|diagnostics)\/[a-z0-9-]+\.js)$/.test(
+      !/^extension\/(?:[a-z-]+\.(?:js|css|html)|(?:capture|diagnostics|submission)\/[a-z0-9-]+\.js)$/.test(
         name,
       )
     )
@@ -126,8 +126,10 @@ try {
             window.qaApproved.push(message);
             return { ok: true, data: {} };
           }
-          if (message.type === "submit")
-            return { ok: true, data: { url: "https://example.test/thread" } };
+          if (message.type === "submit") {
+            await window.reportApproved(window.qaApproved);
+            return { ok: true, data: { url: `${location.origin}/threads/synthetic` } };
+          }
           throw Error(`Unexpected fixture message ${message.type}`);
         },
       },
@@ -145,6 +147,10 @@ try {
     };
   });
   const page = await context.newPage();
+  let approved;
+  await page.exposeFunction("reportApproved", (value) => {
+    approved = value;
+  });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${origin}/fixture`);
@@ -590,10 +596,7 @@ try {
     path: join(root, ".local/screenshot-editor-qa/mobile-tools.png"),
   });
   await page.locator("#send-header").click();
-  await page.waitForFunction(
-    () => document.querySelector("#completion").hidden === false,
-  );
-  const approved = await page.evaluate(() => window.qaApproved);
+  await page.waitForURL(`${origin}/threads/synthetic`);
   assert.equal(approved.length, 26);
   assert.ok(approved[0].imageWithoutPins, "point capture has a pin-free approved image");
   const first = await sharp(Buffer.from(approved[0].image.split(",")[1], "base64"))
@@ -649,6 +652,7 @@ try {
     "saved redaction remains dark after rendering and upload approval",
   );
   // Run the actual background redaction operation, then exercise persisted UI state.
+  await page.goto(`${origin}/extension/editor.html`);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.reload();
   await page.waitForFunction(
