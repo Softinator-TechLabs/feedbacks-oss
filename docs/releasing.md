@@ -58,6 +58,17 @@ The website has its own artifact and deployment. Never configure it with applica
 
 Retain the previous image digest and extension package. Verify database compatibility before application rollback. Extension rollback may require a newer version number in a browser-store release. Do not delete persistent volumes, rewrite applied migrations or overwrite private object storage as part of rollback.
 
+## Extension releases
+
+Every change to the distributed extension needs a new manifest version and a published release after merging to `main`. Compare against the latest `origin/main` immediately before merge, including changes to bundled dependencies and packaging inputs. Documentation-only changes do not require an extension version bump.
+
+1. Require all six CI jobs listed in **Tag and publish** to succeed on the exact merged `main` revision. Check out that revision with a clean working tree and use the committed lockfile.
+2. Run `npm run build:extension`. Inspect `dist/extension/feedbacks-extension-VERSION.zip`: `manifest.json` must be at the archive root with the new version, the changed files must match the merged source, and license/notice files must be present. Verify its adjacent `.sha256` file and the generated server download metadata.
+3. Publish the extension in a new application release, or create an extension-only tag `extension-vVERSION` at that exact revision. An extension-only release uses a distinct tag and does not change the application version or replace its latest release. Never move an existing published tag or replace its assets.
+4. For an extension-only release, attach the public versioned ZIP, its `.sha256` file and `extension-release.json`. Include the full source SHA, CI evidence, changed behavior, compatibility, update instructions and known limitations in the release notes. Review a draft, then publish it; a draft is not delivery. The application release workflow does not handle extension-only tags, so publish these with GitHub or `gh release`.
+5. Download the published assets into a fresh directory. Verify the checksum, archive manifest version, source revision/tag and download metadata against the package. Give reviewers the published release link and exact upload ZIP.
+6. Record hosted deployment and Chrome Web Store submission/publication separately. The inner versioned ZIP is the Store upload artifact, not an outer handoff bundle. If publisher access is unavailable, hand off that ZIP and leave Store publication explicitly pending.
+
 ## Docker Hub images
 
 The [image publication workflow](../.github/workflows/images.yml) runs manually from `main` with an existing application tag. It requires successful main CI on the exact tagged source and uses separate native AMD64 and ARM64 runners. Each runner builds both application and static-site images, runs the production container smoke check, then publishes architecture tags with SBOM/provenance attestations. The versioned multi-platform tags are assembled only after both jobs succeed. Existing or unverifiable version tags are refused; the workflow does not move `latest`.

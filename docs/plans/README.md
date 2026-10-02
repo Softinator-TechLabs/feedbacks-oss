@@ -7,6 +7,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 ## Plans
 
 - [Connect coding agents through OAuth](mcp-oauth.md)
+- [Clear project drafts and recoverable image review](project-settings-recovery.md)
 
 - [Capture sending and destination](capture-send-navigation.md)
 

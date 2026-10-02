@@ -287,6 +287,10 @@ export function ProjectTaxonomySettings({
           }}
         >
           <h3>Categories</h3>
+          <p className="muted">
+            Add category creates a draft. Save categories &amp; tags to make it available
+            in this project's feedback.
+          </p>
           <div className="taxonomy-defaults">
             {data.categories
               .filter((category) => !category.id.startsWith("custom:"))
@@ -303,6 +307,7 @@ export function ProjectTaxonomySettings({
                   value={category.name}
                   maxLength={60}
                   required
+                  disabled={action.busy || refreshBusy}
                   onChange={(event) => {
                     setCategories(
                       categories.map((item, itemIndex) =>
@@ -319,6 +324,7 @@ export function ProjectTaxonomySettings({
                 <input
                   type="checkbox"
                   checked={category.archived}
+                  disabled={action.busy || refreshBusy}
                   onChange={(event) => {
                     setCategories(
                       categories.map((item, itemIndex) =>
@@ -335,6 +341,7 @@ export function ProjectTaxonomySettings({
               {!category.id && (
                 <button
                   type="button"
+                  disabled={action.busy || refreshBusy}
                   onClick={() =>
                     setCategories(
                       categories.filter((_, itemIndex) => itemIndex !== index),
@@ -348,6 +355,7 @@ export function ProjectTaxonomySettings({
           ))}
           <button
             type="button"
+            disabled={action.busy || refreshBusy}
             onClick={() => {
               setCategories([...categories, { id: "", name: "", archived: false }]);
               setDirty(true);
@@ -364,6 +372,7 @@ export function ProjectTaxonomySettings({
                   <Field label={`Color for ${tag.name}`}>
                     <select
                       value={tag.color}
+                      disabled={action.busy || refreshBusy}
                       onChange={(event) => {
                         setTags(
                           tags.map((item, itemIndex) =>
@@ -398,6 +407,7 @@ export function ProjectTaxonomySettings({
                 value={newTag}
                 maxLength={32}
                 placeholder="e.g. checkout"
+                disabled={action.busy || refreshBusy}
                 onChange={(event) => setNewTag(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -407,7 +417,11 @@ export function ProjectTaxonomySettings({
                 }}
               />
             </Field>
-            <button type="button" disabled={!newTag.trim()} onClick={addTag}>
+            <button
+              type="button"
+              disabled={action.busy || refreshBusy || !newTag.trim()}
+              onClick={addTag}
+            >
               Add tag
             </button>
           </div>
@@ -423,7 +437,7 @@ export function ProjectTaxonomySettings({
             {dirty && (
               <button
                 type="button"
-                disabled={action.busy}
+                disabled={action.busy || refreshBusy}
                 onClick={() => {
                   setCategories(
                     data.categories.filter((category) =>
@@ -441,6 +455,12 @@ export function ProjectTaxonomySettings({
               </button>
             )}
           </div>
+          {dirty && (
+            <p className="muted" role="status">
+              Changes are not saved yet. Save categories &amp; tags before leaving this
+              page.
+            </p>
+          )}
           <ActionState action={action} />
           {action.error.includes("CONFLICT") && (
             <button
