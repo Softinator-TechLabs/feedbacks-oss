@@ -8,7 +8,7 @@ Ask your team for its running server URL, your sign-in and project access. [DevO
 
 <Demo step="connect" />
 
-<DocPath :steps="['Install & pin', 'Connect to server', 'Save point', 'Send feedback']" />
+<DocPath :steps="['Install & pin', 'Connect to server', 'Save point', 'Send']" />
 
 ## Install, pin and connect {#install-pin-and-connect}
 
@@ -24,7 +24,7 @@ The default review shortcut is **⌘ Shift Y** on Mac or **Ctrl Shift Y** on Win
 
 ## Check and send {#finalize-and-send-to-feedbacks}
 
-Choose **Review & send**, inspect the screenshots, then **Send feedback**. Points stay local until sending. You can show or hide **Points**, **Element outline** and **Text selection** separately.
+Choose **Review & send**, inspect the screenshots, then choose **Send & Return** to return to the website immediately, or **Send & Open** to wait and open the finished thread in this tab. Keep the capture tab open while sending; background sending closes it automatically after success and brings it back for retry on failure. Points stay local until sending. You can show or hide **Points**, **Element outline** and **Text selection** separately.
 
 Before sending screenshots or video, choose **Priority** and optionally **Assign to**. Search members by name, select with arrow keys and Enter, or use **More** for the next ten results. Only active members who can work in that project appear. Normal and Unassigned remain the defaults. If these controls ask you to reconnect, update the server and approve a fresh extension connection. Assignment records who should handle the feedback; it does not start their agent automatically.
 

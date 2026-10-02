@@ -145,8 +145,8 @@ export async function verifyPageReview({
     await putPage(draftId, 0, "combined", blob);
   }, interruptedCombined.id);
   await removableEditor.locator("#send").click();
-  await removableEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
-  const combinedThreadUrl = await removableEditor.locator("#thread").getAttribute("href");
+  await removableEditor.waitForURL("**/threads/*", { timeout: 120000 });
+  const combinedThreadUrl = removableEditor.url();
   const combinedThreadId = combinedThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
   if (!combinedThreadId)
     throw Error("Combined screenshot submission lacks a thread link");

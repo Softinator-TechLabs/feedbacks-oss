@@ -18,6 +18,9 @@ test(
       await page.route("https://recorder.test/**", (route) =>
         route.fulfill({ contentType: "text/html", body: html }),
       );
+      await page.route("https://server.test/threads/**", (route) =>
+        route.fulfill({ contentType: "text/html", body: "<h1>Shared recording</h1>" }),
+      );
       await page.goto("https://recorder.test/video.html?sourceTabId=10&autoStart=1");
       await page.addScriptTag({ content: "globalThis.__name = value => value;" });
       for (const name of ["appearance.css", "video.css", "session-review.css"])
@@ -363,11 +366,8 @@ test(
         (window as any).failRecordingUpload = false;
       });
       await page.locator("#send").click();
-      await page
-        .getByRole("status")
-        .filter({ hasText: "Video shared with the project" })
-        .waitFor();
-      assert.match(await page.locator("#thread").innerText(), /feedback with recording/);
+      await page.waitForURL("https://server.test/threads/draft-thread");
+      await page.getByRole("heading", { name: "Shared recording" }).waitFor();
     } finally {
       await browser.close();
     }

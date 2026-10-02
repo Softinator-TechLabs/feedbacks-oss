@@ -24,12 +24,15 @@ header > span {
   align-items: center;
   gap: 10px;
   margin-left: auto;
+  flex-wrap: wrap;
 }
 .send-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
+  font-size: 14px;
+  padding-inline: 10px;
 }
 .send-action svg {
   width: 17px;
@@ -323,6 +326,7 @@ aside .hint {
   margin: 0 0 20px;
 }
 #send,
+#send-background,
 #retry-capture {
   width: 100%;
   margin-top: 8px;
@@ -438,6 +442,7 @@ aside .hint {
   }
   .review-actions {
     gap: 8px;
+    flex: 1 0 100%;
   }
   .review-actions button {
     padding: 8px;

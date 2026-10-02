@@ -128,10 +128,8 @@ export async function verifyPendingPoints({
   await staleEditor.close();
   assert.equal(await pointsEditor.locator("#point-notes textarea").count(), 2);
   await pointsEditor.locator("#send-header").click();
-  await pointsEditor.locator("#thread:not([hidden])").waitFor();
-  const pointsThreadId = (await pointsEditor.locator("#thread").getAttribute("href"))
-    .split("/")
-    .at(-1);
+  await pointsEditor.waitForURL("**/threads/*");
+  const pointsThreadId = pointsEditor.url().split("/").at(-1);
   const pointsThread = (await post("threads.get", { threadId: pointsThreadId }, auth))
     .data;
   assert.equal(pointsThread.assets.length, 2, "Only the two originals should upload");

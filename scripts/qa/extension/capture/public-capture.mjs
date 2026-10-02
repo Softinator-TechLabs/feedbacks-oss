@@ -52,16 +52,18 @@ export async function verifyPublicCapture({
       await review.locator("#include-combined").check();
       await review.locator("#body").fill("Synthetic local full-page upload QA.");
       await review.locator("#send").click();
-      await review
-        .locator("#completion:not([hidden]), #send:has-text('Retry Send')")
-        .first()
-        .waitFor({ timeout: 180000 });
-      results.publicSite.sendStatus = await review.locator("#status").textContent();
+      await Promise.race([
+        review.waitForURL("**/threads/*", { timeout: 180000 }),
+        review.locator("#send:has-text('Retry Send')").waitFor({ timeout: 180000 }),
+      ]);
+      results.publicSite.sent = review.url().includes("/threads/");
+      results.publicSite.sendStatus = results.publicSite.sent
+        ? "Thread opened"
+        : await review.locator("#status").textContent();
       results.publicSite.uploadIndex = (await draft())?.uploadIndex;
       results.publicSite.frozen = (await draft())?.frozen;
-      results.publicSite.sent = await review.locator("#completion").isVisible();
       if (results.publicSite.sent) {
-        const threadUrl = await review.locator("#thread").getAttribute("href");
+        const threadUrl = review.url();
         const threadId = threadUrl?.match(/[0-9a-f-]{36}/)?.[0];
         if (!threadId) throw Error("Public capture QA lacks a thread link");
         const thread = (await post("threads.get", { threadId }, auth)).data;

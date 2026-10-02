@@ -16,6 +16,7 @@ import { createDiagnosticEvidenceStore } from "./diagnostics/evidence-store.js";
 import { cleanupPrivateDiagnosticArchives } from "./diagnostics/archive.js";
 import { createEditorDiagnostics } from "./diagnostics/editor-panel.js";
 import { createCaptureTriage } from "./capture-triage.js";
+import { createReviewNavigation } from "./submission/review-navigation.js";
 
 const $ = (id) => document.getElementById(id);
 const diagnosticStore = createDiagnosticEvidenceStore();
@@ -51,6 +52,8 @@ let draft,
   baseLoad = 0,
   loadingBase = false;
 let originalTabId;
+const reviewNavigation = createReviewNavigation({ sourceTabId: () => originalTabId });
+const sendIds = ["send", "send-header", "send-background", "send-background-header"];
 let thumbnailObserver;
 let previewUrls = [];
 let selectedImage = null;
@@ -114,11 +117,19 @@ function hideFullPagePreview() {
   $("series-guide").hidden = (draft?.capturePages?.length || 0) < 2;
 }
 function setSendState(disabled, label) {
-  for (const id of ["send", "send-header"]) {
+  for (const id of sendIds) {
     $(id).disabled = disabled;
     $(id).setAttribute("aria-busy", String(sendingApproval));
     if (!sendingApproval) $(id).style.removeProperty("--send-progress");
-    if (label) $(id).querySelector("span").textContent = label;
+    $(id).querySelector("span").textContent =
+      label === "Retry Send" && id.includes("background")
+        ? "Retry & Return"
+        : label ||
+          (sendingApproval
+            ? "Sending…"
+            : id.includes("background")
+              ? "Send & Return"
+              : "Send & Open");
   }
 }
 function uploadProgress(completed, total) {
@@ -130,8 +141,7 @@ function uploadProgress(completed, total) {
   $("upload-label").textContent = `${count} of ${total} images uploaded · ${percent}%`;
   if (sendingApproval) {
     setSendState(true, `Sending ${percent}%`);
-    for (const id of ["send", "send-header"])
-      $(id).style.setProperty("--send-progress", `${percent}%`);
+    for (const id of sendIds) $(id).style.setProperty("--send-progress", `${percent}%`);
   }
 }
 function completed(url) {
@@ -1166,13 +1176,12 @@ $("retry-capture").onclick = async () => {
     $("retry-capture").disabled = false;
   }
 };
-$("send").onclick = $("send-header").onclick = async () => {
+async function submitReview(mode) {
   if (!draft || redacting || loadingBase || sendingApproval || exporting || importing)
     return;
   sendingApproval = true;
   setSendState(true, "Sending…");
-  for (const id of ["send", "send-header"])
-    $(id).style.setProperty("--send-progress", "0%");
+  for (const id of sendIds) $(id).style.setProperty("--send-progress", "0%");
   $("discard").disabled = true;
   if (draft.capturePages?.length && !$("no-image").checked) {
     $("upload-progress").hidden = false;
@@ -1181,6 +1190,8 @@ $("send").onclick = $("send-header").onclick = async () => {
   }
   status("Sending approved feedback…");
   try {
+    await reviewNavigation.begin(mode);
+    lock(true);
     const approvalRevision = draft.imageRevision || 0;
     if (!draft.frozen) {
       await persist();
@@ -1226,7 +1237,14 @@ $("send").onclick = $("send-header").onclick = async () => {
           : imageWithoutPins("image/png"),
     });
     sendingApproval = false;
-    completed(result.url);
+    dirty = false;
+    clearTimeout(saveTimer);
+    try {
+      await reviewNavigation.complete(result.url);
+    } catch (error) {
+      completed(result.url);
+      status(`Feedback sent. ${error.message} You can close this tab.`, "error");
+    }
   } catch (e) {
     sendingApproval = false;
     const fresh = await send({ type: "draft" }).catch(() => null);
@@ -1250,8 +1268,12 @@ $("send").onclick = $("send-header").onclick = async () => {
     setSendState(!draft || loadingBase, "Retry Send");
     $("discard").disabled = false;
     $("status").scrollIntoView({ block: "nearest" });
+    await reviewNavigation.recover();
   }
-};
+}
+$("send").onclick = $("send-header").onclick = () => submitReview("thread");
+$("send-background").onclick = $("send-background-header").onclick = () =>
+  submitReview("background");
 addEventListener("beforeunload", (e) => {
   if (dirty) {
     e.preventDefault();

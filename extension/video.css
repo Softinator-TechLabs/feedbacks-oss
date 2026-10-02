@@ -53,13 +53,22 @@ video {
   box-sizing: border-box;
   margin-top: 8px;
 }
-#send {
+.send-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 12px;
+}
+#send,
+#send-background {
+  font-size: 14px;
+  padding-inline: 10px;
   position: relative;
   isolation: isolate;
   overflow: hidden;
 }
-#send::before {
+#send::before,
+#send-background::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -94,7 +103,8 @@ video {
   background: var(--accent);
 }
 @media (prefers-reduced-motion: reduce) {
-  #send::before {
+  #send::before,
+  #send-background::before {
     transition: none;
   }
 }

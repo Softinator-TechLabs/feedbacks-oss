@@ -108,10 +108,13 @@ export async function verifyOrderedCapture({
     };
   });
   await seriesEditor.locator("#body").fill("Synthetic ordered capture acceptance.");
+  await seriesEditor.exposeFunction("reportUploadProgress", (entries) => {
+    results.seriesReview.uploadProgress = entries;
+  });
   await seriesEditor.evaluate(() => {
     window.qaUploadProgress = [];
     chrome.runtime.onMessage.addListener((message) => {
-      if (message?.type === "submitProgress" && Number.isInteger(message.completed))
+      if (message?.type === "submitProgress" && Number.isInteger(message.completed)) {
         window.qaUploadProgress.push({
           completed: message.completed,
           total: message.total,
@@ -121,10 +124,15 @@ export async function verifyOrderedCapture({
               .style.getPropertyValue("--send-progress"),
             busy: document.getElementById(id).getAttribute("aria-busy"),
           })),
-          actionsLocked: ["send", "send-header"].every(
-            (id) => document.getElementById(id).disabled,
-          ),
+          actionsLocked: [
+            "send",
+            "send-header",
+            "send-background",
+            "send-background-header",
+          ].every((id) => document.getElementById(id).disabled),
         });
+        void window.reportUploadProgress(window.qaUploadProgress);
+      }
     });
   });
   await seriesEditor.locator("#send").click();
@@ -176,13 +184,10 @@ export async function verifyOrderedCapture({
     .locator("#upload-meter")
     .evaluate((meter) => meter.value);
   await seriesEditor.locator("#send-header").click();
-  await seriesEditor.getByText("Feedback sent").waitFor({ timeout: 120000 });
-  results.seriesReview.uploadProgress = await seriesEditor.evaluate(
-    () => window.qaUploadProgress,
-  );
+  await seriesEditor.waitForURL("**/threads/*", { timeout: 120000 });
   assert.ok(results.seriesReview.uploadProgress.every((entry) => entry.actionsLocked));
-  assert.equal(await seriesEditor.locator("#send-header").isVisible(), false);
-  const seriesThreadUrl = await seriesEditor.locator("#thread").getAttribute("href");
+  assert.equal(seriesEditor.url().includes("/threads/"), true);
+  const seriesThreadUrl = seriesEditor.url();
   const seriesThreadId = seriesThreadUrl?.match(/[0-9a-f-]{36}/)?.[0];
   if (!seriesThreadId) throw Error("Ordered screenshot submission lacks a thread link");
   const seriesThread = (await post("threads.get", { threadId: seriesThreadId }, auth))

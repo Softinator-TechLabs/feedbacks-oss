@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Capture sending and destination](capture-send-navigation.md)
+
 - [Priority and assignment during capture review](capture-triage.md)
 
 - [Status filters, recovery and visible point progress](status-filter-recovery.md)
