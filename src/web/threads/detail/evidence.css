@@ -389,6 +389,20 @@
 .review-point-overview select {
   width: auto;
 }
+.review-point-completion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 12px;
+}
+.review-point-completion p {
+  flex: 1 1 240px;
+  margin: 0;
+}
+.review-point-completion button {
+  flex-shrink: 0;
+}
 .review-point-list li.resolved .review-point-number {
   background: #456750;
 }

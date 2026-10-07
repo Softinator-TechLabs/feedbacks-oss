@@ -133,3 +133,48 @@ test("screenshot review offers a single image review action", () => {
   assert.doesNotMatch(html, /Expand image|Edit annotations/);
   assert.doesNotMatch(html, />Open full image</);
 });
+
+test("completed points explain the separate feedback status and offer authorized resolution", () => {
+  const item = thread(false);
+  item.annotationStates = Object.fromEntries(
+    item.context.annotations!.map((point) => [
+      point.id,
+      {
+        state: "resolved",
+        actor: { name: "Example reviewer" },
+        at: "2026-10-01T00:00:00Z",
+      },
+    ]),
+  ) as Thread["annotationStates"];
+  const render = (canWrite = true, canResolve = true) =>
+    renderToStaticMarkup(
+      React.createElement(ReviewEvidence, {
+        thread: item,
+        canWrite,
+        canResolve,
+        onSaved: () => {},
+      }),
+    );
+  assert.match(render(), /All points resolved/);
+  assert.match(render(), /Feedback is still Open/);
+  assert.match(render(), />Resolve feedback</);
+  for (const [write, resolve] of [
+    [false, true],
+    [true, false],
+  ]) {
+    const html = render(write, resolve);
+    assert.match(html, /All points resolved/);
+    assert.doesNotMatch(html, />Resolve feedback</);
+  }
+  item.annotationStates!.c.state = "open";
+  assert.doesNotMatch(render(), /All points resolved|>Resolve feedback</);
+  item.annotationStates!.c.state = "removed";
+  assert.match(render(), /All points resolved/);
+  item.work.state = "resolved";
+  assert.doesNotMatch(render(), /All points resolved|>Resolve feedback</);
+  item.work.state = "declined";
+  assert.doesNotMatch(render(), /All points resolved|>Resolve feedback</);
+  item.work.state = "open";
+  for (const state of Object.values(item.annotationStates!)) state.state = "removed";
+  assert.doesNotMatch(render(), /All points resolved|>Resolve feedback</);
+});
