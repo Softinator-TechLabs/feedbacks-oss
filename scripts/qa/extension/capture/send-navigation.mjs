@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 export async function verifySendNavigation({
   page,
   toFixture,
+  exposeReviewRoot,
   send,
   id,
   draft,
@@ -15,6 +16,7 @@ export async function verifySendNavigation({
 }) {
   await page.setViewportSize({ width: 900, height: 650 });
   await toFixture();
+  await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
   await page.bringToFront();
   await page.evaluate(() => {
@@ -149,9 +151,17 @@ export async function verifySendNavigation({
       true,
     );
     assert.doesNotMatch(
-      await page
-        .locator("#feedbacks-review-root")
-        .evaluate((node) => node.shadowRoot.querySelector(".notice").textContent),
+      await worker.evaluate(
+        async (tabId) =>
+          (
+            await chrome.scripting.executeScript({
+              target: { tabId },
+              func: () =>
+                globalThis.__feedbacksQaRoot.querySelector(".notice").textContent,
+            })
+          )[0].result,
+        id,
+      ),
       /Feedback sent|Thread published/,
       "older upload notifications do not alter the replacement review",
     );
