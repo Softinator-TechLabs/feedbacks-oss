@@ -71,6 +71,12 @@ export function EvidenceScreenshot({
   const pointOriginal = /^point-\d+-original\.webp$/.test(asset.filename || "");
   const markerStyle = captureMarker?.style || (pointOriginal ? "ring" : "pin");
   const markerSize = captureMarker?.size || "small";
+  // Keep the entire marker in image pixels, as in the capture renderer. A fixed
+  // CSS-sized pin covers a different area when the screenshot is resized.
+  const imageWidth = asset.width || 1200;
+  const imageHeight = asset.height || 800;
+  const markerScale = { small: 1, medium: 1.35, large: 1.8 }[markerSize];
+  const markerRadius = Math.max(8, imageWidth / 190) * markerScale;
   const visibleMarkers = markerStyle !== "none" && points.length > 0;
   if (visibleMarkers) layers.push("points");
   if (overlays.some((mark) => mark.origin === "element")) layers.push("element");
@@ -104,41 +110,84 @@ export function EvidenceScreenshot({
     </span>
   );
   const evidenceOverlays = (
-    <>
+    <svg
+      className="review-image-evidence"
+      viewBox={`0 0 ${imageWidth} ${imageHeight}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
       {overlays
         .filter((mark) => !hiddenLayers[mark.origin === "element" ? "element" : "text"])
         .map((mark, index) => (
-          <span
+          <rect
             key={`${mark.origin}-${index}`}
             className={`review-image-overlay ${mark.origin === "element" ? "review-element-outline" : "review-text-selection"}`}
-            aria-hidden="true"
-            style={{
-              left: `${mark.bounds.x * 100}%`,
-              top: `${mark.bounds.y * 100}%`,
-              width: `${mark.bounds.width * 100}%`,
-              height: `${mark.bounds.height * 100}%`,
-            }}
+            x={mark.bounds.x * imageWidth}
+            y={mark.bounds.y * imageHeight}
+            width={mark.bounds.width * imageWidth}
+            height={mark.bounds.height * imageHeight}
+            fill={mark.origin === "element" ? "none" : "rgba(245, 197, 61, 0.3)"}
+            stroke={mark.origin === "element" ? "#2370b5" : "none"}
+            strokeWidth={Math.max(2, imageWidth / 700)}
           />
         ))}
       {!hiddenLayers.points && visibleMarkers && (
-        <span className="review-image-pins" aria-hidden="true">
+        <g className="review-image-pins">
           {points.map((mark, index) => (
-            <span
+            <g
               className="review-image-pin"
               data-style={markerStyle}
               data-size={markerSize}
               key={`${mark.annotationId || "point"}-${index}`}
-              style={{
-                left: `${mark.endpoints[0].x * 100}%`,
-                top: `${mark.endpoints[0].y * 100}%`,
-              }}
+              transform={`translate(${mark.endpoints[0].x * imageWidth} ${mark.endpoints[0].y * imageHeight})`}
             >
-              {markerStyle === "pin" ? mark.number || index + 1 : null}
-            </span>
+              {markerStyle === "arrow" ? (
+                <path
+                  d={`M ${-markerRadius * 1.4} ${-markerRadius * 1.4} L 0 0 M ${-markerRadius * 0.85} 0 L 0 0 L 0 ${-markerRadius * 0.85}`}
+                  fill="none"
+                  stroke="#c73732"
+                  strokeWidth={Math.max(2, imageWidth / 700) * markerScale}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ) : (
+                <>
+                  <circle
+                    r={markerRadius}
+                    fill={
+                      markerStyle === "ring"
+                        ? "none"
+                        : markerStyle === "dot"
+                          ? "rgba(199, 55, 50, 0.72)"
+                          : "rgba(23, 50, 77, 0.78)"
+                    }
+                    stroke={
+                      markerStyle === "pin"
+                        ? "#fff"
+                        : markerStyle === "ring"
+                          ? "#c73732"
+                          : "none"
+                    }
+                    strokeWidth={Math.max(2, imageWidth / 750)}
+                  />
+                  {markerStyle === "pin" && (
+                    <text
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill="#fff"
+                      fontSize={markerRadius * 1.2}
+                      fontWeight={600}
+                    >
+                      {mark.number || index + 1}
+                    </text>
+                  )}
+                </>
+              )}
+            </g>
           ))}
-        </span>
+        </g>
       )}
-    </>
+    </svg>
   );
   const image = (
     <>
@@ -170,7 +219,7 @@ export function EvidenceScreenshot({
       </div>
       <button
         type="button"
-        className="review-image-frame review-image-open"
+        className="review-image-open"
         aria-label={`Review image: ${imageLabel(asset)}`}
         onClick={() => setExpanded(true)}
         style={
@@ -179,7 +228,7 @@ export function EvidenceScreenshot({
             : undefined
         }
       >
-        {image}
+        <span className="review-image-frame">{image}</span>
       </button>
       <dialog
         ref={dialog}
