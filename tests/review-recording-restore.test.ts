@@ -53,6 +53,7 @@ function fixture(t: test.TestContext) {
   const previousChrome = (globalThis as any).chrome;
   const previousFetch = globalThis.fetch;
   (globalThis as any).chrome = {
+    action: { setBadgeText: async () => {} },
     tabs: {
       get: async () => ({ ...tab }),
       sendMessage: async (tabId: number, message: any) => {
@@ -119,6 +120,25 @@ function fixture(t: test.TestContext) {
     },
   };
 }
+
+test("ending the captured review clears its session without clearing the draft", async (t) => {
+  const f = fixture(t);
+  f.state.draft = { id: "retained", sourceTabId: 7 };
+  f.state.sessions[8] = { reviewId: "other" };
+  await f.controller.stop(7, "review");
+  assert.equal(f.state.sessions[7], undefined);
+  assert.equal(f.state.sessions[8].reviewId, "other");
+  assert.equal(f.state.draft.id, "retained");
+});
+
+test("an older capture cannot stop a replacement review", async (t) => {
+  const f = fixture(t);
+  f.state.sessions[7].reviewId = "replacement";
+  await f.controller.stop(7, "review");
+  assert.equal(f.state.sessions[7].reviewId, "replacement");
+  assert.equal(f.writes.length, 0);
+  assert.equal(f.injections.length, 0);
+});
 
 test("recording navigation restores its original project on an explicitly approved redirect without changing preferences", async (t) => {
   const f = fixture(t);

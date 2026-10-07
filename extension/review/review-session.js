@@ -233,10 +233,11 @@ export function createReviewController({ get, set, authenticated, defaultServer 
     await syncInstant();
     return {};
   }
-  async function stop(tabId) {
-    await removeSelectionStyles(tabId);
+  async function stop(tabId, expectedReviewId) {
     const state = await get(),
       sessions = { ...state.sessions };
+    if (expectedReviewId && sessions[tabId]?.reviewId !== expectedReviewId) return {};
+    await removeSelectionStyles(tabId);
     await chrome.scripting
       .executeScript({
         target: { tabId },
@@ -245,8 +246,12 @@ export function createReviewController({ get, set, authenticated, defaultServer 
         args: ["stop", sessions[tabId]?.reviewId],
       })
       .catch(() => {});
-    delete sessions[tabId];
-    await set({ sessions });
+    const latest = await get();
+    if (expectedReviewId && latest.sessions?.[tabId]?.reviewId !== expectedReviewId)
+      return {};
+    const remaining = { ...latest.sessions };
+    delete remaining[tabId];
+    await set({ sessions: remaining });
     await chrome.action.setBadgeText({ tabId, text: "" }).catch(() => {});
     return {};
   }

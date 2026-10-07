@@ -7,14 +7,42 @@ import path from "node:path";
 import assert from "node:assert/strict";
 
 const projectId = crypto.randomUUID();
+const threadId = crypto.randomUUID();
+let releaseUpload, recordingUploaded;
+const uploadStarted = new Promise((resolve) => {
+  releaseUpload = { started: resolve };
+});
+const uploadGate = new Promise((resolve) => {
+  releaseUpload.finish = resolve;
+});
 let origin;
-const server = createServer((req, res) => {
+const server = createServer(async (req, res) => {
   if (req.url?.startsWith("/api/")) {
+    let data;
+    if (req.url === "/api/threads.create") data = { id: threadId, revision: 1 };
+    if (req.url === "/api/assets.uploadVideo") {
+      req.resume();
+      releaseUpload.started();
+      await uploadGate;
+      data = {
+        asset: { id: crypto.randomUUID() },
+        thread: { id: threadId, revision: 2 },
+      };
+    }
+    if (req.url === "/api/recordings.upload") {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      recordingUploaded = JSON.parse(Buffer.concat(chunks).toString()).recording;
+      data = {
+        thread: { id: threadId, revision: 3 },
+        recording: { id: recordingUploaded.id },
+      };
+    }
     res.setHeader("Content-Type", "application/json");
     res.end(
       JSON.stringify({
         ok: true,
-        data: {
+        data: data || {
           items:
             req.url === "/api/projects.list"
               ? [
@@ -247,10 +275,56 @@ try {
   assert.ok(status.data.recording.events.some((event) => event.type === "console"));
   assert.ok(status.data.recording.events.some((event) => event.type === "network"));
   assert.ok(await review.locator("#preview").evaluate((video) => video.videoWidth > 0));
+  await review.locator("#comment").fill("Synthetic background video with diagnostics");
+  let closeError;
+  const reviewClosed = review.waitForEvent("close", { timeout: 30000 }).catch((error) => {
+    closeError = error;
+  });
+  await review.locator("#send-background").click();
+  let uploadTimer;
+  await Promise.race([
+    uploadStarted,
+    new Promise((_, reject) => {
+      uploadTimer = setTimeout(() => reject(Error("Video upload did not start")), 15000);
+    }),
+  ]).catch(async (error) => {
+    throw Error(`${error.message}: ${await review.locator("#status").textContent()}`);
+  });
+  clearTimeout(uploadTimer);
+  assert.equal(
+    await worker.evaluate(
+      async (tabId) =>
+        (
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => globalThis.feedbacksReviewActive,
+          })
+        )[0].result,
+      tabId,
+    ),
+    false,
+  );
+  assert.equal(await page.locator("#feedbacks-review-root").count(), 0);
+  assert.equal(
+    await worker.evaluate((tabId) => chrome.action.getBadgeText({ tabId }), tabId),
+    "",
+  );
+  const pending = await control.evaluate(async () =>
+    chrome.runtime.sendMessage({ type: "sessionStatus" }),
+  );
+  assert.equal(pending.data.recording.id, status.data.recording.id);
+  assert.equal(pending.data.active, false);
+  assert.equal(review.isClosed(), false);
+  releaseUpload.finish();
+  await reviewClosed;
+  if (closeError) throw closeError;
+  assert.equal(recordingUploaded.id, status.data.recording.id);
+  assert.ok(recordingUploaded.events.some((event) => event.type === "network"));
   console.log(
     "PASS one-click hidden video + session, source controls, console/network/activity, Stop-to-review handoff",
   );
 } finally {
+  releaseUpload.finish();
   await browser.close();
   server.close();
   await rm(temp, { recursive: true, force: true });

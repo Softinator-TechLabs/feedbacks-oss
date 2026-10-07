@@ -2468,6 +2468,17 @@
       return;
     (async () => {
       if (
+        message.reviewId &&
+        message.reviewId !== reviewId &&
+        [
+          "deactivate",
+          "feedbackSaved",
+          "feedbackThreadCreated",
+          "feedbackSubmissionIncomplete",
+        ].includes(message.type)
+      )
+        return {};
+      if (
         recordingOnly &&
         ![
           "activate",

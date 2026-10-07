@@ -17,6 +17,13 @@ export async function verifySendNavigation({
   await toFixture();
   await send({ type: "activate", tabId: id });
   await page.bringToFront();
+  await page.evaluate(() => {
+    const link = document.createElement("a");
+    link.id = "qa-normal-link";
+    link.href = "#normal";
+    link.textContent = "Normal website navigation";
+    document.querySelector("header").append(link);
+  });
   await send({ type: "popupAction", tabId: id, action: "capture" });
   const review = await context.newPage();
   await review.goto(`chrome-extension://${extensionId}/editor.html`);
@@ -60,6 +67,49 @@ export async function verifySendNavigation({
     const pending = await draft();
     assert.ok(pending.thread, "thread created while approved image is pending");
     assert.equal(pending.uploadIndex || 0, 0);
+    assert.equal(
+      await worker.evaluate(
+        async (tabId) =>
+          (
+            await chrome.scripting.executeScript({
+              target: { tabId },
+              func: () => globalThis.feedbacksReviewActive,
+            })
+          )[0].result,
+        id,
+      ),
+      false,
+      "page review is off while the approved image is still uploading",
+    );
+    assert.equal(await page.locator("#feedbacks-review-root").count(), 0);
+    assert.equal(
+      await page.evaluate(() =>
+        document.documentElement.hasAttribute("data-feedbacks-text-selection"),
+      ),
+      false,
+    );
+    assert.equal(
+      await worker.evaluate(async (tabId) => {
+        const { sessions } = await chrome.storage.local.get("sessions");
+        return sessions?.[tabId];
+      }, id),
+      undefined,
+    );
+    assert.equal(
+      await worker.evaluate((tabId) => chrome.action.getBadgeText({ tabId }), id),
+      "",
+    );
+    await page.locator("#qa-normal-link").click();
+    assert.ok(
+      page.url().endsWith("#normal"),
+      "normal website navigation works during upload",
+    );
+    await send({ type: "activate", tabId: id });
+    const replacement = await worker.evaluate(async (tabId) => {
+      const { sessions } = await chrome.storage.local.get("sessions");
+      return sessions[tabId].reviewId;
+    }, id);
+    assert.notEqual(replacement, pending.reviewId);
     const closed = review.waitForEvent("close");
     await worker.evaluate(() => globalThis.qaNavigationRelease());
     await closed;
@@ -74,8 +124,42 @@ export async function verifySendNavigation({
       .data;
     assert.equal(thread.assets.length, 1);
     assert.equal(await draft(), undefined);
+    await worker.evaluate(
+      async ({ tabId, reviewId }) => {
+        for (const type of [
+          "feedbackSaved",
+          "feedbackThreadCreated",
+          "feedbackSubmissionIncomplete",
+        ])
+          await chrome.tabs.sendMessage(tabId, { type, reviewId });
+      },
+      { tabId: id, reviewId: pending.reviewId },
+    );
+    assert.equal(
+      await worker.evaluate(
+        async (tabId) =>
+          (
+            await chrome.scripting.executeScript({
+              target: { tabId },
+              func: () => globalThis.feedbacksReviewActive,
+            })
+          )[0].result,
+        id,
+      ),
+      true,
+    );
+    assert.doesNotMatch(
+      await page
+        .locator("#feedbacks-review-root")
+        .evaluate((node) => node.shadowRoot.querySelector(".notice").textContent),
+      /Feedback sent|Thread published/,
+      "older upload notifications do not alter the replacement review",
+    );
     results.sendNavigation = {
       websiteFocusedBeforeUpload: true,
+      websiteUsableBeforeUpload: true,
+      reviewOffBeforeUpload: true,
+      replacementReviewPreserved: true,
       captureTabKeptUntilComplete: true,
       captureTabClosed: true,
       imageReadback: true,

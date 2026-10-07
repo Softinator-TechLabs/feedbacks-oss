@@ -367,6 +367,20 @@ export async function verifyCaptureTriage({
   });
   await video.locator("#send-background").click();
   await video.getByRole("button", { name: "Retry Send video", exact: true }).waitFor();
+  assert.equal(
+    await worker.evaluate(
+      async (tabId) =>
+        (
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => globalThis.feedbacksReviewActive,
+          })
+        )[0].result,
+      sourceTabId,
+    ),
+    false,
+  );
+  assert.equal(await page.locator("#feedbacks-review-root").count(), 0);
   assert.equal(await video.getByLabel("Priority", { exact: true }).isDisabled(), true);
   assert.equal(
     await video.getByRole("button", { name: "Assign to", exact: true }).isDisabled(),
@@ -414,6 +428,7 @@ export async function verifyCaptureTriage({
     screenshot: true,
     video: true,
     backgroundVideo: true,
+    reviewOffDuringRetry: true,
     frozenRetry: true,
     duplicateThreads: 0,
     duplicateAssignments: 0,

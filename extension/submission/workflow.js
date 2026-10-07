@@ -241,6 +241,7 @@ export function createSubmissionWorkflow({
       chrome.tabs
         .sendMessage(draft.sourceTabId, {
           type: "feedbackThreadCreated",
+          reviewId: draft.reviewId,
           fingerprint: draft.context.anchor?.fingerprint,
           url: `${draft.server}/threads/${draft.thread.id}`,
         })
@@ -497,6 +498,7 @@ export function createSubmissionWorkflow({
       chrome.tabs
         .sendMessage(draft.sourceTabId, {
           type: "feedbackSaved",
+          reviewId: draft.reviewId,
           fingerprint: draft.context.anchor?.fingerprint,
         })
         .catch(() => {});
@@ -506,6 +508,7 @@ export function createSubmissionWorkflow({
         chrome.tabs
           .sendMessage(publishedDraft.sourceTabId, {
             type: "feedbackSubmissionIncomplete",
+            reviewId: publishedDraft.reviewId,
             url: `${publishedDraft.server}/threads/${publishedDraft.thread.id}`,
           })
           .catch(() => {});
