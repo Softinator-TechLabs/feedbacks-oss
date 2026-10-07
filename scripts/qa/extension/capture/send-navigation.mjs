@@ -17,6 +17,8 @@ export async function verifySendNavigation({
 }) {
   await page.setViewportSize({ width: 900, height: 650 });
   await toFixture();
+  // Keep this submitted point out of the shared-pin fixture on /review.
+  await page.goto(new URL("/send-return", page.url()).href, { waitUntil: "load" });
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
   await page.bringToFront();

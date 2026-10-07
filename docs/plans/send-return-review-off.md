@@ -1,6 +1,6 @@
 # Normal website use during background sending
 
-Status: implementation and focused checks complete; packaged acceptance and delivery pending. Date: 2026-10-07.
+Status: implementation, focused checks and packaged handoff acceptance complete; exact-revision CI and delivery pending. Date: 2026-10-07.
 
 ## Outcome
 
@@ -16,6 +16,8 @@ No server API, permissions, dependencies or database migrations change. **Send &
 
 - [x] Regression checks for cleanup before focus, failed handoff recovery, retained drafts and replacement review protection.
 - [x] Screenshot/video entrypoint checks with delayed failure and both retry destinations.
-- [ ] Packaged screenshot/video acceptance, including normal website navigation while upload is held.
+- [x] Packaged screenshot/video acceptance, including normal website navigation while upload is held, retained point originals and protection of a newly started review.
 - [ ] Repository gates, package inspection and exact-revision CI.
 - [ ] Merge, published versioned release and hosted package readback; report Store publication separately.
+
+Local evidence: 22 focused navigation/session checks, four screenshot/video send/retry checks and 44 recording browser checks pass. Packaged native video sending retains diagnostics while page review is off. A real screenshot point retains its original image after handoff; delayed upload allows normal website navigation, and old completion notifications cannot reset a replacement review. The submitted-point fixture uses a separate URL so it does not overlap saved pins in later acceptance checks. Format, harness, types, build, release validation and isolated smoke checks have passed; complete CI remains the merge/release gate.
