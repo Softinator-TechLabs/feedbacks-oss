@@ -52,7 +52,10 @@ let draft,
   baseLoad = 0,
   loadingBase = false;
 let originalTabId;
-const reviewNavigation = createReviewNavigation({ sourceTabId: () => originalTabId });
+const reviewNavigation = createReviewNavigation({
+  sourceTabId: () => originalTabId,
+  leaveReview: () => send({ type: "returnFromCapture", id: draft.id }),
+});
 const sendIds = ["send", "send-header", "send-background", "send-background-header"];
 let thumbnailObserver;
 let previewUrls = [];

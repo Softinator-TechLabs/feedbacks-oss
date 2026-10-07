@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Normal website use during background sending](send-return-review-off.md)
+
 - [Connect coding agents through OAuth](mcp-oauth.md)
 - [Clear project drafts and recoverable image review](project-settings-recovery.md)
 

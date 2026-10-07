@@ -44,7 +44,10 @@ const triage = createCaptureTriage($("capture-triage"), {
 });
 const recorderUrl = new URL(location.href);
 const sourceTabId = Number(recorderUrl.searchParams.get("sourceTabId"));
-const reviewNavigation = createReviewNavigation({ sourceTabId: () => sourceTabId });
+const reviewNavigation = createReviewNavigation({
+  sourceTabId: () => sourceTabId,
+  leaveReview: () => send({ type: "returnFromCapture", target }),
+});
 let sending = false;
 const draftId = recorderUrl.searchParams.get("draftId");
 const autoStart = recorderUrl.searchParams.get("autoStart") === "1";

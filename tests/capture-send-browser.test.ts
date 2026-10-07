@@ -231,6 +231,14 @@ for (const surface of ["editor", "video"])
           assert.equal(await page.locator("#send-background").isDisabled(), true);
           await page.waitForFunction(() => (window as any).uploadStarted === true);
           assert.equal(page.url().includes("/threads/"), false);
+          const handoff = events.findIndex(
+            (event) => event[0] === "request" && event[1] === "returnFromCapture",
+          );
+          assert.ok(handoff >= 0, "both surfaces end page review before returning");
+          assert.ok(
+            handoff < events.findIndex((event) => event[0] === "focus"),
+            "the website is ready before it receives focus",
+          );
           assert.deepEqual(
             events.filter((event) => event[0] === "focus"),
             [["focus", 10]],

@@ -370,6 +370,8 @@ try {
     await verifySendNavigation({
       page,
       toFixture,
+      exposeReviewRoot,
+      saveInlinePoint,
       send,
       id,
       draft,

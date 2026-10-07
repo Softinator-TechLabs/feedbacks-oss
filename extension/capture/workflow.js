@@ -114,6 +114,7 @@ export function createCaptureWorkflow({
         server: session.server,
         projectId: state.draft?.projectId || session.projectId,
         sourceTabId: tab.id,
+        reviewId: session.reviewId,
         context,
         diagnostics: retryId
           ? state.draft?.diagnostics

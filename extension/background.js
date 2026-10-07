@@ -1788,6 +1788,33 @@ async function route(message, sender) {
     }
     case "enableInstant":
       return review.enableInstant(message.tabId);
+    case "returnFromCapture": {
+      let target;
+      if (message.id) {
+        if (state.draft?.id !== message.id)
+          throw Error("The capture draft changed. Review it before sending.");
+        target = state.draft;
+      } else target = recordings.target(sender.tab?.id, message.target);
+      const session = state.sessions?.[target.sourceTabId];
+      if (
+        !session ||
+        session.server !== target.server ||
+        (target.reviewId
+          ? session.reviewId !== target.reviewId
+          : session.projectId !== target.projectId)
+      )
+        return {};
+      // End page interaction without retiring the recorder binding or its evidence.
+      // Video creation, diagnostics and saved-frame uploads still use that binding.
+      await chrome.tabs
+        .sendMessage(target.sourceTabId, {
+          type: "deactivate",
+          reviewId: session.reviewId,
+          captureHandoff: true,
+        })
+        .catch(() => {}); // A navigated document may already have no review overlay.
+      return review.stop(target.sourceTabId, session.reviewId);
+    }
     case "disableInstant":
       await set({ instantReview: false });
       await review.syncInstant();

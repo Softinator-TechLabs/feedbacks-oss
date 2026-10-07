@@ -2,6 +2,7 @@
 // until every selected attachment has been confirmed by the server.
 export function createReviewNavigation({
   sourceTabId,
+  leaveReview = async () => {},
   chromeApi = chrome,
   navigate = (url) => location.assign(url),
 }) {
@@ -24,6 +25,7 @@ export function createReviewNavigation({
       } catch {
         throw Error("The website tab is closed. Choose Send & Open.");
       }
+      await leaveReview();
       await focus(source);
     },
     async complete(url) {
