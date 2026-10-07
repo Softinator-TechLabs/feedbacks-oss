@@ -203,81 +203,19 @@
   width: 100%;
   line-height: 0;
 }
-.review-image-pins {
+.review-image-frame > img {
+  /* Decoration must not change the image-pixel plane used by the overlays. */
+  border: 0;
+  outline: 1px solid var(--border);
+}
+.review-image-evidence {
   position: absolute;
   inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-}
-.review-image-pin {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 3px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 999px;
-  background: rgba(23, 50, 77, 0.78);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-}
-.review-image-pin[data-style="ring"],
-.review-image-pin[data-style="dot"] {
-  min-width: 18px;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: 2px solid #c73732;
-  background: transparent;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.75);
-}
-.review-image-pin[data-style="dot"] {
-  background: rgba(199, 55, 50, 0.72);
-  box-shadow: none;
-}
-.review-image-pin[data-style="arrow"] {
-  min-width: 18px;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  transform: translate(-100%, -100%);
-}
-.review-image-pin[data-style="arrow"]::before {
-  content: "";
-  position: absolute;
-  left: 1px;
-  top: 1px;
-  width: 135%;
-  height: 3px;
-  background: #c73732;
-  transform: rotate(45deg);
-  transform-origin: left center;
-}
-.review-image-pin[data-style="arrow"]::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 40%;
-  height: 40%;
-  border-right: 3px solid #c73732;
-  border-bottom: 3px solid #c73732;
-}
-.review-image-pin[data-size="medium"] {
-  width: 26px;
-  height: 26px;
-}
-.review-image-pin[data-size="large"] {
-  width: 34px;
-  height: 34px;
+  overflow: visible;
 }
 .review-main-capture figcaption,
 .review-point-figure figcaption,
@@ -595,17 +533,6 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.review-image-overlay {
-  position: absolute;
-  pointer-events: none;
-}
-.review-element-outline {
-  border: 2px solid #2370b5;
-}
-.review-text-selection {
-  background: rgba(245, 197, 61, 0.3);
-  border-bottom: 1px solid #ae7812;
-}
 .review-text-edit {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -639,6 +566,7 @@ button.review-image-open:enabled:hover {
   border: 0;
   background: transparent;
   cursor: zoom-in;
+  width: 100%;
 }
 .evidence-image-dialog {
   width: min(96vw, 1800px);

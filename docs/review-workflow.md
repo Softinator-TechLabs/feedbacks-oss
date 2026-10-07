@@ -144,6 +144,11 @@ control zoom; large captures scroll inside the dialog. **Open original file** op
 only the saved image, without browser-rendered evidence layers. Legacy annotations
 saved into image pixels remain part of that image.
 
+Point centers and marker sizes use the original screenshot's pixel coordinates in
+both the thread and image review. Zooming or resizing scales the image and its
+markers together; decorative borders do not change their positions. Saving drawn
+marks preserves the original point geometry.
+
 **Save annotations** updates the image and closes the dialog. **Cancel**, **Close**
 and Escape discard unsaved marks and return directly to the thread, with no viewer
 left underneath. A failed save preserves the draft for retry. Closing is disabled

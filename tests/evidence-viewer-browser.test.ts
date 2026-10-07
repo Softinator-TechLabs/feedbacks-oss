@@ -5,6 +5,126 @@ import { chromium } from "playwright";
 import { evidenceViewerFixture } from "./evidence-viewer-fixture.js";
 
 test(
+  "point markers keep the same image area through review, zoom, pan and saved marks",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const f = await evidenceViewerFixture({
+      writable: true,
+      imageSize: { width: 3456, height: 1804 },
+      captureMarker: { style: "ring", size: "small" },
+    });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1920, height: 855 } });
+      await page.goto(f.url);
+      const geometry = (selector: string) =>
+        page.locator(selector).evaluate((frame) => {
+          const element = frame.querySelector("img,canvas")!;
+          const image = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          const left = parseFloat(style.borderLeftWidth);
+          const top = parseFloat(style.borderTopWidth);
+          const width = image.width - left - parseFloat(style.borderRightWidth);
+          const height = image.height - top - parseFloat(style.borderBottomWidth);
+          const point = frame.querySelector(".review-image-pin")!.getBoundingClientRect();
+          return {
+            x: (point.x + point.width / 2 - image.x - left) / width,
+            y: (point.y + point.height / 2 - image.y - top) / height,
+            width: point.width / width,
+            height: point.height / height,
+          };
+        });
+      const baseline = await geometry(".review-image-open");
+      const aligned = async (selector = "dialog .review-image-frame") => {
+        const next = await geometry(selector);
+        assert.ok(
+          Math.abs(next.x - 0.2) * 3456 < 0.25,
+          "point stays within a quarter original-image pixel on x",
+        );
+        assert.ok(
+          Math.abs(next.y - 0.21) * 1804 < 0.25,
+          "point stays within a quarter original-image pixel on y",
+        );
+        assert.ok(
+          Math.abs(next.width - baseline.width) < 0.0001,
+          "marker width scales with image pixels",
+        );
+        assert.ok(
+          Math.abs(next.height - baseline.height) < 0.0001,
+          "marker height scales with image pixels",
+        );
+      };
+      await page.getByRole("button", { name: "Review image", exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await page.waitForFunction(
+        () => document.querySelector<HTMLCanvasElement>("canvas")?.width === 3456,
+      );
+      await aligned();
+      await dialog.getByRole("button", { name: "Close", exact: true }).click();
+      await page.locator(".review-image-open").hover();
+      await aligned(".review-image-open");
+      await page.getByRole("button", { name: "Review image", exact: true }).click();
+      await page.waitForFunction(
+        () => document.querySelector<HTMLCanvasElement>("canvas")?.width === 3456,
+      );
+      for (const zoom of ["1", "2", "0"]) {
+        await dialog.getByLabel("Image zoom").selectOption(zoom);
+        const surface = dialog.locator(".screenshot-markup-surface");
+        await surface.evaluate((el) => {
+          el.scrollTop = 75;
+          el.scrollLeft = 100;
+        });
+        await aligned();
+      }
+      await dialog.getByRole("button", { name: "Save annotations", exact: true }).click();
+      await dialog.getByRole("alert").waitFor();
+      await aligned();
+      assert.equal(
+        f.uploads.length,
+        0,
+        "review without drawing must not replace evidence",
+      );
+      await page.screenshot({ path: ".local/evidence-qa/marker-scale-desktop.png" });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await aligned();
+      await page.evaluate(() => {
+        document.documentElement.dataset.theme = "dark";
+      });
+      await aligned();
+      await page.screenshot({ path: ".local/evidence-qa/marker-scale-mobile-dark.png" });
+      await page.setViewportSize({ width: 1920, height: 855 });
+      await dialog.getByRole("button", { name: "Circle", exact: true }).click();
+      const canvas = dialog.getByLabel("Screenshot marking canvas");
+      const box = (await canvas.boundingBox())!;
+      await page.mouse.move(box.x + box.width * 0.16, box.y + box.height * 0.16);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * 0.24, box.y + box.height * 0.26, {
+        steps: 4,
+      });
+      await page.mouse.up();
+      await dialog.getByRole("button", { name: "Save annotations", exact: true }).click();
+      await dialog.waitFor({ state: "hidden" });
+      await aligned(".review-image-open");
+      assert.equal(f.uploads[0].markup[0].tool, "ellipse");
+      await page.getByRole("button", { name: "Review image", exact: true }).click();
+      await page.waitForFunction(
+        () => document.querySelector<HTMLCanvasElement>("canvas")?.width === 3456,
+      );
+      await aligned();
+      await dialog
+        .getByRole("button", { name: "Undo mark", exact: true })
+        .isEnabled()
+        .then((enabled) => assert.equal(enabled, true));
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden" });
+    } finally {
+      await browser.close();
+      await f.close();
+    }
+  },
+);
+
+test(
   "the last resolved point offers explicit feedback completion with revision recovery",
   { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
   async () => {
