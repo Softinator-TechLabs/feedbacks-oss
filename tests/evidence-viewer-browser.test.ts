@@ -5,6 +5,99 @@ import { chromium } from "playwright";
 import { evidenceViewerFixture } from "./evidence-viewer-fixture.js";
 
 test(
+  "the last resolved point offers explicit feedback completion with revision recovery",
+  { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
+  async () => {
+    const f = await evidenceViewerFixture({
+      pointCount: 6,
+      resolvedPointCount: 5,
+      writable: true,
+      failFirstStatus: true,
+    });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+      await page.goto(f.url);
+      const completion = page.locator('[aria-label="Feedback completion"]');
+      assert.equal(
+        await completion.count(),
+        0,
+        "a hidden open point prevents completion",
+      );
+      await page.getByLabel("Filter points").selectOption("open");
+      await page
+        .locator(".review-point-summary")
+        .filter({ hasText: "Review request 6:" })
+        .click();
+      await page.getByRole("button", { name: "Resolve point", exact: true }).click();
+      await completion.waitFor();
+      assert.match(
+        await completion.innerText(),
+        /All points resolved.*Feedback is still Open/s,
+      );
+      assert.equal(
+        f.statusUpdates.length,
+        0,
+        "resolving the last point never closes the thread",
+      );
+      await page.getByLabel("Filter points").selectOption("all");
+      await page.screenshot({
+        path: ".local/evidence-qa/completion-desktop.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await completion.scrollIntoViewIfNeeded();
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      await page.screenshot({ path: ".local/evidence-qa/completion-mobile.png" });
+      const resolve = completion.getByRole("button", {
+        name: "Resolve feedback",
+        exact: true,
+      });
+      await resolve.focus();
+      await page.keyboard.press("Enter");
+      await page.getByRole("alert").waitFor();
+      assert.equal(
+        await resolve.isDisabled(),
+        true,
+        "stale writes require fresh thread data",
+      );
+      await page
+        .getByRole("button", { name: "Load latest feedback", exact: true })
+        .click();
+      await resolve.waitFor({ state: "visible" });
+      await resolve.click();
+      await completion.waitFor({ state: "hidden" });
+      assert.equal(f.statusUpdates.length, 2);
+      assert.deepEqual(
+        f.statusUpdates.map((update) => ({
+          threadId: update.threadId,
+          state: update.state,
+          revision: update.revision,
+        })),
+        [
+          { threadId: "example", state: "resolved", revision: 2 },
+          { threadId: "example", state: "resolved", revision: 3 },
+        ],
+      );
+      assert.match(
+        await page.locator('[aria-label="Annotated page review"]').innerText(),
+        /This thread is closed/,
+      );
+      assert.equal(
+        await page.getByRole("button", { name: "Reopen point", exact: true }).count(),
+        0,
+      );
+    } finally {
+      await browser.close();
+      await f.close();
+    }
+  },
+);
+
+test(
   "image review dismisses only a gesture that starts and ends on the backdrop",
   { skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1" },
   async () => {

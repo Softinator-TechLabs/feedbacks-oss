@@ -56,12 +56,14 @@ export function ErrorNotice({ error }: { error: string }) {
 export function useAction() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
+    [errorCode, setErrorCode] = useState(""),
     [notice, setNotice] = useState("");
   async function run(work: () => Promise<void>, success = "") {
     const form = document.activeElement?.closest("form");
     const editVersion = form?.dataset.editVersion;
     setBusy(true);
     setError("");
+    setErrorCode("");
     setNotice("");
     try {
       await work();
@@ -72,12 +74,13 @@ export function useAction() {
       return true;
     } catch (e) {
       setError(errorText(e));
+      setErrorCode(e instanceof ApiError ? e.code : "");
       return false;
     } finally {
       setBusy(false);
     }
   }
-  return { busy, error, notice, run, setError };
+  return { busy, error, errorCode, notice, run, setError };
 }
 export function ActionState({ action }: { action: ReturnType<typeof useAction> }) {
   return (

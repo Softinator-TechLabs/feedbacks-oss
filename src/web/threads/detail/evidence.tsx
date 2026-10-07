@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api, type Thread } from "../../api.js";
+import { api, labels, type Thread } from "../../api.js";
 import { MarkdownText } from "../../markdown-text.js";
 import { ErrorNotice, Notice, useAction } from "../../ui.js";
 import { HumanTime } from "../../human-time.js";
@@ -197,6 +197,24 @@ export function ReviewEvidence({
       pending.current = false;
     }
   }
+  async function resolveFeedback() {
+    if (pending.current || !canWrite || !canResolve || !onSaved) return;
+    pending.current = true;
+    try {
+      await action.run(async () => {
+        const latest = currentThread.current;
+        onSaved(
+          await api<Thread>("threads.status", {
+            threadId: latest.id,
+            revision: latest.revision,
+            state: "resolved",
+          }),
+        );
+      }, "Feedback resolved.");
+    } finally {
+      pending.current = false;
+    }
+  }
   const images = thread.assets.filter((asset) => asset.contentType === "image/webp");
   const pageImages = images.filter((asset) => !asset.recordingFrame);
   const numbered = pageImages.filter((asset) =>
@@ -287,7 +305,7 @@ export function ReviewEvidence({
       )}
       <ErrorNotice error={action.error} />
       {action.notice && <Notice>{action.notice}</Notice>}
-      {action.error.includes("CONFLICT") && onSaved && (
+      {action.errorCode === "CONFLICT" && onSaved && (
         <button
           type="button"
           disabled={action.busy}
@@ -297,7 +315,7 @@ export function ReviewEvidence({
             )
           }
         >
-          Load latest point status
+          Load latest feedback
         </button>
       )}
       {mainCaptures.map((asset) => (
@@ -390,6 +408,25 @@ export function ReviewEvidence({
           </div>
         )}
       </div>
+      {!threadClosed && counts.open === 0 && counts.resolved > 0 && (
+        <div className="review-point-completion" aria-label="Feedback completion">
+          <p role="status">
+            <strong>All points resolved.</strong> Feedback is still{" "}
+            {labels[thread.work.state]}. Resolve it when the whole request is complete.
+          </p>
+          {canWrite && canResolve && onSaved && (
+            <button
+              type="button"
+              className="primary"
+              disabled={action.busy || action.errorCode === "CONFLICT"}
+              onClick={() => void resolveFeedback()}
+            >
+              <Icon name="check" />
+              {action.busy ? "Resolving…" : "Resolve feedback"}
+            </button>
+          )}
+        </div>
+      )}
       <ol className="review-point-list">
         {filteredPoints
           .slice(pointOffset, pointOffset + pointsPerPage)
