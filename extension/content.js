@@ -2693,6 +2693,12 @@
       }
       if (message.type === "deactivate") {
         activationGeneration++;
+        if (message.captureHandoff) {
+          // The capture draft owns these points and their original images now.
+          // Clear page-only references without deleting evidence needed by retry.
+          annotations = [];
+          pendingReview = false;
+        }
         hideSelectionAction();
         clearChosenPoint();
         draftEditing = false;

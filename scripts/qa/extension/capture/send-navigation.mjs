@@ -4,6 +4,7 @@ export async function verifySendNavigation({
   page,
   toFixture,
   exposeReviewRoot,
+  saveInlinePoint,
   send,
   id,
   draft,
@@ -19,6 +20,10 @@ export async function verifySendNavigation({
   await exposeReviewRoot();
   await send({ type: "activate", tabId: id });
   await page.bringToFront();
+  await saveInlinePoint(
+    page.locator("h1"),
+    "Synthetic original point retained during sending",
+  );
   await page.evaluate(() => {
     const link = document.createElement("a");
     link.id = "qa-normal-link";
@@ -69,6 +74,7 @@ export async function verifySendNavigation({
     const pending = await draft();
     assert.ok(pending.thread, "thread created while approved image is pending");
     assert.equal(pending.uploadIndex || 0, 0);
+    assert.equal(pending.context.annotations.length, 1);
     assert.equal(
       await worker.evaluate(
         async (tabId) =>
@@ -124,7 +130,13 @@ export async function verifySendNavigation({
     );
     const thread = (await post("threads.get", { threadId: pending.thread.id }, auth))
       .data;
-    assert.equal(thread.assets.length, 1);
+    assert.equal(
+      thread.assets.length,
+      pending.capturePages.length + (pending.includeCombined ? 1 : 0),
+    );
+    assert.ok(
+      thread.assets.some((asset) => asset.filename === "point-001-original.webp"),
+    );
     assert.equal(await draft(), undefined);
     await worker.evaluate(
       async ({ tabId, reviewId }) => {
@@ -156,8 +168,15 @@ export async function verifySendNavigation({
           (
             await chrome.scripting.executeScript({
               target: { tabId },
-              func: () =>
-                globalThis.__feedbacksQaRoot.querySelector(".notice").textContent,
+              func: () => {
+                if (
+                  globalThis.__feedbacksQaRoot.querySelectorAll(".saved-draft-pin").length
+                )
+                  throw Error(
+                    "Handed-off points returned as unsent drafts in a new review",
+                  );
+                return globalThis.__feedbacksQaRoot.querySelector(".notice").textContent;
+              },
             })
           )[0].result,
         id,

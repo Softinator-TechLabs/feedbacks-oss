@@ -371,6 +371,7 @@ try {
       page,
       toFixture,
       exposeReviewRoot,
+      saveInlinePoint,
       send,
       id,
       draft,

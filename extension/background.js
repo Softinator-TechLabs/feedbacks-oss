@@ -1810,6 +1810,7 @@ async function route(message, sender) {
         .sendMessage(target.sourceTabId, {
           type: "deactivate",
           reviewId: session.reviewId,
+          captureHandoff: true,
         })
         .catch(() => {}); // A navigated document may already have no review overlay.
       return review.stop(target.sourceTabId, session.reviewId);
