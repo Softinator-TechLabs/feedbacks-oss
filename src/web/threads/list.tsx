@@ -1,9 +1,22 @@
 import { DeleteThreadsButton, ThreadDeletionCleanup } from "./deletion.js";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { calendarDate, localTimeZone } from "../work-plan-model.js";
 import { ProjectAssignments } from "../assignments/project-assignments.js";
 import type { Assignee } from "../assignments/model.js";
-import { usePageLocation, navigate } from "../navigation.js";
+import {
+  usePageLocation,
+  navigate,
+  capturePagePosition,
+  restorePagePosition,
+  type PagePosition,
+} from "../navigation.js";
+import {
+  clearListSnapshots,
+  listCacheGeneration,
+  readListSnapshot,
+  rememberListSnapshot,
+  type ListResult,
+} from "./list-cache.js";
 import {
   readFilters,
   readOffset,
@@ -43,6 +56,16 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     [version, setVersion] = useState(0),
     [selected, setSelected] = useState<Set<string>>(new Set());
   const filterTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const cacheKey = JSON.stringify([
+    actor.userId,
+    project.id,
+    project.revision,
+    project.permissions,
+    query,
+  ]);
+  const cacheGeneration = useRef(listCacheGeneration());
+  const pendingPosition = useRef<PagePosition | undefined>(undefined);
+  const restored = useRef("");
   const [statusRecovery, setStatusRecovery] = useState<{
     previous: Thread;
     updated: Thread;
@@ -75,28 +98,31 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     data: loaded,
     setData: setLoaded,
     error,
+    errorCode,
+    refreshing,
   } = useLoad(
-    async () => ({
-      query,
-      projectId: project.id,
-      result: await api<{
-        items: Thread[];
-        total: number;
-        nextOffset: number | null;
-        websiteFilters: { domains: string[]; hostnames: string[] };
-        summary?: {
-          threads: { open: number; closed: number; total: number };
-          points: { open: number; resolved: number; closed: number; total: number };
-        };
-      }>("threads.list", {
+    async () => {
+      cacheGeneration.current = listCacheGeneration();
+      const result = await api<ListResult>("threads.list", {
         projectId: project.id,
         ...filters,
         offset,
         includeSummary: true,
-      }),
-    }),
-    [project.id, query, version],
+      });
+      if (
+        location.pathname + location.search === pageLocation &&
+        document.querySelector(".thread-list")
+      )
+        pendingPosition.current = capturePagePosition();
+      return {
+        query,
+        projectId: project.id,
+        result,
+      };
+    },
+    [cacheKey, version],
     true,
+    readListSnapshot(cacheKey),
   );
   const { data: taxonomy, error: taxonomyError } = useLoad<ProjectTaxonomy>(
     () => api("projects.taxonomy.get", { projectId: project.id }),
@@ -106,10 +132,35 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     () => api("members.list", { projectId: project.id }),
     [project.id],
   );
-  const data =
-    loaded?.query === query && loaded.projectId === project.id
+  const accessDenied = [
+    "FORBIDDEN",
+    "UNAUTHENTICATED",
+    "UNAUTHORIZED",
+    "NOT_FOUND",
+  ].includes(errorCode);
+  const data = accessDenied
+    ? undefined
+    : loaded?.query === query && loaded.projectId === project.id
       ? loaded.result
-      : undefined;
+      : readListSnapshot(cacheKey)?.result;
+  useEffect(() => {
+    if (accessDenied) clearListSnapshots();
+    else if (loaded?.query === query && loaded.projectId === project.id)
+      rememberListSnapshot(cacheKey, loaded, cacheGeneration.current);
+  }, [loaded, cacheKey, errorCode]);
+  useEffect(() => {
+    const changed = () => setVersion((value) => value + 1);
+    window.addEventListener("feedbacks:account-change", changed);
+    return () => window.removeEventListener("feedbacks:account-change", changed);
+  }, []);
+  useLayoutEffect(() => {
+    if (!data) return;
+    if (pendingPosition.current) {
+      restorePagePosition(pendingPosition.current);
+      pendingPosition.current = undefined;
+    } else if (restored.current !== pageLocation) restorePagePosition();
+    restored.current = pageLocation;
+  }, [data, pageLocation]);
   const apply = (
     next = filters,
     nextOffset = 0,
@@ -268,7 +319,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           project={project}
           taxonomy={taxonomy}
           onCreated={(t) => {
-            location.href = `/threads/${t.id}`;
+            navigate(`/threads/${t.id}`);
           }}
         />
       )}
@@ -380,6 +431,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                 actor={actor}
                 project={project}
                 taxonomy={taxonomy}
+                refreshing={refreshing || !!error || loaded?.query !== query}
                 filters={filters}
                 draft={draft}
                 offset={offset}

@@ -20,11 +20,13 @@ export function TagPicker({
   available,
   onChange,
   disabled,
+  inputName,
 }: {
   selected: string[];
   available: readonly ProjectTag[];
   onChange: (tags: string[]) => void;
   disabled?: boolean;
+  inputName?: string;
 }) {
   const [newTag, setNewTag] = useState("");
   const [error, setError] = useState("");
@@ -94,6 +96,7 @@ export function TagPicker({
         <div className="tag-create-controls">
           <Field label="Or create a tag">
             <input
+              name={inputName}
               value={newTag}
               maxLength={32}
               disabled={disabled || selected.length >= 12}
@@ -112,7 +115,7 @@ export function TagPicker({
             disabled={disabled || !newTag.trim()}
             onClick={() => add(newTag)}
           >
-            Add
+            Add tag
           </button>
         </div>
       </div>

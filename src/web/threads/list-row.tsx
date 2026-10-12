@@ -36,6 +36,7 @@ type Props = {
   draft: ReviewFilters;
   offset: number;
   selected: boolean;
+  refreshing?: boolean;
   onSelectionChange: (id: string, checked: boolean) => void;
   onPrioritySaved: (updated: Thread) => void;
   onStatusSaved: (updated: Thread) => void;
@@ -51,6 +52,7 @@ export function ThreadListRow({
   draft,
   offset,
   selected,
+  refreshing,
   onSelectionChange,
   onPrioritySaved,
   onStatusSaved,
@@ -69,7 +71,7 @@ export function ThreadListRow({
       (asset) => asset.contentType === "image/webp" && asset.rendition === "thumbnail",
     ) ?? t.assets?.find((asset) => asset.contentType === "image/webp");
   return (
-    <div className="thread-row">
+    <div className="thread-row" data-thread-id={t.id}>
       <div className="thread-row-leading">
         {actor.kind === "human" && project.permissions.canMaintain && (
           <label className="thread-select">
@@ -82,7 +84,11 @@ export function ThreadListRow({
           </label>
         )}
         {project.permissions.canMaintain && (
-          <ThreadQuickPriority thread={t} onSaved={onPrioritySaved} />
+          <ThreadQuickPriority
+            thread={t}
+            onSaved={onPrioritySaved}
+            disabled={refreshing}
+          />
         )}
       </div>
       <div className="thread-row-content">
@@ -129,11 +135,13 @@ export function ThreadListRow({
             )}
             <div className="meta">
               <span>{t.author?.name ?? "Member"}</span>
-              <span>
-                {t.context.deviceClass} · {t.context.viewport.width} ×{" "}
-                {t.context.viewport.height}
-              </span>
-              <span>{t.context.url}</span>
+              {t.context.viewport && (
+                <span>
+                  {t.context.deviceClass} · {t.context.viewport.width} ×{" "}
+                  {t.context.viewport.height}
+                </span>
+              )}
+              {t.context.url && <span>{t.context.url}</span>}
             </div>
           </div>
           <div className="thread-stats">
@@ -183,7 +191,9 @@ export function ThreadListRow({
           ))}
         </div>
         <div className="thread-row-evidence">
-          <ExternalLink href={t.context.url}>Open website ↗</ExternalLink>
+          {t.context.url && (
+            <ExternalLink href={t.context.url}>Open website ↗</ExternalLink>
+          )}
           <span>
             {t.context.annotations?.filter(
               (point) => t.annotationStates?.[point.id]?.state !== "removed",
@@ -197,6 +207,7 @@ export function ThreadListRow({
       </div>
       <div className="thread-row-actions">
         <ThreadQuickStatus
+          disabled={refreshing}
           thread={t}
           canWrite={project.permissions.canWrite}
           canResolve={project.permissions.canResolve}

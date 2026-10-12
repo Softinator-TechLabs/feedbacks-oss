@@ -12,6 +12,45 @@ const snapshot = () => location.pathname + location.search;
 let current = snapshot();
 let position = 0;
 let restoring = false;
+export type PagePosition = {
+  x: number;
+  y: number;
+  anchors: Array<{ id: string; top: number }>;
+};
+const pagePositions = new Map<string, PagePosition>();
+export function capturePagePosition(): PagePosition {
+  return {
+    x: window.scrollX,
+    y: window.scrollY,
+    anchors: [...document.querySelectorAll<HTMLElement>(".thread-row[data-thread-id]")]
+      .filter((row) => row.getBoundingClientRect().bottom > 0)
+      .slice(0, 3)
+      .map((row) => ({
+        id: row.dataset.threadId!,
+        top: row.getBoundingClientRect().top,
+      })),
+  };
+}
+export function restorePagePosition(saved = pagePositions.get(snapshot())) {
+  if (!saved) return;
+  const rows = [...document.querySelectorAll<HTMLElement>(".thread-row[data-thread-id]")];
+  const anchor = saved.anchors
+    .map((item) => ({ item, row: rows.find((row) => row.dataset.threadId === item.id) }))
+    .find((item) => item.row);
+  window.scrollTo(
+    saved.x,
+    anchor?.row
+      ? window.scrollY + anchor.row.getBoundingClientRect().top - anchor.item.top
+      : saved.y,
+  );
+}
+function savePagePosition() {
+  if (!/^\/projects\/[^/?]+(?:\?|$)/.test(current)) return;
+  pagePositions.delete(current);
+  pagePositions.set(current, capturePagePosition());
+  if (pagePositions.size > 20) pagePositions.delete(pagePositions.keys().next().value!);
+}
+window.addEventListener("feedbacks:account-change", () => pagePositions.clear());
 history.replaceState({ ...history.state, feedbacksPosition: position }, "");
 const dirty = () =>
   [...guards].some((guard) => guard()) ||
@@ -21,13 +60,16 @@ const mayLeave = () =>
 
 function publish(preservePosition = false) {
   current = snapshot();
+  const target = current;
   for (const listener of listeners) listener();
   if (preservePosition) return;
   requestAnimationFrame(() => {
+    if (target !== snapshot()) return;
     if (location.hash) {
       document.getElementById(location.hash.slice(1))?.scrollIntoView();
     } else {
-      window.scrollTo(0, 0);
+      if (pagePositions.has(target)) restorePagePosition();
+      else window.scrollTo(0, 0);
       document.getElementById("content")?.focus({ preventScroll: true });
     }
   });
@@ -45,6 +87,7 @@ export function navigate(
   )
     return false;
   if (url.pathname + url.search === snapshot()) return true;
+  savePagePosition();
   if (options.replace)
     history.replaceState({ ...history.state, feedbacksPosition: position }, "", url);
   else history.pushState({ feedbacksPosition: ++position }, "", url);
@@ -101,6 +144,7 @@ window.addEventListener("popstate", (event) => {
     return;
   }
   position = Number.isInteger(next) ? next : 0;
+  savePagePosition();
   publish();
 });
 

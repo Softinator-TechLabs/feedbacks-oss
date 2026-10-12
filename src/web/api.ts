@@ -84,13 +84,23 @@ async function request<T>(operation: OperationName, input: unknown): Promise<T> 
       "auth.changePassword",
       "auth.resetPassword",
     ].includes(operation)
-  )
+  ) {
+    window.dispatchEvent(
+      new CustomEvent("feedbacks:account-change", {
+        detail: {
+          userId: ["auth.login", "auth.consumeLoginLink"].includes(operation)
+            ? payload.data.actor.userId
+            : null,
+        },
+      }),
+    );
     sessionChannel?.postMessage({
       kind: "account-change",
       userId: ["auth.login", "auth.consumeLoginLink"].includes(operation)
         ? payload.data.actor.userId
         : null,
     });
+  }
   return payload.data as T;
 }
 export async function api<T = any, N extends OperationName = OperationName>(
@@ -211,14 +221,14 @@ export type Project = {
   };
 };
 export type Context = {
-  url: string;
+  url?: string;
   origin?: string;
   hostname?: string;
   domain?: string;
   subdomain?: string | null;
   port?: string | null;
   title?: string;
-  viewport: { width: number; height: number };
+  viewport?: { width: number; height: number };
   deviceClass?: string;
   devicePixelRatio?: number;
   preset?: string;

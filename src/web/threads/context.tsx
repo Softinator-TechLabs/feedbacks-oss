@@ -5,10 +5,18 @@ import { ActionState, ExternalLink, useAction } from "../ui.js";
 
 export function ContextPanel({ context: c }: { context: Context }) {
   const a = useAction();
+  const viewport = c.viewport;
   useEffect(() => {
     if (location.hash === "#recorded-context")
       document.getElementById("recorded-context")?.scrollIntoView();
-  }, [c.url, c.viewport.width, c.viewport.height]);
+  }, [c.url, c.viewport?.width, c.viewport?.height]);
+  if (!c.url)
+    return (
+      <section id="recorded-context" tabIndex={-1}>
+        <h2>Feedback context</h2>
+        <p className="muted">No page URL supplied.</p>
+      </section>
+    );
   if (c.document)
     return (
       <section id="recorded-context" tabIndex={-1}>
@@ -31,44 +39,52 @@ export function ContextPanel({ context: c }: { context: Context }) {
     <section id="recorded-context" tabIndex={-1}>
       <h2>Page & device</h2>
       <ExternalLink href={c.url}>{c.title || c.url}</ExternalLink>
-      <dl>
-        <dt>Viewport</dt>
-        <dd>
-          {c.viewport.width} × {c.viewport.height} px
-        </dd>
-        <dt>Device</dt>
-        <dd>
-          {c.deviceClass ?? "Recorded viewport"}
-          {c.preset ? ` · ${c.preset}` : ""}
-        </dd>
-        {c.capturedAt && (
-          <>
-            <dt>Captured</dt>
+      {viewport && (
+        <>
+          <dl>
+            <dt>Viewport</dt>
             <dd>
-              <HumanTime at={c.capturedAt} />
+              {viewport.width} × {viewport.height} px
             </dd>
-          </>
-        )}
-      </dl>
-      <button
-        onClick={() =>
-          a.run(async () => {
-            window.open(
-              c.url,
-              "_blank",
-              `popup,width=${c.viewport.width},height=${c.viewport.height},noopener,noreferrer`,
-            );
-          }, "Review window opened. Browser limits may affect its size.")
-        }
-      >
-        Open at recorded size
-      </button>
-      <ActionState action={a} />
+            <dt>Device</dt>
+            <dd>
+              {c.deviceClass ?? "Recorded viewport"}
+              {c.preset ? ` · ${c.preset}` : ""}
+            </dd>
+            {c.capturedAt && (
+              <>
+                <dt>Captured</dt>
+                <dd>
+                  <HumanTime at={c.capturedAt} />
+                </dd>
+              </>
+            )}
+          </dl>
+          <button
+            onClick={() =>
+              a.run(async () => {
+                window.open(
+                  c.url,
+                  "_blank",
+                  `popup,width=${viewport.width},height=${viewport.height},noopener,noreferrer`,
+                );
+              }, "Review window opened. Browser limits may affect its size.")
+            }
+          >
+            Open at recorded size
+          </button>
+          <ActionState action={a} />
+        </>
+      )}
       <details className="technical-details">
         <summary>Technical details</summary>
         <dl>
-          <dt>Pixel ratio</dt>
-          <dd>{Number((c.devicePixelRatio ?? 1).toFixed(2))}</dd>
+          {c.devicePixelRatio !== undefined && (
+            <>
+              <dt>Pixel ratio</dt>
+              <dd>{Number(c.devicePixelRatio.toFixed(2))}</dd>
+            </>
+          )}
           {c.requestedSize && (
             <>
               <dt>Requested size</dt>

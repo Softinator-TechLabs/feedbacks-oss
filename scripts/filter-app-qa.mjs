@@ -126,6 +126,12 @@ try {
   await page.goto(`${access.url}/projects/${access.projectId}`);
   await page.locator(".thread-row").first().waitFor();
   const filters = page.locator("#feedback-filter-form");
+  const openFilters = async () => {
+    const toggle = page.getByRole("button", { name: /Search & filters/ });
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  };
+  assert.equal(await filters.isVisible(), false);
+  await page.getByRole("button", { name: /Search & filters/ }).press("Enter");
   assert.equal(
     await filters.getByRole("combobox", { name: "Category" }).isVisible(),
     true,
@@ -164,6 +170,7 @@ try {
   await page.getByRole("heading", { name: "Declined assigned sample" }).waitFor();
   assert.equal(await page.locator(".thread-row").count(), 2);
   await page.reload();
+  await openFilters();
   await page.getByRole("heading", { name: "Resolved assigned sample" }).waitFor();
   assert.equal(await statusFilter.inputValue(), "closed");
   // A status change within Closed must retain its row.
@@ -184,7 +191,7 @@ try {
   );
   await page.screenshot({ path: "output/playwright/status-closed-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: /Search & filters/ }).click();
+  assert.equal(await statusFilter.isVisible(), true);
   assert.equal(await statusFilter.isVisible(), true);
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -194,8 +201,9 @@ try {
     path: "output/playwright/status-closed-mobile.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: /Search & filters/ }).click();
+  await openFilters();
   await page.setViewportSize({ width: 1440, height: 900 });
+  await openFilters();
   await statusFilter.selectOption("open");
   await page.getByRole("heading", { name: "Open assigned sample" }).waitFor();
   await page
@@ -278,6 +286,7 @@ try {
   });
   await page.goto(`${access.url}/projects/${access.projectId}`);
   await page.getByRole("heading", { name: "Open assigned sample" }).waitFor();
+  await openFilters();
   await filters.getByRole("combobox", { name: "Work status" }).selectOption("all");
   await page.waitForURL(/showResolved=true/);
   await filters.getByRole("combobox", { name: "Work status" }).selectOption("active");
@@ -308,7 +317,7 @@ try {
   await page.getByRole("heading", { name: "Open assigned sample" }).waitFor();
   await page.screenshot({ path: "output/playwright/assigned-open-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: /Search & filters/ }).click();
+  await openFilters();
   assert.equal(
     await filters.getByRole("combobox", { name: "Assigned to" }).inputValue(),
     loginData.actor.userId,
@@ -325,7 +334,7 @@ try {
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
   );
-  await page.getByRole("button", { name: /Search & filters/ }).click();
+  await openFilters();
   await page.setViewportSize({ width: 1440, height: 900 });
   await filters.getByRole("combobox", { name: "Sort" }).selectOption("newest");
   await page.getByRole("button", { name: "Assigned to me" }).click();
@@ -360,7 +369,7 @@ try {
   await page.locator(".thread-row").first().waitFor();
   await page.screenshot({ path: "output/playwright/live-filters-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: /Search & filters/ }).click();
+  await openFilters();
   assert.equal(await filters.getByRole("combobox", { name: "Tag" }).isVisible(), true);
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),

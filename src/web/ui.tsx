@@ -90,8 +90,14 @@ export function ActionState({ action }: { action: ReturnType<typeof useAction> }
     </>
   );
 }
-export function useLoad<T>(load: () => Promise<T>, deps: unknown[], poll = false) {
-  const [data, setData] = useState<T>(),
+export function useLoad<T>(
+  load: () => Promise<T>,
+  deps: unknown[],
+  poll = false,
+  initialData?: T,
+) {
+  const [data, setData] = useState<T | undefined>(initialData),
+    [refreshing, setRefreshing] = useState(true),
     [error, setError] = useState(""),
     [errorCode, setErrorCode] = useState("");
   useEffect(() => {
@@ -100,6 +106,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[], poll = false
     async function refresh() {
       if (pending) return;
       pending = true;
+      if (alive) setRefreshing(true);
       try {
         const next = await load();
         if (alive) {
@@ -114,6 +121,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[], poll = false
         }
       } finally {
         pending = false;
+        if (alive) setRefreshing(false);
       }
     }
     // Refresh authoritative data without unmounting form fields and their drafts.
@@ -129,7 +137,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[], poll = false
       document.removeEventListener("visibilitychange", visible);
     };
   }, deps);
-  return { data, setData, error, errorCode };
+  return { data, setData, error, errorCode, refreshing };
 }
 export function Loading() {
   return (

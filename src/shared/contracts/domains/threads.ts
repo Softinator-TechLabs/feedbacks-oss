@@ -80,6 +80,7 @@ export const threadsInputs = {
       projectId: id,
       body: text,
       context: contextSchema.optional(),
+      pageUrl: z.string().url().max(4096).optional(),
       document: z
         .object({
           documentId: id,
@@ -100,9 +101,13 @@ export const threadsInputs = {
       diagnostics: diagnosticsSchema.optional(),
       idempotencyKey: z.string().min(8).max(200),
     })
-    .refine((input) => !!input.context !== !!input.document, {
-      message: "Choose one website context or document position",
-    }),
+    .refine(
+      (input) =>
+        [input.context, input.document, input.pageUrl].filter(Boolean).length <= 1,
+      {
+        message: "Choose a website capture, document position or optional page URL",
+      },
+    ),
   "threads.reply": z.object({
     ...tm,
     body: text,

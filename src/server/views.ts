@@ -24,8 +24,9 @@ export function viewContext(input: any, project: any) {
     u = new URL(url);
   if ((project.captureMode ?? "origins") !== "any" && !project.origins.includes(u.origin))
     fail("ORIGIN_NOT_ALLOWED", "This exact website origin is not approved", 403);
-  const deviceClass =
-    input.viewport.width < 600
+  const deviceClass = !input.viewport
+    ? undefined
+    : input.viewport.width < 600
       ? "mobile"
       : input.viewport.width < 1000
         ? "tablet"

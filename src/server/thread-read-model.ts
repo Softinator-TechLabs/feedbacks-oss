@@ -67,7 +67,9 @@ function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
 }
 export async function listData(db: Database, a: Actor, rows: any[]): Promise<ListData> {
   const ids = rows.map((row) => row.id);
-  const fingerprints = [...new Set(rows.map((row) => row.data.context.fingerprint))];
+  const fingerprints = [
+    ...new Set(rows.map((row) => row.data.context.fingerprint).filter(Boolean)),
+  ];
   const [
     replyRows,
     assetRows,
@@ -311,9 +313,11 @@ export async function fullThread(db: Database, a: Actor, row: any, list?: ListDa
       defaultVisible:
         !data.archived && !["resolved", "declined"].includes(data.work.state),
     },
-    view: list
-      ? list.views.get(data.context.fingerprint)
-      : await viewStats(db, a, row.project_id, data.context.fingerprint),
+    view: !data.context.fingerprint
+      ? { uniqueLikes: 0, liked: false, discussionCount: 0 }
+      : list
+        ? list.views.get(data.context.fingerprint)
+        : await viewStats(db, a, row.project_id, data.context.fingerprint),
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
   };

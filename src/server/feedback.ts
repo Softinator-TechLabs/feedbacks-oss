@@ -227,7 +227,12 @@ export async function feedback(
         },
         { ...p, captureMode: "any" },
       );
-    } else context = viewContext(i.context, p);
+    } else
+      context = i.context
+        ? viewContext(i.context, p)
+        : i.pageUrl
+          ? viewContext({ url: i.pageUrl }, p)
+          : {};
     const data = {
       body: i.body,
       category: i.category,

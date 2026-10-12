@@ -317,17 +317,21 @@ export function ThreadDetail({
             />
           )}
           <div className="thread-tools" role="group" aria-label="Feedback actions">
-            <ExternalLink href={t.context.url}>
-              <span
-                className="icon-action"
-                data-tooltip={t.context.document ? "Open document" : "Open original page"}
-              >
-                <Icon name="external" />
-                <span className="sr-only">
-                  {t.context.document ? "Open document" : "Open original page"}
+            {t.context.url && (
+              <ExternalLink href={t.context.url}>
+                <span
+                  className="icon-action"
+                  data-tooltip={
+                    t.context.document ? "Open document" : "Open original page"
+                  }
+                >
+                  <Icon name="external" />
+                  <span className="sr-only">
+                    {t.context.document ? "Open document" : "Open original page"}
+                  </span>
                 </span>
-              </span>
-            </ExternalLink>
+              </ExternalLink>
+            )}
             {project?.permissions.canMaintain && (
               <button
                 type="button"
@@ -804,42 +808,44 @@ export function ThreadDetail({
                   summaries={diagnosticEvidence?.latest ?? []}
                   totalCount={diagnosticEvidence?.count ?? 0}
                 />
-                <details className="section compact-details">
-                  <summary>View preferences</summary>
-                  <p>
-                    {t.view?.uniqueLikes ?? 0}{" "}
-                    {t.view?.uniqueLikes === 1 ? "like" : "likes"} ·{" "}
-                    {t.view?.discussionCount ?? 0}{" "}
-                    {t.view?.discussionCount === 1 ? "discussion" : "discussions"}
-                  </p>
-                  {t.view?.weightedPreference !== undefined && (
-                    <details className="preference-details">
-                      <summary>Preference details</summary>
-                      <p>
-                        Weighted preference: {t.view.weightedPreference}. Separate from
-                        unique likes.
-                      </p>
-                    </details>
-                  )}
-                  {project?.permissions.canWrite && (
-                    <button
-                      aria-pressed={t.view?.liked}
-                      disabled={a.busy}
-                      onClick={() =>
-                        a.run(async () => {
-                          const view = await api("views.like", {
-                            projectId: t.projectId,
-                            context: t.context as never,
-                            liked: !t.view?.liked,
-                          });
-                          setThread({ ...t, view });
-                        })
-                      }
-                    >
-                      {t.view?.liked ? "Unlike this view" : "Like this view"}
-                    </button>
-                  )}
-                </details>
+                {t.context.url && t.context.viewport && (
+                  <details className="section compact-details">
+                    <summary>View preferences</summary>
+                    <p>
+                      {t.view?.uniqueLikes ?? 0}{" "}
+                      {t.view?.uniqueLikes === 1 ? "like" : "likes"} ·{" "}
+                      {t.view?.discussionCount ?? 0}{" "}
+                      {t.view?.discussionCount === 1 ? "discussion" : "discussions"}
+                    </p>
+                    {t.view?.weightedPreference !== undefined && (
+                      <details className="preference-details">
+                        <summary>Preference details</summary>
+                        <p>
+                          Weighted preference: {t.view.weightedPreference}. Separate from
+                          unique likes.
+                        </p>
+                      </details>
+                    )}
+                    {project?.permissions.canWrite && (
+                      <button
+                        aria-pressed={t.view?.liked}
+                        disabled={a.busy}
+                        onClick={() =>
+                          a.run(async () => {
+                            const view = await api("views.like", {
+                              projectId: t.projectId,
+                              context: t.context as never,
+                              liked: !t.view?.liked,
+                            });
+                            setThread({ ...t, view });
+                          })
+                        }
+                      >
+                        {t.view?.liked ? "Unlike this view" : "Like this view"}
+                      </button>
+                    )}
+                  </details>
+                )}
                 <ThreadLinks
                   thread={t}
                   canWrite={!!project?.permissions.canWrite}

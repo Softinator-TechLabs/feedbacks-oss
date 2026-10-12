@@ -5,9 +5,11 @@ import { ActionState, useAction } from "../ui.js";
 export function ThreadQuickPriority({
   thread,
   onSaved,
+  disabled,
 }: {
   thread: Thread;
   onSaved: (thread: Thread) => void;
+  disabled?: boolean;
 }) {
   const action = useAction();
   return (
@@ -18,7 +20,7 @@ export function ThreadQuickPriority({
         aria-label={`${thread.topPriority ? "Remove" : "Mark"} top priority for ${thread.body.slice(0, 80)}`}
         title={thread.topPriority ? "Remove top priority" : "Mark top priority"}
         aria-pressed={thread.topPriority}
-        disabled={action.busy}
+        disabled={action.busy || disabled}
         onClick={() => {
           void action.run(async () => {
             onSaved(
@@ -42,11 +44,13 @@ export function ThreadQuickStatus({
   canWrite,
   canResolve,
   onSaved,
+  disabled,
 }: {
   thread: Thread;
   canWrite: boolean;
   canResolve: boolean;
   onSaved: (thread: Thread) => void;
+  disabled?: boolean;
 }) {
   const action = useAction();
   if (!canWrite)
@@ -65,7 +69,7 @@ export function ThreadQuickStatus({
       <select
         aria-label={`Status for ${thread.body.slice(0, 80)}`}
         value={thread.work.state}
-        disabled={action.busy}
+        disabled={action.busy || disabled}
         onChange={(event) => {
           const state = event.target.value as
             | "open"
