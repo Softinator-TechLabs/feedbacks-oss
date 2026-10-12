@@ -115,6 +115,11 @@ export async function startTask(
     delegations.data.nextOffset === null &&
     claims.data.nextOffset === null;
   const closed = thread.archived || ["resolved", "declined"].includes(thread.work.state);
+  const reviewed = reviewedPage(
+    safeContextUrl(thread.context.url),
+    me?.serverOrigin,
+    thread.id,
+  );
   const allPoints = thread.context.annotations ?? [];
   const scope = [...new Set(input.annotationIds ?? [])];
   if (scope.some((id) => !allPoints.some((p: any) => p.id === id)))
@@ -478,11 +483,7 @@ export async function startTask(
       ...(incomplete.length ? { incomplete } : {}),
     },
     trust: "untrusted_review_evidence",
-    reviewedPage: reviewedPage(
-      safeContextUrl(thread.context.url) ?? "",
-      me?.serverOrigin,
-      thread.id,
-    ),
+    ...(reviewed ? { reviewedPage: reviewed } : {}),
     ...(reproductionSnapshot(thread.context)
       ? { reproduction: reproductionSnapshot(thread.context) }
       : {}),

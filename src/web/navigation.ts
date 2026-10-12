@@ -67,6 +67,7 @@ const mayLeave = () =>
 function publish(preservePosition = false) {
   current = snapshot();
   const target = current;
+  const focusedBefore = document.activeElement;
   for (const listener of listeners) listener();
   if (preservePosition) return;
   requestAnimationFrame(() => {
@@ -76,7 +77,11 @@ function publish(preservePosition = false) {
     } else {
       if (pagePositions.has(positionKey(target))) restorePagePosition();
       else window.scrollTo(0, 0);
-      document.getElementById("content")?.focus({ preventScroll: true });
+      if (
+        document.activeElement === focusedBefore ||
+        document.activeElement === document.body
+      )
+        document.getElementById("content")?.focus({ preventScroll: true });
     }
   });
 }

@@ -120,7 +120,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
         result,
       };
     },
-    [cacheKey, version],
+    [cacheKey, query, version],
     true,
     readListSnapshot(cacheKey),
   );

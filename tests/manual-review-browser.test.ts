@@ -184,6 +184,14 @@ test(
           document.querySelector<HTMLSelectElement>('[aria-label="Status"]')?.value ===
           "resolved",
       );
+      // The select changes optimistically; wait for the server receipt before
+      // leaving so this scenario exercises list restoration, not a pending edit.
+      await page.getByRole("button", { name: "Reopen feedback", exact: true }).waitFor();
+      await page.locator('.status-editor[aria-busy="false"]').waitFor();
+      assert.equal(
+        (await post("threads.get", { threadId: targetId })).work.state,
+        "resolved",
+      );
       let release!: () => void;
       const delayed = new Promise<void>((resolve) => (release = resolve));
       await page.route("**/api/threads.list", async (route) => {

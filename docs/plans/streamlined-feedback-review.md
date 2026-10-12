@@ -6,6 +6,8 @@ Status: implemented and locally verified. Date: 2026-10-12.
 
 Feedback filters start collapsed on every screen, with active criteria visible on the disclosure. Manual feedback needs only its body; category, tags and page URL remain optional. Returning from a thread immediately restores the list page and reading position while refreshing authoritative data in the background.
 
+The agent start projection also supports body-only feedback: it omits absent page URLs instead of returning a blank reviewed-page target. The bundled native plugins advance to version 0.2.3 for the changed MCP adapter; the extension package is unchanged.
+
 ## Evidence and approach
 
 The original [composer](../../src/web/threads/composer.tsx) requires a URL and manually entered viewport before the body. [List filters](../../src/web/threads/list-filters.tsx) collapsed only on mobile. [Navigation](../../src/web/navigation.ts) previously reset scroll, and the [list](../../src/web/threads/list.tsx) discarded loaded rows on remount.
@@ -21,7 +23,7 @@ Keep capture context unchanged for the extension and existing API clients. Add a
 
 ## Compatibility and recovery
 
-Creation input is additive: existing website and document captures keep their validation and origin checks. No migrations, object-key changes or new permissions. Memory snapshots are temporary and never persisted to browser storage; rejected access clears them. Refresh errors retain the last successful list with a visible retry action.
+Creation input is additive: existing website and document captures keep their validation and origin checks. No migrations, object-key changes or new permissions. New manual threads may have partial context; deploy server and web together. A rollback must retain the optional-context read guards because older UI builds assume every thread has a recorded viewport. Preserve the submitted feedback rather than manufacturing replacement context. Memory snapshots are temporary and never persisted to browser storage; rejected access clears them. Refresh errors retain the last successful list with a visible retry action.
 
 ## Completion receipt
 
