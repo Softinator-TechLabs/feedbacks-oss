@@ -377,6 +377,12 @@ try {
     .waitFor();
   assert.equal(await taxonomy.locator('form[data-unsaved="true"]').count(), 0);
   await memberPage.getByRole("link", { name: "Feedback", exact: true }).click();
+  const filters = memberPage.getByRole("button", {
+    name: "Search & filters",
+    exact: true,
+  });
+  assert.equal(await filters.getAttribute("aria-expanded"), "false");
+  await filters.click();
   await memberPage
     .getByRole("combobox", { name: "Category", exact: true })
     .selectOption({ label: "Checkout" });

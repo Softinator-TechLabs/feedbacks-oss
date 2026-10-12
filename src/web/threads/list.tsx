@@ -475,7 +475,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
             category ||
             tag
               ? "Change the filters to find other feedback."
-              : "Capture a page with the Chrome extension, or create feedback here with its page URL and viewport."}
+              : "Capture a page with the Chrome extension, or use New feedback to describe your request."}
           </Empty>
         )
       )}
