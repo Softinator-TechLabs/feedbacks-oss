@@ -167,7 +167,7 @@ test(
       await page.unroute("**/api/threads.create");
 
       const secondPage = `${listUrl}?sort=newest&offset=30`;
-      await page.goto(secondPage);
+      await page.goto(`${listUrl}?offset=30&sort=newest`);
       await page.locator(".thread-row").nth(29).waitFor();
       const row = page.locator(".thread-row").nth(26),
         targetId = await row.getAttribute("data-thread-id");

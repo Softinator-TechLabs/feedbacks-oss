@@ -61,7 +61,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     project.id,
     project.revision,
     project.permissions,
-    query,
+    filterQuery(filters, offset),
   ]);
   const cacheGeneration = useRef(listCacheGeneration());
   const pendingPosition = useRef<PagePosition | undefined>(undefined);

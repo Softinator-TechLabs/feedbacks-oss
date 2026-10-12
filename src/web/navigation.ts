@@ -18,6 +18,11 @@ export type PagePosition = {
   anchors: Array<{ id: string; top: number }>;
 };
 const pagePositions = new Map<string, PagePosition>();
+function positionKey(page: string) {
+  const url = new URL(page, location.origin);
+  url.searchParams.sort();
+  return url.pathname + url.search;
+}
 export function capturePagePosition(): PagePosition {
   return {
     x: window.scrollX,
@@ -31,7 +36,7 @@ export function capturePagePosition(): PagePosition {
       })),
   };
 }
-export function restorePagePosition(saved = pagePositions.get(snapshot())) {
+export function restorePagePosition(saved = pagePositions.get(positionKey(snapshot()))) {
   if (!saved) return;
   const rows = [...document.querySelectorAll<HTMLElement>(".thread-row[data-thread-id]")];
   const anchor = saved.anchors
@@ -46,8 +51,9 @@ export function restorePagePosition(saved = pagePositions.get(snapshot())) {
 }
 function savePagePosition() {
   if (!/^\/projects\/[^/?]+(?:\?|$)/.test(current)) return;
-  pagePositions.delete(current);
-  pagePositions.set(current, capturePagePosition());
+  const key = positionKey(current);
+  pagePositions.delete(key);
+  pagePositions.set(key, capturePagePosition());
   if (pagePositions.size > 20) pagePositions.delete(pagePositions.keys().next().value!);
 }
 window.addEventListener("feedbacks:account-change", () => pagePositions.clear());
@@ -68,7 +74,7 @@ function publish(preservePosition = false) {
     if (location.hash) {
       document.getElementById(location.hash.slice(1))?.scrollIntoView();
     } else {
-      if (pagePositions.has(target)) restorePagePosition();
+      if (pagePositions.has(positionKey(target))) restorePagePosition();
       else window.scrollTo(0, 0);
       document.getElementById("content")?.focus({ preventScroll: true });
     }
