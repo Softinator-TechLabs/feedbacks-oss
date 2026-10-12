@@ -40,6 +40,8 @@ export async function diagnosticRow(
 export async function beginDiagnosticEvidence(db: Database, actor: Actor, input: any) {
   const thread = await threadRow(db, actor, input.threadId, "write", true);
   const pageOrigin = new URL(input.sourceUrl).origin;
+  if (!thread.data.context?.url)
+    fail("VALIDATION", "Diagnostic evidence needs feedback with a page URL", 400);
   const threadOrigin = new URL(thread.data.context?.url).origin;
   if (pageOrigin !== threadOrigin)
     fail("VALIDATION", "Diagnostic origin must match the feedback website", 400);

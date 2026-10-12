@@ -20,7 +20,12 @@ export function presentTaskCounts(thread: any) {
   );
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
-export function reviewedPage(raw: string, serverOrigin?: string, taskId?: string) {
+export function reviewedPage(
+  raw: string | undefined,
+  serverOrigin?: string,
+  taskId?: string,
+) {
+  if (!raw) return undefined;
   const result: { url: string; relationship: string; threadId?: string } = {
     url: raw,
     relationship: "reviewed_page",

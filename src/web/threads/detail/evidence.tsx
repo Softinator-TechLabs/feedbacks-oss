@@ -59,7 +59,8 @@ function position(asset: Asset, item: Annotation, context: Thread["context"]) {
   if (
     !region &&
     !asset.filename?.startsWith("full-page-") &&
-    item.anchor.screenshotPoint
+    item.anchor.screenshotPoint &&
+    context.viewport
   ) {
     const { x, y } = item.anchor.screenshotPoint;
     if (x >= 0 && y >= 0 && x <= context.viewport.width && y <= context.viewport.height)

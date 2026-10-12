@@ -587,6 +587,39 @@ test("start never follows an external thread-looking URL or hides expired authen
   );
 });
 
+test("start omits absent or unsafe reviewed URLs while retaining body-only feedback", async () => {
+  for (const context of [{}, { url: "javascript:alert(1)" }]) {
+    const calls: string[] = [];
+    const result = await runAgentTool(
+      async (name) => {
+        calls.push(name);
+        if (name === "auth.me")
+          return {
+            actor: {},
+            credential: { operationScopes: ["threads.get"] },
+            projects: [],
+          };
+        if (name === "threads.get")
+          return {
+            ...thread,
+            body: "General feedback without a page",
+            context,
+            replies: [],
+            assets: [],
+          };
+        throw Error(`Unexpected call: ${name}`);
+      },
+      "start",
+      { threadId, includeImage: true },
+    );
+    assert.equal(result.task.body, "General feedback without a page");
+    assert.equal(Object.hasOwn(result, "reviewedPage"), false);
+    assert.equal(result.reproduction, undefined);
+    assert.equal(result.task.counts, undefined);
+    assert.deepEqual(calls, ["auth.me", "threads.get"]);
+  }
+});
+
 test("body-only feedback does not count its legacy anchor as a numbered comment", async () => {
   const result = await runAgentTool(
     async () => ({
