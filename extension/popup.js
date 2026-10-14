@@ -193,6 +193,7 @@ async function start(projectId) {
 async function refresh() {
   if (refreshing) return;
   refreshing = true;
+  $("routing-hint").hidden = true;
   try {
     let state = await send({ type: "settings" });
     if (!detectionAttempted) {

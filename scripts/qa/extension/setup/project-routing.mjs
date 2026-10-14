@@ -10,6 +10,7 @@ export async function verifyProjectRouting({
   access,
   results,
   toFixture,
+  root,
 }) {
   const origin = "https://new-project.example.test";
   const project = (
@@ -35,12 +36,19 @@ export async function verifyProjectRouting({
     await control.locator("#routing").innerText(),
     /New website project/,
   );
+  await control.screenshot({
+    path: `${root}/.local/remaining-todos-qa/project-fallback.png`,
+  });
 
   // The old pairing must retain its original project snapshot. Only a newly
   // approved connection in this disposable sandbox receives the added project.
   const previousAccounts = await worker.evaluate(
     async () => (await chrome.storage.local.get("accounts")).accounts,
   );
+  await worker.evaluate(() => chrome.storage.local.set({ accounts: {} }));
+  await control.reload();
+  await control.locator("#pair:visible").waitFor();
+  assert.equal(await control.locator("#routing-hint").isVisible(), false);
   const request = (await post("pairing.request", { name: "Synthetic project refresh" }))
     .data;
   await post("pairing.approve", { pairingId: request.pairingId }, auth);

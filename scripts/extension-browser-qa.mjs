@@ -231,6 +231,7 @@ try {
       access,
       results,
       toFixture,
+      root,
     });
     await verifyPopupOptions({
       context,
