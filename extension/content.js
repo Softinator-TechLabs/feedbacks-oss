@@ -1231,6 +1231,7 @@
     renderPins();
   }
   async function openPointMenu(el, x, y, textSelection) {
+    placeReviewUI();
     hoverTarget = null;
     hoverBox?.classList.add("hidden");
     if (pointRequest || captureActive || freezePending) return;
@@ -1429,18 +1430,40 @@
       captureProgressLabel.setAttribute("role", "status");
       captureProgressLabel.setAttribute("aria-live", "polite");
       shadow.append(style, captureProgressLabel);
-      document.documentElement.append(captureProgressHost);
+      placeOverlay(captureProgressHost);
     }
-    if (!captureProgressHost.isConnected)
-      document.documentElement.append(captureProgressHost);
+    if (!captureProgressHost.isConnected) placeOverlay(captureProgressHost);
     captureProgressLabel.textContent = label;
     captureProgressHost.style.removeProperty("display");
+    placeOverlay(captureProgressHost);
     // Let the label paint before the next page-side snapshot can block rendering.
     if (["dom", "storage", "performance"].includes(stage))
       await new Promise((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(resolve)),
       );
   }
+  function placeOverlay(element) {
+    if (!element || element.style.display === "none") return;
+    // A native modal makes every outside node inert, regardless of z-index.
+    // Keep the controls in its subtree; a manual popover escapes its clipping
+    // and transformed containing block without opening another modal.
+    const modal =
+      document.activeElement?.closest("dialog:modal") ||
+      [...document.querySelectorAll("dialog:modal")].at(-1);
+    const parent = modal || document.documentElement;
+    if (typeof element.showPopover === "function") element.popover = "manual";
+    if (element.parentNode !== parent) {
+      element.hidePopover?.();
+      parent.append(element);
+    }
+    if (element.showPopover && !element.matches(":popover-open")) element.showPopover();
+  }
+  function placeReviewUI() {
+    if (!active || captureActive) return;
+    placeOverlay(host);
+    if (captureProgressHost?.isConnected) placeOverlay(captureProgressHost);
+  }
+  const reviewLayerObserver = new MutationObserver(placeReviewUI);
   function setup(css) {
     draftRenderSignature = "";
     host = document.createElement("div");
@@ -1798,7 +1821,7 @@
     reviewButton.className = "primary";
     reviewButton.hidden = true;
     bar.append(draftSection);
-    document.documentElement.append(host);
+    placeOverlay(host);
   }
   async function loadPins() {
     if (!active || recordingOnly || document.visibilityState !== "visible") return;
@@ -2611,6 +2634,13 @@
           recordingControls.replaceChildren();
           renderRecording();
         }
+        placeReviewUI();
+        reviewLayerObserver.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["open"],
+        });
         const styleSelect = root?.querySelector(
           '[aria-label="Screenshot marker for this review"]',
         );
@@ -2703,6 +2733,7 @@
         clearChosenPoint();
         draftEditing = false;
         active = false;
+        reviewLayerObserver.disconnect();
         globalThis.FeedbacksTextSelection.setEnabled(false);
         globalThis.feedbacksReviewActive = false;
         clearInterval(timer);
@@ -2910,6 +2941,7 @@
           });
         if (message.captured && message.pointToken) clearChosenPoint(message.pointToken);
         if (host) host.style.removeProperty("display");
+        placeReviewUI();
         if (message.captured) renderPins();
         return {};
       }
