@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Modal review and clear project access recovery](modal-review-and-project-access.md)
+
 - [Simpler manual feedback and stable list return](streamlined-feedback-review.md)
 
 - [Normal website use during background sending](send-return-review-off.md)

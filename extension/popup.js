@@ -141,6 +141,7 @@ async function refreshRelease(state, bypassCache = false, manual = false) {
 }
 async function start(projectId) {
   $("routing").textContent = "Opening review…";
+  $("routing-hint").hidden = true;
   $("retry").hidden = true;
   try {
     const result = await send({ type: "activate", tabId: tab.id, projectId });
@@ -151,6 +152,9 @@ async function start(projectId) {
       `Reviewing ${result.project.name} · Right-click to comment`;
     $("routing").title =
       `Reviewing ${result.project.name} on ${new URL(result.origin).hostname}`;
+    $("routing-hint").hidden =
+      result.project.captureMode !== "any" ||
+      result.project.origins.includes(result.origin);
     $("project-choice").hidden = result.choices.length < 2;
     $("project").replaceChildren(...result.choices.map((p) => new Option(p.name, p.id)));
     $("project").value = result.project.id;
