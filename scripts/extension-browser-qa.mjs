@@ -9,6 +9,7 @@ import { verifyPendingPoints } from "./qa/extension/review/pending-points.mjs";
 import { verifyMultiscrollReview } from "./qa/extension/review/multiscroll-review.mjs";
 import { verifyInlineSubmission } from "./qa/extension/review/inline-submission.mjs";
 import { verifyReviewInteractions } from "./qa/extension/review/review-interactions.mjs";
+import { verifyModalPreview } from "./qa/extension/review/modal-preview.mjs";
 import { verifyCaptureSafety } from "./qa/extension/capture/capture-safety.mjs";
 import { verifyChangingCapture } from "./qa/extension/capture/changing-capture.mjs";
 import { verifyDiagnostics } from "./qa/extension/review/diagnostics.mjs";
@@ -22,6 +23,7 @@ import { verifyRecordingControls } from "./qa/extension/recording-controls.mjs";
 import { verifyPublicCapture } from "./qa/extension/capture/public-capture.mjs";
 import { verifyLargeVisibleCapture } from "./qa/extension/capture/large-visible.mjs";
 import { verifyPopupOptions } from "./qa/extension/setup/popup-options.mjs";
+import { verifyProjectRouting } from "./qa/extension/setup/project-routing.mjs";
 import {
   previewDimensions,
   installReviewFixture,
@@ -124,6 +126,11 @@ try {
     password: access.password,
   });
   const auth = { cookie: login.cookie, csrf: login.data.csrf };
+  await post(
+    "projects.create",
+    { name: "General", origins: [], captureMode: "any" },
+    auth,
+  );
   for (const origin of new Set(
     (process.env.FEEDBACKS_QA_SELECTION_URLS || "")
       .split(",")
@@ -214,6 +221,18 @@ try {
       results,
     });
 
+    await verifyProjectRouting({
+      context,
+      page,
+      control,
+      worker,
+      post,
+      auth,
+      access,
+      results,
+      toFixture,
+      root,
+    });
     await verifyPopupOptions({
       context,
       control,
@@ -394,6 +413,18 @@ try {
       results,
       waitReview,
       inspectReview,
+    });
+    await verifyModalPreview({
+      page,
+      fixture,
+      toFixture,
+      exposeReviewRoot,
+      send,
+      id,
+      worker,
+      waitReview,
+      results,
+      root,
     });
     await verifyCaptureSafety({
       page,

@@ -2,18 +2,21 @@
 
 An owner can create a project in **Projects → New project** in Feedbacks. The Projects index is the connected server's root path (`/`). Add each website's exact origin and grant colleagues reviewer or maintainer access. An origin is the scheme, host and any non-default port, without a page path, query or fragment: for example, `https://example.org` or `http://localhost:4175`.
 
-The extension popup lists only projects returned for the connected account that grant write access and explicitly include the current tab's exact origin:
+Opening the extension on a supported website starts or resumes review when Chrome has granted website access. The background selects from writable projects returned for the connected account:
 
-- One matching project: selected automatically, with its name and website shown. Click **Start review**.
-- Several matching projects: choose explicitly from those matches, then click **Start review**. This choice is not remembered between popup openings; a global last-used project never selects a different website's destination.
-- No matching project: review stays disabled. Ask an owner to add this exact origin in Projects and grant review access. **Open Projects** uses the currently connected Feedbacks server.
+- One exact-origin match: selected automatically, with its name shown.
+- Several exact-origin matches: choose from those matches. The choice is remembered for this website and server, and is used only while it remains an allowed match.
+- No exact-origin match: an allowed general project with `captureMode: "any"` can receive feedback. The popup explains this fallback and suggests reconnecting if the team recently added the website. A saved general-project preference never overrides an available exact-origin match.
+- No exact-origin match or allowed general project: review stays disabled. Ask an owner to add the exact origin and grant review access. **Open Projects** uses the connected Feedbacks server.
 - Unsupported browser pages and the Chrome Web Store: review stays disabled; open a supported HTTP(S) website instead.
 
 `http://example.org`, `https://example.org`, `https://www.example.org`, subdomains and non-default ports are separate approvals. Routing never adds wildcard access or infers approval from a similar hostname. Read-only projects are not selectable.
 
-Only the explicit **Start review** click requests website permission; Chrome may show a one-time permission prompt. Opening the popup or selecting a project does not request website permission, capture a screenshot or upload feedback. If the active website or connected server changes while the popup is open, reopen it before reviewing. The background still rechecks the current origin and project permission during activation.
+Chrome's toolbar invocation provides access to the current tab; optional persistent website access remains a separate setting. Selecting a project does not capture a screenshot or upload feedback. If the active website or connected server changes while the popup is open, reopen it before reviewing. The background rechecks the current origin and project permission during activation.
 
-After starting review, choose an element and use **Capture & annotate**. The captured draft stays bound to that review's project and server. Inspect the image, annotate and write your comment, then explicitly **Send feedback**. Auto-selection is not auto-capture or auto-upload. **Resume pending draft**, pairing and disconnect remain separate controls.
+Paired connections retain the projects approved when they were created. Adding a project or membership later does not expand an existing device token. If the website exists in Projects but the extension still uses a general project, open **Settings → Connect to server** and approve the new connection on that server. This refreshes the connection's current project access without changing project origins or granting all-site browser access. [The packaged browser check](../scripts/qa/extension/setup/project-routing.mjs) verifies both the stale connection and explicitly approved refresh.
+
+After starting review, right-click an element, write its note and choose **Save point**. The draft stays bound to that review's project and server. Use **Review & send** to inspect its evidence, then explicitly send it. Auto-selection is not auto-capture or auto-upload. **Resume pending draft**, pairing and disconnect remain separate controls.
 
 ## Separate projects and move existing feedback
 
