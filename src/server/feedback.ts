@@ -202,6 +202,14 @@ export async function feedback(
         source: "app_capture",
         title: capture.appName,
         appCapture: { ...capture, trust: "reviewer_supplied" },
+        ...(i.nativeDiagnostics
+          ? {
+              nativeDiagnostics: {
+                ...i.nativeDiagnostics.report,
+                trust: "untrusted_native_diagnostics",
+              },
+            }
+          : {}),
         captureDimensions: { width: capture.width, height: capture.height },
         ...(capture.capturedAt ? { capturedAt: capture.capturedAt } : {}),
         annotations: points.map((point: any) => ({

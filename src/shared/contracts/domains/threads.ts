@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { appCaptureSchema } from "../../app-capture.js";
+import { nativeDiagnosticReportSchema } from "../../native-diagnostics.js";
 import {
   id,
   text,
@@ -82,6 +83,9 @@ export const threadsInputs = {
       body: text,
       context: contextSchema.optional(),
       appCapture: appCaptureSchema.optional(),
+      nativeDiagnostics: z
+        .strictObject({ approved: z.literal(true), report: nativeDiagnosticReportSchema })
+        .optional(),
       pageUrl: z.string().url().max(4096).optional(),
       document: z
         .object({
@@ -113,7 +117,14 @@ export const threadsInputs = {
     )
     .refine((input) => !input.appCapture || !input.diagnostics, {
       message: "Browser diagnostics cannot be attached to an app capture",
-    }),
+    })
+    .refine(
+      (input) =>
+        !input.nativeDiagnostics ||
+        (!!input.appCapture &&
+          input.appCapture.platform === input.nativeDiagnostics.report.platform),
+      { message: "Native diagnostics need an app capture on the same platform" },
+    ),
   "threads.reply": z.object({
     ...tm,
     body: text,

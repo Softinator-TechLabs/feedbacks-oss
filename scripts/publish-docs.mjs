@@ -18,6 +18,7 @@ const queue = [
   "mcp-contract",
   "extension",
   "app-capture",
+  "native-os-diagnostics",
   "platform-compatibility",
   "upcoming",
   "webhooks",

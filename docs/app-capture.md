@@ -1,6 +1,6 @@
 # App screenshots without the extension
 
-The web application includes an app screenshot pilot. A signed-in project reviewer can import a PNG, JPEG or WebP screenshot, or use **Capture window** in a browser that supports screen sharing. This workflow sends visual feedback without a fabricated website URL. It does not collect native app internals, audio, DOM, console or network traffic.
+The web application includes an app screenshot pilot. A signed-in project reviewer can import a PNG, JPEG or WebP screenshot, or use **Capture window** in a browser that supports screen sharing. This workflow sends visual feedback without a fabricated website URL. The page does not collect OS logs, audio, DOM, console or network traffic automatically. A separately collected, reviewed OS snapshot can be imported as described below.
 
 ## Capture, review and send
 
@@ -8,13 +8,14 @@ The web application includes an app screenshot pilot. A signed-in project review
 2. Choose **Capture window** and select a window/display in the browser's system picker, or **Import screenshot**. Imports accept PNG, JPEG and WebP up to 10 MB. Window capture stops its media tracks after taking one image; it is not a background recorder.
 3. Enter the app name and choose the target platform. App version is optional. These details are supplied by the reviewer, including for an image imported from another device.
 4. Click the preview to add numbered notes. Use **Hide area** and drag over private information, or expand the coordinate controls to place notes and black rectangles with the keyboard. Inspect the entire image. A hidden area is burned into the approved image before upload; the unmasked source is not uploaded by this flow.
-5. Write the feedback and choose **Send feedback**. The service creates the thread and uploads the approved image as two separate, idempotent operations.
+5. Optionally import a [native OS diagnostic snapshot](native-os-diagnostics.md), review/edit its events and explicitly include it. Desktop snapshots must match the selected platform.
+6. Write the feedback and choose **Send feedback**. The service creates the thread and uploads the approved image as two separate, idempotent operations.
 
 Use the operating system's screenshot tools and import the result when the browser does not offer window capture, including mobile browsers. Protected surfaces can be blank or unavailable. Imported images do not invent a capture timestamp or identify the source device automatically.
 
 ## Drafts and recovery
 
-Before a send attempt, the approved pixels, notes, app context and stable request keys are stored locally in IndexedDB, scoped to the current account and project. Closing/reloading during an uncertain result can resume that approved draft on the same browser profile. It is separate from the local unapproved preview. No background upload is started on page load.
+Before a send attempt, the approved pixels, notes, app context, optional reviewed OS snapshot and stable request keys are stored locally in IndexedDB, scoped to the current account and project. Closing/reloading during an uncertain result can resume that approved draft on the same browser profile. It is separate from the local unapproved preview. No background upload is started on page load.
 
 A failed upload can leave a published thread without its image. **Retry Send** continues that thread. The approved draft is locked to preserve request identity. If the thread changed, open the existing feedback, use **Load latest feedback revision**, review it and retry with the refreshed upload revision. Discarding the local capture removes the local draft; it does not delete an already created thread. A successful send removes the local draft where browser storage permits it. Server revocation/project access checks still apply on every operation.
 

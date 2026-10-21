@@ -1,4 +1,5 @@
 import { startTask } from "./agent-start.js";
+import { nativeDiagnosticSummary } from "./native-diagnostics.js";
 import { taskCounts, presentTaskCounts } from "./agent-task-context.js";
 import { z } from "zod";
 import {
@@ -384,6 +385,10 @@ export async function runAgentTool(
       viewport: thread.context.viewport,
       deviceClass: thread.context.deviceClass,
       document: thread.context.document,
+      ...(thread.context.appCapture ? { appCapture: thread.context.appCapture } : {}),
+      ...(thread.context.nativeDiagnostics
+        ? { nativeDiagnostics: nativeDiagnosticSummary(thread.context.nativeDiagnostics) }
+        : {}),
       topPriority: thread.topPriority === true,
       review: thread.review
         ? { round: thread.review.round, state: thread.review.state }

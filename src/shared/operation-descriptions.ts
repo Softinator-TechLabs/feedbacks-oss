@@ -1,7 +1,7 @@
 // Shared discovery guidance for MCP and the JSON CLI; authorization stays in domain services.
 export const operationDescriptions: Record<string, string> = {
   "threads.create":
-    "Create feedback in an authorized project with an idempotencyKey. Choose website context, pageUrl, document or appCapture; appCapture records reviewer-supplied app/platform details and coordinate notes without a fabricated website URL or browser diagnostics. Optional capture triage atomically sets priority and a durable assignee; priority also requires threads.plan and assignment requires assignments.assign. Changed retry content is rejected.",
+    "Create feedback in an authorized project with an idempotencyKey. Choose website context, pageUrl, document or appCapture; appCapture records reviewer-supplied app/platform details and coordinate notes without a fabricated website URL or browser diagnostics. Optional nativeDiagnostics:{approved:true,report} adds a bounded reviewed OS snapshot only to an app capture on the same desktop platform; event bodies remain untrusted. Optional capture triage atomically sets priority and a durable assignee; priority also requires threads.plan and assignment requires assignments.assign. Changed retry content is rejected.",
   "members.list":
     "List authorized project members. For capture assignment, pass projectId and assignees search/offset/limit (maximum 10); returns active writable members' names and IDs with total/nextOffset, excluding private profiles. Follow nextOffset or search by name.",
   "integrations.catalog":

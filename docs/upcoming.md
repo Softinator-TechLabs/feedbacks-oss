@@ -4,13 +4,14 @@ The [app screenshot pilot](app-capture.md) is implemented in the web application
 
 ## Proposed sequence
 
-| Work                         | Intended outcome                                                                               | Status                                               |
-| ---------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Desktop app screenshot pilot | Choose a window/display or import an image, annotate/mask it, and send feedback                | Implemented pilot; real OS picker acceptance pending |
-| Mobile SDK verification      | Complete pairing, screenshot review and upload in real iOS/Android host apps                   | Source available; real-device verification pending   |
-| Desktop companions           | Start capture from a shortcut, tray or menu bar on Windows, Ubuntu and macOS                   | Proposed                                             |
-| Mobile sharing and capture   | Share screenshots/video to Feedbacks, with optional Android projection and iOS broadcasting    | Proposed                                             |
-| App-integrated diagnostics   | Include selected logs, recent actions, network failures and platform crash/performance context | Proposed                                             |
+| Work                         | Intended outcome                                                                                         | Status                                                        |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Desktop app screenshot pilot | Choose a window/display or import an image, annotate/mask it, and send feedback                          | Implemented pilot; real OS picker acceptance pending          |
+| Native OS event snapshots    | Reuse Windows Event Log, journalctl and macOS Unified Logging, then import/review alongside a screenshot | Implemented CLI/import; matching app-event acceptance pending |
+| Mobile SDK verification      | Complete pairing, screenshot review and upload in real iOS/Android host apps                             | Source available; real-device verification pending            |
+| Desktop companions           | Start capture from a shortcut, tray or menu bar on Windows, Ubuntu and macOS                             | Proposed                                                      |
+| Mobile sharing and capture   | Share screenshots/video to Feedbacks, with optional Android projection and iOS broadcasting              | Proposed                                                      |
+| App-integrated diagnostics   | Include selected logs, recent actions, network failures and platform crash/performance context           | Proposed                                                      |
 
 The sequence prioritizes a complete visual feedback workflow before adding deeper OS-specific integrations. Scope can change after the desktop pilot and real-device testing. Detailed acceptance criteria are in the [cross-platform capture plan](plans/cross-platform-capture.md).
 

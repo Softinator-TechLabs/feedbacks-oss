@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Reuse native OS diagnostics](native-os-diagnostics.md) — reviewed, bounded OS event snapshots for app screenshots.
+
 - [Cross-platform app feedback](cross-platform-capture.md) — proposed native capture, device verification and app-integrated diagnostics.
 
 - [Guided Docker Hub installation](guided-docker-install.md)

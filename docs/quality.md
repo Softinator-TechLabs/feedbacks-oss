@@ -31,6 +31,10 @@ Native-app expansion remains proposed in [Upcoming](upcoming.md). The [platform 
 
 Tracked work, not current availability: [next verified GitHub release](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/175), [versioned Docker Hub images](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/176), [Dokploy/Coolify installation templates](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/177), [existing Codex plugin distribution](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/178) and [Claude Code packaging](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/179). GitHub artifacts, registry publication, platform catalog acceptance and actual client installation each need separate verification.
 
+## Native OS diagnostic snapshots
+
+The [OS adapters](native-os-diagnostics.md) have synthetic command/parser, redaction, limit, timeout, project-access and idempotency coverage. Browser acceptance verifies local import, explicit approval, edit invalidation and durable retry with native events. Matching-OS CI invokes the logging tool for a unique empty process and records partial/unavailable coverage; this does not prove real application log access. Full dumps/traces, arbitrary app internals and standalone companion packaging remain unverified.
+
 ## Extension-free capture and widget installation
 
 The [app screenshot pilot](app-capture.md) has schema/access/retry tests and [browser acceptance](../tests/app-capture-browser.test.ts) for import, redaction pixels, uncertain upload recovery and a synthetic media stream. Native system pickers and physical mobile devices remain unverified. The dedicated widget installer reuses the origin-bound text intake; a fresh browser context submits against a separate synthetic host with mocked Turnstile. Real host CSP and production verification remain deployment-specific checks.

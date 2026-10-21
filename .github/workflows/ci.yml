@@ -98,6 +98,26 @@ jobs:
       - run: npm run qa:walkthrough-browser
       - run: npm run qa:agent-setup
 
+  native-os-diagnostics:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    env:
+      FEEDBACKS_NATIVE_OS_SMOKE: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node --import tsx --test tests/native-os-diagnostics.test.ts
+
   android-host:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

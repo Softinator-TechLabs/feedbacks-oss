@@ -10,6 +10,7 @@ import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
 import { createApp } from "../src/server/app.js";
+import { nativeReport } from "./fixtures/native-diagnostics.js";
 
 const enabled = process.env.FEEDBACKS_APP_CAPTURE_BROWSER === "1";
 test(
@@ -74,7 +75,7 @@ test(
       snippet = widget.widgetSnippet.replace('src="http://127.0.0.1/', `src="${base}/`);
       const bundle = await build({
         stdin: {
-          contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import {api} from './src/web/api.ts'; import {AppCapturePage} from './src/web/capture/index.tsx'; import {ProjectSettings} from './src/web/projects/settings.tsx'; import './src/web/styles.css'; const login=await api('auth.login',{email:'owner@example.test',password:'Correct-Horse-Battery-123'}); const project=await api('projects.get',{projectId:${JSON.stringify(project.id)}}); createRoot(document.getElementById('root')).render(location.search.includes('settings') ? <ProjectSettings project={project} actor={login.actor} onSaved={()=>{}}/> : <AppCapturePage project={project} userId={login.actor.userId}/>);`,
+          contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import {api} from './src/web/api.ts'; import {AppCapturePage} from './src/web/capture/index.tsx'; import {ProjectSettings} from './src/web/projects/settings.tsx'; import {ContextPanel} from './src/web/threads/context.tsx'; import './src/web/styles.css'; const login=await api('auth.login',{email:'owner@example.test',password:'Correct-Horse-Battery-123'}); const project=await api('projects.get',{projectId:${JSON.stringify(project.id)}}); createRoot(document.getElementById('root')).render(location.search.includes('settings') ? <ProjectSettings project={project} actor={login.actor} onSaved={()=>{}}/> : location.search.includes('context') ? <ContextPanel context={(await api('threads.get',{threadId:new URL(location.href).searchParams.get('threadId')})).context}/> : <AppCapturePage project={project} userId={login.actor.userId}/>);`,
           resolveDir: process.cwd(),
           loader: "tsx",
         },
@@ -121,6 +122,51 @@ test(
       await page
         .getByLabel("Feedback", { exact: true })
         .fill("Synthetic screenshot review");
+      await page.getByText("OS diagnostics (optional)", { exact: true }).click();
+      await page.getByLabel("Import OS diagnostics JSON").setInputFiles({
+        name: "invalid.json",
+        mimeType: "application/json",
+        buffer: Buffer.from("not json"),
+      });
+      await page.getByRole("alert").filter({ hasText: "not valid JSON" }).waitFor();
+      await page.getByLabel("Import OS diagnostics JSON").setInputFiles({
+        name: "synthetic-os.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(
+          JSON.stringify({
+            ok: true,
+            data: {
+              ...nativeReport(),
+              processName: "X".repeat(120),
+              events: [{ ...nativeReport().events[0], eventId: "9".repeat(80) }],
+            },
+          }),
+        ),
+      });
+      await page.getByText("Review events (1)", { exact: true }).click();
+      const nativeMessage = page.getByLabel("Event 1 message", { exact: true });
+      assert.ok(!(await nativeMessage.inputValue()).includes("synthetic-secret"));
+      await page.getByRole("button", { name: "Send feedback", exact: true }).click();
+      await page
+        .getByRole("alert")
+        .filter({ hasText: "Review the diagnostic snapshot" })
+        .waitFor();
+      assert.equal(
+        (await db.one("SELECT count(*)::integer AS total FROM threads")).total,
+        0,
+      );
+      const approval = page.getByRole("checkbox", {
+        name: "Include this reviewed diagnostic snapshot",
+        exact: true,
+      });
+      await approval.check();
+      await nativeMessage.fill("Synthetic app failure after reviewing private details");
+      assert.equal(
+        await approval.isChecked(),
+        false,
+        "editing must clear diagnostic approval",
+      );
+      await approval.check();
       await mkdir(".impeccable/review", { recursive: true });
       await page.screenshot({ path: ".impeccable/review/desktop.png", fullPage: true });
       await page.setViewportSize({ width: 390, height: 844 });
@@ -165,6 +211,39 @@ test(
       assert.equal(native.context.source, "app_capture");
       assert.equal(native.context.url, undefined);
       assert.equal(native.context.appCapture.platform, "linux");
+      assert.equal(
+        native.context.nativeDiagnostics.trust,
+        "untrusted_native_diagnostics",
+      );
+      assert.equal(
+        native.context.nativeDiagnostics.events[0].message,
+        "Synthetic app failure after reviewing private details",
+      );
+      await page.goto(
+        `${base}/qa?context&threadId=${(await db.one("SELECT id FROM threads")).id}`,
+      );
+      await page.getByText("OS diagnostic snapshot (1 event)", { exact: true }).click();
+      await page.getByText("Review events (1)", { exact: true }).click();
+      await page
+        .getByText("Synthetic app failure after reviewing private details", {
+          exact: true,
+        })
+        .waitFor();
+      await page.screenshot({
+        path: ".impeccable/review/native-diagnostics-thread-mobile.png",
+        fullPage: true,
+      });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+        "long native identifiers must wrap in thread context",
+      );
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.screenshot({
+        path: ".impeccable/review/native-diagnostics-thread-desktop.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(`${base}/qa?capture`);
       await page.getByRole("heading", { name: "App screenshot", exact: true }).waitFor();
       await page.evaluate(() => {
