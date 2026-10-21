@@ -3,6 +3,7 @@
 !.env.example
 .local/
 node_modules/
+.wrangler/
 .gradle/
 dist/
 build/
