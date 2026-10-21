@@ -8,6 +8,7 @@ import { configFromEnv } from "../src/server/config.js";
 import {
   trackerConfiguration,
   trackerCredential,
+  trackerInstanceOrigin,
   type TrackerProvider,
 } from "../src/shared/contracts/domains/trackers.js";
 import {
@@ -42,6 +43,385 @@ const credential = trackerCredential.parse({
   auth: "oauth",
 });
 
+const openProjectOrigin = "https://synthetic.openproject.test";
+const openProjectConfiguration = () =>
+  trackerConfiguration.parse({
+    instanceOrigin: openProjectOrigin,
+    targetId: "42",
+    issueTypeId: "1",
+    states: [
+      { local: "open", remote: "1" },
+      { local: "resolved", remote: "12" },
+    ],
+  });
+const openProjectCredential = trackerCredential.parse({ token: "synthetic-op-token" });
+const openProjectProject = {
+  id: 42,
+  name: "Synthetic project",
+  _links: {
+    createWorkPackageImmediate: {
+      href: "/api/v3/projects/42/work_packages",
+      method: "post",
+    },
+  },
+};
+const openProjectPackage = (state = "1", lockVersion = 3) => ({
+  id: 517,
+  subject: "Reviewed task",
+  lockVersion,
+  _links: {
+    project: { href: "/api/v3/projects/42" },
+    type: { href: "/api/v3/types/1" },
+    status: { href: `/api/v3/statuses/${state}` },
+    addComment: { href: "/api/v3/work_packages/517/activities", method: "post" },
+  },
+});
+
+test("OpenProject requires exact operator-trusted HTTPS origins, API tokens and numeric project/type/status IDs", async () => {
+  const config = configFromEnv({
+    DATABASE_URL: "postgres://synthetic",
+    OPENPROJECT_ALLOWED_ORIGINS: `${openProjectOrigin}, https://openproject.internal:8443`,
+  });
+  assert.deepEqual(config.openProjectAllowedOrigins, [
+    openProjectOrigin,
+    "https://openproject.internal:8443",
+  ]);
+  assert.deepEqual(
+    configFromEnv({ DATABASE_URL: "postgres://synthetic" }).openProjectAllowedOrigins,
+    [],
+  );
+  for (const origin of [
+    "http://localhost:3000",
+    `${openProjectOrigin}/`,
+    `${openProjectOrigin}/api/v3`,
+    `${openProjectOrigin}?a=1`,
+    `${openProjectOrigin}#fragment`,
+    "https://user:secret@synthetic.openproject.test",
+    "https://synthetic.openproject.test:443",
+    "https://synthetic.openproject.test\\@evil.example",
+  ]) {
+    assert.equal(trackerInstanceOrigin.safeParse(origin).success, false, origin);
+    assert.throws(() =>
+      configFromEnv({
+        DATABASE_URL: "postgres://synthetic",
+        OPENPROJECT_ALLOWED_ORIGINS: origin,
+      }),
+    );
+    assert.throws(
+      () =>
+        new TrackerClient(
+          "openproject",
+          { ...openProjectConfiguration(), instanceOrigin: origin },
+          openProjectCredential,
+          undefined,
+          [origin],
+        ),
+      { code: "OPENPROJECT_ORIGIN_NOT_ALLOWED" },
+    );
+  }
+  assert.throws(
+    () =>
+      new TrackerClient("openproject", openProjectConfiguration(), openProjectCredential),
+    { code: "OPENPROJECT_ORIGIN_NOT_ALLOWED" },
+  );
+  assert.throws(
+    () =>
+      new TrackerClient(
+        "openproject",
+        openProjectConfiguration(),
+        credential,
+        undefined,
+        [openProjectOrigin],
+      ),
+    { code: "OPENPROJECT_API_TOKEN_REQUIRED" },
+  );
+  for (const value of ["0", "01", "123/../users", "9007199254740992"])
+    for (const field of ["targetId", "issueTypeId"])
+      assert.throws(
+        () =>
+          new TrackerClient(
+            "openproject",
+            { ...openProjectConfiguration(), [field]: value },
+            openProjectCredential,
+            undefined,
+            [openProjectOrigin],
+          ),
+        { code: "OPENPROJECT_NUMERIC_ID_REQUIRED" },
+      );
+  assert.throws(
+    () =>
+      new TrackerClient(
+        "openproject",
+        { ...openProjectConfiguration(), states: [{ local: "open", remote: "New" }] },
+        openProjectCredential,
+        undefined,
+        [openProjectOrigin],
+      ),
+    { code: "OPENPROJECT_NUMERIC_ID_REQUIRED" },
+  );
+  const privateConfiguration = {
+    ...openProjectConfiguration(),
+    instanceOrigin: "https://10.0.0.7:8443",
+  };
+  assert.throws(
+    () =>
+      new TrackerClient(
+        "openproject",
+        privateConfiguration,
+        openProjectCredential,
+        undefined,
+        [openProjectOrigin],
+      ),
+    { code: "OPENPROJECT_ORIGIN_NOT_ALLOWED" },
+  );
+  assert.doesNotThrow(
+    () =>
+      new TrackerClient(
+        "openproject",
+        privateConfiguration,
+        openProjectCredential,
+        undefined,
+        [privateConfiguration.instanceOrigin],
+      ),
+  );
+  let requests = 0;
+  const client = new TrackerClient(
+    "openproject",
+    openProjectConfiguration(),
+    openProjectCredential,
+    async () => {
+      requests++;
+      return response({});
+    },
+    [openProjectOrigin],
+  );
+  client.configuration.instanceOrigin = "https://attacker.example";
+  await assert.rejects(client.read("517"), { code: "OPENPROJECT_ORIGIN_NOT_ALLOWED" });
+  assert.equal(requests, 0, "mutated origins cannot send credentials");
+});
+
+test("OpenProject uses documented work package HAL payloads, safe fixed paths, comments and optimistic status locking", async () => {
+  const calls: Array<{ path: string; method: string; body: any }> = [];
+  let state = "1",
+    lockVersion = 3;
+  const client = new TrackerClient(
+    "openproject",
+    openProjectConfiguration(),
+    openProjectCredential,
+    async (url, init) => {
+      const path = new URL(url).pathname,
+        body = init.body ? JSON.parse(String(init.body)) : null;
+      calls.push({ path, method: init.method!, body });
+      assert.equal(new URL(url).origin, openProjectOrigin);
+      assert.equal(init.redirect, "error");
+      assert.equal(
+        (init.headers as Record<string, string>).authorization,
+        `Basic ${Buffer.from(`apikey:${openProjectCredential.token}`).toString("base64")}`,
+      );
+      assert.ok(!url.includes(openProjectCredential.token));
+      if (path === "/api/v3/projects/42") return response(openProjectProject);
+      if (path === "/api/v3/projects/42/types")
+        return response({ _embedded: { elements: [{ id: 1, name: "Task" }] } });
+      if (path === "/api/v3/statuses")
+        return response({
+          _embedded: {
+            elements: [
+              { id: 1, name: "New" },
+              { id: 12, name: "Closed" },
+            ],
+          },
+        });
+      if (path === "/api/v3/work_packages" && init.method === "POST")
+        return response(openProjectPackage(), 201);
+      if (path.endsWith("/activities"))
+        return init.method === "POST"
+          ? response({ id: 81 }, 201)
+          : response({
+              total: 3,
+              _embedded: {
+                elements: [
+                  {
+                    id: 80,
+                    _links: { workPackage: { href: "/api/v3/work_packages/517" } },
+                    details: [],
+                    comment: { raw: "" },
+                  },
+                  {
+                    id: 81,
+                    _links: {
+                      workPackage: { href: "/api/v3/work_packages/517" },
+                      user: { title: "A reviewer" },
+                    },
+                    comment: { raw: "Reviewed comment" },
+                    createdAt: "2026-10-21T09:00:00Z",
+                  },
+                  {
+                    id: 82,
+                    internal: true,
+                    _links: { workPackage: { href: "/api/v3/work_packages/517" } },
+                    comment: { raw: "Internal comment" },
+                  },
+                ],
+              },
+            });
+      if (init.method === "PATCH") {
+        if (body.lockVersion !== lockVersion) return response({}, 409);
+        state = body._links.status.href.split("/").at(-1);
+        lockVersion++;
+      }
+      return response(openProjectPackage(state, lockVersion));
+    },
+    [openProjectOrigin],
+  );
+  assert.deepEqual(await client.target(), {
+    name: "Synthetic project",
+    states: [
+      { id: "1", name: "New" },
+      { id: "12", name: "Closed" },
+    ],
+  });
+  assert.deepEqual(
+    await client.create("Reviewed task", "Reviewed feedback <script>untrusted</script>"),
+    {
+      id: "517",
+      title: "Reviewed task",
+      state: "1",
+      url: `${openProjectOrigin}/work_packages/517/activity`,
+    },
+  );
+  assert.deepEqual(calls.find((call) => call.path === "/api/v3/work_packages")?.body, {
+    subject: "Reviewed task",
+    description: { raw: "Reviewed feedback <script>untrusted</script>" },
+    _links: {
+      project: { href: "/api/v3/projects/42" },
+      type: { href: "/api/v3/types/1" },
+      status: { href: "/api/v3/statuses/1" },
+    },
+  });
+  await client.comment("517", "Reviewed comment");
+  assert.deepEqual(
+    calls.find((call) => call.method === "POST" && call.path.endsWith("/activities"))
+      ?.body,
+    { comment: { raw: "Reviewed comment" } },
+  );
+  assert.deepEqual(
+    (await client.comments("517")).items.map((item) => item.body),
+    ["Reviewed comment"],
+  );
+  await client.read("517");
+  lockVersion++;
+  await assert.rejects(client.setState("517", "12"), {
+    code: "TRACKER_REMOTE_CONFLICT",
+    uncertain: false,
+  });
+  assert.equal(
+    calls.filter((call) => call.method === "PATCH").at(-1)?.body.lockVersion,
+    3,
+    "use the worker-observed version instead of accepting a concurrent change",
+  );
+  await client.read("517");
+  await client.setState("517", "12");
+  assert.equal((await client.read("517")).state, "12");
+  const rejection = new TrackerError("TRACKER_CONNECTION_CHANGED");
+  client.beforeWrite = async () => {
+    throw rejection;
+  };
+  const writes = calls.filter((call) => call.method !== "GET").length;
+  await assert.rejects(
+    client.create("Blocked task", "Body"),
+    (error) => error === rejection,
+  );
+  await assert.rejects(
+    client.comment("517", "Blocked comment"),
+    (error) => error === rejection,
+  );
+  await assert.rejects(client.setState("517", "1"), (error) => error === rejection);
+  assert.equal(calls.filter((call) => call.method !== "GET").length, writes);
+});
+
+test("OpenProject rejects missing provider permissions, wrong project/type and untrusted HAL links before a mutation", async () => {
+  for (const project of [
+    { ...openProjectProject, _links: {} },
+    {
+      ...openProjectProject,
+      _links: {
+        createWorkPackageImmediate: {
+          href: "https://attacker.example/api/v3/projects/42/work_packages",
+          method: "post",
+        },
+      },
+    },
+  ]) {
+    let writes = 0;
+    const client = new TrackerClient(
+      "openproject",
+      openProjectConfiguration(),
+      openProjectCredential,
+      async (_url, init) => {
+        if (init.method !== "GET") writes++;
+        return response(project);
+      },
+      [openProjectOrigin],
+    );
+    await assert.rejects(client.create("Task", "Body"), {
+      code: "OPENPROJECT_CREATE_PERMISSION_REQUIRED",
+    });
+    assert.equal(writes, 0);
+  }
+  const createClient = (raw: any) =>
+    new TrackerClient(
+      "openproject",
+      openProjectConfiguration(),
+      openProjectCredential,
+      async () => response(raw),
+      [openProjectOrigin],
+    );
+  for (const field of ["project", "type"])
+    await assert.rejects(
+      createClient({
+        ...openProjectPackage(),
+        _links: {
+          ...openProjectPackage()._links,
+          [field]: { href: "/api/v3/projects/999" },
+        },
+      }).read("517"),
+      { code: "TRACKER_TARGET_MISMATCH" },
+    );
+  await assert.rejects(
+    createClient({
+      ...openProjectPackage(),
+      _links: {
+        ...openProjectPackage()._links,
+        status: { href: "https://attacker.example/api/v3/statuses/1" },
+      },
+    }).read("517"),
+    { code: "TRACKER_INVALID_RESPONSE" },
+  );
+  await assert.rejects(
+    createClient({
+      ...openProjectPackage(),
+      _links: { ...openProjectPackage()._links, addComment: null },
+    }).comment("517", "Unsent"),
+    { code: "OPENPROJECT_COMMENT_PERMISSION_REQUIRED" },
+  );
+  await assert.rejects(createClient(openProjectPackage()).read("517/../users"), {
+    code: "OPENPROJECT_NUMERIC_ID_REQUIRED",
+  });
+  const missingType = new TrackerClient(
+    "openproject",
+    openProjectConfiguration(),
+    openProjectCredential,
+    async (url) =>
+      response(
+        url.endsWith("/types")
+          ? { _embedded: { elements: [{ id: 99, name: "Wrong type" }] } }
+          : openProjectProject,
+      ),
+    [openProjectOrigin],
+  );
+  await assert.rejects(missingType.target(), { code: "OPENPROJECT_TYPE_NOT_IN_PROJECT" });
+});
+
 const firmaoConfiguration = () =>
   trackerConfiguration.parse({
     workspaceId: "synthetic_org",
@@ -70,6 +450,155 @@ const firmaoTask = (state = "WAITING") => ({
   project: { id: 123 },
   status: { key: state, label_en: state },
   permissions: { task: ["read", "update"] },
+});
+
+test("OpenProject operation and durable worker enforce the server origin policy before saving and after queueing, and keep tokens encrypted", async () => {
+  const pg = new PGlite();
+  try {
+    const db = new Database(pg as any);
+    await migrate(db);
+    const config = configFromEnv({
+      DATABASE_URL: "postgres://synthetic",
+      APP_ORIGIN: "https://feedback.example.test",
+    });
+    const objects = new Map<string, Buffer>();
+    const store: any = {
+      put: async (key: string, value: Buffer) => objects.set(key, value),
+      get: async (key: string) => objects.get(key)!,
+    };
+    const ops = new Operations(db, store, config);
+    const owner = await ops.auth.bootstrap(
+      "owner@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const project = await ops.executeOperation(owner, "projects.create", {
+      name: "Synthetic",
+      origins: ["https://example.test"],
+    });
+    let requests = 0,
+      writes = 0,
+      failReadback = false;
+    const transport = async (url: string, init: RequestInit) => {
+      requests++;
+      const path = new URL(url).pathname;
+      if (path === "/api/v3/projects/42") return response(openProjectProject);
+      if (path.endsWith("/types"))
+        return response({ _embedded: { elements: [{ id: 1, name: "Task" }] } });
+      if (path === "/api/v3/statuses")
+        return response({
+          _embedded: {
+            elements: [
+              { id: 1, name: "New" },
+              { id: 12, name: "Closed" },
+            ],
+          },
+        });
+      if (init.method === "POST") {
+        writes++;
+        return response({ id: 517 }, 201);
+      }
+      return failReadback ? response({}, 401) : response(openProjectPackage());
+    };
+    const run = (name: string, input: any) =>
+      trackerOperation(db, store, config, owner, name, input, transport);
+    const save = {
+      projectId: project.id,
+      provider: "openproject",
+      label: "Self-hosted tasks",
+      configuration: openProjectConfiguration(),
+      credential: openProjectCredential,
+    };
+    await assert.rejects(run("trackers.save", save), {
+      code: "OPENPROJECT_ORIGIN_NOT_ALLOWED",
+    });
+    assert.equal(requests, 0);
+    assert.equal(objects.size, 0, "denied origins must not seal or save credentials");
+    assert.equal(
+      (await db.one("SELECT count(*)::integer n FROM tracker_connections")).n,
+      0,
+    );
+    config.openProjectAllowedOrigins = [openProjectOrigin];
+    const connection = await run("trackers.save", save);
+    const stored = await db.one("SELECT * FROM tracker_connections WHERE id=$1", [
+      connection.id,
+    ]);
+    assert.ok(!JSON.stringify(stored).includes(openProjectCredential.token));
+    assert.ok(!JSON.stringify(connection).includes(openProjectCredential.token));
+    assert.equal(
+      (await run("trackers.test", { connectionId: connection.id })).healthy,
+      true,
+    );
+    const createThread = (key: string) =>
+      ops.executeOperation(owner, "threads.create", {
+        projectId: project.id,
+        body: "Reviewed feedback",
+        pageUrl: "https://example.test/",
+        idempotencyKey: key,
+      });
+    const thread = await createThread("op-source-thread-1");
+    const input = {
+      connectionId: connection.id,
+      threadId: thread.id,
+      revision: thread.revision,
+      idempotencyKey: "op-task-create-idempotency",
+      title: "Reviewed task",
+      body: "Reviewed body",
+    };
+    const job = await run("trackers.create", input);
+    assert.equal((await run("trackers.create", input)).id, job.id);
+    await processTrackerJobs(db, store, config, transport);
+    assert.equal(writes, 1);
+    assert.equal(
+      (await db.one("SELECT status FROM tracker_jobs WHERE id=$1", [job.id])).status,
+      "delivered",
+    );
+    assert.equal(
+      (await run("trackers.links", { threadId: thread.id })).links[0].remoteId,
+      "517",
+    );
+    const second = await createThread("op-source-thread-2");
+    const denied = await run("trackers.create", {
+      ...input,
+      threadId: second.id,
+      revision: second.revision,
+      idempotencyKey: "op-task-revoked-origin",
+    });
+    const before = requests;
+    config.openProjectAllowedOrigins = [];
+    await processTrackerJobs(db, store, config, transport);
+    assert.equal(
+      requests,
+      before,
+      "origin policy revocation must block a queued worker before HTTP",
+    );
+    const deniedRow = await db.one(
+      "SELECT status,error_code FROM tracker_jobs WHERE id=$1",
+      [denied.id],
+    );
+    assert.equal(deniedRow.status, "failed");
+    assert.equal(deniedRow.error_code, "OPENPROJECT_ORIGIN_NOT_ALLOWED");
+    config.openProjectAllowedOrigins = [openProjectOrigin];
+    const third = await createThread("op-source-thread-3");
+    const uncertain = await run("trackers.create", {
+      ...input,
+      threadId: third.id,
+      revision: third.revision,
+      idempotencyKey: "op-task-accepted-readback-failed",
+    });
+    failReadback = true;
+    await processTrackerJobs(db, store, config, transport);
+    const unknown = await db.one(
+      "SELECT status,remote_id FROM tracker_jobs WHERE id=$1",
+      [uncertain.id],
+    );
+    assert.equal(unknown.status, "uncertain");
+    assert.equal(unknown.remote_id, "517");
+    await processTrackerJobs(db, store, config, transport);
+    assert.equal(writes, 2, "uncertain work package creation must not blindly retry");
+  } finally {
+    await pg.close();
+  }
 });
 
 test("Firmao creates a reviewed CRM task using documented Basic auth, organization path, project/assignee fields and CREATE changelog readback", async () => {

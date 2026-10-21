@@ -23,6 +23,12 @@ For a published image, use [registry Compose](../compose.registry.yaml), set `FE
 
 The standard image runs as a non-root user. Production Compose drops capabilities, uses a read-only root filesystem and provides temporary memory-backed space. Persistent records remain in PostgreSQL and object storage.
 
+## Optional task tracker connections
+
+Project owners configure task apps under **Project settings → Integrations → Tasks**. Outbound HTTPS requests and status polling work from a local server without an inbound provider webhook. Jira Cloud additionally needs the optional confidential OAuth broker described in [integration setup](integrations.md#optional-jira-oauth-broker).
+
+For a cloud or self-hosted OpenProject instance, set `OPENPROJECT_ALLOWED_ORIGINS` to its exact HTTPS origin before recreating the app. Multiple origins use commas. The default allows none. Allow only instances this installation's operator trusts; internal/VPN origins require container network access and a trusted TLS certificate. Do not put API tokens in this list. Owners save those separately through the encrypted project connection form. See [OpenProject setup and limits](integrations.md#openproject-cloud-or-self-hosted-work-packages).
+
 ## Bring your own S3-compatible storage
 
 Start with the [illustrated storage and prerequisites walkthrough](../site-docs/guide/storage.md) for bucket creation, scoped credentials and the exact configuration mapping.

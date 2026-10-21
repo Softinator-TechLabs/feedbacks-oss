@@ -1,5 +1,6 @@
 import { TimeTrackingSettings } from "../integrations/time-tracking.js";
 import { ChannelSettings } from "../integrations/channels.js";
+import { TrackerSettingsPage } from "../integrations/trackers.js";
 import { PermanentIntake } from "./permanent-intake.js";
 import { EmailSettings } from "../notifications/settings.js";
 import React, { useEffect, useState } from "react";
@@ -14,7 +15,13 @@ import { WebhookSettings } from "./webhooks.js";
 import { SectionTabs, type SectionTab } from "../section-tabs.js";
 
 type ProjectSettingsTab = "project" | "taxonomy" | "integrations" | "widget" | "advanced";
-type ProjectIntegrationTab = "email" | "channels" | "github" | "webhooks" | "time";
+type ProjectIntegrationTab =
+  | "tasks"
+  | "email"
+  | "channels"
+  | "github"
+  | "webhooks"
+  | "time";
 type SettingsSelection = {
   tab: ProjectSettingsTab;
   integration: ProjectIntegrationTab;
@@ -31,7 +38,7 @@ function projectSettingsSelectionFromHash(canMaintain: boolean): SettingsSelecti
   if (
     hash === "integrations" ||
     (hash.startsWith("integrations-") &&
-      ["email", "channels", "github", "webhooks", "time"].includes(integration))
+      ["tasks", "email", "channels", "github", "webhooks", "time"].includes(integration))
   )
     return {
       tab: "integrations",
@@ -119,6 +126,7 @@ function ProjectSettingsContent({ project, actor, onSaved }: ProjectSettingsProp
   ];
   const integrationTabs: SectionTab<ProjectIntegrationTab>[] = canMaintain
     ? [
+        { id: "tasks", label: "Tasks", panelId: "integrations-tasks" },
         { id: "email", label: "Email", panelId: "integrations-email" },
         { id: "channels", label: "Slack & Teams", panelId: "integrations-channels" },
         { id: "github", label: "GitHub", panelId: "integrations-github" },
@@ -241,7 +249,13 @@ function ProjectSettingsContent({ project, actor, onSaved }: ProjectSettingsProp
                 hidden={navigation.integration !== id}
               >
                 {navigation.visitedIntegrations.includes(id) &&
-                  (id === "email" ? (
+                  (id === "tasks" ? (
+                    <TrackerSettingsPage
+                      projects={[]}
+                      project={project}
+                      owner={actor.owner === true}
+                    />
+                  ) : id === "email" ? (
                     <EmailSettings projectId={project.id} owner={actor.owner === true} />
                   ) : id === "channels" ? (
                     <ChannelSettings projectId={project.id} />

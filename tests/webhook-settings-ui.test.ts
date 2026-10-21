@@ -25,7 +25,7 @@ const actor: Actor = {
   kind: "human",
 };
 
-function renderSettings(hash: string, currentProject = project) {
+function renderSettings(hash: string, currentProject = project, currentActor = actor) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   Object.defineProperty(globalThis, "window", {
     configurable: true,
@@ -35,7 +35,7 @@ function renderSettings(hash: string, currentProject = project) {
     return renderToStaticMarkup(
       React.createElement(ProjectSettings, {
         project: currentProject,
-        actor,
+        actor: currentActor,
         onSaved: () => {},
       }),
     );
@@ -52,9 +52,20 @@ test("default project settings preserve project controls without mounting provid
   assert.match(html, /Project details/);
   assert.doesNotMatch(
     html,
-    /Destination URL|Save webhook|Delivery history|GitHub Issues/,
+    /Destination URL|Save webhook|Delivery history|GitHub Issues|Task connections/,
   );
   assert.doesNotMatch(html, /Project integration providers/);
+});
+
+test("Tasks deep link mounts only project task connections and pins its project", () => {
+  const html = renderSettings("#integrations-tasks", project, { ...actor, owner: true });
+  assert.match(html, /id="project-integration-tab-tasks"[^>]*aria-selected="true"/);
+  assert.match(html, /<h2>Task connections<\/h2>/);
+  assert.doesNotMatch(
+    html,
+    /<h1>Task trackers<\/h1>|Destination URL|GitHub Issues|Project email notifications/,
+  );
+  assert.doesNotMatch(html, /<span>Project<\/span>/);
 });
 
 test("project maintainer opens its lazy webhook surface through the provider deep link", () => {

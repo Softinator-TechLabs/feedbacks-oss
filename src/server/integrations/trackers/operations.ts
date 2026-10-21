@@ -95,6 +95,7 @@ export async function trackerClient(
     trackerConfiguration.parse(connection.configuration),
     credential,
     transport,
+    config.openProjectAllowedOrigins,
   );
 }
 export async function trackerOperation(
@@ -340,7 +341,13 @@ export async function trackerOperation(
           ),
         );
       // Constructor validates provider-specific authentication and metadata without contacting a remote service.
-      new TrackerClient(input.provider, input.configuration, credential, transport);
+      new TrackerClient(
+        input.provider,
+        input.configuration,
+        credential,
+        transport,
+        config.openProjectAllowedOrigins,
+      );
       const sealed = input.credential
         ? await sealCredential(
             store,

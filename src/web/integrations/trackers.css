@@ -1,6 +1,28 @@
 .tracker-settings {
   max-width: 850px;
 }
+.tracker-settings > .tracker-heading {
+  margin-bottom: 16px;
+}
+.tracker-settings > .tracker-heading > h1,
+.tracker-settings > .tracker-heading > h2 {
+  margin: 0;
+}
+.tracker-providers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 0;
+  list-style: none;
+}
+.tracker-providers span {
+  display: inline-block;
+  padding: 6px 0;
+}
+.tracker-empty > p {
+  color: var(--muted);
+}
 .tracker-connections,
 .tracker-jobs {
   list-style: none;
@@ -22,7 +44,8 @@
 .tracker-heading {
   justify-content: space-between;
 }
-.tracker-heading h2 {
+.tracker-heading h2,
+.tracker-heading h3 {
   margin: 0;
 }
 .tracker-form {
