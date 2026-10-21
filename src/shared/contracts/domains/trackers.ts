@@ -223,15 +223,44 @@ export const trackersInputs = {
           message: "Choose one credential source and its current revision",
         });
     }),
-  "trackers.oauthStart": z.object({
-    projectId: id,
-    provider: z.literal("jira"),
-    label: z.string().trim().min(1).max(100),
-    configuration: trackerConfiguration,
+  "trackers.oauthStart": z
+    .object({
+      projectId: id,
+      provider: z.literal("jira"),
+      guided: z.boolean().default(false),
+      label: z.string().trim().min(1).max(100).optional(),
+      configuration: trackerConfiguration.optional(),
+    })
+    .superRefine((value, context) => {
+      if (!value.guided && (!value.label || !value.configuration))
+        context.addIssue({
+          code: "custom",
+          message: "Manual Jira setup requires a name and configuration",
+        });
+      if (value.guided && value.configuration)
+        context.addIssue({
+          code: "custom",
+          message: "Choose the Jira destination after account consent",
+        });
+    }),
+  "trackers.oauthDiscover": z.object({
+    flowId: id,
+    cloudId: z.string().uuid().optional(),
+    selection: z
+      .object({ targetId: remoteId.optional(), issueTypeId: remoteId.optional() })
+      .strict()
+      .default({}),
+    cursor: z
+      .string()
+      .regex(/^\d{1,6}$/)
+      .optional(),
   }),
   "trackers.oauthComplete": z.object({
     flowId: id,
     cloudId: z.string().uuid().optional(),
+    configuration: trackerConfiguration.optional(),
+    label: z.string().trim().min(1).max(100).optional(),
+    idempotencyKey: z.string().min(8).max(120).optional(),
   }),
   "trackers.list": z.object({ projectId: id }),
   "trackers.save": z
@@ -314,6 +343,14 @@ export const trackersOutputs = {
     flowId: id,
     authorizeUrl: z.string().url(),
     expiresAt: z.string(),
+  }),
+  "trackers.oauthDiscover": z.object({
+    status: z.enum(["pending", "choose_site", "choose_destination"]),
+    resources: z
+      .array(z.object({ id: z.string().uuid(), name: z.string(), url: z.string() }))
+      .max(100)
+      .optional(),
+    discovery: trackerDiscoveryResult.optional(),
   }),
   "trackers.oauthComplete": z.object({
     status: z.enum(["pending", "choose_site", "connected"]),

@@ -9,6 +9,7 @@ import {
 } from "../../shared/contracts/domains/trackers.js";
 import { useTrackerWrite } from "./retry-key.js";
 import { GuidedTrackerConnection } from "./tracker-setup.js";
+import { JiraTrackerConnection } from "./tracker-jira-setup.js";
 
 const names: Record<TrackerProvider, string> = {
   jira: "Jira Cloud",
@@ -386,6 +387,15 @@ function ConnectionForm({
           setProvider(next);
           setManual(true);
         }}
+      />
+    );
+  if (provider === "jira")
+    return (
+      <JiraTrackerConnection
+        {...props}
+        names={names}
+        onProviderChange={setProvider}
+        onManual={() => setManual(true)}
       />
     );
   return (

@@ -388,6 +388,124 @@ test(
         return good(url);
       });
       assert.equal(reads, 0);
+      // Consent completion owns one canonical rotating credential even when two
+      // real PostgreSQL clients validate the same flow concurrently.
+      const webLogin = await ops.auth.login(
+        "owner@example.test",
+        "Correct-Horse-Battery-123",
+      );
+      const webOwner = await ops.auth.authenticate(undefined, webLogin.token);
+      const cloudId = "59d72025-7e6d-4f1a-ac5c-9d86d5fc01fa";
+      const consentEntered = gate(),
+        consentProceed = gate();
+      let completionReads = 0,
+        metadataReads = 0;
+      const json = (value: any) => new Response(JSON.stringify(value));
+      const metadataPage = (field: string, values: any[]) => ({
+        [field]: values,
+        startAt: 0,
+        maxResults: 50,
+        total: values.length,
+      });
+      globalThis.fetch = (async (raw: any) => {
+        const url = new URL(String(raw));
+        if (url.origin === "https://broker.example.test") {
+          if (url.pathname === "/v1/start")
+            return json({
+              flowId: "native-guided-flow",
+              pollToken: "native-guided-poll",
+              authorizeUrl: "https://auth.atlassian.com/authorize?state=native",
+            });
+          if (url.pathname === "/v1/ack") return new Response("{}", { status: 503 });
+          return json({
+            status: "ready",
+            token: {
+              access_token: "native-consented-token",
+              refresh_token: "native-consented-refresh",
+              expires_in: 3600,
+            },
+            resources: [
+              {
+                id: cloudId,
+                name: "Synthetic Jira",
+                url: "https://synthetic.atlassian.net",
+              },
+            ],
+          });
+        }
+        assert.equal(url.origin, "https://api.atlassian.com");
+        metadataReads++;
+        if (url.pathname.endsWith("/issuetypes"))
+          return json(
+            metadataPage("issueTypes", [{ id: "12", name: "Task", subtask: false }]),
+          );
+        if (url.pathname.endsWith("/issuetypes/12"))
+          return json(
+            metadataPage(
+              "fields",
+              ["project", "issuetype", "summary", "description"].map((fieldId) => ({
+                fieldId,
+                required: true,
+                hasDefaultValue: false,
+                operations: ["set"],
+              })),
+            ),
+          );
+        if (url.pathname.endsWith("/statuses")) {
+          if (++completionReads === 2) consentEntered.release();
+          await consentProceed.promise;
+          return json([{ id: "12", statuses: [{ id: "1", name: "Open" }] }]);
+        }
+        return json({ id: "42", name: "Website" });
+      }) as typeof fetch;
+      const consent = await ops.executeOperation(webOwner, "trackers.oauthStart", {
+        projectId: destination.id,
+        provider: "jira",
+        guided: true,
+      });
+      const completion = {
+        flowId: consent.flowId,
+        cloudId,
+        configuration: { targetId: "42", issueTypeId: "12", cloudId, site: "synthetic" },
+        idempotencyKey: "native-jira-consent-complete",
+      };
+      const privateKeysBefore = keys.size;
+      const pendingCompletions = [1, 2].map(() =>
+        ops.executeOperation(webOwner, "trackers.oauthComplete", completion),
+      );
+      try {
+        await Promise.race([
+          consentEntered.promise,
+          new Promise((_, reject) => {
+            const timeout = setTimeout(
+              () => reject(Error("Jira completions did not reach the metadata barrier")),
+              5000,
+            );
+            timeout.unref();
+          }),
+        ]);
+      } finally {
+        consentProceed.release();
+      }
+      const [firstCompletion, secondCompletion] = await Promise.all(pendingCompletions);
+      assert.equal(firstCompletion.connection.id, secondCompletion.connection.id);
+      assert.equal(keys.size, privateKeysBefore + 1);
+      assert.equal(
+        (
+          await db.one(
+            "SELECT count(*)::int n FROM tracker_connections WHERE project_id=$1 AND provider='jira'",
+            [destination.id],
+          )
+        ).n,
+        1,
+      );
+      const readsAtCompletion = metadataReads;
+      assert.equal(
+        (await ops.executeOperation(webOwner, "trackers.oauthComplete", completion))
+          .connection.id,
+        firstCompletion.connection.id,
+      );
+      assert.equal(metadataReads, readsAtCompletion);
     } finally {
       globalThis.fetch = originalFetch;
       await pool?.end();

@@ -3,6 +3,7 @@
 ## 0.3.1 — 2026-10-21
 
 - Guide task connection setup through account access and named destinations. Reuse an existing saved provider account for another project without copying its token into the browser.
+- Start Jira with consent, then choose its site, project and creatable issue type by name. Keep its refresh token in one connection and recover the same completed connection after a lost response.
 - Generate connection names and keep manual configuration, status mappings and polling optional. Preserve the existing edit and recovery flow.
 - Add bounded, owner-only provider discovery with encrypted credential isolation and stale-account checks.
 - Make connection retries safe after a lost response. Update monday.com column discovery to current typed settings and preserve the correct text/long-text description format.
@@ -13,6 +14,8 @@
 No database migration is introduced. Preserve the existing database, private object storage, organization identity and encryption keys. Existing task connections and explicit reviewed writes retain their behavior. Pin the new application image, recreate the application container and verify account access and a named destination before creating a remote task.
 
 First-time access still needs the provider's documented credential or a configured OAuth app. Signing into the provider in another browser tab does not grant Feedbacks API access. Account consent, provider permissions and a successful remote task remain separate acceptance gates. See [integration setup](docs/integrations.md).
+
+Jira issue types requiring additional fields without defaults need provider-side configuration before connecting. Finish or let pending guided Jira consent flows expire before running an older application image; older builds cannot complete the new guided flow. Saved connections retain the existing format.
 
 ## 0.3.0 — 2026-10-21
 
