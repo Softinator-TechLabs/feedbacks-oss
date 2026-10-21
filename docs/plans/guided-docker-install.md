@@ -26,3 +26,12 @@ Existing application, extension and plugin release bytes are unchanged. Producti
 ## Verification
 
 The published 0.2.3 application image was exercised through the installer with the checksum-matching candidate Compose. Owner sign-in, local screenshot upload/readback, non-root execution and private credential files passed. Recreating both containers retained the database and image. The existing-directory refusal preserved the running test stack. A browser sign-in and screenshot read confirmed the usable local UI. The official Docker Compose skill's quiet validator passed. Test credentials and raw receipts remain outside source. Live public download verification follows merge.
+
+## Startup feedback and stable-channel follow-up
+
+- [x] Reproduce an occupied loopback port and preserve the failed installation's volumes.
+- [x] Show setup stages, image download progress and scoped start/stop/status/log commands.
+- [x] Refuse an occupied port before downloading images or creating installation files.
+- [x] Resolve fresh installs through reviewed stable metadata, validating its digest and commit-pinned Compose checksum without executing downloaded metadata.
+- [x] Document local management, alternative ports, owner-bootstrap recovery and stable promotion.
+- [ ] Verify regression checks, normal CI and published installer behavior.
