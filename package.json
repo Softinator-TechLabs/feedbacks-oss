@@ -21,6 +21,8 @@
     "cli": "tsx src/cli/feedbacks.ts",
     "dev:site": "node scripts/prepare-walkthroughs.mjs && vite --config vite.site.config.ts",
     "build:site": "node scripts/prepare-walkthroughs.mjs && npm run site:comparisons:check && vite build --config vite.site.config.ts && node scripts/publish-docs.mjs && vitepress build site-docs && node scripts/export-docs.mjs",
+    "preview:site:cloudflare": "npx --yes wrangler@4.151.3 dev --config wrangler.site.jsonc --ip 127.0.0.1",
+    "deploy:site:cloudflare": "npm run build:site && npx --yes wrangler@4.151.3 deploy --config wrangler.site.jsonc",
     "dev:docs": "node scripts/prepare-walkthroughs.mjs && node scripts/publish-docs.mjs && vitepress dev site-docs",
     "site:comparisons": "node scripts/generate-comparisons.mjs",
     "site:comparisons:check": "node scripts/generate-comparisons.mjs --check",

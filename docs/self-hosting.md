@@ -84,6 +84,16 @@ Keep encrypted off-host PostgreSQL backups and an independent object-storage rec
 
 Build `npm run build:site` and host `dist/site` as static files, or use `docker compose -f compose.site.yaml up -d --build`. The site container listens on loopback port 8080 for a host reverse proxy. A container-based ingress can connect to its internal port instead. Terminate HTTPS at the ingress and configure HSTS there. The website needs no application database, storage keys or account session.
 
+### Cloudflare Workers static hosting
+
+[`wrangler.site.jsonc`](../wrangler.site.jsonc) deploys the same `dist/site` artifact, including `/docs/`, as static assets with no Worker script or application bindings. Use a Workers Free account. Supply `CLOUDFLARE_ACCOUNT_ID` and an appropriately scoped `CLOUDFLARE_API_TOKEN` through your private operator environment, or authenticate with Wrangler. Keep account IDs, credentials, DNS inventory and deployment receipts outside this repository.
+
+Run `npm run build:site`, then `npm run preview:site:cloudflare` for a loopback preview. `npm run deploy:site:cloudflare` rebuilds and uploads the site using a pinned Wrangler version. These commands download the official Cloudflare CLI through npm without adding it to the application bundle. Cloudflare's default HTML handling serves extensionless documentation links and redirects `.html` URLs to their canonical paths. Unknown paths return HTTP 404 rather than the landing page.
+
+[`site/public/_headers`](../site/public/_headers) preserves separate website/docs content security policies, allows Markdown readback, and gives fingerprinted assets a long browser cache lifetime. Unversioned HTML and walkthrough files retain the platform's revalidation policy. Static asset serving has no application-server dependency; dynamic Worker code and optional paid services have separate limits and pricing. See [static assets](https://developers.cloudflare.com/workers/static-assets/) and [pricing](https://developers.cloudflare.com/workers/platform/pricing/).
+
+Before changing a production hostname, save its current DNS/route configuration privately, verify the `workers.dev` deployment, and test landing/comparison/privacy pages, documentation search and deep links, walkthroughs, Markdown exports, response headers and 404 behavior. Attach the exact hostname only after these checks pass. Preserve the previous host so routing can be restored without rebuilding or touching application data. Deploy reviewed revisions after required CI passes; automatic deployments must retain that gate.
+
 For independent forks, replace the official canonical URL, sitemap, repository and contact links under `site/` with your own before publishing.
 
 ## Multiple GitHub Apps

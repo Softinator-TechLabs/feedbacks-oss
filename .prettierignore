@@ -1,6 +1,7 @@
 package-lock.json
 dist/
 node_modules/
+.wrangler/
 .local/
 graphify-out/
 .impeccable/review/

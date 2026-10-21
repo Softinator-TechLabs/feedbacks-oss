@@ -52,6 +52,7 @@ export const sourceRootFiles = [
   "tsconfig.json",
   "vite.config.ts",
   "vite.site.config.ts",
+  "wrangler.site.jsonc",
   "ops/site.nginx.conf",
 ];
 
