@@ -28,6 +28,7 @@ async function popup({
         removeAttribute() {},
         setAttribute() {},
         replaceChildren() {},
+        focus() {},
       },
     ]),
   );
@@ -271,7 +272,14 @@ test("fresh install makes no release request and requires a server before permis
   nodes.server.value = "http://localhost:3000";
   await nodes.pair.onclick();
   assert.equal(requested.length, 0, "HTTP requires an explicit opt-in");
+  assert.equal(nodes["server-error"].hidden, false);
+  assert.match(
+    nodes["server-error"].textContent,
+    /check "Allow local HTTP development server" above/,
+  );
   nodes["allow-local"].checked = true;
+  nodes["allow-local"].onchange();
+  assert.equal(nodes["server-error"].hidden, true);
   await nodes.pair.onclick();
   assert.deepEqual(requested, [{ origins: ["http://localhost:3000/*"] }]);
   assert.ok(

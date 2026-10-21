@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Review capture and source navigation](reviewer-usability.md)
+
 - [Static website hosting on Cloudflare](static-site-cloudflare.md)
 
 - [Cross-platform app feedback](cross-platform-capture.md) — proposed native capture, device verification and app-integrated diagnostics.

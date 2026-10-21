@@ -304,11 +304,30 @@ function action(id, fn) {
 $("server").oninput = () => {
   serverEdited = true;
   $("message").textContent = "";
+  $("server-error").hidden = true;
   void send({ type: "saveServerDraft", value: $("server").value }).catch(() => {});
+};
+$("allow-local").onchange = () => {
+  $("server-error").hidden = true;
 };
 async function connect(server) {
   if (!server.trim()) throw Error("Enter your team's Feedbacks server address.");
   const allowLocal = $("allow-local").checked;
+  $("server-error").hidden = true;
+  if (!allowLocal) {
+    let localServer;
+    try {
+      localServer = FeedbacksUtil.server(server.trim(), true);
+    } catch {}
+    if (localServer?.startsWith("http:")) {
+      $("server-settings").open = true;
+      $("server-error").textContent =
+        'To connect over local HTTP, check "Allow local HTTP development server" above.';
+      $("server-error").hidden = false;
+      $("allow-local").focus();
+      return;
+    }
+  }
   server = FeedbacksUtil.server(server.trim(), allowLocal);
   const requestId = crypto.randomUUID();
   // Queue the durable background intent without awaiting: the permission request

@@ -32,6 +32,10 @@ The original feedback places Like beside the first screenshot's dimensions when 
 
 New projects start with the feedback queue, discussion and status. Document review and surveys/polls are off until a maintainer enables their tabs under **Project settings → Project → Optional tools**. Turning a tab off hides its project UI without deleting its saved documents or surveys. GitHub Issue creation likewise stays out of the thread until a repository is connected.
 
+The list and thread show **Open document** for document feedback and **Open website** for page feedback. The thread's visible source link includes the document name and saved page. App screenshots do not invent a website link.
+
+For a survey's **Single choice** question, edit each choice in its own field. Use **Add choice** or its **Remove** action to keep 2–8 distinct choices, each at most 80 characters. Issued survey links and their questions stay unchanged.
+
 Project lists also show a status selector on each row. Changing it saves immediately. Resolved and Declined remain visible but are disabled with a permission label for members who cannot resolve threads. If a status change takes feedback outside the current filters, **Open feedback** keeps its discussion reachable and **Undo status change** restores the earlier state. Undo requires permission to restore the earlier state, uses the saved revision and preserves the earlier note and duplicate link; a newer edit causes a conflict instead of being overwritten. Recent dates use short relative labels such as “3 mins ago”; the full 12-hour IST date and time is available on hover or keyboard focus.
 
 The saved status remains visible while a request is pending or fails. Failed updates retain their selection and details for retry. A conflicting revision must be loaded before retrying; the app does not silently overwrite another member's changes. Status history still records the actor and time. Resolving a thread does not claim delivery evidence or change its response obligation.
@@ -131,7 +135,7 @@ Registering the reference saves only the Figma file URL in Feedbacks. It does no
 
 ## Archive and delete feedback
 
-Open **Archive** above the feedback list to find archived threads. The thread header has **Archive thread** / **Unarchive thread** actions with an explanation before confirmation. Archive preserves screenshots, recordings, files, points, discussions, reviews and guest links.
+Open **View archive** above the feedback list to find archived threads; this changes the view and does not archive anything. In the inbox, select individual feedback checkboxes or **Select this page**, then choose **Archive selected (N)** and confirm. Only the selected threads are archived. The saved state survives reloads. If a batch stops, its dialog reports how many threads were confirmed archived; choose **Review feedback** to refresh before retrying. The thread header also has **Archive thread** / **Unarchive thread** actions with an explanation before confirmation. Archive preserves screenshots, recordings, files, points, discussions, reviews and guest links.
 
 Signed-in human project maintainers can select threads on the current list page and choose **Delete selected**, or choose **Delete thread** in a thread header. The confirmation lists the selected feedback and consequences. Deletion permanently removes thread-owned records, points, replies, reviews, attachments and guest discussion links; shared project documents and external GitHub issues remain. A changed thread requires reloading and reviewing the selection before deleting it. A pending GitHub issue creation must be reconciled first.
 

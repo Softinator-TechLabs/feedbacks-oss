@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { api, uid, type Thread } from "../api.js";
 import { ActionState, useAction, useLoad, ErrorNotice, showToast } from "../ui.js";
 import { Icon } from "../icons.js";
+import { clearListSnapshots } from "./list-cache.js";
 
 type Receipt = {
   id: string;
@@ -275,12 +276,124 @@ export function ArchiveThreadButton({
                   revision: thread.revision,
                   archived: !thread.archived,
                 });
+                clearListSnapshots();
                 onSaved(updated);
                 dialog.current?.close();
               })
             }
           >
             {thread.archived ? "Confirm unarchive" : "Confirm archive"}
+          </button>
+        </div>
+      </dialog>
+    </>
+  );
+}
+
+export function ArchiveSelectedThreads({
+  threads,
+  onArchived,
+}: {
+  threads: Thread[];
+  onArchived: (ids: string[]) => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [selection, setSelection] = useState<Thread[]>([]);
+  const [failed, setFailed] = useState(false);
+  const confirmed = useRef<string[]>([]);
+  const action = useAction();
+  const titleId = React.useId();
+  return (
+    <>
+      <button
+        type="button"
+        disabled={!threads.length || action.busy}
+        onClick={() => {
+          setSelection(threads);
+          setFailed(false);
+          confirmed.current = [];
+          action.setError("");
+          dialog.current?.showModal();
+          dialog.current
+            ?.querySelector<HTMLButtonElement>("button[data-cancel]")
+            ?.focus();
+        }}
+      >
+        Archive selected ({threads.length})
+      </button>
+      <dialog
+        ref={dialog}
+        className="thread-delete-dialog"
+        aria-labelledby={titleId}
+        onCancel={(event) => {
+          if (action.busy) event.preventDefault();
+          else if (failed) onArchived(confirmed.current);
+        }}
+      >
+        <h2 id={titleId}>
+          Archive {selection.length} selected feedback{" "}
+          {selection.length === 1 ? "thread" : "threads"}?
+        </h2>
+        <p>
+          Only the selected feedback moves out of the inbox. Its screenshots, points and
+          discussion are kept. Find it in View archive.
+        </p>
+        <details>
+          <summary>Review selected feedback ({selection.length})</summary>
+          <ul>
+            {selection.map((thread) => (
+              <li key={thread.id}>{thread.body.slice(0, 160)}</li>
+            ))}
+          </ul>
+        </details>
+        <ActionState action={action} />
+        <div className="actions">
+          <button
+            type="button"
+            data-cancel
+            disabled={action.busy}
+            onClick={() => {
+              dialog.current?.close();
+              if (failed) onArchived(confirmed.current);
+            }}
+          >
+            {failed ? "Review feedback" : "Cancel"}
+          </button>
+          <button
+            type="button"
+            disabled={action.busy || failed}
+            onClick={() =>
+              void action.run(async () => {
+                const saved: string[] = [];
+                let interrupted = false;
+                try {
+                  for (const thread of selection) {
+                    await api("threads.archive", {
+                      threadId: thread.id,
+                      revision: thread.revision,
+                      archived: true,
+                    });
+                    saved.push(thread.id);
+                  }
+                } catch (error) {
+                  interrupted = true;
+                  confirmed.current = saved;
+                  setFailed(true);
+                  throw Error(
+                    `${saved.length} of ${selection.length} confirmed archived. Review current feedback before retrying. ${error instanceof Error ? error.message : String(error)}`,
+                  );
+                } finally {
+                  clearListSnapshots();
+                  if (!interrupted) onArchived(saved);
+                }
+                dialog.current?.close();
+                showToast(
+                  `${saved.length} selected feedback ${saved.length === 1 ? "thread" : "threads"} archived.`,
+                );
+              })
+            }
+          >
+            {action.busy ? "Archiving…" : `Confirm archive (${selection.length})`}
           </button>
         </div>
       </dialog>
