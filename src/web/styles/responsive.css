@@ -233,7 +233,8 @@
   .thread-filters > .field:nth-child(3),
   .thread-filters > .field:nth-child(4),
   .thread-filters > .field:nth-child(5),
-  .thread-filters > .field:nth-child(6) {
+  .thread-filters > .field:nth-child(6),
+  .thread-filters > .field:nth-child(7) {
     flex: 1 1 calc(50% - 12px);
     min-width: 0;
   }

@@ -200,14 +200,13 @@ textarea::placeholder {
   flex: 0 1 300px;
   min-width: 200px;
 }
-.thread-filters > .field:nth-child(4) {
+.thread-filters > .field:nth-child(4),
+.thread-filters > .field:nth-child(5),
+.thread-filters > .field:nth-child(7) {
   flex: 0 1 175px;
-}
-.thread-filters > .field:nth-child(5) {
-  flex: 0 1 145px;
 }
 .thread-filters > .field:nth-child(6) {
-  flex: 0 1 175px;
+  flex: 0 1 145px;
 }
 .thread-filter-clear {
   border-color: transparent;
@@ -249,7 +248,8 @@ textarea::placeholder {
   }
   .thread-filters > .field:nth-child(4),
   .thread-filters > .field:nth-child(5),
-  .thread-filters > .field:nth-child(6) {
+  .thread-filters > .field:nth-child(6),
+  .thread-filters > .field:nth-child(7) {
     flex: 1 1 calc(50% - 12px);
   }
   .thread-filters > .thread-filter-clear {

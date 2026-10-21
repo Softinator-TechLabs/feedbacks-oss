@@ -91,6 +91,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     tag,
     sort !== "activity",
     filters.assignedTo,
+    filters.authorId,
     filters.workState,
     showResolved,
   ].filter(Boolean).length;
@@ -477,6 +478,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
             showResolved ||
             filters.workState ||
             filters.assignedTo ||
+            filters.authorId ||
             category ||
             tag
               ? "Change the filters to find other feedback."
