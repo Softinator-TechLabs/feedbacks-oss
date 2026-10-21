@@ -73,7 +73,10 @@ test("OS commands bind exact process/time values as data and reject shell/predic
       script.includes("$process = $env:FEEDBACKS_DIAGNOSTIC_PROCESS") &&
       script.includes("-LogName Application -FilterXPath $query -MaxEvents 101") &&
       script.includes("EventData[Data='$process']") &&
-      script.includes("@SystemTime >= '$start' and @SystemTime <= '$end'"),
+      script.includes("@SystemTime >= '$start' and @SystemTime <= '$end'") &&
+      script.includes("$PSModuleAutoLoadingPreference = 'None'") &&
+      script.includes("$PSHOME\\Modules\\Microsoft.PowerShell.Diagnostics\\") &&
+      script.includes("$PSHOME\\Modules\\Microsoft.PowerShell.Utility\\"),
   );
   assert.ok(!script.includes("SyntheticApp.exe"));
   assert.equal(windows.env!.FEEDBACKS_DIAGNOSTIC_PROCESS, "SyntheticApp.exe");

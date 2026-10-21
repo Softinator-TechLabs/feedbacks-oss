@@ -20,6 +20,9 @@ export type NativeCommand = {
 const windowsScript = `
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$PSModuleAutoLoadingPreference = 'None'
+Import-Module "$PSHOME\\Modules\\Microsoft.PowerShell.Diagnostics\\Microsoft.PowerShell.Diagnostics.psd1" -ErrorAction Stop
+Import-Module "$PSHOME\\Modules\\Microsoft.PowerShell.Utility\\Microsoft.PowerShell.Utility.psd1" -ErrorAction Stop
 $process = $env:FEEDBACKS_DIAGNOSTIC_PROCESS
 $start = [DateTimeOffset]::Parse($env:FEEDBACKS_DIAGNOSTIC_START).UtcDateTime.ToString('o')
 $end = [DateTimeOffset]::Parse($env:FEEDBACKS_DIAGNOSTIC_END).UtcDateTime.ToString('o')
