@@ -341,13 +341,42 @@ export async function trackerOperation(
           ),
         );
       // Constructor validates provider-specific authentication and metadata without contacting a remote service.
-      new TrackerClient(
-        input.provider,
-        input.configuration,
-        credential,
-        transport,
-        config.openProjectAllowedOrigins,
-      );
+      try {
+        new TrackerClient(
+          input.provider,
+          input.configuration,
+          credential,
+          transport,
+          config.openProjectAllowedOrigins,
+        );
+      } catch (error) {
+        if (
+          error instanceof TrackerError &&
+          [
+            "TRACKER_AUTH_INVALID",
+            "OPENPROJECT_API_TOKEN_REQUIRED",
+            "OPENPROJECT_ORIGIN_NOT_ALLOWED",
+            "OPENPROJECT_NUMERIC_ID_REQUIRED",
+            "FIRMAO_API_LOGIN_REQUIRED",
+            "FIRMAO_ORGANIZATION_REQUIRED",
+            "FIRMAO_NUMERIC_ID_REQUIRED",
+            "JIRA_OAUTH_REQUIRED",
+            "TRACKER_SITE_REQUIRED",
+            "TRACKER_WORKSPACE_REQUIRED",
+            "TRACKER_API_KEY_AND_BOARD_REQUIRED",
+            "TRACKER_DESCRIPTION_COLUMN_REQUIRED",
+            "TRACKER_SITE_INVALID",
+          ].includes(error.code)
+        )
+          fail(
+            error.code,
+            error.code === "OPENPROJECT_ORIGIN_NOT_ALLOWED"
+              ? "Ask the server operator to add this HTTPS instance origin to OPENPROJECT_ALLOWED_ORIGINS and recreate the application container, then save again."
+              : "Check the provider credentials and destination settings, then save again.",
+            400,
+          );
+        throw error;
+      }
       const sealed = input.credential
         ? await sealCredential(
             store,
