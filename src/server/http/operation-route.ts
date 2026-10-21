@@ -263,7 +263,10 @@ export function registerOperationRoute(
         requireOrigin(req);
         if (name !== "auth.me") await ops.auth.csrf(actor, req.get("X-CSRF-Token"));
       }
-      rate(`api-actor:${actor.id}`, 240, res);
+      // Extension attribution uses its member's ID, while each agent has its
+      // own ID. Budget verified bearer credentials consistently so an extension
+      // does not spend its member's web-session allowance (or another device's).
+      rate(`api-actor:${actor.kind}:${actor.tokenId ?? actor.userId}`, 240, res);
       const data = await ops.executeOperation(actor, name, req.body);
       if (name === "auth.me" && !token) {
         const csrf = secret();
