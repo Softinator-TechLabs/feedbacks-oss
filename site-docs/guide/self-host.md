@@ -4,6 +4,20 @@ description: Deploy one Feedbacks server for your organization, verify private m
 
 # DevOps: one server for the team
 
+## Up and running with one command
+
+Run in a **Mac/Linux terminal** with Docker Compose, curl and OpenSSL installed:
+
+```sh
+curl -fsSL https://feedbacks.softinator.ai/install.sh | bash
+```
+
+Open **`http://localhost:3000`** and sign in with the generated owner login printed by the installer. PostgreSQL and screenshots are saved in **persistent Docker volumes**. No source build, domain or S3 credentials needed.
+
+The installer creates a private `feedbacks-server` directory and refuses to overwrite an existing one. It saves the password in `feedbacks-server/owner-password`; keep that file private. Stop with `docker compose stop` from that directory and resume with `docker compose up -d --wait`. Keep the volumes; `down -v` deletes their data.
+
+[Inspect the installer](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/site/public/install.sh). For another port or directory, append `-s -- --port 3300 --directory feedbacks-local` after `bash`. This local quickstart listens only on your computer. For a shared team URL, use the HTTPS production setup below.
+
 One installation serves one organization. Deploy a shared HTTPS server; reviewers connect to it from the extension.
 
 <DocPath :steps="['Provision', 'Deploy', 'Verify', 'Hand over']" />

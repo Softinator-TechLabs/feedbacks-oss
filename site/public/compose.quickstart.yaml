@@ -1,0 +1,40 @@
+# Local quickstart only. Shared production hosting uses compose.registry.yaml.
+services:
+  app:
+    image: ${FEEDBACKS_IMAGE:?required}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=128m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      APP_ORIGIN: ${APP_ORIGIN:?required}
+      DATABASE_URL: postgresql://feedbacks:${POSTGRES_PASSWORD:?required}@postgres:5432/feedbacks
+      ORGANIZATION_ID: ${ORGANIZATION_ID:?required}
+      TRUST_PROXY_HOPS: 0
+      ASSET_DRIVER: local
+      ASSET_DIRECTORY: /home/node/feedbacks-assets
+    ports: ["127.0.0.1:${FEEDBACKS_PORT:-3000}:3000"]
+    volumes: ["feedbacks-assets:/home/node"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: feedbacks
+      POSTGRES_DB: feedbacks
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes: ["feedbacks-postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feedbacks -d feedbacks"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  feedbacks-postgres:
+  feedbacks-assets:

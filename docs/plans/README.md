@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Guided Docker Hub installation](guided-docker-install.md)
+
 - [Consistent 0.2.3 release artifacts](release-0.2.3.md)
 
 - [Modal review and clear project access recovery](modal-review-and-project-access.md)
