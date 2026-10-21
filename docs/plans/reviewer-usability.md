@@ -1,6 +1,6 @@
 # Plan: Review capture and source navigation
 
-Status: in progress. Owner: Feedbacks maintainers. Date: 2026-10-21.
+Status: web and package delivery complete; installed extension acceptance pending. Owner: Feedbacks maintainers. Date: 2026-10-21.
 
 ## Outcome and scope
 
@@ -15,9 +15,9 @@ The capture preview currently expands to the form width regardless of image heig
 - [x] Read the selected evidence, check assignments and agree on enhancement scope.
 - [x] Reproduce compact capture, selection, source links, survey choices and archive navigation.
 - [x] Implement regression coverage and focused UI fixes.
-- [ ] Verify page-control hover behavior and package the extension change.
-- [ ] Update canonical guides; review the diff and run required checks.
-- [ ] Merge through CI, verify deployment and release artifacts, and record remaining client gates.
+- [x] Verify page-control hover behavior and package the extension change.
+- [x] Update canonical guides; review the diff and run required checks.
+- [x] Merge through CI, verify deployment and release artifacts, and record remaining client gates.
 
 ## Compatibility and recovery
 
@@ -32,8 +32,8 @@ Keep existing API contracts, point identifiers, normalized image coordinates, re
 
 ## Completion receipt
 
-Source revision: pending.
-Checks and results: targeted app capture, modal comment and reviewer workflow browser tests passed. Full checks and packaged extension acceptance pending.
-Artifacts: pending.
-Deployment and live verification: pending.
-Remaining risks or follow-up: archive reproduction and installed extension acceptance.
+Source revision: `b68ae98cfe1078025df4380197aba1b2659ac358`, merged in [PR #227](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/227).
+Checks and results: full local check passed (544 tests passed, 47 conditional skips), focused capture/modal/reviewer workflows and packaged extension acceptance passed. [Exact main CI](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/39603943719) passed all six jobs, including native PostgreSQL and browser checks.
+Artifacts: [extension 0.1.62](https://github.com/Softinator-TechLabs/feedbacks-oss/releases/tag/extension-v0.1.62), fresh published downloads and hosted ZIP verified against the merged source and SHA-256 metadata.
+Deployment and live verification: hosted application updated; readiness reported database/S3 ready. Live list selection and selective archive controls verified. Synthetic browser tests verified saved archive persistence, selected-only updates and partial failure recovery without archiving real feedback.
+Remaining risks or follow-up: Chrome Web Store submission/publication and installed Chrome/native permission acceptance remain separate pending gates.

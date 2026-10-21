@@ -130,7 +130,12 @@ test("welcome message uses the installed app and help page", () => {
     { name: "Asha", email: "asha@example.test", password: "Secret-For-Test" },
     "https://feedbacks.example.test",
   );
-  assert.match(message, /Hey Asha/);
+  assert.match(message, /^Hey Asha, join Feedbacks:/);
+  assert.match(
+    message,
+    /Chrome extension and Codex, Claude Code, Antigravity agent setup:/,
+  );
+  assert.match(message, /Please sign in and change this password\.$/);
   assert.match(message, /https:\/\/feedbacks\.example\.test\/login/);
   assert.match(message, /https:\/\/feedbacks\.example\.test\/help/);
   assert.match(message, /Email: asha@example\.test/);

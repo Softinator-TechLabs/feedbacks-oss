@@ -233,13 +233,36 @@
             hidden
           />
         </div>
-        <label id="sticker-options" class="tool-options" hidden for="sticker-choice"
-          >Stamp<select id="sticker-choice">
-            <option value="✓">Check</option>
-            <option value="!">Attention</option>
-            <option value="?">Question</option></select
-          ><span>Click the screenshot to place.</span></label
-        >
+        <div id="sticker-options" class="tool-options" hidden>
+          <span id="sticker-label">Stamp</span>
+          <div class="sticker-choices" role="group" aria-labelledby="sticker-label">
+            <button
+              data-sticker="✓"
+              aria-label="Check stamp"
+              title="Check stamp"
+              aria-pressed="true"
+            >
+              ✓
+            </button>
+            <button
+              data-sticker="!"
+              aria-label="Attention stamp"
+              title="Attention stamp"
+              aria-pressed="false"
+            >
+              !
+            </button>
+            <button
+              data-sticker="?"
+              aria-label="Question stamp"
+              title="Question stamp"
+              aria-pressed="false"
+            >
+              ?
+            </button>
+          </div>
+          <span>Click the screenshot to place.</span>
+        </div>
         <div id="crop-options" class="tool-options" hidden>
           <span
             >Drag to crop Copy and downloads of the current screenshot. Sent feedback

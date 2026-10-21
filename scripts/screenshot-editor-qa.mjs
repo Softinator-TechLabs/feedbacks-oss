@@ -366,6 +366,30 @@ try {
   await page.locator(".more-tools summary").click();
   await page.locator('[data-tool="sticker"]').click();
   await drag(250, 150, 250, 150);
+  const stampButtons = page
+    .getByRole("group", { name: "Stamp", exact: true })
+    .getByRole("button");
+  assert.equal(await stampButtons.count(), 3);
+  await page.getByRole("button", { name: "Attention stamp", exact: true }).focus();
+  await page.keyboard.press("Space");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Attention stamp", exact: true })
+      .getAttribute("aria-pressed"),
+    "true",
+  );
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Check stamp", exact: true })
+      .getAttribute("aria-pressed"),
+    "false",
+  );
+  await drag(300, 150, 300, 150);
+  await page.getByRole("button", { name: "Question stamp", exact: true }).click();
+  await drag(350, 150, 350, 150);
+  await page.screenshot({
+    path: join(root, ".local/screenshot-editor-qa/sticker-desktop.png"),
+  });
   await page.locator(".more-tools summary").click();
   await page.locator('[data-tool="blur"]').click();
   await drag(10, 10, 100, 90);
@@ -391,6 +415,10 @@ try {
     [1, 2],
   );
   const placed = marks.find((s) => s.tool === "image");
+  assert.deepEqual(
+    marks.filter((s) => s.tool === "sticker").map((s) => s.text),
+    ["✓", "!", "?"],
+  );
   assert.ok(placed.points[0].x > 70, "inserted image moved");
   assert.ok(placed.points[1].x - placed.points[0].x > 100, "inserted image resized");
   const download = async (format) => {
@@ -594,6 +622,35 @@ try {
   );
   await page.screenshot({
     path: join(root, ".local/screenshot-editor-qa/mobile-tools.png"),
+  });
+  await page.locator(".more-tools summary").click();
+  await page.locator('[data-tool="sticker"]').click();
+  const mobileStamps = await stampButtons.evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const r = button.getBoundingClientRect();
+      return {
+        left: r.left,
+        top: r.top,
+        right: r.right,
+        width: r.width,
+        height: r.height,
+      };
+    }),
+  );
+  assert.ok(
+    mobileStamps.every(
+      (r) =>
+        r.width >= 44 &&
+        r.height >= 44 &&
+        r.left >= 0 &&
+        r.right <= 390 &&
+        Math.abs(r.top - mobileStamps[0].top) < 1,
+    ),
+    "stamp choices stay horizontal with touch targets on mobile",
+  );
+  await page.getByRole("button", { name: "Attention stamp", exact: true }).click();
+  await page.screenshot({
+    path: join(root, ".local/screenshot-editor-qa/sticker-mobile-dark.png"),
   });
   await page.locator("#send-header").click();
   await page.waitForURL(`${origin}/threads/synthetic`);
