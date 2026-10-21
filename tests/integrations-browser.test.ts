@@ -467,15 +467,6 @@ test(
         });
         const providers = [
           {
-            id: "email",
-            label: "Email",
-            ready: () =>
-              page.getByRole("heading", {
-                name: "Project email notifications",
-                exact: true,
-              }),
-          },
-          {
             id: "channels",
             label: "Slack & Teams",
             ready: () =>
@@ -528,13 +519,11 @@ test(
           );
         }
         await providers[0].ready().waitFor();
-        await assertSelectedProvider("Email");
+        await assertSelectedProvider("Slack & Teams");
+        assert.ok(settingsRequests.some((path) => path === "/api/channels.list"));
         assert.ok(
-          settingsRequests.some((path) => path === "/api/notifications.settings"),
-        );
-        assert.ok(
-          settingsRequests.every((path) => path.startsWith("/api/notifications.")),
-          `${device}: legacy integrations link opens only email provider requests`,
+          settingsRequests.every((path) => path.startsWith("/api/channels.")),
+          `${device}: integrations link opens only its default provider requests`,
         );
         // Capture each initial provider surface before entering any credentials.
         for (const provider of providers) {
@@ -600,15 +589,15 @@ test(
             await page.getByRole("button", { name: "Cancel", exact: true }).click();
         }
         checks.push(
-          `${device}: five separate provider panels, one selected, no horizontal overflow; default settings and legacy link mount only the required provider`,
+          `${device}: four separate provider panels, one selected, no horizontal overflow; default settings and integration link mount only the required provider`,
         );
         const keyMoves = [
-          ["Home", "Email"],
+          ["Home", "Slack & Teams"],
           ["End", "Time tracking"],
-          ["ArrowRight", "Email"],
-          ["ArrowLeft", "Time tracking"],
-          ["Home", "Email"],
           ["ArrowRight", "Slack & Teams"],
+          ["ArrowLeft", "Time tracking"],
+          ["Home", "Slack & Teams"],
+          ["ArrowRight", "GitHub"],
         ] as const;
         await providerTab("Time tracking").focus();
         for (const [key, label] of keyMoves) {
@@ -627,15 +616,26 @@ test(
           await assertSelectedProvider(provider.label);
         }
         checks.push(
-          `${device}: Arrow keys wrap and Home/End preserve roving focus; all five provider deep links restore the requested panel after page navigation`,
+          `${device}: Arrow keys wrap and Home/End preserve roving focus; all four provider deep links restore the requested panel after page navigation`,
         );
-        await providerTab("Email").click();
+        await page.goto(`${settingsUrl}#integrations-email`);
+        await page
+          .getByRole("tab", { name: "Email notifications", exact: true })
+          .waitFor();
+        assert.equal(
+          await page
+            .getByRole("tab", { name: "Email notifications", exact: true })
+            .getAttribute("aria-selected"),
+          "true",
+          `${device}: legacy email link opens the dedicated notification settings`,
+        );
         const emailEnabled = page.getByLabel(
           "Enable email notifications for this project",
           { exact: true },
         );
         const originalEmailEnabled = await emailEnabled.isChecked();
         await emailEnabled.setChecked(!originalEmailEnabled);
+        await page.getByRole("tab", { name: "Integrations", exact: true }).click();
         await providerTab("Slack & Teams").click();
         const channels = page.locator("section").filter({
           has: page.getByRole("heading", {
@@ -664,12 +664,13 @@ test(
         await page
           .getByLabel(/^Destination URL/)
           .fill("https://hooks.example.test/unsaved");
-        await providerTab("Email").click();
+        await page.getByRole("tab", { name: "Email notifications", exact: true }).click();
         assert.equal(
           await emailEnabled.isChecked(),
           !originalEmailEnabled,
-          `${device}: unsaved email preference survives provider navigation`,
+          `${device}: unsaved email settings survive section navigation`,
         );
+        await page.getByRole("tab", { name: "Integrations", exact: true }).click();
         await providerTab("Slack & Teams").click();
         const settingsTabs = page.getByRole("tablist", {
           name: "Project settings sections",

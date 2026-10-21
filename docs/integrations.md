@@ -2,7 +2,7 @@
 
 Owners open **Setup → Manage integrations**. The `/integrations` page lists implemented adapters and current connection counts. GitHub retains its [App setup and Issue workflow](../site-docs/guide/github.md). **Task trackers** at `/trackers` manages Jira Cloud, Linear, Asana, ClickUp, monday.com, Trello, Productive, Teamwork and Firmao CRM connections per project. GitLab and Bitbucket adapters are not implemented.
 
-Project maintainers use **Project settings → Integrations** to choose **Email**, **Slack & Teams**, **GitHub**, **Webhooks** or **Time tracking**. Only the selected panel is shown. Panels load on first visit and retain drafts when you switch tabs; setup help and delivery history open on demand.
+Project maintainers use **Project settings → Integrations** to choose **Slack & Teams**, **GitHub**, **Webhooks** or **Time tracking**. Email subscriptions and authorized delivery configuration live in **Project settings → Email notifications**. Existing `#integrations-email` links open that tab. Only the selected panel is shown. Panels load on first visit and retain drafts when you switch tabs; setup help and delivery history open on demand.
 
 An implemented adapter is not proof of an approved provider app or a successful connection to your account. Every connection starts unchecked; **Test connection** performs real authenticated reads of its destination and status mappings. Keep external sandbox checks, provider app approval and deployment verification separate from the synthetic contract tests.
 

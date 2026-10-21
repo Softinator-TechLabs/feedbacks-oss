@@ -117,16 +117,10 @@ function EmailSubscriptionEditor({ projectId }: { projectId: string }) {
 }
 
 export function EmailSubscription({ projectId }: { projectId: string }) {
-  const [opened, setOpened] = useState(false);
   return (
-    <details
-      className="email-subscription"
-      onToggle={(event) => {
-        if (event.currentTarget.open) setOpened(true);
-      }}
-    >
-      <summary>Email notifications</summary>
-      {opened && <EmailSubscriptionEditor projectId={projectId} />}
-    </details>
+    <section className="email-subscription">
+      <h2>My email preferences</h2>
+      <EmailSubscriptionEditor projectId={projectId} />
+    </section>
   );
 }

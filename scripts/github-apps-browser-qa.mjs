@@ -386,6 +386,7 @@ try {
   await memberPage
     .getByRole("combobox", { name: "Category", exact: true })
     .selectOption({ label: "Checkout" });
+  await memberPage.locator(".thread-list-more > summary").click();
   await memberPage
     .getByRole("link", { name: "Manage categories & tags", exact: true })
     .click();

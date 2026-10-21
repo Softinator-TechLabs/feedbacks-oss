@@ -1,3 +1,4 @@
+import { EmailSubscription } from "../notifications/subscription.js";
 import { TimeTrackingSettings } from "../integrations/time-tracking.js";
 import { ChannelSettings } from "../integrations/channels.js";
 import { PermanentIntake } from "./permanent-intake.js";
@@ -13,8 +14,14 @@ import { WebhookSettings } from "./webhooks.js";
 
 import { SectionTabs, type SectionTab } from "../section-tabs.js";
 
-type ProjectSettingsTab = "project" | "taxonomy" | "integrations" | "widget" | "advanced";
-type ProjectIntegrationTab = "email" | "channels" | "github" | "webhooks" | "time";
+type ProjectSettingsTab =
+  | "project"
+  | "taxonomy"
+  | "integrations"
+  | "notifications"
+  | "widget"
+  | "advanced";
+type ProjectIntegrationTab = "channels" | "github" | "webhooks" | "time";
 type SettingsSelection = {
   tab: ProjectSettingsTab;
   integration: ProjectIntegrationTab;
@@ -26,12 +33,14 @@ type SettingsNavigation = SettingsSelection & {
 
 function projectSettingsSelectionFromHash(canMaintain: boolean): SettingsSelection {
   const hash = typeof window === "undefined" ? "" : window.location.hash.slice(1);
-  const defaultIntegration = canMaintain ? "email" : "github";
+  const defaultIntegration = canMaintain ? "channels" : "github";
+  if (hash === "notifications" || hash === "integrations-email")
+    return { tab: "notifications", integration: defaultIntegration };
   const integration = hash.slice("integrations-".length);
   if (
     hash === "integrations" ||
     (hash.startsWith("integrations-") &&
-      ["email", "channels", "github", "webhooks", "time"].includes(integration))
+      ["channels", "github", "webhooks", "time"].includes(integration))
   )
     return {
       tab: "integrations",
@@ -112,6 +121,11 @@ function ProjectSettingsContent({ project, actor, onSaved }: ProjectSettingsProp
     ...(canMaintain
       ? [{ id: "widget" as const, label: "Website widget", panelId: "settings-widget" }]
       : []),
+    {
+      id: "notifications",
+      label: "Email notifications",
+      panelId: "settings-notifications",
+    },
     { id: "integrations", label: "Integrations", panelId: "settings-integrations" },
     ...(canMaintain
       ? [{ id: "advanced" as const, label: "Advanced", panelId: "settings-advanced" }]
@@ -119,7 +133,6 @@ function ProjectSettingsContent({ project, actor, onSaved }: ProjectSettingsProp
   ];
   const integrationTabs: SectionTab<ProjectIntegrationTab>[] = canMaintain
     ? [
-        { id: "email", label: "Email", panelId: "integrations-email" },
         { id: "channels", label: "Slack & Teams", panelId: "integrations-channels" },
         { id: "github", label: "GitHub", panelId: "integrations-github" },
         { id: "webhooks", label: "Webhooks", panelId: "integrations-webhooks" },
@@ -215,6 +228,22 @@ function ProjectSettingsContent({ project, actor, onSaved }: ProjectSettingsProp
       )}
       <div
         className="section-panel"
+        id="settings-notifications"
+        role="tabpanel"
+        aria-labelledby="project-settings-tab-notifications"
+        hidden={selected !== "notifications"}
+      >
+        {navigation.visitedSections.includes("notifications") && (
+          <>
+            <EmailSubscription projectId={project.id} />
+            {canMaintain && (
+              <EmailSettings projectId={project.id} owner={actor.owner === true} />
+            )}
+          </>
+        )}
+      </div>
+      <div
+        className="section-panel"
         id="settings-integrations"
         role="tabpanel"
         aria-labelledby="project-settings-tab-integrations"
@@ -241,9 +270,7 @@ function ProjectSettingsContent({ project, actor, onSaved }: ProjectSettingsProp
                 hidden={navigation.integration !== id}
               >
                 {navigation.visitedIntegrations.includes(id) &&
-                  (id === "email" ? (
-                    <EmailSettings projectId={project.id} owner={actor.owner === true} />
-                  ) : id === "channels" ? (
+                  (id === "channels" ? (
                     <ChannelSettings projectId={project.id} />
                   ) : id === "github" ? (
                     <section className="section project-github-setting">

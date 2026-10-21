@@ -21,3 +21,5 @@
 @import "./styles/help/simple.css";
 @import "./styles/threads/actions.css";
 @import "./styles/help/setup.css";
+
+@import "./threads/workspace.css";
