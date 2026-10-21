@@ -2,6 +2,8 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { once } from "node:events";
+import { createServer } from "node:http";
+import { paceQaApi } from "./lib/qa-api-pacing.mjs";
 import { PGlite } from "@electric-sql/pglite";
 import { Database } from "../dist/server/db.js";
 import { migrate } from "../dist/server/migrations.js";
@@ -21,6 +23,7 @@ const email = "owner@example.test";
 const password = randomBytes(24).toString("base64url");
 let server;
 let closing;
+let pacedApi;
 async function close() {
   if (closing) return closing;
   closing = (async () => {
@@ -30,6 +33,7 @@ async function close() {
     }
     await pg.close();
     await rm(directory, { recursive: true, force: true });
+    if (pacedApi) console.log(`QA API pacing: ${JSON.stringify(pacedApi.stats)}`);
   })();
   return closing;
 }
@@ -54,7 +58,8 @@ try {
     turnstileSecretKey: "1x0000000000000000000000000000000AA",
   };
   const app = createApp(config, db, new LocalAssets(config.assetDirectory));
-  server = app.listen(0, "127.0.0.1");
+  pacedApi = process.argv.includes("--pace-api") ? paceQaApi(app) : undefined;
+  server = createServer(pacedApi ?? app).listen(0, "127.0.0.1");
   await once(server, "listening");
   config.port = server.address().port;
   config.appOrigin = `http://127.0.0.1:${config.port}`;

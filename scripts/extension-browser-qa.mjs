@@ -75,7 +75,7 @@ await writeFile(
   ),
 );
 
-const sandbox = spawn(process.execPath, ["scripts/dev-sandbox.mjs"], {
+const sandbox = spawn(process.execPath, ["scripts/dev-sandbox.mjs", "--pace-api"], {
   cwd: root,
   stdio: ["ignore", "pipe", "pipe"],
 });
@@ -86,6 +86,8 @@ try {
     const timer = setTimeout(() => reject(Error("Sandbox startup timed out")), 30000);
     sandbox.stdout.on("data", (chunk) => {
       output += String(chunk);
+      const pacing = String(chunk).match(/QA API pacing: (\{[^\r\n]+\})/);
+      if (pacing) console.log(`QA API pacing: ${pacing[1]}`);
       const match = output.match(/Local access file: ([^\r\n]+)/);
       if (match) {
         clearTimeout(timer);

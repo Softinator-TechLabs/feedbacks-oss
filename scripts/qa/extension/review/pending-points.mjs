@@ -159,7 +159,7 @@ export async function verifyPendingPoints({
   const noMarkerResponse = await noMarkerThreadPage.goto(
     `${access.url}/threads/${pointsThreadId}`,
   );
-  await noMarkerThreadPage.waitForTimeout(700);
+  await noMarkerThreadPage.getByRole("heading", { name: "Review on the page" }).waitFor();
   if (
     !(await noMarkerThreadPage
       .getByRole("heading", { name: "Review on the page" })

@@ -13,7 +13,7 @@ Run commands from the repository root after `npm ci`. Use a supported Node versi
 | Container or deployment configuration      | Both Docker builds and `npm run test:containers`; staging/live acceptance when deployment is in scope                                                                   |
 | Dependency or packaging                    | Lockfile, `npm audit --audit-level=high`, release/source checks and license/provenance review                                                                           |
 
-[HTTP budget tests](../tests/http-rate.test.ts) verify independent member-session and bearer-credential allowances, their individual limits and the shared IP ingress limit. Bulk synthetic setup in the extension suite honors definite HTTP 429 `Retry-After` responses; it does not replay browser actions or relax assertions.
+[HTTP budget tests](../tests/http-rate.test.ts) verify independent member-session and bearer-credential allowances, their individual limits and the shared IP ingress limit. The bulk extension suite spaces its disposable loopback server's API dispatches below these unchanged budgets, with a bounded queue and visible overflow failures. Its setup helper also honors definite HTTP 429 `Retry-After` responses. It does not replay browser actions or relax assertions.
 
 The [integration browser acceptance](../tests/integrations-browser.test.ts) holds a navigation frame to verify that opening feedback details preserves an already focused disclosure. It also checks the normal initial panel focus before completing the keyboard workflow on desktop and mobile.
 
