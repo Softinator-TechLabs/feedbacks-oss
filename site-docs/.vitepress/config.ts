@@ -7,6 +7,9 @@ export default defineConfig({
   lang: "en-US",
   base: "/docs/",
   cleanUrls: true,
+  // Speed Brain rejects prefetch requests on Worker routes. Load page chunks
+  // when navigating instead of eagerly fetching every visible sidebar link.
+  router: { prefetchLinks: false },
   outDir: "../dist/site/docs",
   sitemap: { hostname: "https://feedbacks.softinator.ai" },
   head: [
