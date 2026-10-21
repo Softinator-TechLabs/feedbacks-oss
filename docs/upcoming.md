@@ -2,6 +2,8 @@
 
 The [app screenshot pilot](app-capture.md) is implemented in the web application. Wider native capture and debugging remain phased work. Each item lists its current status. Proposed items are not released features or delivery-date commitments. Check [platform compatibility](platform-compatibility.md) for current integrations and the distinction between visual capture and internal diagnostics.
 
+Upcoming desktop companions target Windows, Ubuntu and macOS, followed by Android/iOS sharing. Planned diagnostics reuse Windows Event Log, the Linux journal and macOS Unified Logging for reviewed snapshots beside app screenshots. These are limited to OS-accessible messages; full crash dumps, deeper tracing and broad application/device verification remain separate work.
+
 ## Proposed sequence
 
 | Work                         | Intended outcome                                                                               | Status                                               |

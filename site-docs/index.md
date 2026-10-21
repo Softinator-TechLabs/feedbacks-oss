@@ -27,6 +27,10 @@ Feedbacks is **free, Apache-2.0 and self-hosted**. Keep the request, original sc
 
 The extension connects to your team's server. Your team supplies hosting and any AI tools it chooses. Clients and reviewers do not need an AI subscription.
 
+## Upcoming: feedback beyond the browser
+
+Standalone Windows, Ubuntu and macOS companions, mobile sharing and reviewed OS diagnostics are planned. See [Upcoming and platform limits](/reference/manual/upcoming); these are not released standalone apps.
+
 [Troubleshooting](/guide/troubleshooting) · [Access and privacy](/guide/access-privacy) · [API and CLI](/reference/api-cli)
 
 Guides are also available as [Markdown for agents](/llms.txt).
