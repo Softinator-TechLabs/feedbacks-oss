@@ -37,6 +37,7 @@ management_commands() {
 }
 
 setup_stopped() {
+  local directory=$feedbacks_setup_directory project=$feedbacks_setup_project
   printf '\nSetup stopped. Files and volumes are preserved in %s.\n' "$directory" >&2
   if [[ -n "${project:-}" && -f "$directory/.env" ]]; then management_commands >&2; fi
 }
@@ -77,6 +78,8 @@ main() {
 
   umask 077
   mkdir -m 700 "$directory" || fail 'Could not create the installation directory.'
+  feedbacks_setup_directory=$directory
+  feedbacks_setup_project=
   trap setup_stopped EXIT
   printf '*\n' > "$directory/.gitignore"
   progress 2 'Finding the latest verified stable release…'
@@ -96,6 +99,7 @@ main() {
   random_id=$(openssl rand -hex 16)
   organization_id="${random_id:0:8}-${random_id:8:4}-4${random_id:13:3}-8${random_id:17:3}-${random_id:20:12}"
   project="feedbacks-${random_id:0:12}"
+  feedbacks_setup_project=$project
   origin="http://localhost:$port"
   {
     printf 'COMPOSE_PROJECT_NAME=%s\n' "$project"
