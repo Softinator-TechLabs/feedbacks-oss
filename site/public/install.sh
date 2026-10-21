@@ -73,7 +73,8 @@ main() {
   if [[ -t 1 ]]; then printf 'Password: %s\n' "$owner_password"; fi
   printf 'Password saved privately: %s/owner-password\n' "$directory"
   printf 'Database and screenshots use persistent Docker volumes. No S3 account is needed.\n'
-  printf 'To stop safely: cd %q && docker compose stop\n' "$directory"
+  printf 'To stop safely: cd %q && docker compose --project-name %q stop\n' "$directory" "$project"
+  printf 'To resume: cd %q && docker compose --project-name %q up -d --wait\n' "$directory" "$project"
   printf 'For shared HTTPS hosting: https://feedbacks.softinator.ai/docs/guide/self-host#bring-the-server-online\n'
   unset owner_password database_password
 }

@@ -14,7 +14,7 @@ curl -fsSL https://feedbacks.softinator.ai/install.sh | bash
 
 Open **`http://localhost:3000`** and sign in with the generated owner login printed by the installer. PostgreSQL and screenshots are saved in **persistent Docker volumes**. No source build, domain or S3 credentials needed.
 
-The installer creates a private `feedbacks-server` directory and refuses to overwrite an existing one. It saves the password in `feedbacks-server/owner-password`; keep that file private. Stop with `docker compose stop` from that directory and resume with `docker compose up -d --wait`. Keep the volumes; `down -v` deletes their data.
+The installer creates a private `feedbacks-server` directory and refuses to overwrite an existing one. It saves the password in `feedbacks-server/owner-password`; keep that file private. Use the printed stop/resume commands for this installation. They preserve its volumes; `down -v` deletes their data.
 
 [Inspect the installer](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/site/public/install.sh). For another port or directory, append `-s -- --port 3300 --directory feedbacks-local` after `bash`. This local quickstart listens only on your computer. For a shared team URL, use the HTTPS production setup below.
 
