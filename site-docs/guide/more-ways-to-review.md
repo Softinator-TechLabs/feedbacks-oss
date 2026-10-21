@@ -28,4 +28,8 @@ Use assignments, work-status filters, categories, tags, saved views and individu
 
 For custom integrations, [API, MCP and CLI](/reference/api-cli) provide authorized reads and writes through the same server operations.
 
-For extension-free image import and browser window capture, use [App screenshot](/reference/manual/app-capture). For broader native app capture, check [platform compatibility](/reference/manual/platform-compatibility) and [Upcoming](/reference/manual/upcoming). Standalone desktop/mobile companions are proposed; the existing mobile SDKs capture only their host app and still need real-device verification.
+For extension-free image import and browser window capture, use the [App screenshot pilot](/reference/manual/app-capture). The [website widget](/guide/website-widget) already collects text feedback without the extension.
+
+## Upcoming: desktop and mobile feedback
+
+Standalone Windows, Ubuntu and macOS companions, Android/iOS sharing and reviewed OS diagnostic snapshots are planned. See [Upcoming](/reference/manual/upcoming) and [platform compatibility](/reference/manual/platform-compatibility) for scope and limits. The existing mobile SDKs capture only their host app and still need real-device verification.

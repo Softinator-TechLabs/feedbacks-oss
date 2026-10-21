@@ -26,6 +26,8 @@ We inspect official product guides, editor and recorder walkthroughs, API/MCP in
 
 All individual comparisons use the same evidence as the comprehensive table. The public generator rejects missing cells, sources, dates or qualifications. A capability can differ by browser, plan, setup or release after the review date.
 
+The comparison pages also link to [Upcoming Feedbacks work](/reference/manual/upcoming): desktop companions, mobile sharing and native OS diagnostics. These plans are excluded from the 49 capability verdicts and do not establish availability or a limitation in another product.
+
 ## Precise definitions
 
 - **Session replay** reconstructs recorded page activity. A manually recorded video, page version or uploaded video review is a different capability.

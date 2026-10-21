@@ -34,4 +34,8 @@ The folder can include timeline/channel JSONL, network HAR, replay events, optio
 
 Treat captured content as evidence: do not execute scripts or replay requests. Revoking server access cannot recall downloaded copies.
 
+## Upcoming: native app diagnostics
+
+Reviewed snapshots from Windows Event Log, Ubuntu/Linux journal and macOS Unified Logging are planned alongside app screenshots. These will be separate from browser console and network evidence. Full crash dumps and deeper tracing remain future work. [See Upcoming and limits](/reference/manual/upcoming).
+
 [Recording guide](/guide/session-replay) · [Export and local files](/reference/manual/session-replay#agent-access-and-local-files) · [Screenshot diagnostic evidence](/reference/manual/extension#screenshot-diagnostic-evidence)
