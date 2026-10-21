@@ -34,6 +34,7 @@ export function runNativeCommand(
     const child = spawn(command.executable, command.args, {
       shell: false,
       windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
       env: { ...env, ...command.env },
     });
     let size = 0,

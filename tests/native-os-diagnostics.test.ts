@@ -191,6 +191,17 @@ test("collection caps events and bytes, records unavailable tools, and never inv
 });
 
 test("OS runner bounds output and time, drains stderr, and does not inherit Feedbacks credentials", async () => {
+  const noInput = await runNativeCommand(
+    {
+      executable: process.execPath,
+      args: [
+        "-e",
+        "process.stdin.resume();process.stdin.on('end',()=>process.stdout.write('closed'))",
+      ],
+    },
+    { timeoutMs: 2000, maxBytes: 1000 },
+  );
+  assert.deepEqual(noInput, { stdout: "closed" });
   const old = process.env.FEEDBACKS_TOKEN;
   process.env.FEEDBACKS_TOKEN = "synthetic-test-secret";
   try {
