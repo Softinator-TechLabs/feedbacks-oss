@@ -861,6 +861,75 @@ test(
           .getByLabel("resolved → remote status", { exact: true })
           .fill("12");
         await projectTaskForm
+          .getByLabel(/^OpenProject instance URL/)
+          .fill("https://not-allowed.openproject.test");
+        const draftSnapshot = () =>
+          projectTaskForm.evaluate((form: HTMLFormElement) =>
+            [...new FormData(form).entries()].map(([name, value]) => [
+              name,
+              String(value),
+            ]),
+          );
+        const deniedDraft = await draftSnapshot();
+        const connectionsBeforeDeniedOrigin = await db.one(
+          "SELECT count(*)::int n FROM tracker_connections WHERE project_id=$1",
+          [project.id],
+        );
+        const externalBeforeDeniedOrigin = external.length;
+        const deniedOriginResponse = page.waitForResponse((response) =>
+          response.url().endsWith("/api/trackers.save"),
+        );
+        await projectTaskForm
+          .getByRole("button", { name: "Save connection", exact: true })
+          .click();
+        const deniedOrigin = await deniedOriginResponse;
+        assert.equal(
+          deniedOrigin.status(),
+          400,
+          `${device}: an unallowed OpenProject origin is a setup error`,
+        );
+        const deniedOriginPayload = await deniedOrigin.json();
+        assert.equal(deniedOriginPayload.error.code, "OPENPROJECT_ORIGIN_NOT_ALLOWED");
+        assert.match(deniedOriginPayload.error.message, /OPENPROJECT_ALLOWED_ORIGINS/);
+        assert.match(deniedOriginPayload.error.message, /recreate|restart/i);
+        await projectTaskForm
+          .getByRole("alert")
+          .filter({ hasText: "OPENPROJECT_ALLOWED_ORIGINS" })
+          .waitFor();
+        assert.equal(
+          external.length,
+          externalBeforeDeniedOrigin,
+          `${device}: denied origin sends no external request`,
+        );
+        assert.equal(
+          (
+            await db.one(
+              "SELECT count(*)::int n FROM tracker_connections WHERE project_id=$1",
+              [project.id],
+            )
+          ).n,
+          connectionsBeforeDeniedOrigin.n,
+          `${device}: denied origin persists no connection`,
+        );
+        assert.deepEqual(
+          await draftSnapshot(),
+          deniedDraft,
+          `${device}: setup failure preserves token, project, type, mappings and the entire draft`,
+        );
+        assert.equal(
+          await projectTaskForm
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .inputValue(),
+          "openproject",
+        );
+        assert.equal(await projectTaskForm.getAttribute("data-unsaved"), "true");
+        checks.push(
+          `${device}: unallowed OpenProject origin returns actionable HTTP400 allowlist/recreate guidance, causes no provider request or saved connection and preserves the complete credential/configuration draft`,
+        );
+        await projectTaskForm
+          .getByLabel(/^OpenProject instance URL/)
+          .fill("https://synthetic.openproject.test");
+        await projectTaskForm
           .getByRole("button", { name: "Save connection", exact: true })
           .click();
         const openProjectRow = taskSettings.locator("li").filter({

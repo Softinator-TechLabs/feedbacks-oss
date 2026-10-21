@@ -5,6 +5,7 @@ import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
 import { Operations } from "../src/server/operations.js";
 import { configFromEnv } from "../src/server/config.js";
+import { DomainError } from "../src/server/errors.js";
 import {
   trackerConfiguration,
   trackerCredential,
@@ -509,8 +510,17 @@ test("OpenProject operation and durable worker enforce the server origin policy 
       configuration: openProjectConfiguration(),
       credential: openProjectCredential,
     };
-    await assert.rejects(run("trackers.save", save), {
-      code: "OPENPROJECT_ORIGIN_NOT_ALLOWED",
+    await assert.rejects(run("trackers.save", save), (error) => {
+      assert.ok(error instanceof DomainError);
+      assert.equal(error.status, 400);
+      assert.equal(error.code, "OPENPROJECT_ORIGIN_NOT_ALLOWED");
+      assert.match(
+        error.message,
+        /server operator.*OPENPROJECT_ALLOWED_ORIGINS.*recreate/i,
+      );
+      assert.ok(!error.message.includes(openProjectOrigin));
+      assert.ok(!error.message.includes(openProjectCredential.token));
+      return true;
     });
     assert.equal(requests, 0);
     assert.equal(objects.size, 0, "denied origins must not seal or save credentials");
@@ -519,6 +529,53 @@ test("OpenProject operation and durable worker enforce the server origin policy 
       0,
     );
     config.openProjectAllowedOrigins = [openProjectOrigin];
+    for (const [invalid, code] of [
+      [{ ...save, credential }, "OPENPROJECT_API_TOKEN_REQUIRED"],
+      [
+        { ...save, configuration: { ...save.configuration, issueTypeId: "not-numeric" } },
+        "OPENPROJECT_NUMERIC_ID_REQUIRED",
+      ],
+      [
+        {
+          ...save,
+          provider: "asana",
+          configuration: configuration("asana"),
+          credential: { ...openProjectCredential, auth: "basic" },
+        },
+        "TRACKER_AUTH_INVALID",
+      ],
+    ] as const) {
+      await assert.rejects(run("trackers.save", invalid), (error) => {
+        assert.ok(error instanceof DomainError);
+        assert.equal(error.status, 400);
+        assert.equal(error.code, code);
+        assert.equal(
+          error.message,
+          "Check the provider credentials and destination settings, then save again.",
+        );
+        assert.ok(!error.message.includes(openProjectCredential.token));
+        return true;
+      });
+    }
+    const unexpected = new Error("Unexpected constructor failure");
+    await assert.rejects(
+      run("trackers.save", {
+        ...save,
+        configuration: {
+          ...save.configuration,
+          get targetId() {
+            throw unexpected;
+          },
+        },
+      }),
+      (error) => error === unexpected,
+    );
+    assert.equal(requests, 0, "invalid setup must not contact a provider");
+    assert.equal(objects.size, 0, "invalid setup must not seal credentials");
+    assert.equal(
+      (await db.one("SELECT count(*)::integer n FROM tracker_connections")).n,
+      0,
+    );
     const connection = await run("trackers.save", save);
     const stored = await db.one("SELECT * FROM tracker_connections WHERE id=$1", [
       connection.id,
