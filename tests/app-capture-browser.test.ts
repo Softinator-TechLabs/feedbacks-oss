@@ -119,13 +119,11 @@ test(
       })
         .png()
         .toBuffer();
-      await page
-        .getByLabel("Import screenshot", { exact: true })
-        .setInputFiles({
-          name: "large-review.png",
-          mimeType: "image/png",
-          buffer: largePreview,
-        });
+      await page.getByLabel("Import screenshot", { exact: true }).setInputFiles({
+        name: "large-review.png",
+        mimeType: "image/png",
+        buffer: largePreview,
+      });
       await page.locator(".app-capture-image").waitFor();
       const largeBounds = await page.locator(".app-capture-image").boundingBox();
       assert.ok(
