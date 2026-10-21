@@ -145,6 +145,34 @@ export function ThreadListFilters({
               )}
           </select>
         </Field>
+        <Field label="Added by">
+          <select
+            name="authorId"
+            value={draft.authorId ?? ""}
+            onChange={(event) =>
+              updateFilter({
+                ...draft,
+                authorId: event.currentTarget.value || undefined,
+              })
+            }
+          >
+            <option value="">Anyone</option>
+            <option value={actor.userId}>Me</option>
+            {(members?.items ?? [])
+              .filter((member) => member.id !== actor.userId)
+              .map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                  {member.active ? "" : " (inactive)"}
+                </option>
+              ))}
+            {draft.authorId &&
+              draft.authorId !== actor.userId &&
+              !members?.items.some((member) => member.id === draft.authorId) && (
+                <option value={draft.authorId}>Unavailable member</option>
+              )}
+          </select>
+        </Field>
         <Field label="Work status">
           <select
             name="workState"

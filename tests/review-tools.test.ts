@@ -439,6 +439,8 @@ test("URL review state round-trips filters and safely bounds pagination", () => 
     search: "button & spacing",
     category: "visualDesign",
     hostname: "example.test",
+    authorId: randomUUID(),
+    assignedTo: randomUUID(),
   });
   // Summary is a response option, not a saved view filter.
   const { projectId, limit, offset, includeSummary, ...expected } = filters;
@@ -448,6 +450,11 @@ test("URL review state round-trips filters and safely bounds pagination", () => 
     assert.equal(readOffset(invalid), 0);
   assert.equal(readFilters("sort=unknown&deviceClass=bad&category=bad").sort, "activity");
   assert.equal(readFilters("workState=not-a-state").workState, undefined);
+  for (const invalid of ["", "me", "not-an-id", "<script>"])
+    assert.equal(
+      readFilters(`authorId=${encodeURIComponent(invalid)}`).authorId,
+      undefined,
+    );
 });
 
 test("policy-authorized priority order is shared by the inbox and MCP navigation", async () => {

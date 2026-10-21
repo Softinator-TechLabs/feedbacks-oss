@@ -46,6 +46,8 @@ export function readFilters(query: string): ReviewFilters {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assignedTo)
   )
     filters.assignedTo = assignedTo;
+  const authorId = reviewFiltersSchema.shape.authorId.safeParse(p.get("authorId"));
+  if (authorId.success) filters.authorId = authorId.data;
   const workState = reviewFiltersSchema.shape.workState.safeParse(p.get("workState"));
   if (workState.success) filters.workState = workState.data;
   const planningDate = calendarDateSchema.safeParse(p.get("planningDate"));
