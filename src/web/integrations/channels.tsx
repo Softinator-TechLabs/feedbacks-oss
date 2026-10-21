@@ -46,32 +46,30 @@ export function ChannelSettings({ projectId }: { projectId: string }) {
       "Discard this notification channel draft? Your unsaved changes will be lost.",
     );
   return (
-    <section ref={surface}>
+    <section ref={surface} className="connection-settings">
       <h2>Slack and Teams notifications</h2>
-      <p>
-        Choose the activity each channel receives. Messages contain an activity label and
-        a link; the feedback body and discussion stay in Feedbacks.
-      </p>
+      <p className="muted">Send selected activity and thread links to your channels.</p>
       <ErrorNotice error={error} />
       <ActionState action={action} />
       {!data ? (
-        <Loading />
+        !error && <Loading />
       ) : (
         <>
-          <ul className="tracker-connections">
+          <ul className="connection-list">
             {data.channels.map((c) => (
               <li key={c.id}>
                 <h3>{c.label}</h3>
                 <p>
                   {c.provider === "slack" ? "Slack" : "Microsoft Teams"} ·{" "}
-                  {c.enabled ? "Enabled" : "Disabled"} · {c.events.join(", ")}
+                  {c.enabled ? "Enabled" : "Disabled"} · {c.events.length}{" "}
+                  {c.events.length === 1 ? "activity" : "activities"}
                 </p>
                 {c.errorCode && (
                   <p className="error">
                     {c.errorCode}. Check the provider connection and send a test.
                   </p>
                 )}
-                <div className="tracker-actions">
+                <div className="connection-actions">
                   <button
                     type="button"
                     disabled={action.busy || !c.enabled}
@@ -89,6 +87,7 @@ export function ChannelSettings({ projectId }: { projectId: string }) {
                   </button>
                   <button
                     type="button"
+                    disabled={action.busy}
                     onClick={() => {
                       if (editing?.id !== c.id && !mayReplaceDraft()) return;
                       setEditing(c);
@@ -117,6 +116,7 @@ export function ChannelSettings({ projectId }: { projectId: string }) {
                     key={c.revision}
                     projectId={projectId}
                     existing={c}
+                    onCancel={() => setEditing(undefined)}
                     onSaved={() => {
                       setEditing(undefined);
                       refresh();
@@ -126,24 +126,30 @@ export function ChannelSettings({ projectId }: { projectId: string }) {
               </li>
             ))}
           </ul>
+          {data.channels.length === 0 && editing === undefined && (
+            <p className="muted">No channels connected.</p>
+          )}
           {editing === null ? (
             <ChannelForm
               projectId={projectId}
+              onCancel={() => setEditing(undefined)}
               onSaved={() => {
                 setEditing(undefined);
                 refresh();
               }}
             />
-          ) : (
+          ) : editing === undefined ? (
             <button
               type="button"
+              className="primary"
+              disabled={action.busy}
               onClick={() => {
                 if (mayReplaceDraft()) setEditing(null);
               }}
             >
               Add notification channel
             </button>
-          )}
+          ) : null}
         </>
       )}
       <details>
@@ -160,7 +166,7 @@ export function ChannelSettings({ projectId }: { projectId: string }) {
                   {d.errorCode && ` · ${d.errorCode}`}
                 </p>
                 {d.status === "uncertain" && (
-                  <div className="tracker-actions">
+                  <div className="connection-actions">
                     <span>Check the destination channel, then record the outcome:</span>
                     {[true, false].map((delivered) => (
                       <button
@@ -190,17 +196,15 @@ export function ChannelSettings({ projectId }: { projectId: string }) {
         )}
       </details>
       <details>
-        <summary>Provider setup and privacy</summary>
+        <summary>Setup &amp; privacy</summary>
         <p>
-          For Slack, create an incoming webhook in the intended channel. For Teams, create
-          a Workflows incoming webhook that accepts Adaptive Cards. Paste its secret URL
-          here and send a test. Give a Teams workflow a co-owner so notifications continue
-          when its creator leaves.
+          Slack: create an incoming webhook for your channel. Teams: create a Workflows
+          webhook that accepts Adaptive Cards and add a co-owner. Paste its secret URL,
+          save, then send a test.
         </p>
         <p>
-          Everyone in that destination can see activity messages and links. A Feedbacks
-          account with current project access is required to open the thread. Local
-          servers send outbound HTTPS; recipients need access to your server or VPN.
+          Channel members see activity labels and links, without feedback or discussion
+          text. Opening a thread requires project access and access to your server or VPN.
         </p>
       </details>
     </section>
@@ -210,10 +214,12 @@ function ChannelForm({
   projectId,
   existing,
   onSaved,
+  onCancel,
 }: {
   projectId: string;
   existing?: Channel;
   onSaved: () => void;
+  onCancel: () => void;
 }) {
   const [provider, setProvider] = useState<"slack" | "teams">(
       existing?.provider ?? "slack",
@@ -223,6 +229,7 @@ function ChannelForm({
   useUnsavedChanges(dirty || action.busy);
   return (
     <form
+      className="connection-form"
       data-unsaved={dirty || action.busy ? "true" : undefined}
       onChange={() => setDirty(true)}
       onSubmit={(e) => {
@@ -279,32 +286,53 @@ function ChannelForm({
           autoComplete="new-password"
         />
       </Field>
-      <fieldset>
+      <fieldset className="connection-options">
         <legend>Send these activities</legend>
-        {channelEvents.map((kind) => (
-          <label key={kind}>
-            <input
-              type="checkbox"
-              name="events"
-              value={kind}
-              defaultChecked={
-                existing ? existing.events.includes(kind) : kind === "created"
-              }
-            />{" "}
-            {kind === "created"
-              ? "New feedback"
-              : kind === "discussion"
-                ? "Discussion and replies"
-                : kind === "status"
-                  ? "Work status changes"
-                  : "Assignments"}
-          </label>
-        ))}
+        <div>
+          {channelEvents.map((kind) => (
+            <label key={kind}>
+              <input
+                type="checkbox"
+                name="events"
+                value={kind}
+                defaultChecked={
+                  existing ? existing.events.includes(kind) : kind === "created"
+                }
+              />{" "}
+              {kind === "created"
+                ? "New feedback"
+                : kind === "discussion"
+                  ? "Discussion and replies"
+                  : kind === "status"
+                    ? "Work status changes"
+                    : "Assignments"}
+            </label>
+          ))}
+        </div>
       </fieldset>
       <ActionState action={action} />
-      <button type="submit" disabled={action.busy}>
-        Save channel
-      </button>
+      <div className="connection-actions">
+        <button type="submit" className="primary" disabled={action.busy}>
+          Save channel
+        </button>
+        <button
+          type="button"
+          disabled={action.busy}
+          onClick={() => {
+            if (
+              dirty &&
+              !window.confirm(
+                "Discard this notification channel draft? Your unsaved changes will be lost.",
+              )
+            )
+              return;
+            setDirty(false);
+            onCancel();
+          }}
+        >
+          Cancel
+        </button>
+      </div>
     </form>
   );
 }

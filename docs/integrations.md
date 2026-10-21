@@ -2,6 +2,8 @@
 
 Owners open **Setup → Manage integrations**. The `/integrations` page lists implemented adapters and current connection counts. GitHub retains its [App setup and Issue workflow](../site-docs/guide/github.md). **Task trackers** at `/trackers` manages Jira Cloud, Linear, Asana, ClickUp, monday.com, Trello, Productive, Teamwork and Firmao CRM connections per project. GitLab and Bitbucket adapters are not implemented.
 
+Project maintainers use **Project settings → Integrations** to choose **Email**, **Slack & Teams**, **GitHub**, **Webhooks** or **Time tracking**. Only the selected panel is shown. Panels load on first visit and retain drafts when you switch tabs; setup help and delivery history open on demand.
+
 An implemented adapter is not proof of an approved provider app or a successful connection to your account. Every connection starts unchecked; **Test connection** performs real authenticated reads of its destination and status mappings. Keep external sandbox checks, provider app approval and deployment verification separate from the synthetic contract tests.
 
 ## Shared foundation
@@ -67,7 +69,7 @@ Run `node scripts/tracker-oauth-broker.mjs` behind an HTTPS reverse proxy. [`Doc
 
 ## Slack and Microsoft Teams
 
-Project maintainers opt into each activity type under **Slack and Teams notifications**: new feedback, discussion, work status and assignments. Create the provider's incoming webhook for the intended channel, store its secret URL and send a test. Teams Workflows must accept the Adaptive Card payload; assign a workflow co-owner so notifications survive staff changes. Existing legacy Teams incoming URLs can also be retained where Microsoft still permits them.
+Project maintainers opt into each activity type under **Project settings → Integrations → Slack & Teams**: new feedback, discussion, work status and assignments. Create the provider's incoming webhook for the intended channel, store its secret URL and send a test. Teams Workflows must accept the Adaptive Card payload; assign a workflow co-owner so notifications survive staff changes. Existing legacy Teams incoming URLs can also be retained where Microsoft still permits them.
 
 Webhook URLs are encrypted and never returned in settings. Delivery accepts only recognized Slack/Teams HTTPS endpoint shapes, pins public DNS addresses and follows no redirects. Each message contains an activity label and a Feedbacks link, without the feedback body, discussion or project name. Everyone in the selected external channel can see that metadata; opening the link still requires current Feedbacks access and access to the local server or VPN. Saved event subscriptions, current maintainer access, revocation, retries and uncertain-delivery reconciliation are enforced on the server. [Implementation](../src/server/integrations/channels.ts), [tests](../tests/channels.test.ts).
 
@@ -93,7 +95,7 @@ The provider/build/test/checkpoint identity produces a stable retry key. Repeati
 
 ## Explicit Harvest and Time Doctor entries
 
-Owners configure an encrypted time connection for a provider account, project, task and optional provider user in project settings. Maintainers test the destination, then submit reviewed minutes, date and note from **Log reviewed work time** in a thread. No background activity tracking, automatic timer or billing approval is enabled.
+Owners configure an encrypted time connection for a provider account, project, task and optional provider user in **Project settings → Integrations → Time tracking**. Maintainers test the destination, then submit reviewed minutes, date and note from **Log reviewed work time** in a thread. No background activity tracking, automatic timer or billing approval is enabled.
 
 Harvest connections require duration mode and an active project task assignment. A submitted duration creates a stopped entry and an external reference back to the Feedbacks thread. Time Doctor uses its documented JWT API token, company/project/task/user IDs and a reviewed local start time converted to UTC. It creates an `add` manual-time edit with `approved: false`; provider approval policy still applies. API availability and the caller's provider role remain account setup gates.
 

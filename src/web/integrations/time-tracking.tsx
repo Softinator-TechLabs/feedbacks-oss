@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { api } from "../api.js";
-import { ActionState, ErrorNotice, Field, useAction, useLoad } from "../ui.js";
+import { ActionState, ErrorNotice, Field, Loading, useAction, useLoad } from "../ui.js";
 import { useUnsavedChanges } from "../navigation.js";
 type Connection = {
   id: string;
@@ -40,15 +40,15 @@ export function TimeTrackingSettings({
     [projectId, version],
   );
   return (
-    <section>
+    <section className="connection-settings">
       <h2>Harvest and Time Doctor</h2>
-      <p>
-        Connect a specific account, project, task and optional user. Maintainers log
-        reviewed time from a feedback thread. Nothing is tracked automatically.
+      <p className="muted">
+        Log reviewed work from threads; tracking is never automatic.
       </p>
       <ErrorNotice error={error} />
       <ActionState action={action} />
-      <ul>
+      {!data && !error && <Loading />}
+      <ul className="connection-list">
         {data?.connections.map((c) => (
           <li key={c.id}>
             <h3>{c.label}</h3>
@@ -63,7 +63,7 @@ export function TimeTrackingSettings({
                 {c.errorCode}. Check provider permissions and account configuration.
               </p>
             )}
-            <div className="tracker-actions">
+            <div className="connection-actions">
               <button
                 type="button"
                 disabled={action.busy || !c.enabled}
@@ -83,6 +83,7 @@ export function TimeTrackingSettings({
                 <>
                   <button
                     type="button"
+                    disabled={action.busy}
                     onClick={() => {
                       if (editing?.id === c.id) return;
                       if (
@@ -120,9 +121,14 @@ export function TimeTrackingSettings({
           </li>
         ))}
       </ul>
+      {data?.connections.length === 0 && editing === undefined && (
+        <p className="muted">No time connections.</p>
+      )}
       {owner &&
+        data &&
         (editing !== undefined ? (
           <form
+            className="connection-form"
             key={editing?.id ?? "new"}
             data-unsaved={dirty || action.busy ? "true" : undefined}
             onChange={() => setDirty(true)}
@@ -155,66 +161,71 @@ export function TimeTrackingSettings({
             }}
           >
             <h3>{editing ? "Edit time connection" : "Add time connection"}</h3>
-            <Field label="Provider">
-              <select
-                value={provider}
-                disabled={!!editing}
-                onChange={(e) => setProvider(e.target.value as any)}
+            <div className="connection-fields">
+              <Field label="Provider">
+                <select
+                  value={provider}
+                  disabled={!!editing}
+                  onChange={(e) => setProvider(e.target.value as any)}
+                >
+                  <option value="harvest">Harvest</option>
+                  <option value="timedoctor">Time Doctor</option>
+                </select>
+              </Field>
+              <Field label="Connection name">
+                <input
+                  name="label"
+                  required
+                  maxLength={100}
+                  defaultValue={editing?.label ?? ""}
+                />
+              </Field>
+              <Field
+                label={
+                  provider === "harvest" ? "Harvest account ID" : "Time Doctor company ID"
+                }
               >
-                <option value="harvest">Harvest</option>
-                <option value="timedoctor">Time Doctor</option>
-              </select>
-            </Field>
-            <Field label="Connection name">
-              <input
-                name="label"
-                required
-                maxLength={100}
-                defaultValue={editing?.label ?? ""}
-              />
-            </Field>
-            <Field
-              label={
-                provider === "harvest" ? "Harvest account ID" : "Time Doctor company ID"
-              }
-            >
-              <input
-                name="accountId"
-                required
-                maxLength={120}
-                defaultValue={editing?.destination.accountId ?? ""}
-              />
-            </Field>
-            <Field label="Provider project ID">
-              <input
-                name="providerProjectId"
-                required
-                maxLength={120}
-                defaultValue={editing?.destination.projectId ?? ""}
-              />
-            </Field>
-            <Field label="Provider task ID">
-              <input
-                name="taskId"
-                required
-                maxLength={120}
-                defaultValue={editing?.destination.taskId ?? ""}
-              />
-            </Field>
-            <Field
-              label={
-                provider === "timedoctor"
-                  ? "Time Doctor user ID"
-                  : "Harvest user ID (optional; defaults to the credential's user)"
-              }
-            >
-              <input
-                name="userId"
-                required={provider === "timedoctor"}
-                maxLength={120}
-                defaultValue={editing?.destination.userId ?? ""}
-              />
-            </Field>
+                <input
+                  name="accountId"
+                  required
+                  maxLength={120}
+                  defaultValue={editing?.destination.accountId ?? ""}
+                />
+              </Field>
+              <Field label="Provider project ID">
+                <input
+                  name="providerProjectId"
+                  required
+                  maxLength={120}
+                  defaultValue={editing?.destination.projectId ?? ""}
+                />
+              </Field>
+              <Field label="Provider task ID">
+                <input
+                  name="taskId"
+                  required
+                  maxLength={120}
+                  defaultValue={editing?.destination.taskId ?? ""}
+                />
+              </Field>
+              <Field
+                label={
+                  provider === "timedoctor"
+                    ? "Time Doctor user ID"
+                    : "Harvest user ID (optional)"
+                }
+                hint={
+                  provider === "harvest" ? "Defaults to the token's user." : undefined
+                }
+              >
+                <input
+                  name="userId"
+                  required={provider === "timedoctor"}
+                  maxLength={120}
+                  defaultValue={editing?.destination.userId ?? ""}
+                />
+              </Field>
+            </div>
             <Field
               label={
                 editing
@@ -232,13 +243,34 @@ export function TimeTrackingSettings({
                 autoComplete="new-password"
               />
             </Field>
-            <button type="submit" disabled={action.busy}>
-              Save time connection
-            </button>
+            <div className="connection-actions">
+              <button type="submit" className="primary" disabled={action.busy}>
+                Save time connection
+              </button>
+              <button
+                type="button"
+                disabled={action.busy}
+                onClick={() => {
+                  if (
+                    dirty &&
+                    !window.confirm(
+                      "Discard this time connection draft? Your unsaved changes will be lost.",
+                    )
+                  )
+                    return;
+                  setDirty(false);
+                  setEditing(undefined);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         ) : (
           <button
             type="button"
+            className="primary"
+            disabled={action.busy}
             onClick={() => {
               setEditing(null);
               setProvider("harvest");
@@ -248,16 +280,15 @@ export function TimeTrackingSettings({
           </button>
         ))}
       <details>
-        <summary>Provider requirements and delivery</summary>
+        <summary>Setup &amp; delivery</summary>
         <p>
-          Harvest must use duration tracking. The selected task must be active on that
-          project. Time Doctor requires API access and a token with permission to create
-          manual time edits; entries are submitted for approval and are never
-          automatically approved here.
+          Harvest requires duration tracking and an active project task. Time Doctor
+          requires API access and permission for manual time edits; its entries are
+          submitted for approval.
         </p>
         <p>
-          Tokens stay encrypted. A timeout can leave an entry uncertain. Verify the
-          provider's history and record its entry ID before logging the same time again.
+          Tokens stay encrypted. If delivery is uncertain, check the provider's history
+          and record its entry ID before logging that time again.
         </p>
       </details>
     </section>
