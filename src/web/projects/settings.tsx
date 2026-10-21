@@ -1,6 +1,7 @@
 import { EmailSubscription } from "../notifications/subscription.js";
 import { TimeTrackingSettings } from "../integrations/time-tracking.js";
 import { ChannelSettings } from "../integrations/channels.js";
+import { TrackerSettingsPage } from "../integrations/trackers.js";
 import { PermanentIntake } from "./permanent-intake.js";
 import { EmailSettings } from "../notifications/settings.js";
 import React, { useEffect, useState } from "react";
@@ -21,7 +22,7 @@ type ProjectSettingsTab =
   | "notifications"
   | "widget"
   | "advanced";
-type ProjectIntegrationTab = "channels" | "github" | "webhooks" | "time";
+type ProjectIntegrationTab = "tasks" | "channels" | "github" | "webhooks" | "time";
 type SettingsSelection = {
   tab: ProjectSettingsTab;
   integration: ProjectIntegrationTab;
@@ -33,14 +34,14 @@ type SettingsNavigation = SettingsSelection & {
 
 function projectSettingsSelectionFromHash(canMaintain: boolean): SettingsSelection {
   const hash = typeof window === "undefined" ? "" : window.location.hash.slice(1);
-  const defaultIntegration = canMaintain ? "channels" : "github";
+  const defaultIntegration = canMaintain ? "tasks" : "github";
   if (hash === "notifications" || hash === "integrations-email")
     return { tab: "notifications", integration: defaultIntegration };
   const integration = hash.slice("integrations-".length);
   if (
     hash === "integrations" ||
     (hash.startsWith("integrations-") &&
-      ["channels", "github", "webhooks", "time"].includes(integration))
+      ["tasks", "channels", "github", "webhooks", "time"].includes(integration))
   )
     return {
       tab: "integrations",
@@ -133,6 +134,7 @@ function ProjectSettingsContent({ project, actor, onSaved }: ProjectSettingsProp
   ];
   const integrationTabs: SectionTab<ProjectIntegrationTab>[] = canMaintain
     ? [
+        { id: "tasks", label: "Tasks", panelId: "integrations-tasks" },
         { id: "channels", label: "Slack & Teams", panelId: "integrations-channels" },
         { id: "github", label: "GitHub", panelId: "integrations-github" },
         { id: "webhooks", label: "Webhooks", panelId: "integrations-webhooks" },
@@ -270,7 +272,13 @@ function ProjectSettingsContent({ project, actor, onSaved }: ProjectSettingsProp
                 hidden={navigation.integration !== id}
               >
                 {navigation.visitedIntegrations.includes(id) &&
-                  (id === "channels" ? (
+                  (id === "tasks" ? (
+                    <TrackerSettingsPage
+                      projects={[]}
+                      project={project}
+                      owner={actor.owner === true}
+                    />
+                  ) : id === "channels" ? (
                     <ChannelSettings projectId={project.id} />
                   ) : id === "github" ? (
                     <section className="section project-github-setting">

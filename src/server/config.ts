@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { trackerInstanceOrigin } from "../shared/contracts/domains/trackers.js";
 import { createPrivateKey } from "node:crypto";
 import { parseGithubApps, type GithubAppConfig } from "./github-app-config.js";
 
@@ -21,6 +22,7 @@ export interface Config {
   turnstileSiteKey?: string;
   turnstileSecretKey?: string;
   trackerOAuth?: { brokerUrl: string; installationKey: string };
+  openProjectAllowedOrigins?: string[];
   githubApps?: GithubAppConfig[];
   githubAppId?: string;
   githubAppSlug?: string;
@@ -145,6 +147,14 @@ export function configFromEnv(env = process.env): Config {
     };
   }
   return {
+    openProjectAllowedOrigins: z
+      .array(trackerInstanceOrigin)
+      .max(20)
+      .parse(
+        env.OPENPROJECT_ALLOWED_ORIGINS?.trim()
+          ? env.OPENPROJECT_ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
+          : [],
+      ),
     trackerOAuth,
     githubApps,
     appOrigin,

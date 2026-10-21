@@ -3,6 +3,7 @@ import type {
   TrackerConfiguration,
   TrackerCredential,
 } from "../../../shared/contracts/domains/trackers.js";
+import { trackerInstanceOrigin } from "../../../shared/contracts/domains/trackers.js";
 
 export type RemoteIssue = {
   id: string;
@@ -49,10 +50,12 @@ export const trackerNames: Record<TrackerProvider, string> = {
   productive: "Productive",
   teamwork: "Teamwork",
   firmao: "Firmao CRM",
+  openproject: "OpenProject",
 };
 
-/** Credentials only go to fixed provider origins. Account sites are a single validated DNS label. */
+/** Credentials only go to fixed provider origins or explicitly operator-trusted OpenProject origins. */
 export class TrackerClient {
+  private openProjectVersions = new Map<string, number>();
   /** Recheck durable authorization immediately before an external mutation leaves the process. */
   beforeWrite?: () => Promise<void>;
   constructor(
@@ -60,9 +63,26 @@ export class TrackerClient {
     public configuration: TrackerConfiguration,
     private credential: TrackerCredential,
     private transport: TrackerTransport = boundedFetch,
+    private openProjectAllowedOrigins: readonly string[] = [],
   ) {
     if (provider !== "firmao" && credential.auth === "basic")
       throw new TrackerError("TRACKER_AUTH_INVALID");
+    if (provider === "openproject") {
+      if (credential.auth !== "token")
+        throw new TrackerError("OPENPROJECT_API_TOKEN_REQUIRED");
+      if (
+        !trackerInstanceOrigin.safeParse(configuration.instanceOrigin).success ||
+        !openProjectAllowedOrigins.includes(configuration.instanceOrigin!)
+      )
+        throw new TrackerError("OPENPROJECT_ORIGIN_NOT_ALLOWED");
+      if (
+        !this.firmaoNumericId(configuration.targetId) ||
+        !configuration.issueTypeId ||
+        !this.firmaoNumericId(configuration.issueTypeId) ||
+        configuration.states.some((mapping) => !this.firmaoNumericId(mapping.remote))
+      )
+        throw new TrackerError("OPENPROJECT_NUMERIC_ID_REQUIRED");
+    }
     if (provider === "firmao") {
       if (
         credential.auth !== "basic" ||
@@ -114,6 +134,7 @@ export class TrackerClient {
       productive: "https://api.productive.io",
       teamwork: `https://${this.configuration.site}.teamwork.com`,
       firmao: "https://system.firmao.pl",
+      openproject: this.configuration.instanceOrigin!,
     }[this.provider];
   }
   private async request(
@@ -127,7 +148,14 @@ export class TrackerClient {
       accept: "application/json",
       "content-type": "application/json",
     };
-    if (this.provider === "firmao")
+    if (this.provider === "openproject") {
+      // Recheck at every request, including a direct client whose mutable configuration changed.
+      if (!this.openProjectAllowedOrigins.includes(this.configuration.instanceOrigin!))
+        throw new TrackerError("OPENPROJECT_ORIGIN_NOT_ALLOWED");
+      headers.authorization =
+        "Basic " +
+        Buffer.from(`apikey:${this.credential.token}`, "utf8").toString("base64");
+    } else if (this.provider === "firmao")
       headers.authorization =
         "Basic " +
         Buffer.from(
@@ -155,6 +183,7 @@ export class TrackerClient {
     const init: RequestInit = {
       method,
       headers,
+      redirect: "error",
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     };
     // Keep authorization failures outside the network catch: no request has been sent.
@@ -174,9 +203,11 @@ export class TrackerClient {
             ? "TRACKER_RATE_LIMIT"
             : response.status === 404
               ? "TRACKER_NOT_FOUND"
-              : response.status >= 500
-                ? "TRACKER_UNAVAILABLE"
-                : "TRACKER_REQUEST_REJECTED";
+              : this.provider === "openproject" && response.status === 409
+                ? "TRACKER_REMOTE_CONFLICT"
+                : response.status >= 500
+                  ? "TRACKER_UNAVAILABLE"
+                  : "TRACKER_REQUEST_REJECTED";
       throw new TrackerError(
         code,
         write && response.status >= 500,
@@ -216,6 +247,79 @@ export class TrackerClient {
   }
   private firmao(path: string) {
     return `/${encoded(this.configuration.workspaceId!)}/svc/v1${path}`;
+  }
+  private openProjectRows(raw: any, maximum = 1000): any[] {
+    const rows = raw?._embedded?.elements;
+    if (
+      !Array.isArray(rows) ||
+      rows.length > maximum ||
+      (raw.total !== undefined &&
+        (!Number.isSafeInteger(raw.total) || raw.total < rows.length))
+    )
+      throw new TrackerError("TRACKER_INVALID_RESPONSE");
+    return rows;
+  }
+  private openProjectLink(href: unknown, path: string) {
+    return href === path || href === this.origin() + path;
+  }
+  private async openProjectTarget() {
+    const c = this.configuration;
+    const raw = await this.request(`/api/v3/projects/${encoded(c.targetId)}`);
+    if (String(raw.id) !== c.targetId || typeof raw.name !== "string" || !raw.name.trim())
+      throw new TrackerError("TRACKER_TARGET_MISMATCH");
+    const creation =
+      raw._links?.createWorkPackageImmediate ?? raw._links?.createWorkPackageImmediately;
+    if (
+      !creation ||
+      String(creation.method).toLowerCase() !== "post" ||
+      !["projects", "workspaces"].some((kind) =>
+        this.openProjectLink(
+          creation.href,
+          `/api/v3/${kind}/${c.targetId}/work_packages`,
+        ),
+      )
+    )
+      throw new TrackerError("OPENPROJECT_CREATE_PERMISSION_REQUIRED");
+    const types = this.openProjectRows(
+      await this.request(`/api/v3/projects/${encoded(c.targetId)}/types`),
+    );
+    if (!types.some((type) => String(type.id) === c.issueTypeId))
+      throw new TrackerError("OPENPROJECT_TYPE_NOT_IN_PROJECT");
+    return raw;
+  }
+  private async openProjectWorkPackage(id: string) {
+    if (!this.firmaoNumericId(id))
+      throw new TrackerError("OPENPROJECT_NUMERIC_ID_REQUIRED");
+    const raw = await this.request(`/api/v3/work_packages/${encoded(id)}`);
+    if (
+      String(raw.id) !== id ||
+      typeof raw.subject !== "string" ||
+      !raw.subject.trim() ||
+      !Number.isSafeInteger(raw.lockVersion) ||
+      raw.lockVersion < 0
+    )
+      throw new TrackerError("TRACKER_INVALID_RESPONSE");
+    if (
+      !this.openProjectLink(
+        raw._links?.project?.href,
+        `/api/v3/projects/${this.configuration.targetId}`,
+      ) ||
+      !this.openProjectLink(
+        raw._links?.type?.href,
+        `/api/v3/types/${this.configuration.issueTypeId}`,
+      )
+    )
+      throw new TrackerError("TRACKER_TARGET_MISMATCH");
+    const state = String(raw._links?.status?.href ?? "")
+      .split("/")
+      .at(-1)!;
+    if (
+      !this.firmaoNumericId(state) ||
+      !this.openProjectLink(raw._links?.status?.href, `/api/v3/statuses/${state}`)
+    )
+      throw new TrackerError("TRACKER_INVALID_RESPONSE");
+    this.openProjectVersions.set(id, raw.lockVersion);
+    return raw;
   }
   private firmaoRows(result: any) {
     if (!Array.isArray(result?.data)) throw new TrackerError("TRACKER_INVALID_RESPONSE");
@@ -352,6 +456,14 @@ export class TrackerClient {
           state: raw.status?.key,
         };
         break;
+      case "openproject":
+        result = {
+          id: String(raw.id),
+          url: `${this.origin()}/work_packages/${encoded(String(raw.id))}/activity`,
+          title: raw.subject,
+          state: String(raw._links.status.href).split("/").at(-1)!,
+        };
+        break;
     }
     if (
       !result.id ||
@@ -372,12 +484,14 @@ export class TrackerClient {
       productive: "app.productive.io",
       teamwork: `${c.site}.teamwork.com`,
       firmao: "system.firmao.pl",
+      openproject: new URL(c.instanceOrigin ?? "https://invalid.invalid").hostname,
     };
     const expected = hosts[this.provider];
     if (
       url.protocol !== "https:" ||
       url.username ||
       url.password ||
+      (this.provider === "openproject" && url.origin !== this.origin()) ||
       !(
         url.hostname === expected ||
         (this.provider === "monday" && url.hostname.endsWith(".monday.com"))
@@ -454,6 +568,9 @@ export class TrackerClient {
         break;
       case "firmao":
         raw = await this.firmaoTask(id);
+        break;
+      case "openproject":
+        raw = await this.openProjectWorkPackage(id);
         break;
     }
     return this.normalize(raw);
@@ -576,6 +693,26 @@ export class TrackerClient {
           states: [...states].map(([id, name]) => ({ id, name })),
         };
       }
+      case "openproject": {
+        const project = await this.openProjectTarget();
+        const states = this.openProjectRows(await this.request("/api/v3/statuses"));
+        if (
+          states.some(
+            (state) =>
+              !this.firmaoNumericId(String(state.id)) ||
+              typeof state.name !== "string" ||
+              !state.name.trim(),
+          )
+        )
+          throw new TrackerError("TRACKER_INVALID_RESPONSE");
+        return {
+          name: project.name,
+          states: states.map((state) => ({
+            id: String(state.id),
+            name: state.name.slice(0, 200),
+          })),
+        };
+      }
     }
   }
   async create(title: string, body: string): Promise<RemoteIssue> {
@@ -695,6 +832,23 @@ export class TrackerClient {
         id = identifiers[0];
         break;
       }
+      case "openproject": {
+        await this.openProjectTarget();
+        const initial = c.states.find((mapping) => mapping.local === "open")?.remote;
+        const created = await this.request("/api/v3/work_packages", "POST", {
+          subject: title,
+          description: { raw: body },
+          _links: {
+            project: { href: `/api/v3/projects/${c.targetId}` },
+            type: { href: `/api/v3/types/${c.issueTypeId}` },
+            ...(initial ? { status: { href: `/api/v3/statuses/${initial}` } } : {}),
+          },
+        });
+        id = String(created.id);
+        if (!this.firmaoNumericId(id))
+          throw new TrackerError("OPENPROJECT_CREATE_ID_MISSING", true);
+        break;
+      }
     }
     try {
       return await this.read(id);
@@ -757,6 +911,22 @@ export class TrackerClient {
           comment: { body, notify: "" },
         });
         break;
+      case "openproject": {
+        const raw = await this.openProjectWorkPackage(id);
+        const permission = raw._links?.addComment;
+        if (
+          String(permission?.method).toLowerCase() !== "post" ||
+          !this.openProjectLink(
+            permission?.href,
+            `/api/v3/work_packages/${id}/activities`,
+          )
+        )
+          throw new TrackerError("OPENPROJECT_COMMENT_PERMISSION_REQUIRED");
+        await this.request(`/api/v3/work_packages/${e}/activities`, "POST", {
+          comment: { raw: body },
+        });
+        break;
+      }
     }
   }
   async comments(id: string) {
@@ -884,6 +1054,42 @@ export class TrackerClient {
         hasMore = rows.length >= 50;
         break;
       }
+      case "openproject": {
+        await this.openProjectWorkPackage(id);
+        const result = await this.request(`/api/v3/work_packages/${e}/activities`);
+        const activities = this.openProjectRows(result);
+        if (
+          activities.some(
+            (activity) =>
+              !this.firmaoNumericId(String(activity.id)) ||
+              !this.openProjectLink(
+                activity._links?.workPackage?.href,
+                `/api/v3/work_packages/${id}`,
+              ),
+          )
+        )
+          throw new TrackerError("TRACKER_INVALID_RESPONSE");
+        const comments = activities.filter(
+          (activity) =>
+            activity.internal !== true &&
+            typeof activity.comment?.raw === "string" &&
+            activity.comment.raw.trim(),
+        );
+        rows = comments.slice(-50).map((activity) => ({
+          id: String(activity.id),
+          body: activity.comment.raw,
+          author:
+            typeof activity._links?.user?.title === "string"
+              ? activity._links.user.title
+              : null,
+          createdAt: typeof activity.createdAt === "string" ? activity.createdAt : null,
+        }));
+        hasMore =
+          comments.length > rows.length ||
+          Number(result.total) > activities.length ||
+          !!result._links?.nextByOffset;
+        break;
+      }
     }
     return {
       items: rows.slice(0, 50).map((row) => ({
@@ -965,6 +1171,21 @@ export class TrackerClient {
         await this.firmaoTask(id, true);
         await this.request(this.firmao(`/tasks/${e}`), "PUT", { status: state });
         break;
+      case "openproject": {
+        if (!this.firmaoNumericId(id) || !this.firmaoNumericId(state))
+          throw new TrackerError("OPENPROJECT_NUMERIC_ID_REQUIRED");
+        if (!c.states.some((mapping) => mapping.remote === state))
+          throw new TrackerError("TRACKER_STATE_UNMAPPED");
+        // Use the version observed by the worker's conflict check. A fresh GET here
+        // must not silently accept a change made since that check.
+        if (!this.openProjectVersions.has(id)) await this.openProjectWorkPackage(id);
+        await this.request(`/api/v3/work_packages/${e}`, "PATCH", {
+          lockVersion: this.openProjectVersions.get(id),
+          _links: { status: { href: `/api/v3/statuses/${state}` } },
+        });
+        this.openProjectVersions.delete(id);
+        break;
+      }
     }
   }
 }

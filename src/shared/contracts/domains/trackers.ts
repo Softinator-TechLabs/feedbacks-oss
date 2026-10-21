@@ -11,8 +11,25 @@ export const trackerProvider = z.enum([
   "productive",
   "teamwork",
   "firmao",
+  "openproject",
 ]);
 export type TrackerProvider = z.infer<typeof trackerProvider>;
+export const trackerInstanceOrigin = z
+  .string()
+  .max(500)
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return (
+        url.protocol === "https:" &&
+        url.origin === value &&
+        !url.username &&
+        !url.password
+      );
+    } catch {
+      return false;
+    }
+  }, "Use an exact HTTPS origin without a path, credentials or query");
 export const trackerStates = [
   "open",
   "in_progress",
@@ -53,6 +70,7 @@ export const trackerConfiguration = z
       .optional(),
     cloudId: z.string().uuid().optional(),
     issueTypeId: remoteId.optional(),
+    instanceOrigin: trackerInstanceOrigin.optional(),
     states: z
       .array(
         z.object({

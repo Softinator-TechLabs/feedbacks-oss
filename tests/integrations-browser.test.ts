@@ -32,6 +32,7 @@ test(
       appOrigin: "http://127.0.0.1",
       production: false,
       organizationId: randomUUID(),
+      openProjectAllowedOrigins: ["https://synthetic.openproject.test"],
     };
     const originalFetch = globalThis.fetch;
     const external: string[] = [],
@@ -57,6 +58,37 @@ test(
         url.pathname === "/api/1.0/projects/123"
       )
         return json({ data: { name: "Synthetic Asana project" } });
+      if (url.origin === "https://synthetic.openproject.test") {
+        assert.equal(init?.method ?? "GET", "GET");
+        const authorization = new Headers(init?.headers).get("authorization") ?? "";
+        assert.match(authorization, /^Basic /);
+        assert.match(
+          Buffer.from(authorization.slice(6), "base64").toString("utf8"),
+          /^apikey:synthetic-openproject-token-(desktop|mobile)$/,
+        );
+        if (url.pathname === "/api/v3/projects/42")
+          return json({
+            id: 42,
+            name: "Synthetic OpenProject project",
+            _links: {
+              createWorkPackageImmediate: {
+                href: "/api/v3/projects/42/work_packages",
+                method: "post",
+              },
+            },
+          });
+        if (url.pathname === "/api/v3/projects/42/types")
+          return json({ _embedded: { elements: [{ id: 1, name: "Task" }] } });
+        if (url.pathname === "/api/v3/statuses")
+          return json({
+            _embedded: {
+              elements: [
+                { id: 1, name: "New" },
+                { id: 12, name: "Closed" },
+              ],
+            },
+          });
+      }
       if (url.origin === "https://api.harvestapp.com") {
         if (url.pathname === "/v2/company")
           return json({ wants_timestamp_timers: false });
@@ -134,15 +166,29 @@ test(
             origins: ["https://example.test"],
           }),
         );
+      const emptyTasksProject = await ops.executeOperation(owner, "projects.create", {
+        name: "Empty task providers",
+        origins: ["https://example.test"],
+      });
       const viewer = await ops.executeOperation(owner, "members.create", {
         name: "Read-only reviewer",
         email: "viewer@example.test",
         password,
         grants: projects.map((project) => ({ projectId: project.id, role: "viewer" })),
       });
-      await db.query("UPDATE users SET must_change_password=false WHERE id=$1", [
-        viewer.id,
-      ]);
+      const maintainer = await ops.executeOperation(owner, "members.create", {
+        name: "Project maintainer",
+        email: "maintainer@example.test",
+        password,
+        grants: projects.map((project) => ({
+          projectId: project.id,
+          role: "maintainer",
+        })),
+      });
+      for (const member of [viewer, maintainer])
+        await db.query("UPDATE users SET must_change_password=false WHERE id=$1", [
+          member.id,
+        ]);
       server = createApp(config, db, store).listen(0, "127.0.0.1");
       await new Promise<void>((resolve) => server.once("listening", resolve));
       const origin = `http://127.0.0.1:${server.address().port}`;
@@ -225,6 +271,51 @@ test(
             `${device}: cancelled replacement preserves every draft field`,
           );
         }
+        await page.goto(
+          `${origin}/projects/${emptyTasksProject.id}/settings#integrations-tasks`,
+        );
+        await page.getByText("No task connections.", { exact: true }).waitFor();
+        const choices = page.getByRole("list", {
+          name: "Supported task providers",
+          exact: true,
+        });
+        assert.deepEqual(await choices.getByRole("button").allTextContents(), [
+          "Jira Cloud",
+          "Linear",
+          "Asana",
+          "ClickUp",
+          "monday.com",
+          "Trello",
+          "Productive",
+          "Teamwork",
+          "Firmao CRM",
+          "OpenProject",
+        ]);
+        assert.equal(
+          await page.getByRole("combobox", { name: "Project", exact: true }).count(),
+          0,
+        );
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          `${device}: provider chooser fits viewport`,
+        );
+        const choicesCapture = `.local/integration-tabs-qa/${device}-task-providers.png`;
+        await page.screenshot({ path: choicesCapture, fullPage: true });
+        screenshots.push(choicesCapture);
+        await choices
+          .getByRole("button", { name: "Add OpenProject connection", exact: true })
+          .click();
+        assert.equal(
+          await page
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .inputValue(),
+          "openproject",
+        );
+        await page.getByLabel("OpenProject instance URL", { exact: true }).waitFor();
+        await page.getByRole("button", { name: "Cancel", exact: true }).click();
+        checks.push(
+          `${device}: empty project Tasks shows all 10 named providers and the OpenProject shortcut opens its form without a project selector`,
+        );
         await page.goto(`${origin}/trackers?projectId=${projects[1 - index].id}`);
         const trackers = page.locator(".tracker-settings");
         await trackers.waitFor({ timeout: 5000 }).catch(async () => {
@@ -239,6 +330,25 @@ test(
           .getByRole("button", { name: "Add tracker connection", exact: true })
           .press("Enter");
         const trackerForm = trackers.locator(".tracker-form");
+        const trackerProviders = [
+          "jira",
+          "linear",
+          "asana",
+          "clickup",
+          "monday",
+          "trello",
+          "productive",
+          "teamwork",
+          "firmao",
+          "openproject",
+        ];
+        assert.deepEqual(
+          await trackerForm
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .locator("option")
+            .evaluateAll((options) => options.map((option) => option.value)),
+          trackerProviders,
+        );
         await trackerForm
           .getByRole("combobox", { name: "Provider", exact: true })
           .selectOption("asana");
@@ -444,11 +554,18 @@ test(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
           `${device} tracker page fits`,
         );
-        const settingsRequests: string[] = [];
+        const settingsRequests: string[] = [],
+          taskProjectRequests: string[] = [];
         page.on("request", (request) => {
           const pathname = new URL(request.url()).pathname;
-          if (/^\/api\/(notifications|channels|timeTracking|webhooks)\./.test(pathname))
+          if (
+            /^\/api\/(notifications|channels|timeTracking|webhooks|trackers)\./.test(
+              pathname,
+            )
+          )
             settingsRequests.push(pathname);
+          if (pathname === "/api/trackers.list")
+            taskProjectRequests.push(request.postDataJSON().projectId);
         });
         const settingsUrl = `${origin}/projects/${project.id}/settings`;
         await page.goto(settingsUrl);
@@ -465,7 +582,27 @@ test(
           name: "Project integration providers",
           exact: true,
         });
+        const settingsTabs = page.getByRole("tablist", {
+          name: "Project settings sections",
+          exact: true,
+        });
+        const emailSettingsTab = settingsTabs.getByRole("tab", {
+          name: "Email notifications",
+          exact: true,
+        });
+        const integrationsSettingsTab = settingsTabs.getByRole("tab", {
+          name: "Integrations",
+          exact: true,
+        });
         const providers = [
+          {
+            id: "tasks",
+            label: "Tasks",
+            ready: () =>
+              page
+                .locator("#integrations-tasks")
+                .getByRole("heading", { name: `Asana ${device}`, exact: true }),
+          },
           {
             id: "channels",
             label: "Slack & Teams",
@@ -519,31 +656,48 @@ test(
           );
         }
         await providers[0].ready().waitFor();
-        await assertSelectedProvider("Slack & Teams");
-        assert.ok(settingsRequests.some((path) => path === "/api/channels.list"));
+        await assertSelectedProvider("Tasks");
+        assert.ok(settingsRequests.some((path) => path === "/api/trackers.list"));
         assert.ok(
-          settingsRequests.every((path) => path.startsWith("/api/channels.")),
-          `${device}: integrations link opens only its default provider requests`,
+          settingsRequests.every((path) => path.startsWith("/api/trackers.")),
+          `${device}: legacy integrations link opens only its default Tasks requests`,
         );
         // Capture each initial provider surface before entering any credentials.
         for (const provider of providers) {
           await providerTab(provider.label).click();
           await provider.ready().waitFor();
           await assertSelectedProvider(provider.label);
+          if (provider.id === "tasks") {
+            assert.ok(
+              taskProjectRequests.length > 0,
+              `${device}: Tasks fetches on first visit`,
+            );
+            assert.deepEqual(
+              new Set(taskProjectRequests),
+              new Set([project.id]),
+              `${device}: Tasks fetch is pinned to the selected project`,
+            );
+          }
           assert.equal(new URL(page.url()).hash, `#integrations-${provider.id}`);
           const addName =
-            provider.id === "channels"
-              ? "Add notification channel"
-              : provider.id === "webhooks"
-                ? "Add webhook"
-                : provider.id === "time"
-                  ? "Add time connection"
-                  : undefined;
+            provider.id === "tasks"
+              ? "Add connection"
+              : provider.id === "channels"
+                ? "Add notification channel"
+                : provider.id === "webhooks"
+                  ? "Add webhook"
+                  : provider.id === "time"
+                    ? "Add time connection"
+                    : undefined;
           if (addName) {
             await page.getByRole("button", { name: addName, exact: true }).click();
             const selectedPanel = page.locator(`#integrations-${provider.id}`);
+            if (provider.id === "tasks")
+              await selectedPanel
+                .getByRole("combobox", { name: "Provider", exact: true })
+                .selectOption("openproject");
             const fields = await selectedPanel
-              .locator(".connection-form .field")
+              .locator(".connection-form .field:visible, .tracker-form .field:visible")
               .evaluateAll((labels) =>
                 labels.map((label) => {
                   const caption = label.querySelector("span")!;
@@ -589,14 +743,15 @@ test(
             await page.getByRole("button", { name: "Cancel", exact: true }).click();
         }
         checks.push(
-          `${device}: four separate provider panels, one selected, no horizontal overflow; default settings and integration link mount only the required provider`,
+          `${device}: five separate provider panels, one selected, no horizontal overflow; default settings and legacy link mount only the required provider`,
         );
         const keyMoves = [
-          ["Home", "Slack & Teams"],
+          ["Home", "Tasks"],
           ["End", "Time tracking"],
-          ["ArrowRight", "Slack & Teams"],
+          ["ArrowRight", "Tasks"],
           ["ArrowLeft", "Time tracking"],
-          ["Home", "Slack & Teams"],
+          ["Home", "Tasks"],
+          ["ArrowRight", "Slack & Teams"],
           ["ArrowRight", "GitHub"],
         ] as const;
         await providerTab("Time tracking").focus();
@@ -616,26 +771,174 @@ test(
           await assertSelectedProvider(provider.label);
         }
         checks.push(
-          `${device}: Arrow keys wrap and Home/End preserve roving focus; all four provider deep links restore the requested panel after page navigation`,
+          `${device}: Arrow keys wrap and Home/End preserve roving focus; all five provider deep links restore the requested panel after page navigation`,
+        );
+        await providerTab("Tasks").click();
+        const taskSettings = page.locator("#integrations-tasks .tracker-settings");
+        await taskSettings
+          .getByRole("heading", { name: `Asana ${device}`, exact: true })
+          .waitFor();
+        assert.equal(
+          await taskSettings
+            .getByRole("combobox", { name: "Project", exact: true })
+            .count(),
+          0,
+        );
+        assert.equal(
+          await taskSettings
+            .getByRole("heading", {
+              name: `Asana ${device === "desktop" ? "mobile" : "desktop"}`,
+              exact: true,
+            })
+            .count(),
+          0,
+        );
+        await taskSettings
+          .getByRole("button", { name: "Add connection", exact: true })
+          .click();
+        const projectTaskForm = taskSettings.locator(".tracker-form");
+        assert.deepEqual(
+          await projectTaskForm
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .locator("option")
+            .evaluateAll((options) => options.map((option) => option.value)),
+          trackerProviders,
+        );
+        await projectTaskForm
+          .getByRole("combobox", { name: "Provider", exact: true })
+          .selectOption("openproject");
+        await projectTaskForm
+          .getByLabel("Connection name", { exact: true })
+          .fill(`OpenProject ${device}`);
+        await projectTaskForm
+          .getByLabel(/^OpenProject instance URL/)
+          .fill("https://synthetic.openproject.test");
+        await projectTaskForm
+          .getByLabel("OpenProject project ID", { exact: true })
+          .fill("42");
+        await projectTaskForm
+          .getByLabel("Work package type ID", { exact: true })
+          .fill("1");
+        await projectTaskForm
+          .getByLabel("API token", { exact: true })
+          .fill(`synthetic-openproject-token-${device}`);
+        await emailSettingsTab.click();
+        await integrationsSettingsTab.click();
+        await providerTab("Tasks").click();
+        assert.equal(
+          await projectTaskForm
+            .getByLabel("Connection name", { exact: true })
+            .inputValue(),
+          `OpenProject ${device}`,
+        );
+        assert.equal(
+          await projectTaskForm.getByLabel(/^OpenProject instance URL/).inputValue(),
+          "https://synthetic.openproject.test",
+        );
+        assert.equal(
+          await projectTaskForm
+            .getByLabel("OpenProject project ID", { exact: true })
+            .inputValue(),
+          "42",
+        );
+        assert.equal(
+          await projectTaskForm
+            .getByLabel("Work package type ID", { exact: true })
+            .inputValue(),
+          "1",
+        );
+        assert.equal(
+          await projectTaskForm.getByLabel("API token", { exact: true }).inputValue(),
+          `synthetic-openproject-token-${device}`,
+        );
+        await projectTaskForm
+          .getByText("Status mappings and polling", { exact: true })
+          .press("Enter");
+        await projectTaskForm
+          .getByLabel("open → remote status", { exact: true })
+          .fill("1");
+        await projectTaskForm
+          .getByLabel("resolved → remote status", { exact: true })
+          .fill("12");
+        await projectTaskForm
+          .getByRole("button", { name: "Save connection", exact: true })
+          .click();
+        const openProjectRow = taskSettings.locator("li").filter({
+          has: page.getByRole("heading", {
+            name: `OpenProject ${device}`,
+            exact: true,
+          }),
+        });
+        await openProjectRow
+          .getByRole("button", { name: "Test connection", exact: true })
+          .click();
+        await openProjectRow
+          .getByText("Synthetic OpenProject project: available status IDs", {
+            exact: true,
+          })
+          .waitFor();
+        const openProject = (
+          await post("trackers.list", { projectId: project.id })
+        ).connections.find((connection: any) => connection.provider === "openproject");
+        assert.equal(openProject.projectId, project.id);
+        assert.equal(
+          openProject.configuration.instanceOrigin,
+          "https://synthetic.openproject.test",
+        );
+        assert.equal(openProject.configuration.targetId, "42");
+        assert.equal(openProject.configuration.issueTypeId, "1");
+        assert.equal(openProject.health, "healthy");
+        const encryptedOpenProject = JSON.stringify(
+          await db.one("SELECT * FROM tracker_connections WHERE id=$1", [openProject.id]),
+        );
+        assert.ok(
+          !encryptedOpenProject.includes(`synthetic-openproject-token-${device}`),
+        );
+        assert.ok(
+          !(await page.content()).includes(`synthetic-openproject-token-${device}`),
+        );
+        assert.deepEqual(new Set(taskProjectRequests), new Set([project.id]));
+        checks.push(
+          `${device}: Tasks pins its project, offers all 10 providers, preserves OpenProject drafts across tabs, saves encrypted origin/project/type/token and verifies Basic API access and mapped status IDs`,
         );
         await page.goto(`${settingsUrl}#integrations-email`);
         await page
-          .getByRole("tab", { name: "Email notifications", exact: true })
+          .getByRole("heading", { name: "Project email notifications", exact: true })
           .waitFor();
         assert.equal(
-          await page
-            .getByRole("tab", { name: "Email notifications", exact: true })
-            .getAttribute("aria-selected"),
+          await emailSettingsTab.getAttribute("aria-selected"),
           "true",
-          `${device}: legacy email link opens the dedicated notification settings`,
+          `${device}: legacy email link opens dedicated notification settings`,
         );
+        assert.equal(
+          await providerTabs.count(),
+          0,
+          `${device}: notification settings have no integration provider tabs`,
+        );
+        await page.goto(`${settingsUrl}#notifications`);
+        await page.reload();
+        await page
+          .getByRole("heading", { name: "Project email notifications", exact: true })
+          .waitFor();
+        await page
+          .getByRole("heading", { name: "My email preferences", exact: true })
+          .waitFor();
+        assert.equal(await emailSettingsTab.getAttribute("aria-selected"), "true");
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          `${device}: dedicated notification section fits viewport`,
+        );
+        await page.evaluate(() => window.scrollTo(0, 0));
+        const notificationsCapture = `.local/integration-tabs-qa/${device}-notifications.png`;
+        await page.screenshot({ path: notificationsCapture, fullPage: true });
+        screenshots.push(notificationsCapture);
         const emailEnabled = page.getByLabel(
           "Enable email notifications for this project",
           { exact: true },
         );
         const originalEmailEnabled = await emailEnabled.isChecked();
         await emailEnabled.setChecked(!originalEmailEnabled);
-        await page.getByRole("tab", { name: "Integrations", exact: true }).click();
+        await integrationsSettingsTab.click();
         await providerTab("Slack & Teams").click();
         const channels = page.locator("section").filter({
           has: page.getByRole("heading", {
@@ -664,18 +967,14 @@ test(
         await page
           .getByLabel(/^Destination URL/)
           .fill("https://hooks.example.test/unsaved");
-        await page.getByRole("tab", { name: "Email notifications", exact: true }).click();
+        await emailSettingsTab.click();
         assert.equal(
           await emailEnabled.isChecked(),
           !originalEmailEnabled,
           `${device}: unsaved email settings survive section navigation`,
         );
-        await page.getByRole("tab", { name: "Integrations", exact: true }).click();
+        await integrationsSettingsTab.click();
         await providerTab("Slack & Teams").click();
-        const settingsTabs = page.getByRole("tablist", {
-          name: "Project settings sections",
-          exact: true,
-        });
         await settingsTabs.getByRole("tab", { name: "Project", exact: true }).click();
         await page
           .getByRole("heading", { name: "Project details", exact: true })
@@ -1044,6 +1343,92 @@ test(
         checks.push(
           `${device}: Harvest and Time Doctor fields, destination verification, native time limits and reviewed entries queued`,
         );
+        const maintained = await signedContext("maintainer@example.test", {
+          width,
+          height,
+        });
+        const maintainedPage = await maintained.context.newPage();
+        maintainedPage.setDefaultTimeout(10000);
+        maintainedPage.on("pageerror", (error) => errors.push(error.message));
+        await maintainedPage.goto(`${settingsUrl}#integrations-tasks`);
+        const maintainedTasks = maintainedPage.locator(
+          "#integrations-tasks .tracker-settings",
+        );
+        await maintainedTasks
+          .getByRole("heading", { name: `Asana ${device}`, exact: true })
+          .waitFor();
+        assert.equal(
+          await maintainedTasks
+            .getByRole("combobox", { name: "Project", exact: true })
+            .count(),
+          0,
+        );
+        for (const name of ["Add connection", "Edit connection", "Disconnect", "Enable"])
+          assert.equal(
+            await maintainedTasks.getByRole("button", { name, exact: true }).count(),
+            0,
+            `${device}: maintainer cannot ${name}`,
+          );
+        assert.equal(
+          await maintainedTasks
+            .getByRole("button", { name: /^Add .+ connection$/ })
+            .count(),
+          0,
+        );
+        const maintainedAsana = maintainedTasks.locator("li").filter({
+          has: maintainedPage.getByRole("heading", {
+            name: `Asana ${device}`,
+            exact: true,
+          }),
+        });
+        await maintainedAsana
+          .getByRole("button", { name: "Test connection", exact: true })
+          .click();
+        await maintainedTasks
+          .getByText("Provider access and status mappings verified.", { exact: true })
+          .waitFor();
+        const maintainedApi = await signedContext("maintainer@example.test", {
+          width,
+          height,
+        });
+        const maintainedList = await post(
+          "trackers.list",
+          { projectId: project.id },
+          maintainedApi,
+        );
+        assert.ok(
+          maintainedList.connections.every(
+            (connection: any) => connection.projectId === project.id,
+          ),
+        );
+        await post(
+          "trackers.save",
+          {
+            projectId: project.id,
+            provider: "asana",
+            label: "Denied maintainer",
+            configuration: { targetId: "123", states: [], poll: false },
+            credential: { token: "synthetic-denied-maintainer-token", auth: "token" },
+          },
+          maintainedApi,
+          403,
+        );
+        await post(
+          "trackers.enable",
+          {
+            connectionId: openProject.id,
+            revision: openProject.revision,
+            enabled: false,
+          },
+          maintainedApi,
+          403,
+        );
+        checks.push(
+          `${device}: nonowner maintainer can inspect and test project task connections; management controls and real save/enable HTTP writes remain owner-only`,
+        );
+        await maintainedPage.close();
+        await maintained.context.close();
+        await maintainedApi.context.close();
         const denied = await signedContext("viewer@example.test", { width, height });
         const readonly = await denied.context.newPage();
         readonly.setDefaultTimeout(10000);
@@ -1059,7 +1444,7 @@ test(
             .count(),
           0,
         );
-        await readonly.goto(`${settingsUrl}#integrations-webhooks`);
+        await readonly.goto(`${settingsUrl}#integrations-tasks`);
         await readonly
           .getByRole("heading", { name: "GitHub Issues", exact: true })
           .waitFor();
@@ -1104,6 +1489,8 @@ test(
         // Keep denied HTTP assertions on a separate session: the rendered app
         // renews its own CSRF during navigation and must not race this client.
         const deniedApi = await signedContext("viewer@example.test", { width, height });
+        await post("trackers.list", { projectId: project.id }, deniedApi, 403);
+        await post("trackers.test", { connectionId: openProject.id }, deniedApi, 403);
         await post(
           "trackers.save",
           {

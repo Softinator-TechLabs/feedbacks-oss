@@ -23,6 +23,7 @@ Reuse the [thread operations](../../src/server/feedback.ts), [event transaction]
 - [x] Update canonical guides and generated operation facts.
 - [x] Run the initial verification matrix and inspect desktop/mobile/keyboard behavior.
 - [x] Split integration settings into concise provider tabs, preserve drafts and verify desktop/mobile/keyboard behavior.
+- [x] Expose project-scoped task connections and add the explicitly configured OpenProject adapter.
 - [ ] Complete final release, image and live acceptance.
 
 ## Compatibility and recovery

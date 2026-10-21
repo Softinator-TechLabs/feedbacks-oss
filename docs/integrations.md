@@ -1,8 +1,8 @@
 # Integration adapters
 
-Owners open **Setup → Manage integrations**. The `/integrations` page lists implemented adapters and current connection counts. GitHub retains its [App setup and Issue workflow](../site-docs/guide/github.md). **Task trackers** at `/trackers` manages Jira Cloud, Linear, Asana, ClickUp, monday.com, Trello, Productive, Teamwork and Firmao CRM connections per project. GitLab and Bitbucket adapters are not implemented.
+Owners open **Setup → Manage integrations**. The `/integrations` page lists implemented adapters and current connection counts. GitHub retains its [App setup and Issue workflow](../site-docs/guide/github.md). **Task trackers** at `/trackers` manages Jira Cloud, Linear, Asana, ClickUp, monday.com, Trello, Productive, Teamwork, Firmao CRM and OpenProject connections per project. GitLab and Bitbucket adapters are not implemented.
 
-Project maintainers use **Project settings → Integrations** to choose **Slack & Teams**, **GitHub**, **Webhooks** or **Time tracking**. Email subscriptions and authorized delivery configuration live in **Project settings → Email notifications**. Existing `#integrations-email` links open that tab. Only the selected panel is shown. Panels load on first visit and retain drafts when you switch tabs; setup help and delivery history open on demand.
+Project maintainers use **Project settings → Integrations** to choose **Tasks**, **Slack & Teams**, **GitHub**, **Webhooks** or **Time tracking**. The **Tasks** tab keeps connections pinned to this project; the owner adds credentials and maintainers can inspect and test saved connections. Email subscriptions and authorized delivery configuration live in **Project settings → Email notifications**; existing `#integrations-email` links open that tab. Only the selected panel is shown. Panels load on first visit and retain drafts when you switch tabs; setup help and delivery history open on demand.
 
 An implemented adapter is not proof of an approved provider app or a successful connection to your account. Every connection starts unchecked; **Test connection** performs real authenticated reads of its destination and status mappings. Keep external sandbox checks, provider app approval and deployment verification separate from the synthetic contract tests.
 
@@ -16,7 +16,7 @@ The vault grants no authorization and verifies no provider permissions. Adapters
 
 ## Provider boundaries
 
-The [GitHub adapter](../src/server/integrations/github.ts) supplies catalog metadata and uses the common vault through a small wrapper. GitHub registration, installation approval, project App selection, Issue history and uncertain write recovery keep their existing domain rules. [Tracker adapters](../src/server/integrations/trackers/providers.ts) use fixed provider HTTPS origins and provider-specific requests. There is no arbitrary runtime plugin loading.
+The [GitHub adapter](../src/server/integrations/github.ts) supplies catalog metadata and uses the common vault through a small wrapper. GitHub registration, installation approval, project App selection, Issue history and uncertain write recovery keep their existing domain rules. [Tracker adapters](../src/server/integrations/trackers/providers.ts) use fixed SaaS HTTPS origins or an explicitly allowed OpenProject origin, with provider-specific requests. There is no arbitrary runtime plugin loading.
 
 GitHub Issue discussion uses the existing App and verified Issue link through [`github/comments.ts`](../src/server/github/comments.ts). Human maintainers load bounded comment pages and queue explicitly reviewed text in the Issue panel. Reservations are durable and source pinned; a lost or unverifiable write pauses for inspected comment-ID reconciliation. No automatic local-discussion mirroring runs. [`github-comments.test.ts`](../tests/github-comments.test.ts) covers authorization, duplicate intent, revoked grants, accepted-write uncertainty, reconciliation and moved-thread history. Live App/account acceptance is a separate gate. API shapes follow GitHub's [Issue comments REST reference](https://docs.github.com/en/rest/issues/comments?apiVersion=2026-03-10), consulted 2026-10-21.
 
@@ -26,17 +26,18 @@ Each tracker connection pins its project, provider, encrypted credential and des
 
 Create a connection, run **Test connection**, then edit its status mappings using the remote IDs shown by the test. Mappings are one-to-one and can cover the six existing work states. For Jira, a write mapping also needs the workflow transition ID; a status ID and transition ID are different provider concepts.
 
-| Provider   | Authentication                                                  | Destination                                                                                                   |
-| ---------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Jira Cloud | Distributable OAuth app through the optional broker below       | Consented Jira site, project ID or key, issue type ID                                                         |
-| Linear     | API token or OAuth credential                                   | Team ID; workflow state IDs                                                                                   |
-| Asana      | API token or OAuth credential                                   | Project ID; `open` and `completed`                                                                            |
-| ClickUp    | API token or OAuth credential                                   | List ID; status names                                                                                         |
-| monday.com | API token or OAuth credential                                   | Board ID, description text column ID, status column ID; status labels                                         |
-| Trello     | API key and delegated token                                     | Board ID and intake list ID; list IDs as statuses                                                             |
-| Productive | API token                                                       | Organization ID, task list ID; workflow status IDs                                                            |
-| Firmao CRM | API login and generated API password using Basic authentication | Organization identifier, numeric CRM project ID, optional project-team responsible user; explicit status keys |
-| Teamwork   | API token or OAuth credential                                   | Account site name, task list ID; `open` and `completed`                                                       |
+| Provider    | Authentication                                                  | Destination                                                                                                   |
+| ----------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Jira Cloud  | Distributable OAuth app through the optional broker below       | Consented Jira site, project ID or key, issue type ID                                                         |
+| Linear      | API token or OAuth credential                                   | Team ID; workflow state IDs                                                                                   |
+| Asana       | API token or OAuth credential                                   | Project ID; `open` and `completed`                                                                            |
+| ClickUp     | API token or OAuth credential                                   | List ID; status names                                                                                         |
+| monday.com  | API token or OAuth credential                                   | Board ID, description text column ID, status column ID; status labels                                         |
+| Trello      | API key and delegated token                                     | Board ID and intake list ID; list IDs as statuses                                                             |
+| Productive  | API token                                                       | Organization ID, task list ID; workflow status IDs                                                            |
+| Firmao CRM  | API login and generated API password using Basic authentication | Organization identifier, numeric CRM project ID, optional project-team responsible user; explicit status keys |
+| OpenProject | API token, sent using the documented `apikey` Basic login       | Allowed HTTPS instance origin, numeric project ID and work package type ID                                    |
+| Teamwork    | API token or OAuth credential                                   | Account site name, task list ID; `open` and `completed`                                                       |
 
 The web setup accepts documented API credentials for non-Jira providers. OAuth credential import through the API is useful for operator-managed recovery; the bundled consent broker currently implements Jira Cloud only. Provider permissions, account plans and token lifetime remain provider-specific requirements.
 
@@ -49,6 +50,16 @@ In a feedback thread, **External tasks** creates a task from a reviewed title an
 Actions use persistent reservations and idempotency keys. Definite transient rejection can retry with backoff; a timeout, interrupted attempt or ambiguous provider write becomes **uncertain**. Check the remote system and record the verified result before trying again. Created tasks can be reconciled by their remote ID. Connection rotation, disablement, current access and attempt leases are rechecked around credential reads and writes. Disabling cannot undo a request already accepted by a provider. [Worker implementation](../src/server/integrations/trackers/worker.ts) and [regression tests](../tests/trackers.test.ts).
 
 Moving feedback retains original-provider task and time history without granting the destination project's members access to it. A historical reference is visible only when the reader can access the moved thread and still maintain the original connection project. It is labeled historical and offers no sync, comment or logging actions from the moved thread. Polling retires those old links, and pending deliveries are cancelled. Processing or uncertain external writes must finish or be reconciled before moving the feedback. A move never deletes external tasks, comments or time entries.
+
+## OpenProject: cloud or self-hosted work packages
+
+Open **Project settings → Integrations → Tasks → OpenProject**. Enter the exact HTTPS instance origin, numeric project ID, work package type ID and the API token created in your OpenProject account. The adapter uses OpenProject API v3 and the documented Basic login `apikey` with that token; it does not collect your account password. The connection is encrypted in the existing installation vault.
+
+Before saving the connection, the server operator must add that exact origin to `OPENPROJECT_ALLOWED_ORIGINS` and recreate the application container. The value is a comma-separated list, for example `https://tasks.example.com,https://projects.internal.example.com`. It accepts no paths, embedded credentials, query strings or fragments. The empty default denies OpenProject connections. An internal/VPN instance is supported only when explicitly allowed and reachable from the Feedbacks application container, with a certificate trusted by its runtime. HTTP and TLS-verification bypasses are not supported. The Feedbacks server itself can remain local; no inbound provider callback is needed.
+
+**Test connection** verifies the selected project, its work package creation permission, selected type and returned status IDs. Create a reviewed work package or link an existing package in the same project and type from **External tasks**. Comments are explicit reviewed text; reading external activity does not copy it into local discussion. Status changes use the package's observed `lockVersion`; a concurrent external update is reported as a conflict. Configured mappings use numeric status IDs. A status appearing in the returned list does not guarantee that every workflow transition or required custom field permits a write.
+
+Requests use fixed API paths beneath the operator-allowed origin, reject redirects and never follow arbitrary URLs returned by the provider. Timeouts and failed creation readback use the existing uncertain-write reconciliation. Real instance permissions, required custom fields, workflow rules and API-version compatibility still need account acceptance; synthetic transports are not a live OpenProject certification.
 
 ## Optional Jira OAuth broker
 
@@ -103,7 +114,7 @@ Persistent entry reservations prevent duplicate HTTP retries; failed access chec
 
 ## Firmao: feedback to CRM task
 
-Choose **Firmao CRM** in Task trackers. Enable Firmao's API under **Company → Settings → API** and use its API login and generated API password. Enter the organization identifier from your Firmao login URL and the numeric CRM project ID. Optional responsible-user IDs must be present in that project's returned team or managers. Credentials use the existing encrypted vault; only human server owners configure them and current project maintainers initiate reviewed task actions.
+Choose **Firmao CRM** under **Project settings → Integrations → Tasks → Add connection**. Enable Firmao's API under **Company → Settings → API** and use its API login and generated API password. Enter the organization identifier from your Firmao login URL and the numeric CRM project ID. Optional responsible-user IDs must be present in that project's returned team or managers. Credentials use the existing encrypted vault; only human server owners configure them and current project maintainers initiate reviewed task actions.
 
 **Test connection** reads the exact project and checks returned task-create/read permission metadata. Creation sends the reviewed title/description, project, optional responsible user and initial mapped status (default `WAITING`). It extracts the task ID from the documented `CREATE` changelog, then verifies the task belongs to that project. The saved reference shows its exact task ID and opens the documented organization login URL; no unsupported task deep-link format is invented. This workflow does not create customers, contacts, opportunities or invoices.
 
@@ -115,6 +126,7 @@ All requests use fixed `https://system.firmao.pl/{organization}/svc/v1` routes, 
 
 Provider documentation checked on 2026-10-21; provider schemas, plans and approval rules may change:
 
+- [OpenProject API authentication](https://www.openproject.org/docs/api/introduction/), [work packages and activities](https://www.openproject.org/docs/api/endpoints/work-packages/), [project types](https://www.openproject.org/docs/api/endpoints/types/), [statuses](https://www.openproject.org/docs/api/endpoints/statuses/).
 - [Atlassian OAuth app policy and flow](https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/), [Jira REST v3](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/).
 - [Linear GraphQL](https://linear.app/developers/graphql), [Asana tasks](https://developers.asana.com/reference/createtask), [ClickUp tasks](https://developer.clickup.com/reference/createtask).
 - [monday.com items](https://developer.monday.com/api-reference/reference/items), [Trello cards](https://developer.atlassian.com/cloud/trello/rest/api-group-cards), [Productive](https://developer.productive.io/), [Teamwork tasks](https://apidocs.teamwork.com/docs/teamwork/v1/tasks/post-tasklists-id-tasks-json).

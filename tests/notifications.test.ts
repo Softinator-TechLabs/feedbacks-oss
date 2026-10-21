@@ -1,7 +1,7 @@
 import { notificationOperation } from "../src/server/notifications/operations.js";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
@@ -761,14 +761,14 @@ test("reply events identify their exact comment despite timestamp order and assi
   }
 });
 
-test("Mailjet uses CustomID and holds ambiguous HTTP outcomes without a prohibited message header", async () => {
+test("Mailjet bounds stable CustomID for real worker Message-IDs and holds ambiguous HTTP outcomes", async () => {
   const original = globalThis.fetch;
   const identity = { fromEmail: "sender@example.test", fromName: "Feedbacks" };
   const mail = {
     to: "recipient@example.test",
     subject: "Synthetic",
     text: "Synthetic",
-    messageId: "<stable@example.test>",
+    messageId: `<feedbacks-${randomUUID()}@notifications.customer.example.test>`,
   };
   const transport = {
     provider: "mailjet" as const,
@@ -779,12 +779,22 @@ test("Mailjet uses CustomID and holds ambiguous HTTP outcomes without a prohibit
     let payload: any;
     globalThis.fetch = async (_url, init) => {
       payload = JSON.parse(String(init?.body));
+      assert.match(payload.Messages[0].CustomID, /^[a-f0-9]{64}$/);
       return new Response(JSON.stringify({ Messages: [{ Status: "success" }] }), {
         status: 200,
       });
     };
     await sendMail(transport, identity, mail);
-    assert.equal(payload.Messages[0].CustomID, mail.messageId);
+    assert.ok(mail.messageId.length > 64);
+    assert.equal(
+      payload.Messages[0].CustomID,
+      createHash("sha256").update(mail.messageId).digest("hex"),
+    );
+    const first = payload.Messages[0].CustomID;
+    await sendMail(transport, identity, mail);
+    assert.equal(payload.Messages[0].CustomID, first);
+    await sendMail(transport, identity, { ...mail, messageId: "<another@example.test>" });
+    assert.notEqual(payload.Messages[0].CustomID, first);
     assert.equal(payload.Messages[0].Headers, undefined);
     for (const [status, disposition] of [
       [429, "retry"],

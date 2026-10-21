@@ -7,7 +7,6 @@ import {
   type TrackerProvider,
   type TrackerConfiguration,
 } from "../../shared/contracts/domains/trackers.js";
-import "./trackers.css";
 import { useTrackerWrite } from "./retry-key.js";
 
 const names: Record<TrackerProvider, string> = {
@@ -20,6 +19,7 @@ const names: Record<TrackerProvider, string> = {
   productive: "Productive",
   teamwork: "Teamwork",
   firmao: "Firmao CRM",
+  openproject: "OpenProject",
 };
 const targets: Record<TrackerProvider, string> = {
   jira: "Jira project ID or key",
@@ -31,6 +31,7 @@ const targets: Record<TrackerProvider, string> = {
   productive: "Productive task list ID",
   teamwork: "Teamwork task list ID",
   firmao: "Firmao CRM project ID",
+  openproject: "OpenProject project ID",
 };
 type Connection = {
   id: string;
@@ -68,13 +69,48 @@ type Link = {
 export function TrackerSettingsPage({
   projects,
   initialProjectId,
+  project,
+  owner = false,
 }: {
   projects: { id: string; name: string }[];
   initialProjectId?: string;
+  project?: { id: string; name: string };
+  owner?: boolean;
+}) {
+  return (
+    <TrackerSettingsContent
+      key={`${project?.id ?? initialProjectId ?? "workspace"}:${owner}`}
+      projects={projects}
+      initialProjectId={initialProjectId}
+      project={project}
+      owner={owner}
+    />
+  );
+}
+
+function TrackerSettingsContent({
+  projects,
+  initialProjectId,
+  project,
+  owner,
+}: {
+  projects: { id: string; name: string }[];
+  initialProjectId?: string;
+  project?: { id: string; name: string };
+  owner: boolean;
 }) {
   const surface = useRef<HTMLElement>(null);
-  const [projectId, setProjectId] = useState(initialProjectId ?? projects[0]?.id ?? ""),
+  const embedded = !!project;
+  const Heading = embedded ? "h2" : "h1";
+  const ConnectionHeading = embedded ? "h3" : "h2";
+  const [projectId, setProjectId] = useState(
+      project?.id ??
+        (projects.some((p) => p.id === initialProjectId)
+          ? initialProjectId!
+          : (projects[0]?.id ?? "")),
+    ),
     [version, setVersion] = useState(0),
+    [newProvider, setNewProvider] = useState<TrackerProvider>("asana"),
     [editing, setEditing] = useState<Connection | null | undefined>();
   const { data, error } = useLoad(
     () =>
@@ -95,26 +131,47 @@ export function TrackerSettingsPage({
     window.confirm(
       "Discard this tracker connection draft? Your unsaved changes will be lost.",
     );
+  const addConnection = (provider: TrackerProvider = "asana") => {
+    if (!mayReplaceDraft()) return;
+    setNewProvider(provider);
+    setEditing(null);
+  };
+  const cancelEditing = () => {
+    if (mayReplaceDraft()) setEditing(undefined);
+  };
   return (
     <article className="tracker-settings" ref={surface}>
-      <h1>Task trackers</h1>
-      <Field label="Project">
-        <select
-          value={projectId}
-          onChange={(e) => {
-            if (!mayReplaceDraft()) return;
-            setProjectId(e.target.value);
-            setEditing(undefined);
-            setResult(undefined);
-          }}
-        >
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <div className="tracker-heading">
+        <Heading>{embedded ? "Task connections" : "Task trackers"}</Heading>
+        {owner && editing !== null && (
+          <button
+            type="button"
+            disabled={!projectId || !data || action.busy}
+            onClick={() => addConnection()}
+          >
+            {embedded ? "Add connection" : "Add tracker connection"}
+          </button>
+        )}
+      </div>
+      {!project && (
+        <Field label="Project">
+          <select
+            value={projectId}
+            onChange={(e) => {
+              if (!mayReplaceDraft()) return;
+              setProjectId(e.target.value);
+              setEditing(undefined);
+              setResult(undefined);
+            }}
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <ErrorNotice error={error} />
       <ActionState action={action} />
       {!data ? (
@@ -126,7 +183,7 @@ export function TrackerSettingsPage({
               {data.connections.map((c) => (
                 <li key={c.id}>
                   <div className="tracker-heading">
-                    <h2>{c.label}</h2>
+                    <ConnectionHeading>{c.label}</ConnectionHeading>
                     <span>{c.enabled ? c.health : "Disabled"}</span>
                   </div>
                   <p>
@@ -162,36 +219,40 @@ export function TrackerSettingsPage({
                     >
                       Test connection
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (editing?.id !== c.id && !mayReplaceDraft()) return;
-                        setEditing(c);
-                      }}
-                    >
-                      Edit connection
-                    </button>
-                    <button
-                      type="button"
-                      disabled={action.busy}
-                      onClick={() =>
-                        action.run(
-                          async () => {
-                            await api("trackers.enable", {
-                              connectionId: c.id,
-                              revision: c.revision,
-                              enabled: !c.enabled,
-                            });
-                            setVersion((v) => v + 1);
-                          },
-                          c.enabled
-                            ? "Connection disabled. Historical links are retained."
-                            : "Connection enabled. Test before using it.",
-                        )
-                      }
-                    >
-                      {c.enabled ? "Disconnect" : "Enable"}
-                    </button>
+                    {owner && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editing?.id !== c.id && !mayReplaceDraft()) return;
+                            setEditing(c);
+                          }}
+                        >
+                          Edit connection
+                        </button>
+                        <button
+                          type="button"
+                          disabled={action.busy}
+                          onClick={() =>
+                            action.run(
+                              async () => {
+                                await api("trackers.enable", {
+                                  connectionId: c.id,
+                                  revision: c.revision,
+                                  enabled: !c.enabled,
+                                });
+                                setVersion((v) => v + 1);
+                              },
+                              c.enabled
+                                ? "Connection disabled. Historical links are retained."
+                                : "Connection enabled. Test before using it.",
+                            )
+                          }
+                        >
+                          {c.enabled ? "Disconnect" : "Enable"}
+                        </button>
+                      </>
+                    )}
                   </div>
                   {result?.id === c.id && (
                     <details open>
@@ -214,11 +275,13 @@ export function TrackerSettingsPage({
                       </ul>
                     </details>
                   )}
-                  {editing?.id === c.id && (
+                  {owner && editing?.id === c.id && (
                     <ConnectionForm
                       key={c.revision}
                       projectId={projectId}
                       existing={c}
+                      embedded={embedded}
+                      onCancel={cancelEditing}
                       onSaved={() => {
                         setEditing(undefined);
                         setVersion((v) => v + 1);
@@ -229,30 +292,43 @@ export function TrackerSettingsPage({
               ))}
             </ul>
           ) : (
-            <p>
-              No tracker connected. Add a connection, verify its access, then link
-              feedback from the thread.
-            </p>
+            <div className="tracker-empty">
+              <p>No task connections.</p>
+              {editing !== null && (
+                <ul className="tracker-providers" aria-label="Supported task providers">
+                  {Object.entries(names).map(([id, name]) => (
+                    <li key={id}>
+                      {owner ? (
+                        <button
+                          type="button"
+                          disabled={!projectId || action.busy}
+                          aria-label={`Add ${name} connection`}
+                          onClick={() => addConnection(id as TrackerProvider)}
+                        >
+                          {name}
+                        </button>
+                      ) : (
+                        <span>{name}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
-          {editing === null ? (
+          {owner && editing === null && (
             <ConnectionForm
               projectId={projectId}
+              initialProvider={newProvider}
+              embedded={embedded}
+              onCancel={cancelEditing}
               onSaved={() => {
                 setEditing(undefined);
                 setVersion((v) => v + 1);
               }}
             />
-          ) : (
-            <button
-              type="button"
-              disabled={!projectId}
-              onClick={() => {
-                if (mayReplaceDraft()) setEditing(null);
-              }}
-            >
-              Add tracker connection
-            </button>
           )}
+          {!owner && <p className="muted">An owner manages connections.</p>}
           {!!data.jobs.length && (
             <details>
               <summary>Recent tracker actions ({data.jobs.length})</summary>
@@ -287,19 +363,26 @@ export function TrackerSettingsPage({
 function ConnectionForm({
   projectId,
   existing,
+  initialProvider = "asana",
+  embedded = false,
   onSaved,
+  onCancel,
 }: {
   projectId: string;
   existing?: Connection;
+  initialProvider?: TrackerProvider;
+  embedded?: boolean;
   onSaved: () => void;
+  onCancel: () => void;
 }) {
   const [provider, setProvider] = useState<TrackerProvider>(
-      existing?.provider ?? "asana",
+      existing?.provider ?? initialProvider,
     ),
     [dirty, setDirty] = useState(false),
     [oauth, setOAuth] = useState<{ flowId: string; authorizeUrl: string }>(),
     [resources, setResources] = useState<{ id: string; name: string }[]>();
   const action = useAction();
+  const Heading = embedded ? "h3" : "h2";
   useUnsavedChanges(dirty || action.busy);
   const c = existing?.configuration;
   async function complete(cloudId?: string) {
@@ -356,6 +439,9 @@ function ConnectionForm({
               ...(value("secondaryId") ? { secondaryId: value("secondaryId") } : {}),
               ...(value("site") ? { site: value("site") } : {}),
               ...(value("issueTypeId") ? { issueTypeId: value("issueTypeId") } : {}),
+              ...(value("instanceOrigin")
+                ? { instanceOrigin: value("instanceOrigin") }
+                : {}),
               ...(value("assigneeId") ? { assigneeId: value("assigneeId") } : {}),
               ...(c?.cloudId ? { cloudId: c.cloudId } : {}),
               ...(c?.site && provider === "jira" ? { site: c.site } : {}),
@@ -405,7 +491,7 @@ function ConnectionForm({
         );
       }}
     >
-      <h2>{existing ? "Edit connection" : "Add a tracker"}</h2>
+      <Heading>{existing ? "Edit connection" : "Add connection"}</Heading>
       <Field label="Provider">
         <select
           value={provider}
@@ -431,11 +517,13 @@ function ConnectionForm({
         <input
           name="targetId"
           required
-          maxLength={provider === "firmao" ? 16 : 200}
+          maxLength={["firmao", "openproject"].includes(provider) ? 16 : 200}
           defaultValue={c?.targetId ?? ""}
           autoComplete="off"
-          inputMode={provider === "firmao" ? "numeric" : undefined}
-          pattern={provider === "firmao" ? "[1-9][0-9]*" : undefined}
+          inputMode={["firmao", "openproject"].includes(provider) ? "numeric" : undefined}
+          pattern={
+            ["firmao", "openproject"].includes(provider) ? "[1-9][0-9]*" : undefined
+          }
         />
       </Field>
       {provider === "jira" && (
@@ -447,6 +535,43 @@ function ConnectionForm({
             defaultValue={c?.issueTypeId ?? ""}
           />
         </Field>
+      )}
+      {provider === "openproject" && (
+        <>
+          <Field label="OpenProject instance URL">
+            <input
+              name="instanceOrigin"
+              type="url"
+              required
+              maxLength={2048}
+              autoComplete="off"
+              placeholder="https://projects.example.com"
+              defaultValue={c?.instanceOrigin ?? ""}
+            />
+          </Field>
+          <Field label="Work package type ID">
+            <input
+              name="issueTypeId"
+              required
+              inputMode="numeric"
+              pattern="[1-9][0-9]*"
+              maxLength={16}
+              defaultValue={c?.issueTypeId ?? ""}
+            />
+          </Field>
+          <details>
+            <summary>OpenProject setup</summary>
+            <p>
+              An operator must add this exact HTTPS origin to{" "}
+              <code>OPENPROJECT_ALLOWED_ORIGINS</code> on the Feedbacks server. Use the
+              instance URL without a path or trailing slash.
+            </p>
+            <p>
+              Copy the numeric project and work package type IDs from OpenProject.
+              Generate an API token in your OpenProject account settings.
+            </p>
+          </details>
+        </>
       )}
       {provider === "teamwork" && (
         <Field label="Teamwork site name" hint="Only the part before .teamwork.com">
@@ -597,7 +722,7 @@ function ConnectionForm({
         </label>
       </details>
       <ActionState action={action} />
-      {oauth ? (
+      {oauth && (
         <div>
           <p>
             <a href={oauth.authorizeUrl} target="_blank" rel="noreferrer">
@@ -631,13 +756,19 @@ function ConnectionForm({
             </Field>
           )}
         </div>
-      ) : (
-        <button type="submit" disabled={action.busy}>
-          {provider === "jira" && !existing
-            ? "Connect with Jira Cloud"
-            : "Save connection"}
-        </button>
       )}
+      <div className="tracker-actions">
+        {!oauth && (
+          <button type="submit" disabled={action.busy}>
+            {provider === "jira" && !existing
+              ? "Connect with Jira Cloud"
+              : "Save connection"}
+          </button>
+        )}
+        <button type="button" disabled={action.busy} onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
     </form>
   );
 }

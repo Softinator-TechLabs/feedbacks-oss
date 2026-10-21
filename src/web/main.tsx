@@ -26,6 +26,7 @@ import {
 } from "./ui.js";
 import "./styles.css";
 import "./integrations/connections.css";
+import "./integrations/trackers.css";
 import "./threads/detail.css";
 import "./theme.css";
 import { ThemeSwitch } from "./theme.js";
@@ -329,6 +330,7 @@ function App() {
               <TrackerSettingsPage
                 projects={projects}
                 initialProjectId={params.get("projectId") ?? undefined}
+                owner={actor.owner === true}
               />
             ) : (
               <p role="alert">Server owner access required.</p>

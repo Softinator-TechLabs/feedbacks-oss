@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { createHash } from "node:crypto";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import type { MailIdentity, MailTransport } from "../../shared/notifications.js";
 
@@ -96,7 +97,9 @@ export async function sendMail(
               ...(identity.replyTo ? { ReplyTo: { Email: identity.replyTo } } : {}),
               Subject: mail.subject,
               TextPart: mail.text,
-              CustomID: mail.messageId,
+              // Mailjet limits CustomID to 64 characters. The normal RFC Message-ID
+              // includes the installation hostname and can exceed that limit.
+              CustomID: createHash("sha256").update(mail.messageId).digest("hex"),
             },
           ],
         }),
