@@ -114,6 +114,24 @@ test(
           ) < 1,
         "Capture and import controls share the same baseline",
       );
+      const largePreview = await sharp({
+        create: { width: 1920, height: 929, channels: 3, background: "white" },
+      })
+        .png()
+        .toBuffer();
+      await page
+        .getByLabel("Import screenshot", { exact: true })
+        .setInputFiles({
+          name: "large-review.png",
+          mimeType: "image/png",
+          buffer: largePreview,
+        });
+      await page.locator(".app-capture-image").waitFor();
+      const largeBounds = await page.locator(".app-capture-image").boundingBox();
+      assert.ok(
+        largeBounds && largeBounds.height <= 450,
+        "A large desktop screenshot occupies at most 45 percent of the viewport height",
+      );
       const source = await sharp(
         Buffer.from(
           `<svg width="800" height="450" xmlns="http://www.w3.org/2000/svg"><rect width="800" height="450" fill="white"/><rect width="800" height="70" fill="#17324d"/><text x="24" y="43" fill="white" font-family="sans-serif" font-size="23">Synthetic finance app — test fixture</text><text x="24" y="112" fill="#17324d" font-family="sans-serif" font-size="22">Invoice review</text><rect x="24" y="142" width="752" height="222" fill="#f2f5f7"/><text x="48" y="178" fill="#17324d" font-family="sans-serif" font-size="18">Customer and invoice details</text><rect x="650" y="388" width="126" height="42" rx="6" fill="#17324d"/><text x="691" y="415" fill="white" font-family="sans-serif" font-size="18">Save</text></svg>`,

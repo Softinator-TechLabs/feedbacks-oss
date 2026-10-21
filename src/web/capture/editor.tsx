@@ -96,7 +96,7 @@ export function CaptureEditor({
         className="app-capture-image"
         style={{
           aspectRatio: `${image.width}/${image.height}`,
-          maxWidth: `min(100%, ${image.width}px, ${(60 * image.width) / image.height}dvh)`,
+          maxWidth: `min(100%, ${image.width}px, ${(45 * image.width) / image.height}dvh)`,
         }}
         onPointerDown={(event) => {
           if (
