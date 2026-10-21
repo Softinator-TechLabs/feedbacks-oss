@@ -5,9 +5,9 @@ description: Use permission-scoped analytics to inspect incoming feedback, lifec
 
 # Understand feedback and backlog
 
-<DocPath :steps="['Choose projects and dates', 'Apply filters', 'Open matching feedback']" />
-
 Use **Overview** for current priorities and project comparisons, **Trends** for activity over time, and **Explore** for category, assignee and other breakdowns. Select a count to open its matching feedback. Tables and definitions are available when you need more detail.
+
+<DocPath :steps="['Choose a project', 'Pick a report', 'Open matching tasks']" />
 
 Open **Analytics** for all projects you can read, or a project's **Analytics** tab. Select your project, From/Through dates and timezone, then Apply. The live-read time tells you when the numbers were generated. Select a count to open the matching thread list and follow a thread link to its discussion.
 

@@ -5,7 +5,7 @@ description: Subscribe to project activity and configure email delivery and temp
 
 # Get project activity by email
 
-<DocPath :steps="['Configure email delivery', 'Choose subscribed events', 'Review delivery status']" />
+<DocPath :steps="['Configure a provider', 'Choose events', 'Check delivery']" />
 
 Open your project's **Email notifications** controls and choose the events you want: new feedback, discussion replies, mentions, status or assignments. Enable excerpts only if you want feedback/discussion text in your mailbox. Each client, developer and teammate controls their own subscription. Project access is still required.
 
