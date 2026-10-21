@@ -94,6 +94,8 @@ For captures sent by the current extension, point locations are kept in metadata
 
 ## Local screenshot tools and exports
 
+In **More tools → Stickers**, choose a check, attention or question stamp from the horizontal symbol buttons, then click the screenshot to place it. The selected symbol stays highlighted; the buttons also support Tab and Space/Enter. These choices keep the existing saved sticker format.
+
 Full-page preview stacks annotated sections at their original resolution. It shows **Edit section** to return to the markup tools; choosing another section also opens it for editing. Copy and Download in this view export the full page. **Fit width**, **100%** and **200%** control the view; the preview no longer uses the reduced combined upload image. Numbered sections remain editable.
 
 Use the adjacent **Copy image** and **Download** controls to export the selected screenshot. When a full-page capture has multiple sections, choose **This screenshot** or **Full page** beside those controls. **Copy image** copies annotated PNG pixels. **Download** offers PNG, JPEG, WebP and PDF. PDF keeps one captured section per page. Raster downloads retain original resolution within browser dimension and memory limits; oversized pages show an error with PDF or individual screenshots as alternatives instead of silently reducing quality. Clipboard access depends on the browser; PNG download remains available if access is denied.

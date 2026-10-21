@@ -60,6 +60,13 @@ const sendIds = ["send", "send-header", "send-background", "send-background-head
 let thumbnailObserver;
 let previewUrls = [];
 let selectedImage = null;
+let selectedSticker = "✓";
+for (const button of document.querySelectorAll("[data-sticker]"))
+  button.onclick = () => {
+    selectedSticker = button.dataset.sticker;
+    for (const choice of document.querySelectorAll("[data-sticker]"))
+      choice.setAttribute("aria-pressed", String(choice === button));
+  };
 let exportCrop = null;
 let imageDrag = null;
 let exporting = false;
@@ -937,7 +944,7 @@ canvas.onpointerdown = (e) => {
             ) + 1,
         }
       : {}),
-    ...(tool === "sticker" ? { text: $("sticker-choice").value } : {}),
+    ...(tool === "sticker" ? { text: selectedSticker } : {}),
     points: [point(e)],
     ...(tool === "text" ? { text: $("annotation").value.trim() } : {}),
   };
@@ -1139,7 +1146,9 @@ function lock(value) {
   triage.setDisabled(value);
   $("no-image").disabled = value || !base;
   $("include-combined").disabled = value || !base || $("no-image").checked;
-  for (const el of document.querySelectorAll("[data-tool],#undo,#reset,#annotation"))
+  for (const el of document.querySelectorAll(
+    "[data-tool],[data-sticker],#undo,#reset,#annotation",
+  ))
     el.disabled = value || !base;
   const pageLocked =
     loadingBase || redacting || sendingApproval || exporting || importing;

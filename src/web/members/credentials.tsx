@@ -13,7 +13,7 @@ export function memberWelcomeMessage(
   member: { name: string; email: string; password: string },
   origin: string,
 ) {
-  return `Hey ${member.name}, Feedbacks par join karein: ${origin}/login\nEmail: ${member.email}\nPassword: ${member.password}\nChrome extension aur Codex, Claude Code, Antigravity agent setup: ${origin}/help\nPlease sign in karke password change kar dein.`;
+  return `Hey ${member.name}, join Feedbacks: ${origin}/login\nEmail: ${member.email}\nPassword: ${member.password}\nChrome extension and Codex, Claude Code, Antigravity agent setup: ${origin}/help\nPlease sign in and change this password.`;
 }
 
 export function memberLoginDetails(

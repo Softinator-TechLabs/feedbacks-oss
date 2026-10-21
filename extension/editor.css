@@ -633,6 +633,25 @@ aside .hint {
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
+.sticker-choices {
+  display: inline-flex;
+  gap: 6px;
+}
+.sticker-choices button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+}
+.sticker-choices button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
 .export-tools .control-label {
   position: absolute;
   z-index: 1;
