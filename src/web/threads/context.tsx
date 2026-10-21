@@ -10,6 +10,57 @@ export function ContextPanel({ context: c }: { context: Context }) {
     if (location.hash === "#recorded-context")
       document.getElementById("recorded-context")?.scrollIntoView();
   }, [c.url, c.viewport?.width, c.viewport?.height]);
+  if (c.appCapture)
+    return (
+      <section id="recorded-context" tabIndex={-1}>
+        <h2>App screenshot</h2>
+        <dl>
+          <dt>App</dt>
+          <dd>{c.appCapture.appName}</dd>
+          <dt>Platform</dt>
+          <dd>
+            {
+              {
+                windows: "Windows",
+                macos: "macOS",
+                linux: "Ubuntu / Linux",
+                android: "Android",
+                ios: "iOS / iPadOS",
+                other: "Other / unknown",
+              }[c.appCapture.platform]
+            }
+          </dd>
+          {c.appCapture.appVersion && (
+            <>
+              <dt>App version</dt>
+              <dd>{c.appCapture.appVersion}</dd>
+            </>
+          )}
+          <dt>Source</dt>
+          <dd>
+            {c.appCapture.method === "image_import"
+              ? "Imported image"
+              : `Browser capture (${c.appCapture.surface ?? "unknown surface"})`}
+          </dd>
+          <dt>Image size</dt>
+          <dd>
+            {c.appCapture.width} × {c.appCapture.height} pixels
+          </dd>
+          {c.appCapture.capturedAt && (
+            <>
+              <dt>Captured</dt>
+              <dd>
+                <HumanTime at={c.appCapture.capturedAt} />
+              </dd>
+            </>
+          )}
+        </dl>
+        <p className="muted">
+          App details are supplied by the reviewer. No internal logs, DOM or network
+          traffic were collected.
+        </p>
+      </section>
+    );
   if (!c.url)
     return (
       <section id="recorded-context" tabIndex={-1}>

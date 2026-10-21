@@ -25,6 +25,7 @@
   const mount = () =>
     api("widget.inspect", {})
       .then((details) => {
+        if (document.getElementById(`feedbacks-widget-${linkId}`)) return;
         const host = document.createElement("div");
         host.id = `feedbacks-widget-${linkId}`;
         host.className = "feedbacks-widget";

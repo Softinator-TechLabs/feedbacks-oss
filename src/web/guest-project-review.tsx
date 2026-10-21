@@ -22,7 +22,17 @@ type ProjectLink = {
   widget: boolean;
 };
 
-export function GuestProjectLinks({ projectId }: { projectId: string }) {
+export function GuestProjectLinks({
+  projectId,
+  widget = false,
+  origins = [],
+  captureMode,
+}: {
+  projectId: string;
+  widget?: boolean;
+  origins?: string[];
+  captureMode?: string;
+}) {
   const [version, setVersion] = useState(0);
   const [newLink, setNewLink] = useState("");
   const [newLinkLabel, setNewLinkLabel] = useState("");
@@ -33,13 +43,37 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
   const action = useAction();
   return (
     <section className="section">
-      <h2>Guest feedback links</h2>
+      <h2>{widget ? "Website widget" : "Guest feedback links"}</h2>
       <p className="muted">
-        Invite someone to send new feedback to this project without an account. A link
-        cannot show existing feedback, screenshots, member notes or reviewer guidance.
-        Each submission needs a page URL and a Turnstile check. A website widget can add
-        page and viewport context. For private screenshots, use the extension.
+        {widget
+          ? "Add a feedback button to your website. Visitors can send a comment without a Chrome extension or Feedbacks account. Their page URL and viewport size are included."
+          : "Invite someone to send new feedback without an account. Links cannot show existing feedback, screenshots or member notes."}
       </p>
+      {widget && (
+        <>
+          <p>
+            Text feedback only; screenshots and recordings are not collected by this
+            widget.
+          </p>
+          <p>
+            <a
+              href="https://feedbacks.softinator.ai/docs/guide/website-widget"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Installation and troubleshooting guide
+            </a>
+          </p>
+          {captureMode === "any" || !origins.length ? (
+            <p role="status">
+              Set at least one exact approved website origin in the Project tab before
+              creating a widget.
+            </p>
+          ) : (
+            <p className="muted">Approved websites: {origins.join(", ")}</p>
+          )}
+        </>
+      )}
       <form
         className="form-grid"
         onSubmit={(event) => {
@@ -47,7 +81,6 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
           const form = event.currentTarget;
           const data = new FormData(form);
           void action.run(async () => {
-            const widget = data.get("widget") === "on";
             const result = await api<{ path: string; widgetSnippet?: string }>(
               "guestProjectLinks.create",
               {
@@ -71,8 +104,16 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
           });
         }}
       >
-        <Field label="Link label" hint="For your records">
-          <input name="label" maxLength={80} required placeholder="Client intake" />
+        <Field
+          label={widget ? "Installation label" : "Link label"}
+          hint="For your records"
+        >
+          <input
+            name="label"
+            maxLength={80}
+            required
+            placeholder={widget ? "Main website" : "Client intake"}
+          />
         </Field>
         <Field label="Expires after">
           <select name="days" defaultValue="7">
@@ -91,57 +132,80 @@ export function GuestProjectLinks({ projectId }: { projectId: string }) {
             required
           />
         </Field>
-        <label className="widget-option">
-          <input name="widget" type="checkbox" />
-          <span>
-            Website widget: create a launcher script for the project's exact approved
-            origins
-          </span>
-        </label>
-        <button disabled={action.busy}>Create guest feedback link</button>
+        <button
+          disabled={action.busy || (widget && (captureMode === "any" || !origins.length))}
+        >
+          {widget ? "Create installation snippet" : "Create guest feedback link"}
+        </button>
       </form>
       <ActionState action={action} />
-      {newLink && <Secret value={newLink} label={newLinkLabel} />}
+      {newLink && (
+        <>
+          <Secret value={newLink} label={newLinkLabel} />
+          {widget && (
+            <ol>
+              <li>
+                Copy the script into your approved website before its closing{" "}
+                <code>&lt;/body&gt;</code> tag. For a single-page app, add it once to the
+                HTML shell.
+              </li>
+              <li>
+                Allow your Feedbacks server and Cloudflare Turnstile in the website’s
+                content security policy. Configure Turnstile for the host website’s
+                hostname.
+              </li>
+              <li>
+                Open the website and select <strong>Send feedback</strong>. Submit a test
+                comment and check this project’s feedback list.
+              </li>
+            </ol>
+          )}
+        </>
+      )}
       <ErrorNotice error={links.error} />
       {!links.data && !links.error && <Loading />}
-      {links.data?.items.length === 0 && (
-        <p className="muted">No guest feedback links yet.</p>
+      {links.data?.items.filter((link) => link.widget === widget).length === 0 && (
+        <p className="muted">
+          {widget ? "No widget installations yet." : "No guest feedback links yet."}
+        </p>
       )}
-      {links.data?.items.map((link) => (
-        <div className="guest-link-row" key={link.id}>
-          <div>
-            <strong>{link.label}</strong>
-            {link.widget && <span className="muted"> · Website widget</span>}
-            <p className="muted">
-              {link.revokedAt ? (
-                "Revoked"
-              ) : new Date(link.expiresAt).getTime() <= Date.now() ? (
-                "Expired"
-              ) : link.submissions >= link.maxSubmissions ? (
-                "Limit reached"
-              ) : (
-                <>
-                  Expires <HumanTime at={link.expiresAt} />
-                </>
-              )}
-              {` · ${link.submissions} of ${link.maxSubmissions} submissions`}
-            </p>
+      {links.data?.items
+        .filter((link) => link.widget === widget)
+        .map((link) => (
+          <div className="guest-link-row" key={link.id}>
+            <div>
+              <strong>{link.label}</strong>
+              {link.widget && <span className="muted"> · Website widget</span>}
+              <p className="muted">
+                {link.revokedAt ? (
+                  "Revoked"
+                ) : new Date(link.expiresAt).getTime() <= Date.now() ? (
+                  "Expired"
+                ) : link.submissions >= link.maxSubmissions ? (
+                  "Limit reached"
+                ) : (
+                  <>
+                    Expires <HumanTime at={link.expiresAt} />
+                  </>
+                )}
+                {` · ${link.submissions} of ${link.maxSubmissions} submissions`}
+              </p>
+            </div>
+            {!link.revokedAt && (
+              <ConfirmButton
+                disabled={action.busy}
+                onConfirm={() =>
+                  void action.run(async () => {
+                    await api("guestProjectLinks.revoke", { linkId: link.id });
+                    setVersion((value) => value + 1);
+                  })
+                }
+              >
+                Revoke
+              </ConfirmButton>
+            )}
           </div>
-          {!link.revokedAt && (
-            <ConfirmButton
-              disabled={action.busy}
-              onConfirm={() =>
-                void action.run(async () => {
-                  await api("guestProjectLinks.revoke", { linkId: link.id });
-                  setVersion((value) => value + 1);
-                })
-              }
-            >
-              Revoke
-            </ConfirmButton>
-          )}
-        </div>
-      ))}
+        ))}
     </section>
   );
 }

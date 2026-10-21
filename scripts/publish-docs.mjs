@@ -17,6 +17,7 @@ const queue = [
   "agents",
   "mcp-contract",
   "extension",
+  "app-capture",
   "platform-compatibility",
   "upcoming",
   "webhooks",

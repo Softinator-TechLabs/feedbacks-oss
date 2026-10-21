@@ -1,16 +1,16 @@
 # Upcoming
 
-Cross-platform app feedback is proposed work. The items below are not released features, installation instructions or delivery-date commitments. Check [platform compatibility](platform-compatibility.md) for current integrations and the distinction between visual capture and internal diagnostics.
+The [app screenshot pilot](app-capture.md) is implemented in the web application. Wider native capture and debugging remain phased work. Each item lists its current status. Proposed items are not released features or delivery-date commitments. Check [platform compatibility](platform-compatibility.md) for current integrations and the distinction between visual capture and internal diagnostics.
 
 ## Proposed sequence
 
-| Work                       | Intended outcome                                                                                 | Status                                             |
-| -------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| Desktop app screenshots    | Choose an app window/display, annotate or mask its screenshot, and send feedback to your project | Proposed                                           |
-| Mobile SDK verification    | Complete pairing, screenshot review and upload in real iOS/Android host apps                     | Source available; real-device verification pending |
-| Desktop companions         | Start capture from a shortcut, tray or menu bar on Windows, Ubuntu and macOS                     | Proposed                                           |
-| Mobile sharing and capture | Share screenshots/video to Feedbacks, with optional Android projection and iOS broadcasting      | Proposed                                           |
-| App-integrated diagnostics | Include selected logs, recent actions, network failures and platform crash/performance context   | Proposed                                           |
+| Work                         | Intended outcome                                                                               | Status                                               |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Desktop app screenshot pilot | Choose a window/display or import an image, annotate/mask it, and send feedback                | Implemented pilot; real OS picker acceptance pending |
+| Mobile SDK verification      | Complete pairing, screenshot review and upload in real iOS/Android host apps                   | Source available; real-device verification pending   |
+| Desktop companions           | Start capture from a shortcut, tray or menu bar on Windows, Ubuntu and macOS                   | Proposed                                             |
+| Mobile sharing and capture   | Share screenshots/video to Feedbacks, with optional Android projection and iOS broadcasting    | Proposed                                             |
+| App-integrated diagnostics   | Include selected logs, recent actions, network failures and platform crash/performance context | Proposed                                             |
 
 The sequence prioritizes a complete visual feedback workflow before adding deeper OS-specific integrations. Scope can change after the desktop pilot and real-device testing. Detailed acceptance criteria are in the [cross-platform capture plan](plans/cross-platform-capture.md).
 

@@ -1,6 +1,6 @@
 # Plan: cross-platform app feedback
 
-Status: proposed implementation; compatibility and Upcoming documentation prepared. Owner: Feedbacks contributors. Date: 2026-10-21.
+Status: desktop browser/import pilot implemented; verification in progress; native companions proposed. Owner: Feedbacks contributors. Date: 2026-10-21.
 
 ## Outcome and scope
 
@@ -18,8 +18,8 @@ Reuse existing private assets, revisions, idempotency and current project grants
 
 - [x] Document current integrations, proposed platform capabilities and OS restrictions with primary-source provenance.
 - [x] Add Upcoming documentation with availability criteria and no delivery promises.
-- [ ] Define native capture identity, project authorization and backward-compatible context contracts; record whether any additive migration is required.
-- [ ] Implement a desktop browser screenshot pilot with explicit window/display selection, image preview, annotation/redaction and authorized submission.
+- [x] Define native capture identity, project authorization and backward-compatible context contracts; record whether any additive migration is required.
+- [x] Implement a desktop browser screenshot pilot with explicit window/display selection, image preview, annotation/redaction and authorized submission.
 - [ ] Verify the existing mobile SDKs in real host apps on physical iOS and Android devices.
 - [ ] Evaluate companion packaging and mobile sharing after pilot findings; implement each platform as a separately verifiable slice.
 - [ ] Add app-integrated diagnostics only with explicit bounded instrumentation, redaction and channel coverage.
@@ -38,7 +38,7 @@ Reuse existing private assets, revisions, idempotency and current project grants
 
 ## Compatibility and recovery
 
-This documentation change has no API, permission, persistence, credential or runtime changes. Any later implementation must define additive compatibility and recovery in its own reviewed change. Preserve existing applied migrations, object keys and stored evidence; do not reinterpret a browser recording as a native capture. Clients must retain approved local drafts across uncertain outcomes, and owners retain server-side device revocation.
+The pilot adds an optional appCapture input to threads.create and stores its validated context in existing thread JSON. Existing requests and applied migrations remain valid; no database migration, new token scope, extension permission or native package is introduced. Approved retry drafts are local browser data and are removed on successful submission or explicit local discard. Later companions and diagnostics require their own reviewed compatibility/recovery designs. Preserve existing applied migrations, object keys and stored evidence; do not reinterpret a browser recording as a native capture. Clients must retain approved local drafts across uncertain outcomes, and owners retain server-side device revocation.
 
 ## Decision log
 
@@ -47,8 +47,8 @@ This documentation change has no API, permission, persistence, credential or run
 
 ## Completion receipt
 
-Source revision: implementation not started.
-Checks and results: documentation checks recorded in the documentation change receipt.
-Artifacts: compatibility matrix, Upcoming page and this proposed plan.
-Deployment and live verification: no new capture client deployed or physically verified by this plan.
-Remaining risks or follow-up: native identity design, OS/device access, permission UX, packaging/distribution and per-platform acceptance.
+Source revision: see the implementation PR receipt.
+Checks and results: full repository check, native PostgreSQL checks and dedicated local API/browser capture/widget acceptance passed. Browser media and Turnstile are synthetic; exact final revision checks are recorded in the PR.
+Artifacts: app capture/import UI, shared native context contract, private screenshot submission, approved local retry drafts, widget installation flow, guides and regression tests.
+Deployment and live verification: implementation and local acceptance only; production deployment, native OS pickers and physical mobile devices remain unverified.
+Remaining risks or follow-up: native picker/device acceptance, companion packaging/distribution and app-integrated diagnostics.

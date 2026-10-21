@@ -70,6 +70,8 @@ Public links can be forwarded. Use short expiry and a modest response cap when s
 
 ## Add the website widget
 
+Open **Project settings → Website widget** to create and manage an installation snippet. See the [installation guide](../site-docs/guide/website-widget.md) for host setup, CSP, verification and replacement.
+
 In project settings, choose **Website widget** when creating a guest feedback link. The project must use exact approved origins. Copy the one-time script snippet into an approved website. The script shows a fixed **Send feedback** launcher; it does not load existing project feedback. The form sends the current page URL, viewport dimensions, visitor name and feedback. The host script does not capture screenshots or other tabs. Use the Chrome extension for private screenshot review.
 
 Widget links use the same expiry, submission limit and revocation controls as guest links. A widget token cannot open the standalone guest form. The service answers widget requests only for an exact approved `Origin`, verifies the page URL matches that origin and checks Cloudflare Turnstile on the submitting website. The snippet token is visible to anyone who can inspect the host website, so it is a bounded public capability rather than a private invitation. Use a short expiry and low submission limit for public sites.

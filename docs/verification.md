@@ -51,3 +51,9 @@ GitHub App and does not replace acceptance of the actual GitHub approval UI.
 Focused encrypted-catalog, recovery/race and worker checks live in
 `tests/github-managed-apps.test.ts`; provider/server/connection isolation is checked in
 `tests/integration-vault.test.ts`. Native tests verify migration 28.
+
+## Extension-free capture and website widget
+
+`FEEDBACKS_APP_CAPTURE_BROWSER=1 node --import tsx --test tests/app-capture-browser.test.ts` runs after the build in the required browser CI job. It uses a real disposable local API and a fresh browser context without an extension. The fixture verifies image import, coordinate notes and masking, private uploaded pixels, recovery after a committed upload loses its response, reload/retry without duplicate threads/assets, permission denial, synthetic window-frame capture and media-track cleanup. It also generates an installation snippet in Settings and submits widget feedback from a separate approved host origin with a mocked Turnstile challenge.
+
+These tests do not establish native Windows/macOS/Ubuntu picker behavior, physical mobile-device acceptance, production Turnstile/CSP or Store distribution. The synthetic screenshots under ignored `.impeccable/review/` are local review artifacts. See [app screenshots](app-capture.md) and the [widget installation guide](../site-docs/guide/website-widget.md).

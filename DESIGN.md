@@ -169,11 +169,19 @@ The first scene and its copy exist in the initial HTML. The [shared player](publ
 
 The [extension popup](extension/popup.html) states the running-server and account prerequisites before connection. First-use guidance covers installing, pinning, connecting, capturing, reviewing and sending. Connected review controls remain compact and task-focused.
 
+### App screenshot editor
+
+[App screenshot](src/web/capture/index.tsx) keeps the application's system typography, Oxford actions and native fields. One heading introduces a proportional image review with nearby source and tool controls, followed by labeled notes and feedback. Selected tools expose their pressed state. Source controls stack on narrow screens; coordinate fields and the optional app version use native disclosures. Keep the keyboard actions for adding points and hidden areas alongside pointer editing.
+
+The [editor](src/web/capture/editor.tsx) pairs compact numbered Oxford pins with full-size note fields and uses solid black rectangles for pixel redaction. Marker numerals (0.8rem) and black masks stay scoped to [capture styling](src/web/capture/capture.css). The approved retry state keeps the reviewed image visible, locks editing and explains the next send action.
+
 ### Navigation and review controls
 
 Account groups agent setup, connections, owner links and security in keyboard-accessible tabs. At narrow widths all tabs stay visible in two rows. Active credentials appear first; extension and expired/revoked lists use disclosures. Newly created owner links show a four-character ending, while older hashed links state that the ending is unavailable. The mobile Menu overlays navigation without moving the header or page content.
 
-Project Members uses People, Invite, Create user and Add existing tabs for owners; a selected person's details stay within People. Project Settings uses Project, Categories & tags, Integrations and Advanced tabs. Keep every panel mounted while switching so drafts and one-time credentials remain available. Existing operation boundaries and owner permissions still govern every action.
+Project Members uses People, Invite, Create user and Add existing tabs for owners; a selected person's details stay within People. Project Settings uses Project, Categories & tags, Website widget, Integrations and Advanced tabs. Keep every panel mounted while switching so drafts and one-time credentials remain available. Existing operation boundaries and owner permissions still govern every action.
+
+The [Website widget panel](src/web/projects/settings.tsx) uses the existing SectionTabs and [installation form](src/web/guest-project-review.tsx). Keep its text-only scope and approved-origin prerequisite visible beside the native installation controls. The one-time snippet and short installation steps remain in that panel, with the same selectable, copyable treatment as other credentials.
 
 Navigation preserves applied filters and protects unsaved drafts. Thread rows keep a narrow selection column at every breakpoint, with actions below the content on mobile. The Saved views icon stays in the filter panel’s top-right corner without reserving a separate column. Top priority uses the same outlined control treatment as Archive. Optional organization, personal views and diagnostics use disclosure sections. Screenshot comparison preserves proportions and provides a labeled native range control. Arrow-key navigation must not intercept typing, selectors, sliders or dialogs. Keep response obligation, work status and delivery evidence distinct.
 

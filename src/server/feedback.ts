@@ -196,7 +196,24 @@ export async function feedback(
       now = new Date().toISOString(),
       id = randomUUID();
     let context;
-    if (i.document) {
+    if (i.appCapture) {
+      const { points, ...capture } = i.appCapture;
+      context = {
+        source: "app_capture",
+        title: capture.appName,
+        appCapture: { ...capture, trust: "reviewer_supplied" },
+        captureDimensions: { width: capture.width, height: capture.height },
+        ...(capture.capturedAt ? { capturedAt: capture.capturedAt } : {}),
+        annotations: points.map((point: any) => ({
+          id: point.id,
+          body: point.body,
+          anchor: {
+            confidence: "coordinate-only",
+            screenshotPoint: { x: point.x, y: point.y },
+          },
+        })),
+      };
+    } else if (i.document) {
       if (!config) fail("VALIDATION", "Document context is unavailable");
       const document = await documentRow(db, a, i.document.documentId);
       if (document.project_id !== i.projectId)

@@ -221,6 +221,10 @@ export type Project = {
   };
 };
 export type Context = {
+  source?: string;
+  appCapture?: Omit<import("../shared/app-capture.js").AppCapture, "points"> & {
+    trust: "reviewer_supplied";
+  };
   url?: string;
   origin?: string;
   hostname?: string;

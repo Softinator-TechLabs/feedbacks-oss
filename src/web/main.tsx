@@ -33,6 +33,7 @@ import { Surveys, SurveyPublic } from "./surveys/index.js";
 import { GithubApps } from "./github-apps.js";
 import { Integrations } from "./integrations/index.js";
 import { AgentConnection } from "./agent-connection.js";
+import { AppCapturePage } from "./capture/index.js";
 function App() {
   const pageLocation = usePageLocation();
   const path = pageLocation.split("?")[0];
@@ -338,6 +339,8 @@ function App() {
               <p role="alert">
                 This project is unavailable. <a href="/">Open projects</a>
               </p>
+            ) : section === "capture" ? (
+              <AppCapturePage project={project} userId={actor.userId} />
             ) : section === "members" ? (
               <Members actor={actor} project={project} />
             ) : section === "instructions" ? (

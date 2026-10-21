@@ -76,6 +76,8 @@ export default defineConfig({
           { text: "Debugging bundles", link: "/guide/debug-bundles" },
           { text: "Exact text suggestions", link: "/guide/text-suggestions" },
           { text: "Project and agent context", link: "/guide/agent-context" },
+          { text: "App screenshots", link: "/reference/manual/app-capture" },
+          { text: "Website widget", link: "/guide/website-widget" },
           { text: "More ways to review", link: "/guide/more-ways-to-review" },
         ],
       },
