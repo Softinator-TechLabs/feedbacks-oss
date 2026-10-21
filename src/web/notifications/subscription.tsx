@@ -1,5 +1,5 @@
 import { useUnsavedChanges } from "../navigation.js";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { ActionState, ErrorNotice, Loading, useLoad, useAction } from "../ui.js";
 import {
@@ -116,17 +116,21 @@ function EmailSubscriptionEditor({ projectId }: { projectId: string }) {
   );
 }
 
-export function EmailSubscription({ projectId }: { projectId: string }) {
-  const [opened, setOpened] = useState(false);
+export function EmailSubscription({
+  projectId,
+  active,
+}: {
+  projectId: string;
+  active: boolean;
+}) {
+  const [opened, setOpened] = useState(active);
+  useEffect(() => {
+    if (active) setOpened(true);
+  }, [active]);
   return (
-    <details
-      className="email-subscription"
-      onToggle={(event) => {
-        if (event.currentTarget.open) setOpened(true);
-      }}
-    >
-      <summary>Email notifications</summary>
+    <section className="email-subscription">
+      <h2>My email preferences</h2>
       {opened && <EmailSubscriptionEditor projectId={projectId} />}
-    </details>
+    </section>
   );
 }

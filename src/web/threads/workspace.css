@@ -1,0 +1,154 @@
+.thread-list-workspace .thread-list-heading {
+  align-items: start;
+  gap: 12px 24px;
+  margin-bottom: 12px;
+}
+.thread-list-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.thread-list-title h1 {
+  margin: 0;
+}
+.thread-list-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.thread-list-heading .muted {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  max-width: none;
+}
+.thread-list-heading .thread-list-quick-actions {
+  flex: none;
+  width: auto;
+}
+.thread-list-heading .thread-list-quick-actions > button,
+.thread-list-heading .thread-list-quick-actions > a {
+  min-height: 44px;
+}
+.thread-list-more {
+  position: relative;
+}
+.thread-list-more > summary,
+.thread-list-toolbar .project-assignments > summary {
+  padding: 9px 12px;
+  min-height: 44px;
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  color: var(--accent);
+  background: var(--surface);
+}
+.thread-list-more[open] > summary {
+  margin-bottom: 0;
+}
+.thread-list-more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  max-width: calc(100vw - 36px);
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.thread-list-more-menu > .button,
+.thread-list-more-menu > button {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  min-height: 44px;
+}
+.thread-list-toolbar {
+  display: flex;
+  align-items: start;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.thread-list-toolbar > button[aria-pressed="true"] {
+  border-color: var(--control-border);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+.thread-list-toolbar .thread-filter-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 4px;
+  flex: 0 1 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.thread-list-toolbar .thread-filter-panel.is-expanded {
+  flex-basis: 100%;
+}
+.thread-list-toolbar .thread-filter-mobile-toggle {
+  width: auto;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  background: var(--surface);
+}
+.thread-list-toolbar .thread-filter-panel > .saved-views {
+  position: static;
+  grid-column: 2;
+  grid-row: 1;
+}
+.thread-list-toolbar .thread-filters {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.thread-list-toolbar .project-assignments {
+  flex: 0 1 auto;
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.thread-list-toolbar .project-assignments[open] {
+  flex-basis: 100%;
+}
+.thread-list-toolbar .project-assignments > summary {
+  width: fit-content;
+}
+.thread-list-workspace .thread-bulk-actions {
+  padding: 0;
+  gap: 8px 12px;
+  margin-bottom: 4px;
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .thread-list-toolbar {
+    gap: 6px;
+  }
+  .thread-list-toolbar > button {
+    padding-inline: 10px;
+    font-size: 0.85rem;
+  }
+  .thread-list-toolbar .thread-filter-mobile-toggle {
+    gap: 8px;
+    padding-inline: 8px;
+    font-size: 0.85rem;
+  }
+  .thread-list-heading .thread-list-quick-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .thread-list-workspace .thread-list-heading {
+    gap: 10px;
+  }
+  .thread-list-heading .thread-list-quick-actions > a,
+  .thread-list-more > summary {
+    font-size: 0.85rem;
+  }
+}

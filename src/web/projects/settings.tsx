@@ -1,3 +1,4 @@
+import { EmailSubscription } from "../notifications/subscription.js";
 import { TimeTrackingSettings } from "../integrations/time-tracking.js";
 import { ChannelSettings } from "../integrations/channels.js";
 import { PermanentIntake } from "./permanent-intake.js";
@@ -13,11 +14,18 @@ import { WebhookSettings } from "./webhooks.js";
 
 import { SectionTabs, type SectionTab } from "../section-tabs.js";
 
-type ProjectSettingsTab = "project" | "taxonomy" | "integrations" | "widget" | "advanced";
+type ProjectSettingsTab =
+  | "project"
+  | "taxonomy"
+  | "integrations"
+  | "notifications"
+  | "widget"
+  | "advanced";
 
 function projectSettingsTabFromHash(canMaintain: boolean): ProjectSettingsTab {
   const hash = typeof window === "undefined" ? "" : window.location.hash.slice(1);
   if (canMaintain && hash === "widget") return "widget";
+  if (hash === "notifications") return "notifications";
   if (hash === "integrations") return "integrations";
   if (canMaintain && (hash === "taxonomy" || hash === "project-taxonomy"))
     return "taxonomy";
@@ -58,6 +66,11 @@ export function ProjectSettings({
     ...(canMaintain
       ? [{ id: "widget" as const, label: "Website widget", panelId: "settings-widget" }]
       : []),
+    {
+      id: "notifications",
+      label: "Email notifications",
+      panelId: "settings-notifications",
+    },
     { id: "integrations", label: "Integrations", panelId: "settings-integrations" },
     ...(canMaintain
       ? [{ id: "advanced" as const, label: "Advanced", panelId: "settings-advanced" }]
@@ -135,6 +148,22 @@ export function ProjectSettings({
       )}
       <div
         className="section-panel"
+        id="settings-notifications"
+        role="tabpanel"
+        aria-labelledby="project-settings-tab-notifications"
+        hidden={selected !== "notifications"}
+      >
+        <EmailSubscription
+          key={project.id}
+          projectId={project.id}
+          active={selected === "notifications"}
+        />
+        {canMaintain && (
+          <EmailSettings projectId={project.id} owner={actor.owner === true} />
+        )}
+      </div>
+      <div
+        className="section-panel"
         id="settings-integrations"
         role="tabpanel"
         aria-labelledby="project-settings-tab-integrations"
@@ -152,9 +181,6 @@ export function ProjectSettings({
             {project.githubConnected ? "Manage GitHub connection" : "Set up GitHub"}
           </a>
         </section>
-        {canMaintain && (
-          <EmailSettings projectId={project.id} owner={actor.owner === true} />
-        )}
         {canMaintain && <WebhookSettings projectId={project.id} />}
         {canMaintain && <ChannelSettings projectId={project.id} />}
         {canMaintain && (

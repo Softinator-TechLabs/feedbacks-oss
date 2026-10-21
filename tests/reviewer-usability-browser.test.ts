@@ -110,6 +110,36 @@ test(
       await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
       const row = page.locator(`[data-thread-id="${docThread.id}"]`);
       await row.waitFor();
+      assert.equal(await page.locator(".email-subscription").count(), 0);
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Archive selected (0)", exact: true })
+          .count(),
+        0,
+      );
+      const firstRowTop = (await page.locator(".thread-row").first().boundingBox())!.y;
+      console.info("First feedback top at 1440 px:", firstRowTop);
+      assert.ok(
+        firstRowTop <= 360,
+        `Feedback starts within the initial desktop viewport: ${firstRowTop}`,
+      );
+      await mkdir(".local/compact-workspace", { recursive: true });
+      await page.screenshot({ path: ".local/compact-workspace/list-desktop-dark.png" });
+      const more = page.locator(".thread-list-more");
+      await more.locator("summary").press("Enter");
+      await more.getByRole("link", { name: "Board view", exact: true }).waitFor();
+      await more.getByRole("link", { name: "Board view", exact: true }).press("Escape");
+      assert.equal(await more.getAttribute("open"), null);
+      await page.setViewportSize({ width: 390, height: 844 });
+      const mobileTop = (await page.locator(".thread-row").first().boundingBox())!.y;
+      console.info("First feedback top at 390 px:", mobileTop);
+      assert.ok(mobileTop <= 500, `First feedback is reachable on mobile: ${mobileTop}`);
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      await page.screenshot({ path: ".local/compact-workspace/list-mobile-dark.png" });
+      await page.setViewportSize({ width: 1440, height: 950 });
       const select = row.getByRole("checkbox");
       await select.check();
       const selectedBackground = await row.evaluate(
