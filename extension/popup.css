@@ -282,12 +282,13 @@ button {
   font-weight: 500;
   color: var(--accent);
 }
-#connection-settings label {
-  margin-top: 12px;
-}
-#connection-settings .check {
+.server-settings .check {
   font-size: 13px;
   margin-bottom: 0;
+}
+#local-http-help {
+  margin: 0 0 8px;
+  font-size: 13px;
 }
 #update-status {
   margin: 8px 0 0;

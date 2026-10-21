@@ -12,7 +12,7 @@ Feedbacks captures client feedback and UI test findings with the context a devel
 
 Chrome manages updates for Store installations. For your first capture: open the website → click the pinned icon → hover and right-click an element → write the note → **Save point** → **Review & send** to finalize and inspect the evidence → **Send & Open**. Saved points are local drafts until sending. See the [complete reviewer walkthrough](../site-docs/guide/chrome-extension.md).
 
-Detection uses the current tab only and adds no Chrome permissions. It never replaces a saved server, an address you are typing or pending pairing. It does not connect an account automatically. For a fresh local HTTP installation, paste the address and enable the explicit local-server option before connecting; HTTPS is detected automatically. Refreshing the page removes its setup bridge, so reopen the icon before using **Set in extension** again.
+Detection uses the current tab only and adds no Chrome permissions. It never replaces a saved server, an address you are typing or pending pairing. It does not connect an account automatically. For a fresh local HTTP installation, paste the address and check **Allow local HTTP development server**, directly below the popup’s server address, before connecting. The adjacent warning explains that HTTP is unencrypted; typing a local address does not enable it automatically. HTTPS is detected automatically. Refreshing the page removes its setup bridge, so reopen the icon before using **Set in extension** again.
 
 ## Install from source
 
