@@ -202,6 +202,9 @@ export function ThreadDetail({
       const section = document.getElementById(id);
       if (!section) return;
       if (section instanceof HTMLDetailsElement) section.open = true;
+      // The next frame can arrive after someone has already entered the panel.
+      // Keep that deliberate focus instead of interrupting their next keystroke.
+      if (section.contains(document.activeElement)) return;
       section.scrollIntoView({ block: "start" });
       if (section instanceof HTMLDetailsElement)
         section.querySelector("summary")?.focus({ preventScroll: true });

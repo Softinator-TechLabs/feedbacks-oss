@@ -650,11 +650,48 @@ test(
         await page.locator('summary[aria-label="More actions"]').press("Enter");
         await page.getByRole("button", { name: "Details", exact: true }).press("Enter");
         const detail = page.locator("#thread-details");
+        await page.waitForFunction(() => document.activeElement?.id === "thread-details");
+        await detail
+          .getByRole("button", { name: "← Discussion", exact: true })
+          .press("Enter");
+        await page.waitForFunction(
+          () => document.activeElement?.id === "thread-discussion-heading",
+        );
+        await page.locator('summary[aria-label="More actions"]').press("Enter");
+        // Hold the navigation frame so the next native keyboard interaction can
+        // begin first, as it can when rendering and input share a busy frame.
+        await page.evaluate(() => {
+          const requestFrame = window.requestAnimationFrame;
+          const callbacks: FrameRequestCallback[] = [];
+          window.requestAnimationFrame = (callback) => {
+            callbacks.push(callback);
+            return callbacks.length;
+          };
+          (window as any).__flushThreadDetailFrame = () => {
+            window.requestAnimationFrame = requestFrame;
+            delete (window as any).__flushThreadDetailFrame;
+            for (const callback of callbacks) callback(performance.now());
+            return callbacks.length;
+          };
+        });
+        await page.getByRole("button", { name: "Details", exact: true }).press("Enter");
         const replay = detail.locator("details").filter({
           has: page
             .locator("summary")
             .filter({ hasText: /^Fullstory and LogRocket sessions/ }),
         });
+        await replay.locator("summary").focus();
+        assert.equal(
+          await page.evaluate(() => (window as any).__flushThreadDetailFrame()),
+          1,
+        );
+        assert.equal(
+          await replay
+            .locator("summary")
+            .evaluate((summary) => summary === document.activeElement),
+          true,
+          `${device}: deferred Details focus preserves the reviewer's focused disclosure`,
+        );
         await replay.locator("summary").press("Enter");
         await replay
           .getByRole("combobox", { name: "Provider", exact: true })

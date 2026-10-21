@@ -4,6 +4,7 @@
 
 - Add a configurable project Kanban board with shared thread filters, keyboard controls and atomic batch status, assignment and archive changes.
 - Add permission-scoped analytics with separate Overview, Trends and Explore tabs. Visual counts and project charts show pending, overdue and high-priority tasks with exact drilldowns; activity charts and completed response/triage/resolution distributions support planning. CSV and print keep aggregate totals.
+- Preserve keyboard focus when a reviewer enters a detail control before the panel's deferred navigation finishes.
 - Add subscribed email for feedback, discussion, mentions, work status and assignment changes. Configure SMTP (including Google), Mailjet or Amazon SES, server defaults, project senders and safe text templates. Delivery history distinguishes accepted and uncertain sends.
 - Add explicit tracker connections for Jira, Linear, Asana, ClickUp, Monday, Trello, Productive, Teamwork and Firmao CRM, with reviewed writes, status mappings, encrypted credentials and reconciliation. Jira OAuth uses a separately operated confidential broker.
 - Add explicit reviewed GitHub Issue comments with bounded remote discussion readback, durable reservations and uncertain-write reconciliation.

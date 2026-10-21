@@ -15,6 +15,8 @@ Run commands from the repository root after `npm ci`. Use a supported Node versi
 
 [HTTP budget tests](../tests/http-rate.test.ts) verify independent member-session and bearer-credential allowances, their individual limits and the shared IP ingress limit. Bulk synthetic setup in the extension suite honors definite HTTP 429 `Retry-After` responses; it does not replay browser actions or relax assertions.
 
+The [integration browser acceptance](../tests/integrations-browser.test.ts) holds a navigation frame to verify that opening feedback details preserves an already focused disclosure. It also checks the normal initial panel focus before completing the keyboard workflow on desktop and mobile.
+
 ## Fast feedback
 
 Run one test file with `node --import tsx --test tests/harness.test.ts`, replacing the filename for the change. Run `npm run check:harness` without a build for import/docs feedback. `npm run check` includes the built sandbox smoke check, so contributors and CI exercise the same entry point.
