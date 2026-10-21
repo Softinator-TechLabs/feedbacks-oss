@@ -1,0 +1,135 @@
+.project-integration-tabs > .section-tabs {
+  position: static;
+  top: auto;
+  margin-bottom: 24px;
+}
+.project-integration-panel {
+  min-width: 0;
+  max-width: 56rem;
+}
+.connection-settings {
+  width: 100%;
+  max-width: 52rem;
+}
+.connection-settings > h2 {
+  margin-bottom: 6px;
+}
+.connection-settings p {
+  max-width: 70ch;
+  overflow-wrap: anywhere;
+}
+.connection-list {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+}
+.connection-list:empty {
+  display: none;
+}
+.connection-list > li {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.connection-list > li:first-child {
+  padding-top: 0;
+}
+.connection-list > li > p {
+  margin-bottom: 10px;
+  color: var(--muted);
+}
+.connection-list > li > p.error {
+  color: var(--danger);
+}
+.connection-form {
+  width: 100%;
+  max-width: 44rem;
+  margin: 20px 0;
+}
+.connection-form > h3 {
+  margin-bottom: 16px;
+}
+.connection-form .field {
+  min-width: 0;
+}
+.connection-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.connection-fields > .field {
+  margin: 0;
+}
+.connection-options {
+  min-width: 0;
+  margin: 12px 0 16px;
+  padding: 8px 14px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.connection-options > legend {
+  padding-inline: 4px;
+  font-weight: 600;
+}
+.connection-options > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 20px;
+}
+.connection-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.connection-options input[type="checkbox"] {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  min-height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.connection-actions,
+.connection-destination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.connection-destination {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.connection-destination code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.connection-settings > details,
+.connection-settings > div > details {
+  margin-block: 20px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.connection-settings details > summary {
+  padding-block: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.connection-settings details[open] > summary {
+  margin-bottom: 8px;
+}
+@media (max-width: 600px) {
+  .project-integration-tabs > .section-tabs {
+    margin-bottom: 20px;
+  }
+  .connection-fields,
+  .connection-options > div {
+    grid-template-columns: 1fr;
+  }
+  .connection-actions > button {
+    flex: 1 1 auto;
+  }
+}

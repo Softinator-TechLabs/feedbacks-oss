@@ -14,33 +14,87 @@ import { WebhookSettings } from "./webhooks.js";
 import { SectionTabs, type SectionTab } from "../section-tabs.js";
 
 type ProjectSettingsTab = "project" | "taxonomy" | "integrations" | "widget" | "advanced";
+type ProjectIntegrationTab = "email" | "channels" | "github" | "webhooks" | "time";
+type SettingsSelection = {
+  tab: ProjectSettingsTab;
+  integration: ProjectIntegrationTab;
+};
+type SettingsNavigation = SettingsSelection & {
+  visitedSections: ProjectSettingsTab[];
+  visitedIntegrations: ProjectIntegrationTab[];
+};
 
-function projectSettingsTabFromHash(canMaintain: boolean): ProjectSettingsTab {
+function projectSettingsSelectionFromHash(canMaintain: boolean): SettingsSelection {
   const hash = typeof window === "undefined" ? "" : window.location.hash.slice(1);
-  if (canMaintain && hash === "widget") return "widget";
-  if (hash === "integrations") return "integrations";
+  const defaultIntegration = canMaintain ? "email" : "github";
+  const integration = hash.slice("integrations-".length);
+  if (
+    hash === "integrations" ||
+    (hash.startsWith("integrations-") &&
+      ["email", "channels", "github", "webhooks", "time"].includes(integration))
+  )
+    return {
+      tab: "integrations",
+      integration: canMaintain
+        ? hash === "integrations"
+          ? defaultIntegration
+          : (integration as ProjectIntegrationTab)
+        : "github",
+    };
+  if (canMaintain && hash === "widget")
+    return { tab: "widget", integration: defaultIntegration };
   if (canMaintain && (hash === "taxonomy" || hash === "project-taxonomy"))
-    return "taxonomy";
-  if (canMaintain && hash === "advanced") return "advanced";
-  return "project";
+    return { tab: "taxonomy", integration: defaultIntegration };
+  if (canMaintain && hash === "advanced")
+    return { tab: "advanced", integration: defaultIntegration };
+  return { tab: "project", integration: defaultIntegration };
 }
 
-export function ProjectSettings({
-  project,
-  actor,
-  onSaved,
-}: {
+function visitSettings(
+  selection: SettingsSelection,
+  previous?: SettingsNavigation,
+): SettingsNavigation {
+  const visitedSections = previous?.visitedSections ?? [];
+  const visitedIntegrations = previous?.visitedIntegrations ?? [];
+  return {
+    ...selection,
+    visitedSections: visitedSections.includes(selection.tab)
+      ? visitedSections
+      : [...visitedSections, selection.tab],
+    visitedIntegrations:
+      selection.tab !== "integrations" ||
+      visitedIntegrations.includes(selection.integration)
+        ? visitedIntegrations
+        : [...visitedIntegrations, selection.integration],
+  };
+}
+
+type ProjectSettingsProps = {
   project: Project;
   actor: Actor;
   onSaved: (p: Project) => void;
-}) {
+};
+
+export function ProjectSettings(props: ProjectSettingsProps) {
+  return (
+    <ProjectSettingsContent
+      key={`${props.project.id}:${props.actor.id}:${props.actor.owner === true}:${props.project.permissions.canMaintain}`}
+      {...props}
+    />
+  );
+}
+
+function ProjectSettingsContent({ project, actor, onSaved }: ProjectSettingsProps) {
   const [editorVersion, setEditorVersion] = useState(0);
   const canMaintain = project.permissions.canMaintain;
-  const [tab, setTab] = useState<ProjectSettingsTab>(() =>
-    projectSettingsTabFromHash(canMaintain),
+  const [navigation, setNavigation] = useState<SettingsNavigation>(() =>
+    visitSettings(projectSettingsSelectionFromHash(canMaintain)),
   );
   useEffect(() => {
-    const selectHash = () => setTab(projectSettingsTabFromHash(canMaintain));
+    const selectHash = () =>
+      setNavigation((previous) =>
+        visitSettings(projectSettingsSelectionFromHash(canMaintain), previous),
+      );
     window.addEventListener("hashchange", selectHash);
     return () => window.removeEventListener("hashchange", selectHash);
   }, [canMaintain]);
@@ -63,14 +117,32 @@ export function ProjectSettings({
       ? [{ id: "advanced" as const, label: "Advanced", panelId: "settings-advanced" }]
       : []),
   ];
-  const selected =
-    canMaintain || (tab !== "taxonomy" && tab !== "advanced" && tab !== "widget")
-      ? tab
-      : "project";
+  const integrationTabs: SectionTab<ProjectIntegrationTab>[] = canMaintain
+    ? [
+        { id: "email", label: "Email", panelId: "integrations-email" },
+        { id: "channels", label: "Slack & Teams", panelId: "integrations-channels" },
+        { id: "github", label: "GitHub", panelId: "integrations-github" },
+        { id: "webhooks", label: "Webhooks", panelId: "integrations-webhooks" },
+        { id: "time", label: "Time tracking", panelId: "integrations-time" },
+      ]
+    : [{ id: "github", label: "GitHub", panelId: "integrations-github" }];
+  const selected = navigation.tab;
   const selectTab = (next: ProjectSettingsTab) => {
-    setTab(next);
-    history.replaceState(null, "", `#${next === "taxonomy" ? "project-taxonomy" : next}`);
+    setNavigation((previous) => visitSettings({ ...previous, tab: next }, previous));
+    const hash =
+      next === "integrations"
+        ? `integrations-${navigation.integration}`
+        : next === "taxonomy"
+          ? "project-taxonomy"
+          : next;
+    history.replaceState(history.state, "", `#${hash}`);
     window.scrollTo(0, 0);
+  };
+  const selectIntegration = (integration: ProjectIntegrationTab) => {
+    setNavigation((previous) =>
+      visitSettings({ tab: "integrations", integration }, previous),
+    );
+    history.replaceState(history.state, "", `#integrations-${integration}`);
   };
   return (
     <>
@@ -89,34 +161,40 @@ export function ProjectSettings({
         aria-labelledby="project-settings-tab-project"
         hidden={selected !== "project"}
       >
-        <h2>Project details</h2>
-        {canMaintain ? (
-          <ProjectEditor
-            key={editorVersion}
-            project={project}
-            canSetCaptureMode={actor.owner === true}
-            onSaved={(saved) => {
-              setEditorVersion((version) => version + 1);
-              onSaved(saved);
-            }}
-          />
-        ) : (
-          <p>You can review this project’s origins. A maintainer can update them.</p>
+        {navigation.visitedSections.includes("project") && (
+          <>
+            <h2>Project details</h2>
+            {canMaintain ? (
+              <ProjectEditor
+                key={editorVersion}
+                project={project}
+                canSetCaptureMode={actor.owner === true}
+                onSaved={(saved) => {
+                  setEditorVersion((version) => version + 1);
+                  onSaved(saved);
+                }}
+              />
+            ) : (
+              <p>You can review this project’s origins. A maintainer can update them.</p>
+            )}
+            <section className="section">
+              <h2>
+                {project.captureMode === "any" ? "Website access" : "Approved origins"}
+              </h2>
+              {project.captureMode === "any" ? (
+                <p>Feedback can be captured from any HTTP(S) website.</p>
+              ) : (
+                <ul>
+                  {project.origins.map((o) => (
+                    <li key={o}>
+                      <ExternalLink href={o}>{o}</ExternalLink>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
         )}
-        <section className="section">
-          <h2>{project.captureMode === "any" ? "Website access" : "Approved origins"}</h2>
-          {project.captureMode === "any" ? (
-            <p>Feedback can be captured from any HTTP(S) website.</p>
-          ) : (
-            <ul>
-              {project.origins.map((o) => (
-                <li key={o}>
-                  <ExternalLink href={o}>{o}</ExternalLink>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
       {canMaintain && (
         <div
@@ -126,11 +204,13 @@ export function ProjectSettings({
           aria-labelledby="project-settings-tab-taxonomy"
           hidden={selected !== "taxonomy"}
         >
-          <ProjectTaxonomySettings
-            projectId={project.id}
-            projectRevision={project.revision}
-            onProjectSaved={onSaved}
-          />
+          {navigation.visitedSections.includes("taxonomy") && (
+            <ProjectTaxonomySettings
+              projectId={project.id}
+              projectRevision={project.revision}
+              onProjectSaved={onSaved}
+            />
+          )}
         </div>
       )}
       <div
@@ -140,25 +220,52 @@ export function ProjectSettings({
         aria-labelledby="project-settings-tab-integrations"
         hidden={selected !== "integrations"}
       >
-        <section className="section project-github-setting">
-          <h2>GitHub Issues</h2>
-          <p className="muted">
-            {project.githubConnected
-              ? "Connected to this project."
-              : "Off for this project."}{" "}
-            Create Issues from feedback only after connecting a repository.
-          </p>
-          <a href={`/projects/${project.id}/github`}>
-            {project.githubConnected ? "Manage GitHub connection" : "Set up GitHub"}
-          </a>
-        </section>
-        {canMaintain && (
-          <EmailSettings projectId={project.id} owner={actor.owner === true} />
-        )}
-        {canMaintain && <WebhookSettings projectId={project.id} />}
-        {canMaintain && <ChannelSettings projectId={project.id} />}
-        {canMaintain && (
-          <TimeTrackingSettings projectId={project.id} owner={actor.owner === true} />
+        {navigation.visitedSections.includes("integrations") && (
+          <>
+            <div className="project-integration-tabs">
+              <SectionTabs
+                label="Project integration providers"
+                idPrefix="project-integration-tab"
+                tabs={integrationTabs}
+                selected={navigation.integration}
+                onSelect={selectIntegration}
+              />
+            </div>
+            {integrationTabs.map(({ id, panelId }) => (
+              <div
+                key={id}
+                className="project-integration-panel"
+                id={panelId}
+                role="tabpanel"
+                aria-labelledby={`project-integration-tab-${id}`}
+                hidden={navigation.integration !== id}
+              >
+                {navigation.visitedIntegrations.includes(id) &&
+                  (id === "email" ? (
+                    <EmailSettings projectId={project.id} owner={actor.owner === true} />
+                  ) : id === "channels" ? (
+                    <ChannelSettings projectId={project.id} />
+                  ) : id === "github" ? (
+                    <section className="section project-github-setting">
+                      <h2>GitHub Issues</h2>
+                      <p className="muted">
+                        {project.githubConnected ? "Connected" : "Off"}
+                      </p>
+                      <a href={`/projects/${project.id}/github`}>
+                        {project.githubConnected ? "Manage connection" : "Set up GitHub"}
+                      </a>
+                    </section>
+                  ) : id === "webhooks" ? (
+                    <WebhookSettings projectId={project.id} />
+                  ) : (
+                    <TimeTrackingSettings
+                      projectId={project.id}
+                      owner={actor.owner === true}
+                    />
+                  ))}
+              </div>
+            ))}
+          </>
         )}
       </div>
       {canMaintain && (
@@ -169,13 +276,17 @@ export function ProjectSettings({
           aria-labelledby="project-settings-tab-widget"
           hidden={selected !== "widget"}
         >
-          <PermanentIntake project={project} />
-          <GuestProjectLinks
-            projectId={project.id}
-            widget
-            origins={project.origins}
-            captureMode={project.captureMode}
-          />
+          {navigation.visitedSections.includes("widget") && (
+            <>
+              <PermanentIntake project={project} />
+              <GuestProjectLinks
+                projectId={project.id}
+                widget
+                origins={project.origins}
+                captureMode={project.captureMode}
+              />
+            </>
+          )}
         </div>
       )}
       {canMaintain && (
@@ -186,9 +297,13 @@ export function ProjectSettings({
           aria-labelledby="project-settings-tab-advanced"
           hidden={selected !== "advanced"}
         >
-          <h2>Advanced settings</h2>
-          <ScheduledQaSettings projectId={project.id} />
-          <GuestProjectLinks projectId={project.id} />
+          {navigation.visitedSections.includes("advanced") && (
+            <>
+              <h2>Advanced settings</h2>
+              <ScheduledQaSettings projectId={project.id} />
+              <GuestProjectLinks projectId={project.id} />
+            </>
+          )}
         </div>
       )}
     </>

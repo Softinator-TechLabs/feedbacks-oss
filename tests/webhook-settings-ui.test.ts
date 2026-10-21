@@ -25,43 +25,76 @@ const actor: Actor = {
   kind: "human",
 };
 
-test("project maintainer sees webhook destination and delivery controls in settings", () => {
-  const html = renderToStaticMarkup(
-    React.createElement(ProjectSettings, { project, actor, onSaved: () => {} }),
-  );
-  assert.match(html, /Webhooks/);
-  assert.match(html, /Destination URL/);
-  assert.match(html, /Save webhook/);
-  assert.match(html, /Delivery history/);
+function renderSettings(hash: string, currentProject = project) {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: { location: { hash } },
+  });
+  try {
+    return renderToStaticMarkup(
+      React.createElement(ProjectSettings, {
+        project: currentProject,
+        actor,
+        onSaved: () => {},
+      }),
+    );
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "window", previous);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
+}
+
+test("default project settings preserve project controls without mounting providers", () => {
+  const html = renderSettings("");
   assert.match(html, /Document review/);
   assert.match(html, /Surveys and polls/);
+  assert.match(html, /Project details/);
+  assert.doesNotMatch(
+    html,
+    /Destination URL|Save webhook|Delivery history|GitHub Issues/,
+  );
+  assert.doesNotMatch(html, /Project integration providers/);
+});
+
+test("project maintainer opens its lazy webhook surface through the provider deep link", () => {
+  const html = renderSettings("#integrations-webhooks");
+  assert.match(html, /aria-label="Project integration providers"/);
+  assert.match(html, /id="project-integration-tab-webhooks"[^>]*aria-selected="true"/);
+  assert.match(html, /<h2 id="webhook-heading">Webhooks<\/h2>/);
+  assert.doesNotMatch(html, /Destination URL|Save webhook/);
+  assert.match(html, /Delivery history/);
+  assert.doesNotMatch(
+    html,
+    /GitHub Issues|Harvest and Time Doctor|Slack and Teams notifications/,
+  );
+});
+
+test("connected GitHub is summarized in its provider without prompting setup", () => {
+  const html = renderSettings("#integrations-github", {
+    ...project,
+    githubConnected: true,
+    documentsEnabled: true,
+  });
+  assert.match(html, /<p class="muted">Connected<\/p>/);
+  assert.match(html, /Manage connection/);
+  assert.doesNotMatch(html, /Set up GitHub|Destination URL|Save webhook/);
+  // Project editor settings remain independent of the integration provider.
+  assert.match(
+    renderSettings("", { ...project, documentsEnabled: true }),
+    /name="documentsEnabled"[^>]*checked/,
+  );
+});
+
+test("project reviewer cannot activate webhook management through a deep link", () => {
+  const html = renderSettings("#integrations-webhooks", {
+    ...project,
+    permissions: { ...project.permissions, role: "reviewer", canMaintain: false },
+  });
+  assert.doesNotMatch(
+    html,
+    /Save webhook|Delivery history|Rotate secret|Destination URL/,
+  );
   assert.match(html, /GitHub Issues/);
-  assert.match(html, /Off for this project/);
-});
-
-test("connected GitHub is summarized in settings without prompting setup", () => {
-  const html = renderToStaticMarkup(
-    React.createElement(ProjectSettings, {
-      project: { ...project, githubConnected: true, documentsEnabled: true },
-      actor,
-      onSaved: () => {},
-    }),
-  );
-  assert.match(html, /Connected to this project/);
-  assert.match(html, /Manage GitHub connection/);
-  assert.match(html, /name="documentsEnabled"[^>]*checked/);
-});
-
-test("project reviewer does not see webhook management", () => {
-  const html = renderToStaticMarkup(
-    React.createElement(ProjectSettings, {
-      project: {
-        ...project,
-        permissions: { ...project.permissions, role: "reviewer", canMaintain: false },
-      },
-      actor,
-      onSaved: () => {},
-    }),
-  );
-  assert.doesNotMatch(html, /Save webhook|Delivery history|Rotate secret/);
+  assert.match(html, /<p class="muted">Off<\/p>/);
 });

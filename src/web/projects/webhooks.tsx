@@ -7,9 +7,11 @@ import {
   ErrorNotice,
   Field,
   Secret,
+  Loading,
   useAction,
   useLoad,
 } from "../ui.js";
+import { useUnsavedChanges } from "../navigation.js";
 
 type WebhookConfig = {
   configured: boolean;
@@ -32,6 +34,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
   const [draftUrl, setDraftUrl] = useState("");
   const draftRef = useRef("");
   const [edited, setEdited] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [secret, setSecret] = useState<string>();
   const [testKey, setTestKey] = useState(() => crypto.randomUUID());
   const config = useLoad<WebhookConfig>(
@@ -45,6 +48,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
   );
   const failedCount =
     deliveries.data?.items.filter((item) => item.status === "failed").length ?? 0;
+  useUnsavedChanges(edited || a.busy);
   useEffect(() => {
     if (!edited && config.data) {
       const url = config.data.url ?? "";
@@ -53,73 +57,115 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
     }
   }, [config.data, edited]);
   return (
-    <section className="section" aria-labelledby="webhook-heading">
+    <section className="connection-settings" aria-labelledby="webhook-heading">
       <h2 id="webhook-heading">Webhooks</h2>
-      <p className="muted">
-        Send signed thread activity to one HTTPS destination. Events contain IDs, type,
-        revision and time, without discussion text or private notes.
-      </p>
-      <form
-        className="form-grid"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const url = draftUrl.trim();
-          void a.run(
-            async () => {
-              const result = await api<{ url: string; secret?: string }>(
-                "webhooks.save",
-                {
-                  projectId,
-                  url,
-                },
-              );
-              if (result.secret) setSecret(result.secret);
-              config.setData((current) => ({
-                configured: true,
-                url: result.url,
-                createdAt: current?.createdAt ?? new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              }));
-              if (draftRef.current.trim() === url) {
-                setDraftUrl(result.url);
-                draftRef.current = result.url;
-                setEdited(false);
-              }
-              setVersion((current) => current + 1);
-            },
-            config.data?.configured
-              ? "Destination saved. The signing secret is unchanged."
-              : "Webhook saved.",
-          );
-        }}
-      >
-        <Field
-          label="Destination URL"
-          hint="Public HTTPS on port 443. Do not put a token in the URL."
-        >
-          <input
-            name="webhookUrl"
-            type="url"
-            inputMode="url"
-            value={draftUrl}
-            placeholder="https://hooks.example.com/feedback"
-            required
-            maxLength={2048}
-            onChange={(event) => {
-              setDraftUrl(event.target.value);
-              draftRef.current = event.target.value;
-              setEdited(true);
-            }}
-          />
-        </Field>
-        <div className="form-end">
-          <ActionState action={a} />
-          <button className="primary" disabled={!config.data || a.busy}>
-            {a.busy ? "Saving…" : "Save webhook"}
-          </button>
-        </div>
-      </form>
+      <p className="muted">Send signed activity events to one HTTPS destination.</p>
       <ErrorNotice error={config.error} />
+      <ActionState action={a} />
+      {!config.data && !config.error && <Loading />}
+      {config.data && !editing && (
+        <>
+          {config.data.configured ? (
+            <div className="connection-destination">
+              <code>{config.data.url}</code>
+              <button type="button" disabled={a.busy} onClick={() => setEditing(true)}>
+                Edit destination
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="muted">No webhook connected.</p>
+              <button type="button" className="primary" onClick={() => setEditing(true)}>
+                Add webhook
+              </button>
+            </>
+          )}
+        </>
+      )}
+      {editing && (
+        <form
+          className="connection-form"
+          data-unsaved={edited || a.busy ? "true" : undefined}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const url = draftUrl.trim();
+            void a.run(
+              async () => {
+                const result = await api<{ url: string; secret?: string }>(
+                  "webhooks.save",
+                  {
+                    projectId,
+                    url,
+                  },
+                );
+                if (result.secret) setSecret(result.secret);
+                config.setData((current) => ({
+                  configured: true,
+                  url: result.url,
+                  createdAt: current?.createdAt ?? new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                }));
+                if (draftRef.current.trim() === url) {
+                  setDraftUrl(result.url);
+                  draftRef.current = result.url;
+                  setEdited(false);
+                  setEditing(false);
+                }
+                setVersion((current) => current + 1);
+              },
+              config.data?.configured
+                ? "Destination saved. The signing secret is unchanged."
+                : "Webhook saved.",
+            );
+          }}
+        >
+          <Field
+            label="Destination URL"
+            hint="Public HTTPS on port 443. Do not put a token in the URL."
+          >
+            <input
+              name="webhookUrl"
+              type="url"
+              inputMode="url"
+              value={draftUrl}
+              placeholder="https://hooks.example.com/feedback"
+              required
+              autoFocus
+              maxLength={2048}
+              onChange={(event) => {
+                setDraftUrl(event.target.value);
+                draftRef.current = event.target.value;
+                setEdited(true);
+              }}
+            />
+          </Field>
+          <div className="connection-actions">
+            <button className="primary" disabled={!config.data || a.busy}>
+              {a.busy ? "Saving…" : "Save webhook"}
+            </button>
+            <button
+              type="button"
+              disabled={a.busy}
+              onClick={() => {
+                if (
+                  edited &&
+                  !window.confirm(
+                    "Discard this webhook draft? Your unsaved changes will be lost.",
+                  )
+                )
+                  return;
+                const url = config.data?.url ?? "";
+                setDraftUrl(url);
+                draftRef.current = url;
+                setEdited(false);
+                setEditing(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
       {secret && (
         <div>
           <Secret
@@ -133,11 +179,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
       )}
       {config.data?.configured && (
         <div>
-          <p className="muted">
-            Rotation takes effect immediately. Copy the new secret and update your
-            receiver.
-          </p>
-          <div className="actions">
+          <div className="connection-actions">
             <button
               type="button"
               disabled={a.busy}
@@ -155,20 +197,6 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
               disabled={a.busy}
               onConfirm={() =>
                 void a.run(async () => {
-                  const result = await api<{ secret: string }>("webhooks.rotate", {
-                    projectId,
-                  });
-                  setSecret(result.secret);
-                  setVersion((current) => current + 1);
-                }, "Signing secret rotated.")
-              }
-            >
-              Rotate secret
-            </ConfirmButton>
-            <ConfirmButton
-              disabled={a.busy}
-              onConfirm={() =>
-                void a.run(async () => {
                   await api("webhooks.disable", { projectId });
                   config.setData({
                     configured: false,
@@ -180,6 +208,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
                   setDraftUrl("");
                   draftRef.current = "";
                   setEdited(false);
+                  setEditing(false);
                   setVersion((current) => current + 1);
                 }, "Webhook disabled. Queued deliveries were removed.")
               }
@@ -187,6 +216,27 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
               Disable webhook
             </ConfirmButton>
           </div>
+          <details>
+            <summary>Signing secret</summary>
+            <p>
+              Rotation takes effect immediately. Copy the new secret and update your
+              receiver.
+            </p>
+            <ConfirmButton
+              disabled={a.busy}
+              onConfirm={() =>
+                void a.run(async () => {
+                  const result = await api<{ secret: string }>("webhooks.rotate", {
+                    projectId,
+                  });
+                  setSecret(result.secret);
+                  setVersion((current) => current + 1);
+                }, "Signing secret rotated.")
+              }
+            >
+              Rotate secret
+            </ConfirmButton>
+          </details>
         </div>
       )}
       {failedCount > 0 && (
@@ -195,9 +245,8 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
           failed. Open delivery history to see attempts and HTTP status.
         </p>
       )}
-      <details className="section">
+      <details>
         <summary>Delivery history{failedCount ? ` · ${failedCount} failed` : ""}</summary>
-        <p className="muted">Recent attempts update while this page is open.</p>
         <ErrorNotice error={deliveries.error} />
         {deliveries.data?.items.length ? (
           <ul className="webhook-deliveries">
@@ -222,10 +271,22 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
             ))}
           </ul>
         ) : (
-          deliveries.data && (
-            <p>No deliveries yet. New thread activity will appear here.</p>
-          )
+          deliveries.data && <p>No deliveries yet.</p>
         )}
+      </details>
+      <details>
+        <summary>Payload &amp; receiver setup</summary>
+        <p>
+          Events contain IDs, type, revision and time, without discussion text or private
+          notes. Verify the signature and deduplicate event IDs in your receiver.
+        </p>
+        <a
+          href="https://feedbacks.softinator.ai/docs/reference/manual/webhooks"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Webhook guide
+        </a>
       </details>
     </section>
   );

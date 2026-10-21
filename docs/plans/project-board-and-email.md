@@ -21,7 +21,9 @@ Reuse the [thread operations](../../src/server/feedback.ts), [event transaction]
 - [x] Implement email configuration, safe templates, subscriptions and a durable delivery worker.
 - [x] Verify provider request construction and ambiguous-send recovery with synthetic transports.
 - [x] Update canonical guides and generated operation facts.
-- [ ] Run the verification matrix and inspect desktop/mobile/keyboard behavior.
+- [x] Run the initial verification matrix and inspect desktop/mobile/keyboard behavior.
+- [x] Split integration settings into concise provider tabs, preserve drafts and verify desktop/mobile/keyboard behavior.
+- [ ] Complete final release, image and live acceptance.
 
 ## Compatibility and recovery
 
@@ -39,6 +41,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 ## Decision log
 
 - Keep the existing application typography, theme and controls. The board is an alternate project view.
+- Integration settings show one provider category at a time. Keep short form labels and a clear next action; open setup details and delivery history only when needed. Load a panel on first visit and preserve its drafts across tab changes.
 - Separate current work, historical activity and contextual breakdowns into visual tabs. Keep pending, overdue and high-priority project comparisons explicit, with exact matching-thread actions.
 - Treat provider acceptance separately from inbox delivery. Do not label queued or accepted messages delivered.
 - SMTP uses Nodemailer for TLS, authentication and MIME handling; SES uses its official client; Mailjet uses its HTTPS Send API. These dependencies serve concrete requested transports.

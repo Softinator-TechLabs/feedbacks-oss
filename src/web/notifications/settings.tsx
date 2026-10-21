@@ -147,24 +147,27 @@ export function EmailSettings({
     );
   const template =
     current.templates[kind] ?? current.inheritedTemplates[kind] ?? defaultTemplates[kind];
+  const attentionCount =
+    history?.items.filter((item) => ["failed", "uncertain"].includes(item.status))
+      .length ?? 0;
   return (
-    <section className="email-settings">
+    <section className="email-settings connection-settings">
       <h2>{projectId ? "Project email notifications" : "Server email notifications"}</h2>
       <ErrorNotice error={error} />
       <p>
         {current.configured
           ? `Provider: ${current.provider}${current.inherited ? " · inherited from server" : ""}.`
-          : "Configure a provider to enable email."}{" "}
-        Each member chooses their own subscription.
+          : "Add an email provider to get started."}
       </p>
       <form
+        className="connection-form"
         onSubmit={(e) => {
           e.preventDefault();
           void save(e.currentTarget);
         }}
       >
         <fieldset disabled={action.busy}>
-          <legend>Delivery and templates</legend>
+          <legend>Email delivery</legend>
           <label className="checkbox">
             <input
               type="checkbox"
@@ -245,9 +248,8 @@ export function EmailSettings({
                         />
                       </Field>
                       <p className="muted">
-                        Google requires an app password with two-step verification, or
-                        OAuth. Existing secrets remain when left blank for the same
-                        provider.
+                        Google: use an app password or OAuth. Leave saved secrets blank to
+                        keep them.
                       </p>
                       <details>
                         <summary>Google OAuth credentials</summary>
@@ -355,7 +357,7 @@ export function EmailSettings({
               onToggle={(event) => setEditSender(event.currentTarget.open)}
             >
               <summary>Project sender</summary>
-              <p>Use a different verified sender with the server’s email credentials.</p>
+              <p>Use a verified project sender with the server connection.</p>
               {editSender && (
                 <>
                   <Field label="Project sender name">
@@ -532,87 +534,89 @@ export function EmailSettings({
           Send test email to me
         </button>
         <ActionState action={test} />
-        <h3>Recent email attempts</h3>
-        <p className="muted">
-          Accepted means the provider accepted the message; inbox delivery is not
-          confirmed.
-        </p>
-        <ErrorNotice error={historyError} />
-        {!history?.items.length ? (
-          <p>No email attempts yet.</p>
-        ) : (
-          <ul className="email-deliveries">
-            {history.items.map((item) => (
-              <li key={item.id}>
-                <span>
-                  {item.recipient} · {item.event} · <strong>{item.status}</strong> ·{" "}
-                  {item.attempts} attempts{item.errorCode ? ` · ${item.errorCode}` : ""}
-                </span>
-                {["failed", "uncertain"].includes(item.status) && (
-                  <details>
-                    <summary>Reconcile send</summary>
-                    <p>
-                      Check your provider before retrying. The original attempt may
-                      already have been accepted.
-                    </p>
-                    <button
-                      type="button"
-                      disabled={action.busy}
-                      onClick={() =>
-                        void action.run(async () => {
-                          await api("notifications.reconcile", {
-                            ...scope,
-                            deliveryId: item.id,
-                            revision: item.revision,
-                            decision: "accepted",
-                          });
-                          setVersion((v) => v + 1);
-                        })
-                      }
-                    >
-                      Provider confirms accepted
-                    </button>
-                    <button
-                      type="button"
-                      disabled={action.busy}
-                      onClick={() =>
-                        void action.run(async () => {
-                          await api("notifications.reconcile", {
-                            ...scope,
-                            deliveryId: item.id,
-                            revision: item.revision,
-                            decision: "retry",
-                            confirmedNotAccepted: true,
-                          });
-                          setVersion((v) => v + 1);
-                        })
-                      }
-                    >
-                      Confirmed not accepted · retry
-                    </button>
-                    <button
-                      type="button"
-                      disabled={action.busy}
-                      onClick={() =>
-                        void action.run(async () => {
-                          await api("notifications.reconcile", {
-                            ...scope,
-                            deliveryId: item.id,
-                            revision: item.revision,
-                            decision: "cancel",
-                          });
-                          setVersion((v) => v + 1);
-                        })
-                      }
-                    >
-                      Cancel send
-                    </button>
-                  </details>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+        <details className="email-activity">
+          <summary>
+            Email activity{history?.items.length ? ` (${history.items.length})` : ""}
+            {attentionCount ? ` · ${attentionCount} need attention` : ""}
+          </summary>
+          <h3>Recent email attempts</h3>
+          <p className="muted">
+            Accepted by the provider does not confirm inbox delivery.
+          </p>
+          <ErrorNotice error={historyError} />
+          {!history?.items.length ? (
+            <p>No email attempts yet.</p>
+          ) : (
+            <ul className="email-deliveries">
+              {history.items.map((item) => (
+                <li key={item.id}>
+                  <span>
+                    {item.recipient} · {item.event} · <strong>{item.status}</strong> ·{" "}
+                    {item.attempts} attempts{item.errorCode ? ` · ${item.errorCode}` : ""}
+                  </span>
+                  {["failed", "uncertain"].includes(item.status) && (
+                    <details>
+                      <summary>Reconcile send</summary>
+                      <p>Check the provider before retrying to avoid duplicate mail.</p>
+                      <button
+                        type="button"
+                        disabled={action.busy}
+                        onClick={() =>
+                          void action.run(async () => {
+                            await api("notifications.reconcile", {
+                              ...scope,
+                              deliveryId: item.id,
+                              revision: item.revision,
+                              decision: "accepted",
+                            });
+                            setVersion((v) => v + 1);
+                          })
+                        }
+                      >
+                        Provider confirms accepted
+                      </button>
+                      <button
+                        type="button"
+                        disabled={action.busy}
+                        onClick={() =>
+                          void action.run(async () => {
+                            await api("notifications.reconcile", {
+                              ...scope,
+                              deliveryId: item.id,
+                              revision: item.revision,
+                              decision: "retry",
+                              confirmedNotAccepted: true,
+                            });
+                            setVersion((v) => v + 1);
+                          })
+                        }
+                      >
+                        Confirmed not accepted · retry
+                      </button>
+                      <button
+                        type="button"
+                        disabled={action.busy}
+                        onClick={() =>
+                          void action.run(async () => {
+                            await api("notifications.reconcile", {
+                              ...scope,
+                              deliveryId: item.id,
+                              revision: item.revision,
+                              decision: "cancel",
+                            });
+                            setVersion((v) => v + 1);
+                          })
+                        }
+                      >
+                        Cancel send
+                      </button>
+                    </details>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
       </div>
     </section>
   );

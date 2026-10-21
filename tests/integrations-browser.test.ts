@@ -36,7 +36,9 @@ test(
     const originalFetch = globalThis.fetch;
     const external: string[] = [],
       checks: string[] = [],
-      errors: string[] = [];
+      errors: string[] = [],
+      screenshots: string[] = [];
+    const providerLayouts: { device: string; provider: string; fields: number }[] = [];
     let server: any, browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
     // Provider verification is the only mocked boundary. App HTTP requests,
     // credentials, grants, persistence, validation and queue writes remain real.
@@ -181,7 +183,7 @@ test(
         if (expected === 403) assert.equal(payload.error?.code, "FORBIDDEN");
         return payload.data;
       }
-      await mkdir(".impeccable/review", { recursive: true });
+      await mkdir(".local/integration-tabs-qa", { recursive: true });
       for (const [index, device, width, height] of [
         [0, "desktop", 1440, 1000],
         [1, "mobile", 390, 844],
@@ -434,14 +436,207 @@ test(
         );
         await page.evaluate(() => window.scrollTo(0, 0));
         await page.screenshot({
-          path: `.impeccable/review/integrations-${device}.png`,
+          path: `.local/integration-tabs-qa/trackers-${device}.png`,
           fullPage: true,
         });
+        screenshots.push(`.local/integration-tabs-qa/trackers-${device}.png`);
         assert.ok(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
           `${device} tracker page fits`,
         );
-        await page.goto(`${origin}/projects/${project.id}/settings#integrations`);
+        const settingsRequests: string[] = [];
+        page.on("request", (request) => {
+          const pathname = new URL(request.url()).pathname;
+          if (/^\/api\/(notifications|channels|timeTracking|webhooks)\./.test(pathname))
+            settingsRequests.push(pathname);
+        });
+        const settingsUrl = `${origin}/projects/${project.id}/settings`;
+        await page.goto(settingsUrl);
+        await page
+          .getByRole("heading", { name: "Project details", exact: true })
+          .waitFor();
+        assert.deepEqual(
+          settingsRequests,
+          [],
+          `${device}: project details do not mount unrelated integration providers`,
+        );
+        await page.goto(`${settingsUrl}#integrations`);
+        const providerTabs = page.getByRole("tablist", {
+          name: "Project integration providers",
+          exact: true,
+        });
+        const providers = [
+          {
+            id: "email",
+            label: "Email",
+            ready: () =>
+              page.getByRole("heading", {
+                name: "Project email notifications",
+                exact: true,
+              }),
+          },
+          {
+            id: "channels",
+            label: "Slack & Teams",
+            ready: () =>
+              page.getByRole("button", { name: "Add notification channel", exact: true }),
+          },
+          {
+            id: "github",
+            label: "GitHub",
+            ready: () => page.getByRole("link", { name: "Set up GitHub", exact: true }),
+          },
+          {
+            id: "webhooks",
+            label: "Webhooks",
+            ready: () => page.getByRole("button", { name: "Add webhook", exact: true }),
+          },
+          {
+            id: "time",
+            label: "Time tracking",
+            ready: () =>
+              page.getByRole("button", { name: "Add time connection", exact: true }),
+          },
+        ] as const;
+        const providerTab = (label: string) =>
+          providerTabs.getByRole("tab", { name: label, exact: true });
+        async function assertSelectedProvider(label: string) {
+          const selected = providerTab(label);
+          assert.equal(
+            await selected.getAttribute("aria-selected"),
+            "true",
+            `${device}: ${label} selected`,
+          );
+          assert.equal(
+            await providerTabs.getByRole("tab", { selected: true }).count(),
+            1,
+          );
+          for (const tab of await providerTabs.getByRole("tab").all()) {
+            const panelId = await tab.getAttribute("aria-controls");
+            assert.ok(panelId, `${device}: each provider tab owns a panel`);
+            const active = (await tab.getAttribute("aria-selected")) === "true";
+            assert.equal(
+              await page.locator(`#${panelId}`).isVisible(),
+              active,
+              `${device}: ${await tab.innerText()} panel visibility follows its tab`,
+            );
+            assert.equal(await tab.getAttribute("tabindex"), active ? "0" : "-1");
+          }
+          assert.ok(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+            `${device}: ${label} fits the viewport`,
+          );
+        }
+        await providers[0].ready().waitFor();
+        await assertSelectedProvider("Email");
+        assert.ok(
+          settingsRequests.some((path) => path === "/api/notifications.settings"),
+        );
+        assert.ok(
+          settingsRequests.every((path) => path.startsWith("/api/notifications.")),
+          `${device}: legacy integrations link opens only email provider requests`,
+        );
+        // Capture each initial provider surface before entering any credentials.
+        for (const provider of providers) {
+          await providerTab(provider.label).click();
+          await provider.ready().waitFor();
+          await assertSelectedProvider(provider.label);
+          assert.equal(new URL(page.url()).hash, `#integrations-${provider.id}`);
+          const addName =
+            provider.id === "channels"
+              ? "Add notification channel"
+              : provider.id === "webhooks"
+                ? "Add webhook"
+                : provider.id === "time"
+                  ? "Add time connection"
+                  : undefined;
+          if (addName) {
+            await page.getByRole("button", { name: addName, exact: true }).click();
+            const selectedPanel = page.locator(`#integrations-${provider.id}`);
+            const fields = await selectedPanel
+              .locator(".connection-form .field")
+              .evaluateAll((labels) =>
+                labels.map((label) => {
+                  const caption = label.querySelector("span")!;
+                  const control = label.querySelector(
+                    "input:not([type='checkbox']),select,textarea",
+                  )!;
+                  const text = caption.getBoundingClientRect(),
+                    input = control.getBoundingClientRect();
+                  return {
+                    caption: caption.textContent,
+                    textBottom: text.bottom,
+                    inputTop: input.top,
+                    inputHeight: input.height,
+                    inputWidth: input.width,
+                  };
+                }),
+              );
+            assert.ok(
+              fields.length > 0,
+              `${device}: ${provider.label} form has labeled fields`,
+            );
+            for (const field of fields) {
+              assert.ok(
+                field.textBottom <= field.inputTop + 1,
+                `${device}: ${provider.label} ${field.caption} label stays above its control`,
+              );
+              assert.ok(
+                field.inputHeight >= 32 && field.inputWidth >= 140,
+                `${device}: ${provider.label} ${field.caption} control remains usable`,
+              );
+            }
+            providerLayouts.push({
+              device,
+              provider: provider.id,
+              fields: fields.length,
+            });
+          }
+          await page.evaluate(() => window.scrollTo(0, 0));
+          const capture = `.local/integration-tabs-qa/${device}-${provider.id}.png`;
+          await page.screenshot({ path: capture, fullPage: true });
+          screenshots.push(capture);
+          if (addName)
+            await page.getByRole("button", { name: "Cancel", exact: true }).click();
+        }
+        checks.push(
+          `${device}: five separate provider panels, one selected, no horizontal overflow; default settings and legacy link mount only the required provider`,
+        );
+        const keyMoves = [
+          ["Home", "Email"],
+          ["End", "Time tracking"],
+          ["ArrowRight", "Email"],
+          ["ArrowLeft", "Time tracking"],
+          ["Home", "Email"],
+          ["ArrowRight", "Slack & Teams"],
+        ] as const;
+        await providerTab("Time tracking").focus();
+        for (const [key, label] of keyMoves) {
+          await page.keyboard.press(key);
+          await assertSelectedProvider(label);
+          assert.equal(
+            await providerTab(label).evaluate((tab) => tab === document.activeElement),
+            true,
+            `${device}: ${key} focuses the selected ${label} tab`,
+          );
+        }
+        for (const provider of providers) {
+          await page.goto(`${settingsUrl}#integrations-${provider.id}`);
+          await page.reload();
+          await provider.ready().waitFor();
+          await assertSelectedProvider(provider.label);
+        }
+        checks.push(
+          `${device}: Arrow keys wrap and Home/End preserve roving focus; all five provider deep links restore the requested panel after page navigation`,
+        );
+        await providerTab("Email").click();
+        const emailEnabled = page.getByLabel(
+          "Enable email notifications for this project",
+          { exact: true },
+        );
+        const originalEmailEnabled = await emailEnabled.isChecked();
+        await emailEnabled.setChecked(!originalEmailEnabled);
+        await providerTab("Slack & Teams").click();
         const channels = page.locator("section").filter({
           has: page.getByRole("heading", {
             name: "Slack and Teams notifications",
@@ -463,6 +658,56 @@ test(
           .getByLabel("Incoming webhook URL", { exact: true })
           .fill(webhook);
         await channelForm.getByLabel("Discussion and replies", { exact: true }).check();
+        await providerTab("Webhooks").click();
+        await page.getByRole("button", { name: "Add webhook", exact: true }).click();
+        await page.getByRole("button", { name: "Save webhook", exact: true }).waitFor();
+        await page
+          .getByLabel(/^Destination URL/)
+          .fill("https://hooks.example.test/unsaved");
+        await providerTab("Email").click();
+        assert.equal(
+          await emailEnabled.isChecked(),
+          !originalEmailEnabled,
+          `${device}: unsaved email preference survives provider navigation`,
+        );
+        await providerTab("Slack & Teams").click();
+        const settingsTabs = page.getByRole("tablist", {
+          name: "Project settings sections",
+          exact: true,
+        });
+        await settingsTabs.getByRole("tab", { name: "Project", exact: true }).click();
+        await page
+          .getByRole("heading", { name: "Project details", exact: true })
+          .waitFor();
+        await settingsTabs
+          .getByRole("tab", { name: "Integrations", exact: true })
+          .click();
+        await assertSelectedProvider("Slack & Teams");
+        assert.equal(
+          await channelForm.getByLabel("Connection name", { exact: true }).inputValue(),
+          `Review updates ${device}`,
+        );
+        assert.equal(
+          await channelForm
+            .getByLabel("Incoming webhook URL", { exact: true })
+            .inputValue(),
+          webhook,
+        );
+        assert.equal(
+          await channelForm
+            .getByLabel("Discussion and replies", { exact: true })
+            .isChecked(),
+          true,
+        );
+        await providerTab("Webhooks").click();
+        assert.equal(
+          await page.getByLabel(/^Destination URL/).inputValue(),
+          "https://hooks.example.test/unsaved",
+        );
+        await providerTab("Slack & Teams").click();
+        checks.push(
+          `${device}: provider and top-level tab switches preserve selected provider, channel name/secret/events, email preference and webhook destination`,
+        );
         await channelForm
           .getByRole("button", { name: "Save channel", exact: true })
           .press("Enter");
@@ -517,6 +762,7 @@ test(
         checks.push(
           `${device}: dismissed channel editor replacement preserves name, webhook and event settings; accepted discard changes editor`,
         );
+        await providerTab("Time tracking").click();
         const time = page.locator("section").filter({
           has: page.getByRole("heading", {
             name: "Harvest and Time Doctor",
@@ -555,6 +801,23 @@ test(
               { exact: true },
             )
             .fill(`synthetic-time-${provider}-${device}`);
+          await providerTab("GitHub").click();
+          await providerTab("Time tracking").click();
+          assert.equal(
+            await form.getByLabel("Connection name", { exact: true }).inputValue(),
+            `${provider} ${device}`,
+          );
+          assert.equal(
+            await form
+              .getByLabel(
+                provider === "harvest"
+                  ? "Harvest API token"
+                  : "Time Doctor JWT API token",
+                { exact: true },
+              )
+              .inputValue(),
+            `synthetic-time-${provider}-${device}`,
+          );
           await form
             .getByRole("button", { name: "Save time connection", exact: true })
             .press("Enter");
@@ -795,6 +1058,29 @@ test(
             .count(),
           0,
         );
+        await readonly.goto(`${settingsUrl}#integrations-webhooks`);
+        await readonly
+          .getByRole("heading", { name: "GitHub Issues", exact: true })
+          .waitFor();
+        const deniedProviderTabs = readonly.getByRole("tablist", {
+          name: "Project integration providers",
+          exact: true,
+        });
+        assert.deepEqual(await deniedProviderTabs.getByRole("tab").allTextContents(), [
+          "GitHub",
+        ]);
+        assert.equal(
+          await readonly
+            .getByRole("button", { name: "Add webhook", exact: true })
+            .count(),
+          0,
+        );
+        assert.equal(
+          await readonly
+            .getByRole("button", { name: "Add notification channel", exact: true })
+            .count(),
+          0,
+        );
         await readonly.goto(`${origin}/threads/${thread.id}`);
         await readonly.locator('summary[aria-label="More actions"]').press("Enter");
         await readonly
@@ -892,10 +1178,8 @@ test(
             channelDelivery: "queued only; no real webhook messages or time entries sent",
             bundle,
             htmlSha256: createHash("sha256").update(html).digest("hex"),
-            screenshots: [
-              ".impeccable/review/integrations-desktop.png",
-              ".impeccable/review/integrations-mobile.png",
-            ],
+            screenshots,
+            providerLayouts,
           },
           null,
           2,
