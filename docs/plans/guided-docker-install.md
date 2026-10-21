@@ -1,6 +1,6 @@
 # Plan: one-command Docker Hub quickstart
 
-Status: in progress. Date: 2026-10-21.
+Status: 0.3.0 candidate installation verified; final stable-channel promotion pending. Date: 2026-10-21.
 
 ## Outcome and scope
 
@@ -35,3 +35,11 @@ The published 0.2.3 application image was exercised through the installer with t
 - [x] Resolve fresh installs through reviewed stable metadata, validating its digest and commit-pinned Compose checksum without executing downloaded metadata.
 - [x] Document local management, alternative ports, owner-bootstrap recovery and stable promotion.
 - [ ] Verify regression checks, normal CI and published installer behavior.
+
+## 0.3.0 candidate acceptance
+
+Application source: `4a8982e2485faed2937bd866cdbc4da358217475`; [exact-main CI, attempt 2](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/39629366205/attempts/2) passed all six jobs. The public [0.3.0 release](https://github.com/Softinator-TechLabs/feedbacks-oss/releases/tag/v0.3.0) downloads and checksums were verified. [Image publication](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/39632919326) passed both native architectures; public manifests, provenance and anonymous pulls were checked.
+
+A single fresh candidate installation passed all twelve checks using the unchanged committed installer, candidate metadata and Compose pinned to `28b1c714c115388c4a983b670d0a71443eaa3da1`. Only the exact stable-metadata request was served locally; the installer downloaded the pinned Compose over HTTPS normally. Owner/CSRF/origin checks, non-root/read-only execution, loopback binding, private credentials and synthetic screenshot upload/readback passed. Recreating only that installation's app/PostgreSQL containers retained both named volume identities, the original owner login, project, thread and exact screenshot bytes. Anonymous screenshot access remained denied. The usable synthetic installation and volumes remain running; credentials and raw evidence stay private.
+
+Final stable-channel publication, promotion PR/merged-main CI, public metadata/installer byte comparison and live guide verification remain pending. The candidate test is not a claim that the public stable channel has changed. Provider account consent and production HTTPS/S3/recovery acceptance remain independent of this local-volume test.

@@ -52,6 +52,29 @@ cat owner-password | docker compose exec -T -e BOOTSTRAP_EMAIL=owner@example.tes
 
 This cannot replace an existing owner. Do not rerun the fresh-install command over an existing directory.
 
+### Connect task apps
+
+Open **Project settings → Integrations → Tasks** to connect Asana, ClickUp and the other supported task apps. Jira Cloud needs an optional OAuth broker; OpenProject needs an operator-approved HTTPS origin.
+
+For these options, add the relevant values to the generated installation's private `.env`. Set both Jira values supplied by your broker operator, or omit both. OpenProject accepts exact trusted HTTPS origins separated by commas; save its API token in the project connection form.
+
+```dotenv
+# Optional Jira Cloud — set both together.
+# TRACKER_OAUTH_BROKER_URL=https://oauth.example.com
+# TRACKER_OAUTH_INSTALLATION_KEY=your-private-installation-key
+# Optional OpenProject.
+# OPENPROJECT_ALLOWED_ORIGINS=https://projects.example.com
+```
+
+Apply changes from that installation directory:
+
+```sh
+docker compose config --quiet
+docker compose up -d --no-deps --force-recreate --wait --wait-timeout 180 app
+```
+
+Keep the project name and existing named volumes. A plain restart does not apply changed environment values. Internal OpenProject instances need container network access and trusted TLS. See [Jira setup](/reference/manual/integrations#optional-jira-oauth-broker) and [OpenProject setup](/reference/manual/integrations#openproject-cloud-or-self-hosted-work-packages).
+
 [Inspect the installer](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/site/public/install.sh) and its [stable release metadata](https://feedbacks.softinator.ai/quickstart-stable.txt). This local quickstart listens only on your computer. For a shared team URL, use the HTTPS production setup below.
 
 One installation serves one organization. Deploy a shared HTTPS server; reviewers connect to it from the extension.
@@ -70,12 +93,12 @@ The [public Docker Hub image](https://hub.docker.com/r/softinator/feedbacks) sup
 
 ### 1. Download Compose
 
-In a new installation directory, download the [0.2.3 release Compose](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/v0.2.3/compose.registry.yaml) as `compose.yaml`:
+In a new installation directory, download the [0.3.0 release Compose](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/v0.3.0/compose.registry.yaml) as `compose.yaml`:
 
 ```sh
 mkdir feedbacks-server
 cd feedbacks-server
-curl -fL https://raw.githubusercontent.com/Softinator-TechLabs/feedbacks-oss/v0.2.3/compose.registry.yaml -o compose.yaml
+curl -fL https://raw.githubusercontent.com/Softinator-TechLabs/feedbacks-oss/v0.3.0/compose.registry.yaml -o compose.yaml
 umask 077
 touch .env
 chmod 600 .env
@@ -86,7 +109,7 @@ chmod 600 .env
 Paste these fields into `.env`, then fill every empty value. Use your HTTPS origin, private bucket and scoped application key from the [storage guide](/guide/storage). Generate a database password with `openssl rand -hex 32` and a unique organization UUID with `uuidgen`; preserve both for this installation. `TRUST_PROXY_HOPS=1` assumes one trusted reverse proxy; match your actual ingress path.
 
 ```dotenv
-FEEDBACKS_IMAGE=softinator/feedbacks:0.2.3
+FEEDBACKS_IMAGE=softinator/feedbacks:0.3.0
 APP_ORIGIN=
 POSTGRES_PASSWORD=
 ORGANIZATION_ID=
@@ -112,7 +135,7 @@ docker compose ps
 For production, pin the pulled image before the first `up` (or before an upgrade):
 
 ```sh
-docker image inspect softinator/feedbacks:0.2.3 --format '{{index .RepoDigests 0}}'
+docker image inspect softinator/feedbacks:0.3.0 --format '{{index .RepoDigests 0}}'
 ```
 
 Copy that full `softinator/feedbacks@sha256:…` result into `FEEDBACKS_IMAGE` in your private `.env`, then run `docker compose up -d --wait`. Keep the previous digest for recovery. The publication workflow creates versioned tags once; it does not move them or `latest`.

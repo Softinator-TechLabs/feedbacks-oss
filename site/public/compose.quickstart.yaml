@@ -17,6 +17,9 @@ services:
       TRUST_PROXY_HOPS: 0
       ASSET_DRIVER: local
       ASSET_DIRECTORY: /home/node/feedbacks-assets
+      TRACKER_OAUTH_BROKER_URL: ${TRACKER_OAUTH_BROKER_URL:-}
+      TRACKER_OAUTH_INSTALLATION_KEY: ${TRACKER_OAUTH_INSTALLATION_KEY:-}
+      OPENPROJECT_ALLOWED_ORIGINS: ${OPENPROJECT_ALLOWED_ORIGINS:-}
     ports: ["127.0.0.1:${FEEDBACKS_PORT:-3000}:3000"]
     volumes: ["feedbacks-assets:/home/node"]
     depends_on:

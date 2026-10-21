@@ -29,6 +29,8 @@ Project owners configure task apps under **Project settings → Integrations →
 
 For a cloud or self-hosted OpenProject instance, set `OPENPROJECT_ALLOWED_ORIGINS` to its exact HTTPS origin before recreating the app. Multiple origins use commas. The default allows none. Allow only instances this installation's operator trusts; internal/VPN origins require container network access and a trusted TLS certificate. Do not put API tokens in this list. Owners save those separately through the encrypted project connection form. See [OpenProject setup and limits](integrations.md#openproject-cloud-or-self-hosted-work-packages).
 
+The 0.3.0 local quickstart forwards these optional values from its private `.env`: Jira uses both `TRACKER_OAUTH_BROKER_URL` and the operator-issued `TRACKER_OAUTH_INSTALLATION_KEY`; OpenProject uses `OPENPROJECT_ALLOWED_ORIGINS`. Recreate only the app from the same installation directory, preserving its project name and volumes. The [local setup guide](../site-docs/guide/self-host.md#connect-task-apps) shows the commands.
+
 ## Bring your own S3-compatible storage
 
 Start with the [illustrated storage and prerequisites walkthrough](../site-docs/guide/storage.md) for bucket creation, scoped credentials and the exact configuration mapping.

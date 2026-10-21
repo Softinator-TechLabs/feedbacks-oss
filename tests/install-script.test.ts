@@ -145,7 +145,7 @@ async function fixture(metadata?: string, startupFailure = false) {
   );
   await writeFile(
     join(root, "release.txt"),
-    metadata ?? manifest.replace("version=0.2.3", "version=0.9.7"),
+    metadata ?? manifest.replace(/^version=.+$/m, "version=0.9.7"),
   );
   await writeFile(
     join(root, "docker"),
