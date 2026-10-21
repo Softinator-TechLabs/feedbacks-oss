@@ -261,6 +261,25 @@ test(
     const name = windows
       ? `FeedbacksFixture-${randomUUID()}.exe`
       : `Fb${randomUUID().replaceAll("-", "").slice(0, 10)}`;
+    if (windows) {
+      const command = nativeCommand(
+        "windows",
+        { processName: name, minutes: 1 },
+        now.toISOString(),
+        now.toISOString(),
+      );
+      const probe = `[Console]::WriteLine('startup'); Import-Module Microsoft.PowerShell.Diagnostics -ErrorAction Stop; [Console]::WriteLine('module'); Get-WinEvent -ListLog Application -ErrorAction Stop | Out-Null; [Console]::WriteLine('channel')`;
+      const startup = await runNativeCommand({
+        ...command,
+        args: [
+          ...command.args.slice(0, -1),
+          Buffer.from(probe, "utf16le").toString("base64"),
+        ],
+      });
+      process.stdout.write(
+        `${JSON.stringify({ probe: "windows-runtime", stages: startup.stdout.trim().split(/\s+/), reason: startup.reason })}\n`,
+      );
+    }
     const report = await collectNativeDiagnostics({ processName: name, minutes: 1 });
     process.stdout.write(
       `${JSON.stringify({ platform: report.platform, collector: report.collector, coverage: report.coverage, reasons: report.reasons, eventCount: report.events.length })}\n`,
