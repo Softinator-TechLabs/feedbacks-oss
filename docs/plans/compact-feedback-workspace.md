@@ -20,7 +20,7 @@ The list currently stacks an email disclosure, a full-width assignment disclosur
 
 ## Compatibility and recovery
 
-No API, permission, migration, Chrome extension or dependency change is required. Each member edits their own email subscription; project provider settings retain maintainer/owner restrictions. Existing saved subscription data is unchanged. Reverting the UI restores the former placement.
+No API, permission, migration, Chrome extension or dependency change is required. Each member edits their own email subscription; project provider settings retain maintainer/owner restrictions. Existing saved subscription data is unchanged. Preserve the separate integration provider tabs and their retained drafts; existing `#integrations-email` links open the dedicated Email notifications tab. Reverting the UI restores the former placement.
 
 ## Completion receipt
 

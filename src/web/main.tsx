@@ -25,6 +25,7 @@ import {
   useLoad,
 } from "./ui.js";
 import "./styles.css";
+import "./integrations/connections.css";
 import "./threads/detail.css";
 import "./theme.css";
 import { ThemeSwitch } from "./theme.js";
