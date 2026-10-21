@@ -106,7 +106,13 @@ test(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
         true,
       );
-      await page.goto(`${origin}/projects/${project.id}/settings#integrations`);
+      await page.goto(`${origin}/projects/${project.id}/settings#notifications`);
+      assert.equal(
+        await page
+          .getByRole("tab", { name: "Email notifications", exact: true })
+          .getAttribute("aria-selected"),
+        "true",
+      );
       const projectSettings = page.locator(".email-settings");
       await projectSettings.getByText("Project sender", { exact: true }).click();
       await projectSettings
@@ -121,16 +127,45 @@ test(
       });
       assert.equal(saved.inherited, true);
       assert.equal(saved.identity?.fromEmail, "technology@example.test");
-      await page.goto(`${origin}/projects/${project.id}`);
+      await page.goto(`${origin}/projects/${project.id}/settings#notifications`);
       const subscription = page.locator(".email-subscription");
-      await subscription.locator("summary").click();
       await subscription.getByLabel("New feedback", { exact: true }).check();
       await subscription.getByLabel("Discussion replies", { exact: true }).check();
       await subscription.getByLabel("Include my own activity", { exact: true }).check();
+      await page.getByRole("tab", { name: "Project", exact: true }).click();
+      await page.getByRole("tab", { name: "Email notifications", exact: true }).click();
+      assert.equal(
+        await subscription.getByLabel("New feedback", { exact: true }).isChecked(),
+        true,
+        "Switching settings tabs retains unsaved preferences",
+      );
       await subscription
         .getByRole("button", { name: "Save email preferences", exact: true })
         .click();
       await subscription.getByText("Email preferences saved.", { exact: true }).waitFor();
+      await page.reload();
+      await subscription
+        .getByRole("button", { name: "Save email preferences", exact: true })
+        .waitFor();
+      assert.equal(
+        await subscription.getByLabel("New feedback", { exact: true }).isChecked(),
+        true,
+      );
+      await mkdir(".local/compact-workspace", { recursive: true });
+      await page.screenshot({
+        path: ".local/compact-workspace/email-desktop.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        true,
+      );
+      await page.screenshot({
+        path: ".local/compact-workspace/email-mobile.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 1440, height: 1000 });
       const thread = await ops.executeOperation(owner, "threads.create", {
         projectId: project.id,
         body: "Synthetic email browser event",
@@ -193,6 +228,44 @@ test(
         true,
       );
       await page.close();
+      const viewer = await ops.executeOperation(owner, "members.create", {
+        name: "Read-only reviewer",
+        email: "viewer@example.test",
+        password,
+        grants: [{ projectId: project.id, role: "viewer" }],
+      });
+      await db.query("UPDATE users SET must_change_password=false WHERE id=$1", [
+        viewer.id,
+      ]);
+      const viewerPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+      const viewerLogin = await viewerPage.request.post(`${origin}/api/auth.login`, {
+        headers: { Origin: origin },
+        data: { email: "viewer@example.test", password },
+      });
+      assert.equal(viewerLogin.status(), 200);
+      await viewerPage.goto(`${origin}/projects/${project.id}/settings#notifications`);
+      const viewerPreferences = viewerPage.locator(".email-subscription");
+      await viewerPreferences.getByLabel("Mentions", { exact: true }).check();
+      assert.equal(
+        await viewerPage.locator(".email-settings").count(),
+        0,
+        "Readers keep personal preferences without provider administration",
+      );
+      await viewerPreferences
+        .getByRole("button", { name: "Save email preferences", exact: true })
+        .click();
+      await viewerPreferences
+        .getByText("Email preferences saved.", { exact: true })
+        .waitFor();
+      await viewerPage.reload();
+      await viewerPreferences
+        .getByRole("button", { name: "Save email preferences", exact: true })
+        .waitFor();
+      assert.equal(
+        await viewerPreferences.getByLabel("Mentions", { exact: true }).isChecked(),
+        true,
+      );
+      await viewerPage.close();
     } finally {
       await browser?.close();
       if (server) {

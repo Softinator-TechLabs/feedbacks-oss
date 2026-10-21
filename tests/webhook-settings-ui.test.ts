@@ -68,6 +68,31 @@ test("Tasks deep link mounts only project task connections and pins its project"
   assert.doesNotMatch(html, /<span>Project<\/span>/);
 });
 
+test("legacy integration link defaults to Tasks without mounting notifications", () => {
+  const html = renderSettings("#integrations", project, { ...actor, owner: true });
+  assert.match(html, /id="project-integration-tab-tasks"[^>]*aria-selected="true"/);
+  assert.match(html, /<h2>Task connections<\/h2>/);
+  assert.doesNotMatch(
+    html,
+    /id="project-integration-tab-email"|My email preferences|Project email notifications/,
+  );
+});
+
+test("notification section and legacy email link preserve self-service email settings", () => {
+  for (const hash of ["#notifications", "#integrations-email"]) {
+    const html = renderSettings(hash);
+    assert.match(
+      html,
+      /id="project-settings-tab-notifications"[^>]*aria-selected="true"/,
+    );
+    assert.match(html, /<h2>My email preferences<\/h2>/);
+    assert.doesNotMatch(
+      html,
+      /Project integration providers|Task connections|Save webhook|GitHub Issues/,
+    );
+  }
+});
+
 test("project maintainer opens its lazy webhook surface through the provider deep link", () => {
   const html = renderSettings("#integrations-webhooks");
   assert.match(html, /aria-label="Project integration providers"/);

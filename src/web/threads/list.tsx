@@ -1,4 +1,3 @@
-import { EmailSubscription } from "../notifications/subscription.js";
 import {
   ArchiveSelectedThreads,
   DeleteThreadsButton,
@@ -60,6 +59,18 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     [draft, setDraft] = useState<ReviewFilters>(filters),
     [version, setVersion] = useState(0),
     [selected, setSelected] = useState<Set<string>>(new Set());
+  const moreRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const close = (event: PointerEvent) => {
+      if (!moreRef.current?.contains(event.target as Node))
+        moreRef.current?.removeAttribute("open");
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, []);
+  useEffect(() => {
+    moreRef.current?.removeAttribute("open");
+  }, [project.id, query]);
   const filterTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const cacheKey = JSON.stringify([
     actor.userId,
@@ -246,15 +257,17 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
     setVersion((value) => value + 1);
   };
   return (
-    <>
+    <div className="thread-list-workspace">
       <div className="page-heading thread-list-heading">
         <div>
-          <h1>{filters.archived ? "Archived feedback" : "Feedback"}</h1>
-          <p>
-            {data
-              ? `${data.total} ${data.total === 1 ? "thread" : "threads"}`
-              : "Project discussion"}{" "}
-          </p>
+          <div className="thread-list-title">
+            <h1>{filters.archived ? "Archived feedback" : "Feedback"}</h1>
+            <span className="thread-list-count">
+              {data
+                ? `${data.total} ${data.total === 1 ? "thread" : "threads"}`
+                : "Project discussion"}
+            </span>
+          </div>
           {data?.summary && (
             <p className="muted">
               {[
@@ -269,56 +282,6 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           )}
         </div>
         <div className="thread-list-quick-actions">
-          <a
-            className="button"
-            href={`/projects/${project.id}/board${filterQuery(filters)}`}
-          >
-            Board view
-          </a>
-          {project.permissions.canMaintain && (
-            <a
-              className="button"
-              href={`/projects/${project.id}/settings#project-taxonomy`}
-            >
-              Manage categories &amp; tags
-            </a>
-          )}
-          <button
-            type="button"
-            aria-pressed={filters.assignedTo === actor.userId}
-            onClick={() =>
-              apply({
-                ...filters,
-                assignedTo:
-                  filters.assignedTo === actor.userId ? undefined : actor.userId,
-              })
-            }
-          >
-            Assigned to me
-          </button>
-          <button
-            type="button"
-            aria-pressed={!!filters.archived}
-            onClick={() =>
-              apply({
-                ...readFilters(""),
-                archived: !filters.archived,
-                showResolved: !!!filters.archived,
-              })
-            }
-          >
-            {filters.archived ? "Back to inbox" : "View archive"}
-          </button>
-          {actor.owner && (
-            <button
-              className="thread-priority-button"
-              aria-pressed={sort === "priority"}
-              title="Sort active feedback by current reviewer importance and view support"
-              onClick={() => apply({ ...filters, sort: "priority", showResolved: false })}
-            >
-              Reviewer signals
-            </button>
-          )}
           {project.permissions.canWrite && (
             <a className="button" href={`/projects/${project.id}/capture`}>
               App screenshot
@@ -329,6 +292,47 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
               {creating ? "Close form" : "New feedback"}
             </button>
           )}
+          <details
+            className="thread-list-more"
+            ref={moreRef}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && event.currentTarget.open) {
+                event.preventDefault();
+                event.currentTarget.open = false;
+                event.currentTarget.querySelector("summary")?.focus();
+              }
+            }}
+          >
+            <summary>More</summary>
+            <div className="thread-list-more-menu">
+              <a
+                className="button"
+                href={`/projects/${project.id}/board${filterQuery(filters)}`}
+              >
+                Board view
+              </a>
+              {project.permissions.canMaintain && (
+                <a
+                  className="button"
+                  href={`/projects/${project.id}/settings#project-taxonomy`}
+                >
+                  Manage categories &amp; tags
+                </a>
+              )}
+              {actor.owner && (
+                <button
+                  className="thread-priority-button"
+                  aria-pressed={sort === "priority"}
+                  title="Sort active feedback by current reviewer importance and view support"
+                  onClick={() =>
+                    apply({ ...filters, sort: "priority", showResolved: false })
+                  }
+                >
+                  Reviewer signals
+                </button>
+              )}
+            </div>
+          </details>
         </div>
       </div>
       {creating && (
@@ -340,25 +344,52 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           }}
         />
       )}
-      <EmailSubscription key={project.id + "-email"} projectId={project.id} />
-      <ProjectAssignments key={project.id} project={project} />
       <ErrorNotice error={taxonomyError} />
       <ErrorNotice error={membersError} />
-      <ThreadListFilters
-        project={project}
-        actor={actor}
-        filters={filters}
-        draft={draft}
-        taxonomy={taxonomy}
-        members={members}
-        data={data}
-        filtersOpen={filtersOpen}
-        activeFilterCount={activeFilterCount}
-        setFiltersOpen={setFiltersOpen}
-        setDraft={setDraft}
-        updateFilter={updateFilter}
-        apply={apply}
-      />
+      <div className="thread-list-toolbar">
+        <ThreadListFilters
+          project={project}
+          actor={actor}
+          filters={filters}
+          draft={draft}
+          taxonomy={taxonomy}
+          members={members}
+          data={data}
+          filtersOpen={filtersOpen}
+          activeFilterCount={activeFilterCount}
+          setFiltersOpen={setFiltersOpen}
+          setDraft={setDraft}
+          updateFilter={updateFilter}
+          apply={apply}
+        />
+        <button
+          type="button"
+          aria-pressed={filters.assignedTo === actor.userId}
+          onClick={() =>
+            apply({
+              ...filters,
+              assignedTo: filters.assignedTo === actor.userId ? undefined : actor.userId,
+            })
+          }
+        >
+          Assigned to me
+        </button>
+        <button
+          type="button"
+          aria-pressed={!!filters.archived}
+          onClick={() =>
+            apply({
+              ...readFilters(""),
+              archived: !filters.archived,
+              showResolved: !!!filters.archived,
+            })
+          }
+        >
+          {filters.archived ? "Back to inbox" : "View archive"}
+        </button>
+
+        <ProjectAssignments key={project.id} project={project} />
+      </div>
       {actor.kind === "human" && project.permissions.canMaintain && (
         <>
           <ThreadDeletionCleanup projectId={project.id} version={version} />
@@ -382,28 +413,32 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                 />
                 Select this page
               </label>
-              <span>
-                {data.items.filter((item) => selected.has(item.id)).length} selected
-              </span>
-              <DeleteThreadsButton
-                projectId={project.id}
-                threads={data.items.filter((item) => selected.has(item.id))}
-                onDeleted={() => {
-                  setSelected(new Set());
-                  setVersion((value) => value + 1);
-                }}
-              />
-              {!filters.archived && (
-                <ArchiveSelectedThreads
-                  threads={data.items.filter((item) => selected.has(item.id))}
-                  onArchived={(ids) => {
-                    setSelected(
-                      (current) =>
-                        new Set([...current].filter((id) => !ids.includes(id))),
-                    );
-                    setVersion((value) => value + 1);
-                  }}
-                />
+              {data.items.some((item) => selected.has(item.id)) && (
+                <>
+                  <span>
+                    {data.items.filter((item) => selected.has(item.id)).length} selected
+                  </span>
+                  <DeleteThreadsButton
+                    projectId={project.id}
+                    threads={data.items.filter((item) => selected.has(item.id))}
+                    onDeleted={() => {
+                      setSelected(new Set());
+                      setVersion((value) => value + 1);
+                    }}
+                  />
+                  {!filters.archived && (
+                    <ArchiveSelectedThreads
+                      threads={data.items.filter((item) => selected.has(item.id))}
+                      onArchived={(ids) => {
+                        setSelected(
+                          (current) =>
+                            new Set([...current].filter((id) => !ids.includes(id))),
+                        );
+                        setVersion((value) => value + 1);
+                      }}
+                    />
+                  )}
+                </>
               )}
             </div>
           )}
@@ -510,6 +545,6 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           </Empty>
         )
       )}
-    </>
+    </div>
   );
 }

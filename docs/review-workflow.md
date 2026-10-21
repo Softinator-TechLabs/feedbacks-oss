@@ -192,3 +192,9 @@ point's page. Each expanded point shows feedback, a compact **Priority / Schedul
 row and its screenshot using the available panel width. Visibility controls and
 **Review image** sit above that image. Resolve/remove actions stay in a separate
 footer, and technical element details stay collapsed.
+
+## Compact list controls
+
+The feedback heading keeps counts beside the primary capture and creation actions. **Search & filters**, **Assigned to me**, **View archive** and **Assigned work** share a compact toolbar. **More** holds the filtered board shortcut, category management and reviewer-signal sorting. Project settings contains personal email preferences and authorized delivery configuration under **Email notifications**.
+
+Select feedback checkboxes to reveal Archive/Delete actions. Confirmation, saved filter context and archive persistence are unchanged.

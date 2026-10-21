@@ -582,6 +582,18 @@ test(
           name: "Project integration providers",
           exact: true,
         });
+        const settingsTabs = page.getByRole("tablist", {
+          name: "Project settings sections",
+          exact: true,
+        });
+        const emailSettingsTab = settingsTabs.getByRole("tab", {
+          name: "Email notifications",
+          exact: true,
+        });
+        const integrationsSettingsTab = settingsTabs.getByRole("tab", {
+          name: "Integrations",
+          exact: true,
+        });
         const providers = [
           {
             id: "tasks",
@@ -590,15 +602,6 @@ test(
               page
                 .locator("#integrations-tasks")
                 .getByRole("heading", { name: `Asana ${device}`, exact: true }),
-          },
-          {
-            id: "email",
-            label: "Email",
-            ready: () =>
-              page.getByRole("heading", {
-                name: "Project email notifications",
-                exact: true,
-              }),
           },
           {
             id: "channels",
@@ -652,26 +655,15 @@ test(
             `${device}: ${label} fits the viewport`,
           );
         }
-        await providers
-          .find((provider) => provider.id === "email")!
-          .ready()
-          .waitFor();
-        await assertSelectedProvider("Email");
+        await providers[0].ready().waitFor();
+        await assertSelectedProvider("Tasks");
+        assert.ok(settingsRequests.some((path) => path === "/api/trackers.list"));
         assert.ok(
-          settingsRequests.some((path) => path === "/api/notifications.settings"),
-        );
-        assert.ok(
-          settingsRequests.every((path) => path.startsWith("/api/notifications.")),
-          `${device}: legacy integrations link opens only email provider requests`,
+          settingsRequests.every((path) => path.startsWith("/api/trackers.")),
+          `${device}: legacy integrations link opens only its default Tasks requests`,
         );
         // Capture each initial provider surface before entering any credentials.
         for (const provider of providers) {
-          if (provider.id === "tasks")
-            assert.equal(
-              settingsRequests.filter((path) => path === "/api/trackers.list").length,
-              0,
-              `${device}: Tasks has not fetched before first visit`,
-            );
           await providerTab(provider.label).click();
           await provider.ready().waitFor();
           await assertSelectedProvider(provider.label);
@@ -751,7 +743,7 @@ test(
             await page.getByRole("button", { name: "Cancel", exact: true }).click();
         }
         checks.push(
-          `${device}: six separate provider panels, one selected, no horizontal overflow; default settings and legacy link mount only the required provider`,
+          `${device}: five separate provider panels, one selected, no horizontal overflow; default settings and legacy link mount only the required provider`,
         );
         const keyMoves = [
           ["Home", "Tasks"],
@@ -759,8 +751,8 @@ test(
           ["ArrowRight", "Tasks"],
           ["ArrowLeft", "Time tracking"],
           ["Home", "Tasks"],
-          ["ArrowRight", "Email"],
           ["ArrowRight", "Slack & Teams"],
+          ["ArrowRight", "GitHub"],
         ] as const;
         await providerTab("Time tracking").focus();
         for (const [key, label] of keyMoves) {
@@ -779,7 +771,7 @@ test(
           await assertSelectedProvider(provider.label);
         }
         checks.push(
-          `${device}: Arrow keys wrap and Home/End preserve roving focus; all six provider deep links restore the requested panel after page navigation`,
+          `${device}: Arrow keys wrap and Home/End preserve roving focus; all five provider deep links restore the requested panel after page navigation`,
         );
         await providerTab("Tasks").click();
         const taskSettings = page.locator("#integrations-tasks .tracker-settings");
@@ -830,7 +822,8 @@ test(
         await projectTaskForm
           .getByLabel("API token", { exact: true })
           .fill(`synthetic-openproject-token-${device}`);
-        await providerTab("Email").click();
+        await emailSettingsTab.click();
+        await integrationsSettingsTab.click();
         await providerTab("Tasks").click();
         assert.equal(
           await projectTaskForm
@@ -908,13 +901,44 @@ test(
         checks.push(
           `${device}: Tasks pins its project, offers all 10 providers, preserves OpenProject drafts across tabs, saves encrypted origin/project/type/token and verifies Basic API access and mapped status IDs`,
         );
-        await providerTab("Email").click();
+        await page.goto(`${settingsUrl}#integrations-email`);
+        await page
+          .getByRole("heading", { name: "Project email notifications", exact: true })
+          .waitFor();
+        assert.equal(
+          await emailSettingsTab.getAttribute("aria-selected"),
+          "true",
+          `${device}: legacy email link opens dedicated notification settings`,
+        );
+        assert.equal(
+          await providerTabs.count(),
+          0,
+          `${device}: notification settings have no integration provider tabs`,
+        );
+        await page.goto(`${settingsUrl}#notifications`);
+        await page.reload();
+        await page
+          .getByRole("heading", { name: "Project email notifications", exact: true })
+          .waitFor();
+        await page
+          .getByRole("heading", { name: "My email preferences", exact: true })
+          .waitFor();
+        assert.equal(await emailSettingsTab.getAttribute("aria-selected"), "true");
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          `${device}: dedicated notification section fits viewport`,
+        );
+        await page.evaluate(() => window.scrollTo(0, 0));
+        const notificationsCapture = `.local/integration-tabs-qa/${device}-notifications.png`;
+        await page.screenshot({ path: notificationsCapture, fullPage: true });
+        screenshots.push(notificationsCapture);
         const emailEnabled = page.getByLabel(
           "Enable email notifications for this project",
           { exact: true },
         );
         const originalEmailEnabled = await emailEnabled.isChecked();
         await emailEnabled.setChecked(!originalEmailEnabled);
+        await integrationsSettingsTab.click();
         await providerTab("Slack & Teams").click();
         const channels = page.locator("section").filter({
           has: page.getByRole("heading", {
@@ -943,17 +967,14 @@ test(
         await page
           .getByLabel(/^Destination URL/)
           .fill("https://hooks.example.test/unsaved");
-        await providerTab("Email").click();
+        await emailSettingsTab.click();
         assert.equal(
           await emailEnabled.isChecked(),
           !originalEmailEnabled,
-          `${device}: unsaved email preference survives provider navigation`,
+          `${device}: unsaved email settings survive section navigation`,
         );
+        await integrationsSettingsTab.click();
         await providerTab("Slack & Teams").click();
-        const settingsTabs = page.getByRole("tablist", {
-          name: "Project settings sections",
-          exact: true,
-        });
         await settingsTabs.getByRole("tab", { name: "Project", exact: true }).click();
         await page
           .getByRole("heading", { name: "Project details", exact: true })

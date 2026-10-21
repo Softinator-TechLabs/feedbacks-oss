@@ -801,6 +801,7 @@ test("common integration catalog lists only implemented providers and safe curre
         "productive",
         "teamwork",
         "firmao",
+        "openproject",
       ],
     );
     assert.equal(before.providers[0].configuredConnections, 1);
