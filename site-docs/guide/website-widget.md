@@ -9,6 +9,8 @@ The website widget lets visitors send a name and comment from your web app. It i
 
 This is a text feedback widget. It does not capture screenshots, record sessions or show existing project feedback. Signed-in reviewers can use [app screenshots](/reference/manual/app-capture) or the [Chrome extension](/guide/chrome-extension) for visual feedback.
 
+<DocPath :steps="['Approve website', 'Create snippet', 'Install script', 'Send test feedback']" />
+
 ## Create the installation snippet
 
 1. Ask the server owner to configure Cloudflare Turnstile. Its allowed hostnames must include the website hosting your widget. The secret key stays on the Feedbacks server.
