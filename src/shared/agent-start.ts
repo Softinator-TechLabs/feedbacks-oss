@@ -1,4 +1,5 @@
 import { reproductionSnapshot } from "./reproduction-context.js";
+import { nativeDiagnosticSummary } from "./native-diagnostics.js";
 import {
   discussionSnapshot,
   pointAnchor,
@@ -483,6 +484,17 @@ export async function startTask(
       ...(incomplete.length ? { incomplete } : {}),
     },
     trust: "untrusted_review_evidence",
+    ...(thread.context.nativeDiagnostics
+      ? {
+          nativeDiagnostics: {
+            ...nativeDiagnosticSummary(thread.context.nativeDiagnostics),
+            read: {
+              tool: "feedbacks_thread",
+              arguments: { threadId: thread.id, section: "context" },
+            },
+          },
+        }
+      : {}),
     ...(reviewed ? { reviewedPage: reviewed } : {}),
     ...(reproductionSnapshot(thread.context)
       ? { reproduction: reproductionSnapshot(thread.context) }

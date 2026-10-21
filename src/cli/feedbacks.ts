@@ -1,9 +1,10 @@
 import { operationDescriptions } from "../shared/operation-descriptions.js";
-import { readFile } from "node:fs/promises";
+import { readFile, open } from "node:fs/promises";
 import { z } from "zod";
 import { businessOperations, operationRegistry } from "../shared/contracts.js";
 import { DomainError } from "../server/errors.js";
 import { apiClient } from "./client.js";
+import { collectNativeDiagnostics } from "./native-diagnostics/collect.js";
 import {
   AgentWorkflowError,
   agentToolSchemas,
@@ -17,10 +18,48 @@ try {
   if (args.length === 0 || (args.length === 1 && args[0] === "--help")) {
     data = {
       usage:
-        "npm run --silent cli -- <operation> [--input file.json]; JSON input defaults to stdin (empty input means {}). --list; --describe <operation>; --agent start|guide|workspace|queue|thread|asset|describe|execute [--input file.json]",
+        "npm run --silent cli -- <operation> [--input file.json]; JSON input defaults to stdin (empty input means {}). --list; --describe <operation>; --agent start|guide|workspace|queue|thread|asset|describe|execute [--input file.json]; --native-diagnostics --input request.json (local OS logs, no upload)",
       credentials:
         "FEEDBACKS_TOKEN environment or owned mode-0600 ~/.config/feedbacks/config.json with {url,token}; FEEDBACKS_URL and FEEDBACKS_CONFIG override defaults. Never put secrets in arguments.",
     };
+  } else if (
+    args.length === 3 &&
+    args[0] === "--native-diagnostics" &&
+    args[1] === "--input"
+  ) {
+    const handle = await open(args[2], "r");
+    let input: unknown;
+    try {
+      const stat = await handle.stat();
+      if (!stat.isFile() || stat.size > 4096)
+        throw new DomainError(
+          "VALIDATION",
+          "Choose a native diagnostic request JSON file up to 4 KiB",
+          400,
+        );
+      try {
+        input = JSON.parse(await handle.readFile("utf8"));
+      } catch {
+        throw new DomainError(
+          "VALIDATION",
+          "Native diagnostic request must be valid JSON",
+          400,
+        );
+      }
+    } finally {
+      await handle.close();
+    }
+    try {
+      data = await collectNativeDiagnostics(input);
+    } catch (error) {
+      throw new DomainError(
+        "NATIVE_DIAGNOSTICS",
+        error instanceof z.ZodError
+          ? error.issues.map((issue) => issue.message).join("; ")
+          : (error as Error).message,
+        400,
+      );
+    }
   } else if (args.length === 1 && args[0] === "--list") {
     data = {
       operations: businessOperations.map((name) => ({

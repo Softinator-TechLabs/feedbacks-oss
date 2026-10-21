@@ -52,6 +52,12 @@ Focused encrypted-catalog, recovery/race and worker checks live in
 `tests/github-managed-apps.test.ts`; provider/server/connection isolation is checked in
 `tests/integration-vault.test.ts`. Native tests verify migration 28.
 
+## Native OS diagnostic snapshots
+
+`node --import tsx --test tests/native-os-diagnostics.test.ts tests/native-os-diagnostics-api.test.ts` checks fixed-command data binding, parsers, redaction, caps/timeouts, current project grants, retry identity and progressive agent reads. `FEEDBACKS_NATIVE_OS_SMOKE=1` additionally queries a unique empty process using the matching OS tool. CI runs this adapter file on Ubuntu, Windows and macOS. Inspect the printed coverage: a truthful unavailable fallback passes smoke without certifying log access. Real matching application events and permissions need separate acceptance.
+
+The capture browser test below also imports an OS snapshot, edits an event, verifies approval invalidation and includes the approved report in reload/retry submission and thread context.
+
 ## Extension-free capture and website widget
 
 `FEEDBACKS_APP_CAPTURE_BROWSER=1 node --import tsx --test tests/app-capture-browser.test.ts` runs after the build in the required browser CI job. It uses a real disposable local API and a fresh browser context without an extension. The fixture verifies image import, coordinate notes and masking, private uploaded pixels, recovery after a committed upload loses its response, reload/retry without duplicate threads/assets, permission denial, synthetic window-frame capture and media-track cleanup. It also generates an installation snippet in Settings and submits widget feedback from a separate approved host origin with a mocked Turnstile challenge.

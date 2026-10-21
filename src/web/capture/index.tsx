@@ -19,6 +19,11 @@ import {
 import { appCaptureSchema, type AppCapture } from "../../shared/app-capture.js";
 import "./capture.css";
 import { CaptureEditor } from "./editor.js";
+import { NativeDiagnosticImport } from "./native-diagnostics.js";
+import {
+  nativeDiagnosticReportSchema,
+  type NativeDiagnosticReport,
+} from "../../shared/native-diagnostics.js";
 
 export function AppCapturePage({
   project,
@@ -38,6 +43,9 @@ export function AppCapturePage({
   const [appVersion, setAppVersion] = useState("");
   const [platform, setPlatform] = useState<AppCapture["platform"]>("other");
   const [body, setBody] = useState("");
+  const [nativeDiagnostics, setNativeDiagnostics] = useState<NativeDiagnosticReport>();
+  const [diagnosticsReviewed, setDiagnosticsReviewed] = useState(false);
+  const [diagnosticsReading, setDiagnosticsReading] = useState(false);
   const [pending, setPending] = useState<CaptureDraft>();
   const pendingRef = useRef<CaptureDraft | undefined>(undefined);
   const captureAbort = useRef<AbortController | undefined>(undefined);
@@ -54,6 +62,8 @@ export function AppCapturePage({
         setAppVersion(draft.appCapture.appVersion ?? "");
         setPlatform(draft.appCapture.platform);
         setBody(draft.body);
+        setNativeDiagnostics(draft.nativeDiagnostics);
+        setDiagnosticsReviewed(!!draft.nativeDiagnostics);
         setImage({
           dataUrl: `data:image/webp;base64,${draft.imageBase64}`,
           ...draft.appCapture,
@@ -74,6 +84,8 @@ export function AppCapturePage({
     setImage(next);
     setMasks([]);
     setPoints([]);
+    setNativeDiagnostics(undefined);
+    setDiagnosticsReviewed(false);
     if (form.current) form.current.dataset.unsaved = "true";
   };
   const submit = async (saved?: CaptureDraft) => {
@@ -85,6 +97,9 @@ export function AppCapturePage({
         projectId: draft.projectId,
         body: draft.body,
         appCapture: draft.appCapture,
+        ...(draft.nativeDiagnostics
+          ? { nativeDiagnostics: { approved: true, report: draft.nativeDiagnostics } }
+          : {}),
         idempotencyKey: draft.createKey,
       });
       draft.thread = { id: thread.id, revision: thread.revision };
@@ -111,7 +126,7 @@ export function AppCapturePage({
     await deleteCaptureDraft(key).catch(() => undefined);
     navigate(`/threads/${draft.thread.id}`);
   };
-  const locked = action.busy || !!pending;
+  const locked = action.busy || diagnosticsReading || !!pending;
   if (!project.permissions.canWrite)
     return (
       <p role="alert">Project write access is required to send an app screenshot.</p>
@@ -134,7 +149,7 @@ export function AppCapturePage({
           data-unsaved={image ? "true" : undefined}
           onSubmit={(event) => {
             event.preventDefault();
-            if (action.busy) return;
+            if (action.busy || diagnosticsReading) return;
             void action.run(async () => {
               if (!pendingRef.current) {
                 if (!image) throw Error("Capture a window or import a screenshot first.");
@@ -142,6 +157,15 @@ export function AppCapturePage({
                   throw Error("Enter the app name and feedback before sending.");
                 if (points.some((point) => !point.body.trim()))
                   throw Error("Write a note for each point, or remove it.");
+                if (nativeDiagnostics?.events.some((event) => !event.message.trim()))
+                  throw Error("Write each diagnostic message or remove its event.");
+                if (
+                  nativeDiagnostics &&
+                  (!diagnosticsReviewed || nativeDiagnostics.platform !== platform)
+                )
+                  throw Error(
+                    "Review the diagnostic snapshot and choose its matching platform before sending, or remove it.",
+                  );
                 const draft: CaptureDraft = {
                   projectId: project.id,
                   body: body.trim(),
@@ -156,6 +180,12 @@ export function AppCapturePage({
                     height: image.height,
                     points,
                   },
+                  ...(nativeDiagnostics
+                    ? {
+                        nativeDiagnostics:
+                          nativeDiagnosticReportSchema.parse(nativeDiagnostics),
+                      }
+                    : {}),
                   imageBase64: await approvedImage(image, masks, points),
                   createKey: uid(),
                   uploadKey: uid(),
@@ -277,9 +307,25 @@ export function AppCapturePage({
                   />
                 </Field>
               </details>
+              <NativeDiagnosticImport
+                report={nativeDiagnostics}
+                onChange={(report) => {
+                  setNativeDiagnostics(report);
+                  if (report && platform === "other") setPlatform(report.platform);
+                }}
+                reviewed={diagnosticsReviewed}
+                onReviewed={(reviewed) => {
+                  setDiagnosticsReviewed(reviewed);
+                  action.setError("");
+                }}
+                locked={locked}
+                onReading={setDiagnosticsReading}
+              />
               <p className="muted">
-                Only the approved image, notes and app details are sent. Internal app logs
-                and network traffic are not collected.
+                The approved image, notes, app details
+                {nativeDiagnostics ? " and reviewed OS diagnostic snapshot" : ""} are
+                sent. This page does not read OS logs or capture network traffic
+                automatically.
               </p>
               {pending && (
                 <p role="status">
@@ -315,7 +361,7 @@ export function AppCapturePage({
                 </button>
               )}
               <div className="form-end">
-                <button className="primary" disabled={action.busy}>
+                <button className="primary" disabled={action.busy || diagnosticsReading}>
                   {action.busy ? "Sending…" : pending ? "Retry Send" : "Send feedback"}
                 </button>
                 <ConfirmButton
@@ -328,6 +374,8 @@ export function AppCapturePage({
                       setImage(undefined);
                       setPoints([]);
                       setMasks([]);
+                      setNativeDiagnostics(undefined);
+                      setDiagnosticsReviewed(false);
                       if (form.current) delete form.current.dataset.unsaved;
                     })
                   }

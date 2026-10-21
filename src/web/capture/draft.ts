@@ -1,9 +1,11 @@
 import type { AppCapture } from "../../shared/app-capture.js";
+import type { NativeDiagnosticReport } from "../../shared/native-diagnostics.js";
 
 export type CaptureDraft = {
   projectId: string;
   body: string;
   appCapture: AppCapture;
+  nativeDiagnostics?: NativeDiagnosticReport;
   imageBase64: string;
   createKey: string;
   uploadKey: string;

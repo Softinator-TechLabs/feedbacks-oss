@@ -6,7 +6,7 @@ Status: desktop browser/import pilot implemented; verification in progress; nati
 
 Extend the shared feedback workflow to explicitly identified native-app captures, starting with a desktop browser window-capture pilot. Follow with verified host-app mobile integrations, optional desktop/mobile companions and deliberately instrumented diagnostics. Current and proposed capabilities remain separate in the [compatibility matrix](../platform-compatibility.md) and [Upcoming](../upcoming.md).
 
-The implemented pilot covers reviewed screenshots. OS-wide inspection, automatic HTTPS decryption, anonymous customer SDK availability, real-device acceptance and Store publication remain outside its verified scope. Private release schedules and launch material remain outside tracked source.
+The implemented pilot covers reviewed screenshots. A separate [OS diagnostic snapshot slice](native-os-diagnostics.md) adds bounded local logging-tool adapters and reviewed JSON import; it does not attach a debugger or instrument application internals. OS-wide inspection, automatic HTTPS decryption, anonymous customer SDK availability, real-device acceptance and Store publication remain outside the verified scope. Private release schedules and launch material remain outside tracked source.
 
 ## Evidence and approach
 
@@ -20,6 +20,7 @@ Reuse existing private assets, revisions, idempotency and current project grants
 - [x] Add Upcoming documentation with availability criteria and no delivery promises.
 - [x] Define native capture identity, project authorization and backward-compatible context contracts; record whether any additive migration is required.
 - [x] Implement a desktop browser screenshot pilot with explicit window/display selection, image preview, annotation/redaction and authorized submission.
+- [x] Reuse native OS logging facilities through bounded local CLI snapshots and explicitly reviewed screenshot-workflow import; track real application-event acceptance separately.
 - [ ] Verify the existing mobile SDKs in real host apps on physical iOS and Android devices.
 - [ ] Evaluate companion packaging and mobile sharing after pilot findings; implement each platform as a separately verifiable slice.
 - [ ] Add app-integrated diagnostics only with explicit bounded instrumentation, redaction and channel coverage.
@@ -44,6 +45,7 @@ The pilot adds an optional appCapture input to threads.create and stores its val
 
 - 2026-10-21: Start with an explicit desktop visual-capture pilot; retain the tab recorder's identity checks. Share one domain authorization/evidence workflow while keeping capture adapters platform-specific.
 - 2026-10-21: Existing iOS/Android integration source is an input to verification, not evidence of standalone companion availability or general deep diagnostics.
+- 2026-10-21: Reuse Windows Event Log, journalctl and macOS Unified Logging before introducing a desktop runtime. Keep reviewed OS snapshots separate from browser diagnostics; deeper instrumentation remains proposed.
 
 ## Completion receipt
 

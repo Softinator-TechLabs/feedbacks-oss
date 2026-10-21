@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { NativeDiagnosticEvents } from "../capture/native-diagnostics.js";
 import { type Context } from "../api.js";
 import { HumanTime } from "../human-time.js";
 import { ActionState, ExternalLink, useAction } from "../ui.js";
@@ -56,9 +57,20 @@ export function ContextPanel({ context: c }: { context: Context }) {
           )}
         </dl>
         <p className="muted">
-          App details are supplied by the reviewer. No internal logs, DOM or network
-          traffic were collected.
+          App details are supplied by the reviewer.{" "}
+          {c.nativeDiagnostics
+            ? "The OS diagnostic snapshot below was separately collected and approved; it is not browser console or network evidence."
+            : "No internal logs, DOM or network traffic were collected."}
         </p>
+        {c.nativeDiagnostics && (
+          <details>
+            <summary>
+              OS diagnostic snapshot ({c.nativeDiagnostics.events.length}{" "}
+              {c.nativeDiagnostics.events.length === 1 ? "event" : "events"})
+            </summary>
+            <NativeDiagnosticEvents report={c.nativeDiagnostics} />
+          </details>
+        )}
       </section>
     );
   if (!c.url)

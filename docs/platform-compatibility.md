@@ -4,7 +4,7 @@ Reviewed 2026-10-21. This page separates implemented Feedbacks clients from the 
 
 ## Available integrations
 
-The [app screenshot pilot](app-capture.md) adds signed-in image import and browser window/display capture without the extension. Native system-picker acceptance remains unverified on the named operating systems.
+The [app screenshot pilot](app-capture.md) adds signed-in image import and browser window/display capture without the extension. Native system-picker acceptance remains unverified on the named operating systems. The [native OS diagnostic collector](native-os-diagnostics.md) additionally reuses Windows Event Log, journalctl and macOS Unified Logging through the local CLI, with explicit reviewed JSON import. Full crash dumps/traces and standalone companions remain separate work.
 
 | Target                                      | Current Feedbacks integration                                                                         | Boundary and evidence                                                                                                                                                                       |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

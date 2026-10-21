@@ -222,6 +222,9 @@ export type Project = {
 };
 export type Context = {
   source?: string;
+  nativeDiagnostics?: import("../shared/native-diagnostics.js").NativeDiagnosticReport & {
+    trust: "untrusted_native_diagnostics";
+  };
   appCapture?: Omit<import("../shared/app-capture.js").AppCapture, "points"> & {
     trust: "reviewer_supplied";
   };

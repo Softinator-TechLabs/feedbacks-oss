@@ -175,6 +175,8 @@ The [extension popup](extension/popup.html) states the running-server and accoun
 
 The [editor](src/web/capture/editor.tsx) pairs compact numbered Oxford pins with full-size note fields and uses solid black rectangles for pixel redaction. Marker numerals (0.8rem) and black masks stay scoped to [capture styling](src/web/capture/capture.css). The approved retry state keeps the reviewed image visible, locks editing and explains the next send action.
 
+Optional [OS diagnostics](src/web/capture/native-diagnostics.tsx) use a native disclosure with local JSON import and adjacent privacy guidance. Show the collector, time range, event count and limited/unavailable status before event details. Reviewers can edit messages and remove events, then explicitly check **Include this reviewed diagnostic snapshot**; further edits clear approval, and retry locks the approved snapshot. The [thread context](src/web/threads/context.tsx) reuses the same event presentation read-only inside a disclosure. Keep long process names, event IDs and messages wrapping within shrinking containers (`min-width: 0; overflow-wrap: anywhere`) so both views remain readable on narrow screens.
+
 ### Navigation and review controls
 
 Account groups agent setup, connections, owner links and security in keyboard-accessible tabs. At narrow widths all tabs stay visible in two rows. Active credentials appear first; extension and expired/revoked lists use disclosures. Newly created owner links show a four-character ending, while older hashed links state that the ending is unavailable. The mobile Menu overlays navigation without moving the header or page content.
