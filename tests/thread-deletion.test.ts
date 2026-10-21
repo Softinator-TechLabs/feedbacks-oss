@@ -337,3 +337,94 @@ test("cleanup is bounded and bulk deletion rejects cross-project, duplicate and 
     await pg.close();
   }
 });
+
+test("deletion removes local integration references and blocks active or uncertain external writes", async () => {
+  const pg = new PGlite(),
+    db = new Database(pg as any);
+  try {
+    await migrate(db);
+    const ops = new Operations(db, { remove: async () => {} } as any, {} as any);
+    const owner = await ops.auth.bootstrap(
+      "owner@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const project = await ops.executeOperation(owner, "projects.create", {
+      name: "Integration deletion",
+      origins: ["https://example.test"],
+    });
+    const thread = await ops.executeOperation(owner, "threads.create", {
+      projectId: project.id,
+      body: "Synthetic linked feedback",
+      idempotencyKey: randomUUID(),
+    });
+    const tracker = randomUUID(),
+      time = randomUUID(),
+      channel = randomUUID();
+    await db.query(
+      "INSERT INTO tracker_connections(id,project_id,provider,label,configuration,credential_key,credential,created_by) VALUES($1,$2,'asana','Synthetic','{}','synthetic','{}',$3)",
+      [tracker, project.id, owner.userId],
+    );
+    await db.query(
+      "INSERT INTO tracker_links(id,connection_id,thread_id,remote_id,url,title,remote_state,local_state,local_revision) VALUES($1,$2,$3,'remote','https://app.asana.com/0/1/2','Synthetic','open','open',1)",
+      [randomUUID(), tracker, thread.id],
+    );
+    await db.query(
+      "INSERT INTO tracker_jobs(id,connection_id,connection_revision,thread_id,kind,payload,actor,idempotency_key,input_hash,status) VALUES($1,$2,1,$3,'create','{}','{}','synthetic','hash','delivered')",
+      [randomUUID(), tracker, thread.id],
+    );
+    await db.query(
+      "INSERT INTO notification_channels(id,project_id,provider,label,events,credential_key,credential,created_by) VALUES($1,$2,'slack','Synthetic','[]','synthetic','{}',$3)",
+      [channel, project.id, owner.userId],
+    );
+    await db.query(
+      "INSERT INTO channel_deliveries(id,channel_id,channel_revision,thread_id,event,event_key,status) VALUES($1,$2,1,$3,'created','synthetic','delivered')",
+      [randomUUID(), channel, thread.id],
+    );
+    await db.query(
+      "INSERT INTO time_connections(id,project_id,provider,label,destination,credential_key,credential,created_by) VALUES($1,$2,'harvest','Synthetic','{}','synthetic','{}',$3)",
+      [time, project.id, owner.userId],
+    );
+    await db.query(
+      "INSERT INTO external_time_entries(id,connection_id,connection_revision,thread_id,minutes,spent_date,payload,actor,idempotency_key,input_hash,status) VALUES($1,$2,1,$3,15,'2026-10-21','{}','{}','synthetic','hash','delivered')",
+      [randomUUID(), time, thread.id],
+    );
+    await db.query(
+      "INSERT INTO external_replay_links(id,thread_id,project_id,provider,session_url,page_url,captured_at,created_by,idempotency_key,input_hash) VALUES($1,$2,$3,'fullstory','https://app.fullstory.com/ui/org/session/id','https://example.test',now(),$4,'synthetic','hash')",
+      [randomUUID(), thread.id, project.id, owner.userId],
+    );
+    const input = {
+      projectId: project.id,
+      threads: [{ threadId: thread.id, revision: thread.revision }],
+      idempotencyKey: randomUUID(),
+      confirmation: "DELETE",
+    };
+    for (const table of ["tracker_jobs", "external_time_entries", "channel_deliveries"]) {
+      for (const status of ["processing", "uncertain"]) {
+        await db.query(`UPDATE ${table} SET status=$1`, [status]);
+        await assert.rejects(ops.executeOperation(owner, "threads.delete", input), {
+          code: "CONFLICT",
+        });
+        assert.ok(await db.one("SELECT id FROM threads WHERE id=$1", [thread.id]));
+      }
+      await db.query(`UPDATE ${table} SET status='delivered'`);
+    }
+    const receipt = await ops.executeOperation(owner, "threads.delete", input);
+    assert.equal(receipt.deletedCount, 1);
+    for (const table of [
+      "tracker_jobs",
+      "tracker_links",
+      "channel_deliveries",
+      "external_time_entries",
+      "external_replay_links",
+    ])
+      assert.equal((await db.one(`SELECT count(*)::int n FROM ${table}`)).n, 0);
+    assert.ok(await db.one("SELECT id FROM tracker_connections WHERE id=$1", [tracker]));
+    assert.ok(
+      await db.one("SELECT id FROM notification_channels WHERE id=$1", [channel]),
+    );
+    assert.ok(await db.one("SELECT id FROM time_connections WHERE id=$1", [time]));
+  } finally {
+    await pg.close();
+  }
+});

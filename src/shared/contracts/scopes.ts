@@ -20,6 +20,12 @@ export const scopedAgentOperations = [
 ] as const;
 
 export const agentTokenScopes = [
+  "threads.create",
+  "analytics.get",
+  "board.get",
+  "board.column",
+  "board.batch",
+  "board.configure",
   "assignments.delegations",
   "assignments.assign",
   "assignments.cancel",
@@ -72,9 +78,15 @@ export const agentTokenScopes = [
 ] as const;
 
 // Self-service never delegates owner-only policy visibility or external GitHub writes.
-export const selfAgentOptionalScopes = ["github.issueCreate"] as const;
+export const selfAgentOptionalScopes = ["github.issueCreate", "threads.create"] as const;
 export const selfAgentTokenScopes = agentTokenScopes.filter(
-  (name) => !["context.policy", "context.reviewers", "github.issueCreate"].includes(name),
+  (name) =>
+    ![
+      "context.policy",
+      "context.reviewers",
+      "github.issueCreate",
+      "threads.create",
+    ].includes(name),
 );
 export const profileOnlyAgentScopes = [
   "auth.me",
@@ -107,6 +119,12 @@ export const agentOperations = businessOperations.filter(
     !["threads.delete", "threads.deletions", "threads.retryDeletion"].includes(name) &&
     name !== "threads.figmaReference" &&
     name !== "integrations.catalog" &&
+    !name.startsWith("intake.") &&
+    !name.startsWith("channels.") &&
+    !name.startsWith("timeTracking.") &&
+    !name.startsWith("replayLinks.") &&
+    !name.startsWith("notifications.") &&
+    !name.startsWith("trackers.") &&
     !name.startsWith("webhooks.") &&
     name !== "documents.upload" &&
     (name === "github.issueCreate" || !name.startsWith("github.")),
@@ -117,6 +135,7 @@ export const ownerTokenScopes = [
   ...agentOperations.filter(
     (name) =>
       name !== "github.issueCreate" &&
+      name !== "threads.create" &&
       !name.startsWith("recordings.") &&
       !name.startsWith("diagnostics."),
   ),
@@ -135,6 +154,26 @@ export const ownerEvidenceReadScopes = [
   "diagnostics.search",
 ] as const;
 const readOperations = new Set<string>([
+  "trackers.comments",
+  "timeTracking.list",
+  "timeTracking.history",
+  "channels.list",
+  "channels.deliveries",
+  "replayLinks.list",
+  "intake.settings",
+  "intake.inspect",
+  "analytics.get",
+  "board.get",
+  "board.column",
+  "trackers.catalog",
+  "trackers.connections",
+  "trackers.jobs",
+  "trackers.list",
+  "trackers.links",
+  "notifications.settings",
+  "notifications.subscription",
+  "notifications.deliveries",
+  "notifications.preview",
   "integrations.catalog",
   "assignments.delegations",
   "assignments.history",

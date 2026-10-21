@@ -1,3 +1,7 @@
+import { TimeEntryPanel } from "../integrations/time-tracking.js";
+import { ExternalReplayLinks } from "../integrations/replay-links.js";
+import { IntakeDetails } from "../projects/intake-details.js";
+import { TrackerThreadPanel } from "../integrations/trackers.js";
 import { DeleteThreadsButton, ArchiveThreadButton } from "./deletion.js";
 import { useEffect, useRef, useState } from "react";
 import { ThreadMove } from "./move.js";
@@ -800,6 +804,7 @@ export function ThreadDetail({
                     setProjectVersion((value) => value + 1);
                   }}
                 />
+                <IntakeDetails context={t.context} />
                 <ContextPanel context={t.context} />
                 {t.diagnostics && <ThreadDiagnostics diagnostics={t.diagnostics} />}
                 <DiagnosticEvidencePanel
@@ -846,6 +851,17 @@ export function ThreadDetail({
                     )}
                   </details>
                 )}
+                {project?.permissions.canMaintain && (
+                  <TrackerThreadPanel
+                    thread={t}
+                    onChange={() => setVersion((v) => v + 1)}
+                  />
+                )}
+                {project?.permissions.canMaintain && <TimeEntryPanel thread={t} />}
+                <ExternalReplayLinks
+                  thread={t}
+                  canWrite={!!project?.permissions.canWrite}
+                />
                 <ThreadLinks
                   thread={t}
                   canWrite={!!project?.permissions.canWrite}

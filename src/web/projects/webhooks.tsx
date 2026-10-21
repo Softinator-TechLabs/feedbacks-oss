@@ -33,6 +33,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
   const draftRef = useRef("");
   const [edited, setEdited] = useState(false);
   const [secret, setSecret] = useState<string>();
+  const [testKey, setTestKey] = useState(() => crypto.randomUUID());
   const config = useLoad<WebhookConfig>(
     () => api("webhooks.get", { projectId }),
     [projectId, version],
@@ -137,6 +138,19 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
             receiver.
           </p>
           <div className="actions">
+            <button
+              type="button"
+              disabled={a.busy}
+              onClick={() =>
+                void a.run(async () => {
+                  await api("webhooks.test", { projectId, idempotencyKey: testKey });
+                  setTestKey(crypto.randomUUID());
+                  setVersion((current) => current + 1);
+                }, "Signed test queued. Check delivery history and your receiver for acceptance.")
+              }
+            >
+              Send test event
+            </button>
             <ConfirmButton
               disabled={a.busy}
               onConfirm={() =>

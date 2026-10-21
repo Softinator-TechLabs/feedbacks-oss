@@ -1,0 +1,623 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { chromium } from "playwright";
+import { PGlite } from "@electric-sql/pglite";
+import { Database } from "../src/server/db.js";
+import { migrate } from "../src/server/migrations.js";
+import { Operations } from "../src/server/operations.js";
+import { createApp } from "../src/server/app.js";
+
+test(
+  "rendered tracker, channel, reviewed replay and time workflows persist synthetic data and enforce denied controls",
+  {
+    skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1",
+    timeout: 180000,
+  },
+  async () => {
+    const pg = new PGlite(),
+      db = new Database(pg as any);
+    const keys = new Map<string, Buffer>();
+    const store = {
+      put: async (key: string, value: Buffer) => {
+        keys.set(key, value);
+      },
+      get: async (key: string) => keys.get(key)!,
+      remove: async (key: string) => {
+        keys.delete(key);
+      },
+    };
+    const config: any = {
+      appOrigin: "http://127.0.0.1",
+      production: false,
+      organizationId: randomUUID(),
+    };
+    const originalFetch = globalThis.fetch;
+    const external: string[] = [],
+      checks: string[] = [],
+      errors: string[] = [];
+    let server: any, browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+    // Provider verification is the only mocked boundary. App HTTP requests,
+    // credentials, grants, persistence, validation and queue writes remain real.
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      if (["127.0.0.1", "localhost"].includes(url.hostname))
+        return originalFetch(input, init);
+      external.push(url.origin + url.pathname);
+      const json = (data: unknown) =>
+        new Response(JSON.stringify(data), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      if (
+        url.origin === "https://app.asana.com" &&
+        url.pathname === "/api/1.0/projects/123"
+      )
+        return json({ data: { name: "Synthetic Asana project" } });
+      if (url.origin === "https://api.harvestapp.com") {
+        if (url.pathname === "/v2/company")
+          return json({ wants_timestamp_timers: false });
+        if (url.pathname === "/v2/projects/42")
+          return json({ name: "Synthetic Harvest project" });
+        if (url.pathname === "/v2/projects/42/task_assignments")
+          return json({ task_assignments: [{ task: { id: 44 }, is_active: true }] });
+      }
+      if (
+        url.origin === "https://api2.timedoctor.com" &&
+        url.pathname === "/api/1.0/tasks/task44"
+      )
+        return json({
+          data: { project: { id: "project42" }, name: "Synthetic Time Doctor task" },
+        });
+      throw Error("Unexpected external request in synthetic browser verification");
+    };
+    try {
+      await migrate(db);
+      const ops = new Operations(db, store, config),
+        password = "Synthetic-Integration-Password-123";
+      const owner = await ops.auth.bootstrap(
+        "owner@example.test",
+        "Synthetic owner",
+        password,
+      );
+      const projects = [];
+      for (const device of ["desktop", "mobile"])
+        projects.push(
+          await ops.executeOperation(owner, "projects.create", {
+            name: `Integration review ${device}`,
+            origins: ["https://example.test"],
+          }),
+        );
+      const viewer = await ops.executeOperation(owner, "members.create", {
+        name: "Read-only reviewer",
+        email: "viewer@example.test",
+        password,
+        grants: projects.map((project) => ({ projectId: project.id, role: "viewer" })),
+      });
+      await db.query("UPDATE users SET must_change_password=false WHERE id=$1", [
+        viewer.id,
+      ]);
+      server = createApp(config, db, store).listen(0, "127.0.0.1");
+      await new Promise<void>((resolve) => server.once("listening", resolve));
+      const origin = `http://127.0.0.1:${server.address().port}`;
+      config.appOrigin = origin;
+      browser = await chromium.launch({ headless: true });
+      async function signedContext(
+        email: string,
+        viewport: { width: number; height: number },
+      ) {
+        const context = await browser!.newContext({ viewport, timezoneId: "UTC" });
+        const response = await context.request.post(`${origin}/api/auth.login`, {
+          headers: { Origin: origin },
+          data: { email, password },
+        });
+        assert.equal(response.status(), 200);
+        return { context, csrf: (await response.json()).data.csrf };
+      }
+      const apiSession = await signedContext("owner@example.test", {
+        width: 1000,
+        height: 800,
+      });
+      async function post(
+        operation: string,
+        input: unknown,
+        session = apiSession,
+        expected = 200,
+      ) {
+        const response = await session.context.request.post(
+          `${origin}/api/${operation}`,
+          { headers: { Origin: origin, "X-CSRF-Token": session.csrf }, data: input },
+        );
+        const payload = await response.json();
+        assert.equal(
+          response.status(),
+          expected,
+          `${operation}: ${JSON.stringify(payload)}`,
+        );
+        if (expected === 403) assert.equal(payload.error?.code, "FORBIDDEN");
+        return payload.data;
+      }
+      await mkdir(".impeccable/review", { recursive: true });
+      for (const [index, device, width, height] of [
+        [0, "desktop", 1440, 1000],
+        [1, "mobile", 390, 844],
+      ] as const) {
+        const project = projects[index];
+        const signed = await signedContext("owner@example.test", { width, height });
+        const page = await signed.context.newPage();
+        page.setDefaultTimeout(10000);
+        page.on("pageerror", (error) => errors.push(error.message));
+        page.on("dialog", (dialog) => dialog.accept());
+        await page.goto(`${origin}/trackers?projectId=${projects[1 - index].id}`);
+        const trackers = page.locator(".tracker-settings");
+        await trackers.waitFor({ timeout: 5000 }).catch(async () => {
+          throw new Error(
+            `Tracker surface missing. Page: ${await page.locator("body").innerText()}. Errors: ${JSON.stringify(errors)}`,
+          );
+        });
+        await trackers
+          .getByRole("combobox", { name: "Project", exact: true })
+          .selectOption(project.id);
+        await trackers
+          .getByRole("button", { name: "Add tracker connection", exact: true })
+          .press("Enter");
+        const trackerForm = trackers.locator(".tracker-form");
+        await trackerForm
+          .getByRole("combobox", { name: "Provider", exact: true })
+          .selectOption("asana");
+        await trackerForm
+          .getByLabel("Connection name", { exact: true })
+          .fill(`Asana ${device}`);
+        await trackerForm.getByLabel("Asana project ID", { exact: true }).fill("123");
+        await trackerForm
+          .getByLabel("API token", { exact: true })
+          .fill(`synthetic-asana-${device}`);
+        await trackerForm
+          .getByText("Status mappings and polling", { exact: true })
+          .press("Enter");
+        await trackerForm
+          .getByLabel("open → remote status", { exact: true })
+          .fill("open");
+        await trackerForm
+          .getByLabel("resolved → remote status", { exact: true })
+          .fill("completed");
+        await trackerForm
+          .getByLabel("Import remote status changes automatically", { exact: false })
+          .check();
+        await trackerForm
+          .getByRole("button", { name: "Save connection", exact: true })
+          .press("Enter");
+        await trackers
+          .getByRole("heading", { name: `Asana ${device}`, exact: true })
+          .waitFor();
+        let connections = (await post("trackers.list", { projectId: project.id }))
+          .connections;
+        assert.equal(connections.length, 1);
+        assert.equal(connections[0].configuration.targetId, "123");
+        assert.deepEqual(
+          connections[0].configuration.states.map((entry: any) => entry.remote),
+          ["open", "completed"],
+        );
+        assert.equal(connections[0].configuration.poll, true);
+        const storedTracker = await db.one(
+          "SELECT * FROM tracker_connections WHERE id=$1",
+          [connections[0].id],
+        );
+        assert.ok(!JSON.stringify(storedTracker).includes(`synthetic-asana-${device}`));
+        assert.ok(!(await page.content()).includes(`synthetic-asana-${device}`));
+        await trackers
+          .getByRole("button", { name: "Test connection", exact: true })
+          .press("Enter");
+        await trackers
+          .getByText("Provider access and status mappings verified.", { exact: true })
+          .waitFor();
+        assert.equal(
+          (await post("trackers.list", { projectId: project.id })).connections[0].health,
+          "healthy",
+        );
+        checks.push(
+          `${device}: owner project/provider/destination/mapping saved, encrypted and verified`,
+        );
+        await trackers
+          .getByRole("button", { name: "Add tracker connection", exact: true })
+          .press("Enter");
+        await trackerForm
+          .getByRole("combobox", { name: "Provider", exact: true })
+          .selectOption("jira");
+        await trackerForm
+          .getByLabel("Connection name", { exact: true })
+          .fill(`Jira ${device}`);
+        await trackerForm
+          .getByLabel("Jira project ID or key", { exact: true })
+          .fill("REVIEW");
+        await trackerForm.getByLabel("Jira issue type ID", { exact: true }).fill("10001");
+        await trackerForm
+          .getByRole("button", { name: "Connect with Jira Cloud", exact: true })
+          .press("Enter");
+        await trackerForm
+          .getByRole("alert")
+          .filter({ hasText: "operator must configure" })
+          .waitFor();
+        assert.equal(
+          (await post("trackers.list", { projectId: project.id })).connections.length,
+          1,
+        );
+        assert.equal(
+          await trackerForm.getByLabel("Connection name", { exact: true }).inputValue(),
+          `Jira ${device}`,
+        );
+        checks.push(
+          `${device}: missing Jira broker produces actionable error and preserves entered form`,
+        );
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({
+          path: `.impeccable/review/integrations-${device}.png`,
+          fullPage: true,
+        });
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          `${device} tracker page fits`,
+        );
+        await page.goto(`${origin}/projects/${project.id}/settings#integrations`);
+        const channels = page.locator("section").filter({
+          has: page.getByRole("heading", {
+            name: "Slack and Teams notifications",
+            exact: true,
+          }),
+        });
+        await channels
+          .getByRole("button", { name: "Add notification channel", exact: true })
+          .press("Enter");
+        const channelForm = channels.locator("form");
+        await channelForm
+          .getByRole("combobox", { name: "Provider", exact: true })
+          .selectOption("slack");
+        await channelForm
+          .getByLabel("Connection name", { exact: true })
+          .fill(`Review updates ${device}`);
+        const webhook = `https://hooks.slack.com/services/SYNTHETIC/REVIEW/${device}secret`;
+        await channelForm
+          .getByLabel("Incoming webhook URL", { exact: true })
+          .fill(webhook);
+        await channelForm.getByLabel("Discussion and replies", { exact: true }).check();
+        await channelForm
+          .getByRole("button", { name: "Save channel", exact: true })
+          .press("Enter");
+        await channels
+          .getByRole("heading", { name: `Review updates ${device}`, exact: true })
+          .waitFor();
+        const channel = (await post("channels.list", { projectId: project.id }))
+          .channels[0];
+        assert.deepEqual(channel.events, ["created", "discussion"]);
+        assert.ok(
+          !JSON.stringify(
+            await db.one("SELECT * FROM notification_channels WHERE id=$1", [channel.id]),
+          ).includes(webhook),
+        );
+        await channels
+          .getByRole("button", { name: "Send test message", exact: true })
+          .press("Enter");
+        await channels
+          .getByText("Test queued. Check delivery history and the destination channel.", {
+            exact: true,
+          })
+          .waitFor();
+        assert.equal(
+          (await post("channels.deliveries", { projectId: project.id })).items[0].status,
+          "pending",
+        );
+        checks.push(
+          `${device}: channel event settings persisted, webhook encrypted, test queued over real HTTP`,
+        );
+        const time = page.locator("section").filter({
+          has: page.getByRole("heading", {
+            name: "Harvest and Time Doctor",
+            exact: true,
+          }),
+        });
+        const times: any[] = [];
+        for (const provider of ["harvest", "timedoctor"] as const) {
+          await time
+            .getByRole("button", { name: "Add time connection", exact: true })
+            .press("Enter");
+          const form = time.locator("form");
+          await form
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .selectOption(provider);
+          await form
+            .getByLabel("Connection name", { exact: true })
+            .fill(`${provider} ${device}`);
+          await form
+            .getByLabel(
+              provider === "harvest" ? "Harvest account ID" : "Time Doctor company ID",
+              { exact: true },
+            )
+            .fill(provider === "harvest" ? "7" : "company7");
+          await form
+            .getByLabel("Provider project ID", { exact: true })
+            .fill(provider === "harvest" ? "42" : "project42");
+          await form
+            .getByLabel("Provider task ID", { exact: true })
+            .fill(provider === "harvest" ? "44" : "task44");
+          if (provider === "timedoctor")
+            await form.getByLabel("Time Doctor user ID", { exact: true }).fill("user7");
+          await form
+            .getByLabel(
+              provider === "harvest" ? "Harvest API token" : "Time Doctor JWT API token",
+              { exact: true },
+            )
+            .fill(`synthetic-time-${provider}-${device}`);
+          await form
+            .getByRole("button", { name: "Save time connection", exact: true })
+            .press("Enter");
+          const saved = time.locator("li").filter({
+            has: page.getByRole("heading", {
+              name: `${provider} ${device}`,
+              exact: true,
+            }),
+          });
+          const verifiedResponse = page.waitForResponse((response) =>
+            response.url().endsWith("/api/timeTracking.test"),
+          );
+          await saved
+            .getByRole("button", { name: "Test destination", exact: true })
+            .press("Enter");
+          const verified = await verifiedResponse;
+          assert.equal(verified.status(), 200);
+          const result = (await verified.json()).data;
+          assert.equal(
+            result.healthy,
+            true,
+            result.errorCode ?? "Destination should verify",
+          );
+          await time
+            .getByText("Time tracking destination verified.", { exact: true })
+            .waitFor();
+          const connection = (
+            await post("timeTracking.list", { projectId: project.id })
+          ).connections.find((item: any) => item.provider === provider);
+          assert.equal(connection.health, "healthy");
+          assert.ok(
+            !JSON.stringify(
+              await db.one("SELECT * FROM time_connections WHERE id=$1", [connection.id]),
+            ).includes(`synthetic-time-${provider}-${device}`),
+          );
+          times.push(connection);
+        }
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          `${device} project settings fits`,
+        );
+        const thread = await post("threads.create", {
+          projectId: project.id,
+          body: `Reviewed integration work ${device}`,
+          pageUrl: "https://example.test/review?variant=a",
+          idempotencyKey: randomUUID(),
+        });
+        await page.goto(`${origin}/threads/${thread.id}`);
+        await page.locator('summary[aria-label="More actions"]').press("Enter");
+        await page.getByRole("button", { name: "Details", exact: true }).press("Enter");
+        const detail = page.locator("#thread-details");
+        const replay = detail.locator("details").filter({
+          has: page
+            .locator("summary")
+            .filter({ hasText: /^Fullstory and LogRocket sessions/ }),
+        });
+        await replay.locator("summary").press("Enter");
+        await replay
+          .getByRole("combobox", { name: "Provider", exact: true })
+          .selectOption("logrocket");
+        await replay
+          .getByLabel("Provider session URL", { exact: true })
+          .fill(`https://app.logrocket.com/synthetic/review/s/${device}/1`);
+        await replay
+          .getByLabel("Exact page URL reviewed in that session", { exact: true })
+          .fill("https://example.test/wrong-page");
+        await replay.getByLabel("Capture time", { exact: true }).fill("2026-10-20T10:30");
+        await replay
+          .getByRole("button", { name: "Add reviewed session link", exact: true })
+          .press("Enter");
+        await replay
+          .getByRole("alert")
+          .filter({ hasText: "must exactly match" })
+          .waitFor();
+        await replay
+          .getByLabel("Exact page URL reviewed in that session", { exact: true })
+          .fill("https://example.test/review?variant=a");
+        await replay
+          .getByRole("button", { name: "Add reviewed session link", exact: true })
+          .press("Enter");
+        await replay.getByText("Reviewed session link added.", { exact: true }).waitFor();
+        assert.equal(
+          (await post("replayLinks.list", { threadId: thread.id })).items.length,
+          1,
+        );
+        await replay.getByRole("button", { name: "Remove", exact: true }).press("Enter");
+        await replay.getByText("Session link removed.", { exact: true }).waitFor();
+        assert.equal(
+          (await post("replayLinks.list", { threadId: thread.id })).items.length,
+          0,
+        );
+        checks.push(
+          `${device}: reviewed replay page validation, add and removal persist over real HTTP`,
+        );
+        const timeEntry = detail
+          .locator("details")
+          .filter({ has: page.getByText("Log reviewed work time", { exact: true }) });
+        await timeEntry.locator("summary").press("Enter");
+        for (const connection of times) {
+          await timeEntry
+            .getByRole("combobox", { name: "Time tracking destination", exact: true })
+            .selectOption(connection.id);
+          await timeEntry.getByLabel("Work date", { exact: true }).fill("2026-10-20");
+          if (connection.provider === "timedoctor")
+            await timeEntry
+              .getByLabel("Start time in your local timezone", { exact: true })
+              .fill("2026-10-20T10:00");
+          await timeEntry.getByLabel("Minutes worked", { exact: true }).fill("1441");
+          assert.equal(
+            await timeEntry
+              .getByLabel("Minutes worked", { exact: true })
+              .evaluate((input: HTMLInputElement) => input.validity.rangeOverflow),
+            true,
+          );
+          await timeEntry
+            .getByLabel("Minutes worked", { exact: true })
+            .fill(connection.provider === "harvest" ? "25" : "15");
+          await timeEntry
+            .getByLabel("Reviewed note to share with the provider", { exact: true })
+            .fill(`Reviewed ${connection.provider} work`);
+          const entryResponse = page.waitForResponse((response) =>
+            response.url().endsWith("/api/timeTracking.log"),
+          );
+          await timeEntry
+            .getByRole("button", { name: "Submit reviewed time entry", exact: true })
+            .press("Enter");
+          assert.equal((await entryResponse).status(), 200);
+          await timeEntry
+            .getByText("Time entry queued. Check the delivery history below.", {
+              exact: true,
+            })
+            .waitFor();
+        }
+        const entries = (await post("timeTracking.history", { threadId: thread.id }))
+          .entries;
+        assert.equal(entries.length, 2);
+        assert.deepEqual(
+          new Set(entries.map((entry: any) => entry.minutes)),
+          new Set([25, 15]),
+        );
+        assert.ok(entries.every((entry: any) => entry.status === "pending"));
+        checks.push(
+          `${device}: Harvest and Time Doctor fields, destination verification, native time limits and reviewed entries queued`,
+        );
+        const denied = await signedContext("viewer@example.test", { width, height });
+        const readonly = await denied.context.newPage();
+        readonly.setDefaultTimeout(10000);
+        readonly.on("pageerror", (error) => errors.push(error.message));
+        await readonly.goto(`${origin}/trackers`);
+        await readonly
+          .getByRole("alert")
+          .filter({ hasText: "Server owner access required" })
+          .waitFor();
+        assert.equal(
+          await readonly
+            .getByRole("button", { name: "Add tracker connection", exact: true })
+            .count(),
+          0,
+        );
+        await readonly.goto(`${origin}/threads/${thread.id}`);
+        await readonly.locator('summary[aria-label="More actions"]').press("Enter");
+        await readonly
+          .getByRole("button", { name: "Details", exact: true })
+          .press("Enter");
+        assert.equal(
+          await readonly
+            .getByRole("button", { name: "Add reviewed session link", exact: true })
+            .count(),
+          0,
+        );
+        assert.equal(
+          await readonly.getByText("Log reviewed work time", { exact: true }).count(),
+          0,
+        );
+        assert.equal(
+          await readonly.getByText("External tasks", { exact: true }).count(),
+          0,
+        );
+        // Keep denied HTTP assertions on a separate session: the rendered app
+        // renews its own CSRF during navigation and must not race this client.
+        const deniedApi = await signedContext("viewer@example.test", { width, height });
+        await post(
+          "trackers.save",
+          {
+            projectId: project.id,
+            provider: "asana",
+            label: "Denied",
+            configuration: { targetId: "123", states: [], poll: false },
+            credential: { token: "synthetic-denied-token", auth: "token" },
+          },
+          deniedApi,
+          403,
+        );
+        await post(
+          "timeTracking.log",
+          {
+            connectionId: times[0].id,
+            threadId: thread.id,
+            revision: thread.revision,
+            spentDate: "2026-10-20",
+            minutes: 5,
+            note: "Denied synthetic time",
+            idempotencyKey: randomUUID(),
+          },
+          deniedApi,
+          403,
+        );
+        await post(
+          "channels.save",
+          {
+            projectId: project.id,
+            provider: "slack",
+            label: "Denied",
+            events: ["created"],
+            webhookUrl: webhook,
+          },
+          deniedApi,
+          403,
+        );
+        await post(
+          "replayLinks.add",
+          {
+            threadId: thread.id,
+            revision: thread.revision,
+            provider: "logrocket",
+            sessionUrl: "https://app.logrocket.com/synthetic/review/s/session",
+            pageUrl: "https://example.test/review?variant=a",
+            capturedAt: "2026-10-20T10:00:00.000Z",
+            idempotencyKey: randomUUID(),
+          },
+          deniedApi,
+          403,
+        );
+        checks.push(
+          `${device}: read-only UI and real HTTP deny tracker configuration, time and replay writes`,
+        );
+        await readonly.close();
+        await denied.context.close();
+        await deniedApi.context.close();
+        await page.close();
+        await signed.context.close();
+      }
+      assert.deepEqual(errors, []);
+      const html = await readFile("dist/web/index.html", "utf8");
+      const bundle = html.match(/src="([^"]+\.js)"/)?.[1];
+      await mkdir(".local", { recursive: true });
+      await writeFile(
+        ".local/integrations-qa-receipt.json",
+        JSON.stringify(
+          {
+            checks,
+            pageErrors: errors,
+            externalVerificationMocks: [...new Set(external)],
+            channelDelivery: "queued only; no real webhook messages or time entries sent",
+            bundle,
+            htmlSha256: createHash("sha256").update(html).digest("hex"),
+            screenshots: [
+              ".impeccable/review/integrations-desktop.png",
+              ".impeccable/review/integrations-mobile.png",
+            ],
+          },
+          null,
+          2,
+        ),
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      await browser?.close();
+      if (server) await new Promise<void>((resolve) => server.close(() => resolve()));
+      await pg.close();
+    }
+  },
+);

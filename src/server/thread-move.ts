@@ -43,6 +43,27 @@ export async function moveThread(
       409,
     );
 
+  for (const table of ["tracker_jobs", "external_time_entries", "channel_deliveries"]) {
+    if (
+      await db.one(
+        `SELECT id FROM ${table} WHERE thread_id=$1 AND status IN ('processing','uncertain') LIMIT 1`,
+        [row.id],
+      )
+    )
+      fail(
+        "CONFLICT",
+        "Wait for active integration sends and reconcile uncertain writes before moving feedback",
+        409,
+      );
+  }
+  if (
+    await db.one(
+      "SELECT id FROM notification_deliveries WHERE thread_id=$1 AND status='sending' LIMIT 1",
+      [row.id],
+    )
+  )
+    fail("CONFLICT", "Wait for the active email send before moving feedback", 409);
+
   const claims = await db.query("SELECT * FROM work_claims WHERE thread_id=$1", [row.id]);
   const delegations = await db.query(
     "SELECT * FROM work_delegations WHERE thread_id=$1",
@@ -193,6 +214,25 @@ export async function moveThread(
       { captureMode: "any" },
     );
   }
+  // Credentials and provider histories keep their original project authority.
+  // Moving feedback never retargets or resumes an old connection's remote writes.
+  for (const table of ["tracker_jobs", "external_time_entries", "channel_deliveries"])
+    await db.query(
+      `UPDATE ${table} SET status='cancelled',error_code='THREAD_MOVED' WHERE thread_id=$1 AND status='pending'`,
+      [row.id],
+    );
+  await db.query(
+    "UPDATE tracker_links SET status='moved',next_poll_at='infinity'::timestamptz WHERE thread_id=$1",
+    [row.id],
+  );
+  await db.query(
+    "UPDATE notification_deliveries SET status='suppressed',error_code='THREAD_MOVED',revision=revision+1 WHERE thread_id=$1 AND status='pending'",
+    [row.id],
+  );
+  await db.query("UPDATE external_replay_links SET project_id=$2 WHERE thread_id=$1", [
+    row.id,
+    destination.id,
+  ]);
   row.data.lastActor = publicActor(actor);
   row.data.lastActivityAt = new Date().toISOString();
   const saved = await db.one(

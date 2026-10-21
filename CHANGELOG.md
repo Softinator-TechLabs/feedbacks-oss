@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.0 — 2026-10-21
+
+- Add a configurable project Kanban board with shared thread filters, keyboard controls and atomic batch status, assignment and archive changes.
+- Add permission-scoped analytics for lifecycle activity, response and resolution time, backlog aging, trends and workload, with CSV and print views.
+- Add subscribed email for feedback, discussion, mentions, work status and assignment changes. Configure SMTP (including Google), Mailjet or Amazon SES, server defaults, project senders and safe text templates. Delivery history distinguishes accepted and uncertain sends.
+- Add explicit tracker connections for Jira, Linear, Asana, ClickUp, Monday, Trello, Productive and Teamwork, with reviewed writes, status mappings, encrypted credentials and reconciliation. Jira OAuth uses a separately operated confidential broker.
+- Add Slack/Teams channels, reviewed FullStory/LogRocket session links, explicit Harvest/Time Doctor time entries and versioned automation webhook tests.
+- Add permanent project website intake with exact approved origins, Turnstile, bounded abuse controls and optional contact consent. Existing expiring review links remain available.
+- Package Codex/Claude Code plugins 0.3.0; the extension version remains 0.1.60.
+
+### Upgrade from 0.2.3
+
+Back up PostgreSQL and private object storage together and verify recovery before upgrading. Preserve organization identity, volumes, encryption keys and storage prefixes. Additive migrations create workflow, subscription, queue and integration tables without rewriting applied migrations. Existing installations send no email until configured and members subscribe. Optional email environment values seed only an absent server configuration; saved settings take precedence.
+
+Pin the published image digest and use the existing private environment. Verify sign-in, a synthetic screenshot readback, project access and a subscribed test event after startup. Retain a compatible database/storage backup and previous image; use a forward fix if an older build cannot safely understand the new integration state.
+
+### Provider acceptance and limits
+
+Provider request and failure tests use synthetic transports. Individual provider account permissions, consent, quotas, sender-domain verification, inbox placement, CMS deployment policies and production Turnstile configuration require live acceptance. No marketplace listing or Store update is implied. Local tracker writes use outbound calls and polling; Jira OAuth additionally needs the separately operated broker. Firmao workflow discovery is still required before a concrete adapter can be specified. See [integrations](docs/integrations.md), [email](docs/email-notifications.md), [board](docs/project-board.md) and [analytics](docs/analytics.md).
+
 ## 0.2.3 — 2026-10-21
 
 - Refresh the locked MCP server/client SDK and Vite build tooling to patched compatible versions; the current lockfile passes `npm audit`.

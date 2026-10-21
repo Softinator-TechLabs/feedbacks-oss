@@ -104,6 +104,26 @@ export async function manageThreadDeletion(
       "Reconcile the pending GitHub issue creation before deleting this feedback",
       409,
     );
+  for (const table of ["tracker_jobs", "external_time_entries", "channel_deliveries"]) {
+    if (
+      await db.one(
+        `SELECT id FROM ${table} WHERE thread_id=ANY($1::uuid[]) AND status IN ('processing','uncertain') LIMIT 1`,
+        [ids],
+      )
+    )
+      fail(
+        "CONFLICT",
+        "Wait for active integration sends and reconcile uncertain writes before deleting this feedback",
+        409,
+      );
+  }
+  if (
+    await db.one(
+      "SELECT id FROM notification_deliveries WHERE thread_id=ANY($1::uuid[]) AND status='sending' LIMIT 1",
+      [ids],
+    )
+  )
+    fail("CONFLICT", "Wait for the active email send before deleting this feedback", 409);
   const owned = await db.query(
     "SELECT id,object_key FROM assets WHERE thread_id=ANY($1::uuid[])",
     [ids],
@@ -156,6 +176,17 @@ export async function manageThreadDeletion(
   await db.query("DELETE FROM qa_baselines WHERE thread_id=ANY($1::uuid[])", [ids]);
   await db.query("DELETE FROM assets WHERE thread_id=ANY($1::uuid[])", [ids]);
   await db.query("DELETE FROM replies WHERE thread_id=ANY($1::uuid[])", [ids]);
+  // Remove local integration content only. Remote tasks, sessions and time entries
+  // belong to their providers and are never deleted as a side effect here.
+  for (const table of [
+    "tracker_jobs",
+    "tracker_links",
+    "channel_deliveries",
+    "external_replay_links",
+    "external_time_entries",
+  ])
+    await db.query(`DELETE FROM ${table} WHERE thread_id=ANY($1::uuid[])`, [ids]);
+
   await db.query("DELETE FROM github_issue_requests WHERE thread_id=ANY($1::uuid[])", [
     ids,
   ]);

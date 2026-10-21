@@ -34,3 +34,5 @@ Standalone Windows, Ubuntu and macOS companions, mobile sharing and reviewed OS 
 [Troubleshooting](/guide/troubleshooting) · [Access and privacy](/guide/access-privacy) · [API and CLI](/reference/api-cli)
 
 Guides are also available as [Markdown for agents](/llms.txt).
+
+[Subscribe to email notifications](guide/email-notifications.md) for project discussions, status and assignment changes.

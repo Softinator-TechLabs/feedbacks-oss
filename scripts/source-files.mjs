@@ -42,6 +42,7 @@ export const sourceRootFiles = [
   "DESIGN.md",
   "Dockerfile",
   "Dockerfile.site",
+  "Dockerfile.oauth-broker",
   "compose.yaml",
   "compose.registry.yaml",
   "compose.dev.yaml",

@@ -790,7 +790,17 @@ test("common integration catalog lists only implemented providers and safe curre
     const before = await f.ops.executeOperation(f.owner, "integrations.catalog", {});
     assert.deepEqual(
       before.providers.map((provider: any) => provider.id),
-      ["github"],
+      [
+        "github",
+        "jira",
+        "linear",
+        "asana",
+        "clickup",
+        "monday",
+        "trello",
+        "productive",
+        "teamwork",
+      ],
     );
     assert.equal(before.providers[0].configuredConnections, 1);
     assert.equal(before.providers[0].storage.environment, 1);

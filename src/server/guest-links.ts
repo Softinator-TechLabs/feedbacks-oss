@@ -117,8 +117,9 @@ export async function guestReply(
   ]);
   if (!thread) fail("NOT_FOUND", "Feedback not found", 404);
   const at = new Date().toISOString();
+  const replyId = randomUUID();
   await db.query("INSERT INTO replies(id,thread_id,data) VALUES($1,$2,$3)", [
-    randomUUID(),
+    replyId,
     thread.id,
     JSON.stringify({
       body: input.body,
@@ -142,7 +143,7 @@ export async function guestReply(
       at,
     },
   };
-  await saveThread(db, author, thread, "guest.reply");
+  await saveThread(db, author, thread, "guest.reply", { replyId });
   await db.query("UPDATE guest_links SET replies=replies+1 WHERE id=$1", [link.id]);
   return { posted: true };
 }

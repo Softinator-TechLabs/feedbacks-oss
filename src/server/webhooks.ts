@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { request } from "node:https";
 import type { IncomingMessage } from "node:http";
@@ -156,6 +156,57 @@ export async function manageWebhooks(db: Database, actor: Actor, op: string, inp
       })),
     };
   }
+  if (op === "webhooks.test") {
+    const inputHash = createHash("sha256").update(input.projectId).digest("hex");
+    const previous = await db.one(
+      "SELECT input_hash,entity_id FROM idempotency WHERE actor_id=$1 AND operation='webhooks.test' AND key=$2",
+      [actor.id, input.idempotencyKey],
+    );
+    if (previous) {
+      if (previous.input_hash !== inputHash)
+        fail("CONFLICT", "This request key was already used for another project", 409);
+      return { queued: true, eventId: previous.entity_id };
+    }
+    if (
+      !(await db.one("SELECT project_id FROM webhook_configs WHERE project_id=$1", [
+        input.projectId,
+      ]))
+    )
+      fail("NOT_FOUND", "Configure a webhook before sending a test", 404);
+    const recent = await db.one(
+      "SELECT count(*)::integer AS total FROM webhook_deliveries WHERE project_id=$1 AND payload->>'type'='webhook.test' AND created_at>now()-interval '1 hour'",
+      [input.projectId],
+    );
+    if (recent.total >= 5)
+      fail(
+        "RATE_LIMITED",
+        "At most five webhook tests can be queued per project per hour",
+        429,
+      );
+    const eventId = randomUUID();
+    await db.query(
+      "INSERT INTO webhook_deliveries(id,project_id,payload,status) VALUES($1,$2,$3,'pending')",
+      [
+        eventId,
+        input.projectId,
+        JSON.stringify({
+          schemaVersion: 1,
+          id: eventId,
+          type: "webhook.test",
+          test: true,
+          projectId: input.projectId,
+          threadId: null,
+          revision: 0,
+          occurredAt: new Date().toISOString(),
+        }),
+      ],
+    );
+    await db.query(
+      "INSERT INTO idempotency(actor_id,operation,key,input_hash,entity_id) VALUES($1,'webhooks.test',$2,$3,$4)",
+      [actor.id, input.idempotencyKey, inputHash, eventId],
+    );
+    return { queued: true, eventId };
+  }
   if (op === "webhooks.disable") {
     await db.query("DELETE FROM webhook_configs WHERE project_id=$1", [input.projectId]);
     await db.query(
@@ -219,6 +270,7 @@ export async function enqueueWebhook(
   if (!configured) return;
   const id = randomUUID();
   const payload = {
+    schemaVersion: 1,
     id,
     type: kind,
     projectId,

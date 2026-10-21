@@ -1,3 +1,5 @@
+import { registerPublicIntakeRoutes } from "./http/public-intake-routes.js";
+import { registerUnsubscribe } from "./notifications/unsubscribe.js";
 import express, { type Request, type Response, type NextFunction } from "express";
 import path from "node:path";
 import { existsSync } from "node:fs";
@@ -26,6 +28,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
   app.disable("x-powered-by");
   // Trust forwarded addresses only when the operator configures the proxy path.
   app.set("trust proxy", config.trustProxyHops ?? 0);
+  registerPublicIntakeRoutes(app, database, config);
   const attempts = new Map<string, { count: number; until: number }>();
   function rate(key: string, limit: number, res: Response, expiresAt = Infinity) {
     const now = Date.now();
@@ -91,6 +94,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
         });
         if (req.method === "OPTIONS") return res.sendStatus(204);
       } else if (
+        req.path !== "/notifications/unsubscribe" &&
         origin &&
         origin !== config.appOrigin &&
         !/^chrome-extension:\/\/[a-p]{32}$/.test(origin)
@@ -186,6 +190,7 @@ export function createApp(config: Config, database: Database, assets: AssetStore
       res.status(503).json({ ok: false });
     }
   });
+  registerUnsubscribe(app, database);
   registerOperationRoute(app, config, database, ops, rate, bearer, cookie, requireOrigin);
   const oauth = registerOAuthRoutes(app, config, database, ops, cookie, rate);
   registerGithubAppRoutes(app, config, database, ops, cookie, bearer);

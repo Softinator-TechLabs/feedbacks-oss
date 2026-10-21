@@ -42,3 +42,6 @@
 
 !scripts/walkthrough-recording.js
 !scripts/walkthrough-recording.css
+
+!Dockerfile.oauth-broker
+!scripts/tracker-oauth-broker.mjs

@@ -1,3 +1,4 @@
+import { EmailSubscription } from "../notifications/subscription.js";
 import { DeleteThreadsButton, ThreadDeletionCleanup } from "./deletion.js";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { calendarDate, localTimeZone } from "../work-plan-model.js";
@@ -264,6 +265,12 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           )}
         </div>
         <div className="thread-list-quick-actions">
+          <a
+            className="button"
+            href={`/projects/${project.id}/board${filterQuery(filters)}`}
+          >
+            Board view
+          </a>
           {project.permissions.canMaintain && (
             <a
               className="button"
@@ -329,6 +336,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
           }}
         />
       )}
+      <EmailSubscription key={project.id + "-email"} projectId={project.id} />
       <ProjectAssignments key={project.id} project={project} />
       <ErrorNotice error={taxonomyError} />
       <ErrorNotice error={membersError} />

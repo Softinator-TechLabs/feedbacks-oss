@@ -20,6 +20,7 @@ export interface Config {
   mcpOAuthEnabled?: boolean;
   turnstileSiteKey?: string;
   turnstileSecretKey?: string;
+  trackerOAuth?: { brokerUrl: string; installationKey: string };
   githubApps?: GithubAppConfig[];
   githubAppId?: string;
   githubAppSlug?: string;
@@ -122,7 +123,29 @@ export function configFromEnv(env = process.env): Config {
     throw new Error(
       "GITHUB_APPS_JSON must not duplicate the legacy GitHub App ID or slug",
     );
+  let trackerOAuth: Config["trackerOAuth"];
+  if (env.TRACKER_OAUTH_BROKER_URL || env.TRACKER_OAUTH_INSTALLATION_KEY) {
+    const brokerUrl = new URL(z.string().url().parse(env.TRACKER_OAUTH_BROKER_URL));
+    if (
+      brokerUrl.protocol !== "https:" ||
+      brokerUrl.username ||
+      brokerUrl.password ||
+      brokerUrl.search ||
+      brokerUrl.hash ||
+      brokerUrl.pathname !== "/"
+    )
+      throw new Error("Tracker OAuth broker requires an exact HTTPS origin");
+    trackerOAuth = {
+      brokerUrl: brokerUrl.origin,
+      installationKey: z
+        .string()
+        .min(32)
+        .max(1000)
+        .parse(env.TRACKER_OAUTH_INSTALLATION_KEY),
+    };
+  }
   return {
+    trackerOAuth,
     githubApps,
     appOrigin,
     production,

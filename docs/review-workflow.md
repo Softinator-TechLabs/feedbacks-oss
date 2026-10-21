@@ -72,11 +72,13 @@ Public links can be forwarded. Use short expiry and a modest response cap when s
 
 ## Add the website widget
 
-Open **Project settings → Website widget** to create and manage an installation snippet. See the [installation guide](../site-docs/guide/website-widget.md) for host setup, CSP, verification and replacement.
+Open **Project settings → Website widget → Always-on website feedback** to enable permanent public intake on a subset of the project's exact approved origins. Set button styling, privacy notice, optional contact sharing and the daily attempt limit, then install the generated snippet. It remains available until disabled; removing an origin immediately withdraws access. See the [installation guide](../site-docs/guide/website-widget.md) for WordPress/Drupal paths, CSP and acceptance checks.
 
-In project settings, choose **Website widget** when creating a guest feedback link. The project must use exact approved origins. Copy the one-time script snippet into an approved website. The script shows a fixed **Send feedback** launcher; it does not load existing project feedback. The form sends the current page URL, viewport dimensions, visitor name and feedback. The host script does not capture screenshots or other tabs. Use the Chrome extension for private screenshot review.
+Visitors can report a page or select an element. Permanent intake strips the page query/fragment and sends only explicit feedback, optional name, viewport, element tag/position and any explicitly shared email. It captures no screenshot, page text, selector or form values and returns no project/thread lists. Contact is unverified and does not subscribe the visitor to email. Team members see the public intake source in thread detail.
 
-Widget links use the same expiry, submission limit and revocation controls as guest links. A widget token cannot open the standalone guest form. The service answers widget requests only for an exact approved `Origin`, verifies the page URL matches that origin and checks Cloudflare Turnstile on the submitting website. The snippet token is visible to anyone who can inspect the host website, so it is a bounded public capability rather than a private invitation. Use a short expiry and low submission limit for public sites.
+The server checks current configuration and exact approved Origin, verifies an `intake_submit` Turnstile challenge for the website hostname, and applies durable hashed-IP/installation rate budgets across replicas. New submissions use request IDs to deduplicate retries. The public installation ID is not a private invitation or a team credential.
+
+Existing bounded widget links remain separate: **Create installation snippet** issues an expiring, capped guest widget token with the original name/comment and URL behavior. Those links retain their expiry, submission cap and revocation; a widget token cannot open the standalone guest form. They are not converted to permanent intake automatically.
 
 ## Optional organization
 
@@ -90,6 +92,10 @@ typing cannot be discarded by the response.
 Tags are optional, case-insensitive and shared with the thread. Use up to 12 tags, each 32 characters; letters, numbers, spaces, hyphens, underscores and slashes are accepted. In the app, choose an existing project tag or create one from feedback; the extension also accepts new tags during capture. Tags first used on a thread join that project's vocabulary with a stable subtle color. Maintainers can add unused tags and change any tag color in project settings. Project writers can update a thread's category and tags afterward. Thread edits use the thread revision, so concurrent edits cannot silently overwrite each other.
 
 Use **Saved views** to apply a named filter. Open **Save or remove a view** for less frequent maintenance. Views belong to you within a project, including for read-only project members. Other members cannot see or alter them. Each person can save up to 30 views per project. To revise a saved view, apply it, change filters, save a replacement and remove the old view.
+
+## Read analytics
+
+Open **Analytics** for all currently accessible projects or a project's **Analytics** tab. Choose a date range and timezone, follow count links to matching threads, and export aggregate totals. Current backlog and workload stay independent of the period filter. See [analytics definitions and coverage](analytics.md) for formulas, scopes, query caps, incomplete observations and historical-data limits.
 
 ## Compare attachments
 

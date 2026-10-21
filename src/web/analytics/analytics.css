@@ -1,0 +1,207 @@
+.analytics-page {
+  min-width: 0;
+}
+.analytics-filters,
+.analytics-actions,
+.analytics-actions > div,
+.analytics-breakdown-head,
+.analytics-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+.analytics-filters {
+  margin: 20px 0;
+}
+.analytics-filters .field {
+  margin: 0;
+  min-width: 145px;
+  flex: 1;
+}
+.analytics-filters .field:has(input[list]) {
+  flex: 1.3;
+}
+.analytics-filters button {
+  min-height: 42px;
+  margin-bottom: 1px;
+}
+.analytics-actions {
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0 24px;
+}
+.analytics-actions p {
+  margin: 0;
+  font-size: 13px;
+}
+.analytics-actions > div {
+  gap: 8px;
+  align-items: stretch;
+}
+.analytics-columns {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 32px;
+  align-items: start;
+}
+.analytics-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.analytics-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.analytics-page caption {
+  text-align: left;
+  font-weight: 650;
+  margin-bottom: 12px;
+}
+.analytics-page th,
+.analytics-page td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.analytics-page thead th {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.analytics-page tbody th {
+  font-weight: 500;
+  max-width: 70ch;
+  overflow-wrap: anywhere;
+}
+.analytics-page tbody th small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.analytics-durations tbody th {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.analytics-page td {
+  white-space: nowrap;
+}
+.analytics-page button.analytics-count {
+  padding: 0;
+  min-height: 24px;
+  min-width: 24px;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font: inherit;
+  font-weight: 600;
+}
+.analytics-page button.analytics-count:hover {
+  text-decoration-thickness: 2px;
+}
+.analytics-page button.analytics-count:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.analytics-trend,
+.analytics-method {
+  margin-top: 28px;
+}
+.analytics-page details > summary {
+  cursor: pointer;
+  padding: 8px 0;
+  font-weight: 600;
+}
+.analytics-breakdown,
+.analytics-detail {
+  margin-top: 32px;
+}
+.analytics-breakdown-head {
+  justify-content: space-between;
+  align-items: center;
+}
+.analytics-breakdown-head h2 {
+  margin: 0;
+}
+.analytics-breakdown-head .field {
+  min-width: 180px;
+  margin: 0;
+}
+.analytics-page .muted,
+.analytics-method p {
+  max-width: 75ch;
+}
+.analytics-pagination {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+@media (max-width: 850px) {
+  .analytics-columns {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+@media (max-width: 500px) {
+  .analytics-filters .field {
+    flex-basis: calc(50% - 12px);
+    min-width: 125px;
+  }
+  .analytics-filters .field:has(input[list]),
+  .analytics-filters .field:has(select) {
+    flex-basis: 100%;
+  }
+  .analytics-filters button {
+    width: 100%;
+  }
+  .analytics-actions > div {
+    width: 100%;
+  }
+  .analytics-actions button {
+    flex: 1;
+  }
+  .analytics-breakdown-head {
+    gap: 16px;
+  }
+  .analytics-breakdown-head .field {
+    width: 100%;
+  }
+}
+@media print {
+  body:has(.analytics-page) .sidebar,
+  body:has(.analytics-page) .project-nav,
+  body:has(.analytics-page) header,
+  .analytics-filters,
+  .analytics-actions > div,
+  .analytics-breakdown,
+  .analytics-detail,
+  .analytics-method {
+    display: none !important;
+  }
+  .analytics-columns {
+    display: block;
+  }
+  .analytics-columns > div {
+    margin-bottom: 28px;
+  }
+  .analytics-trend:not([open]) {
+    display: none;
+  }
+  .analytics-page button.analytics-count {
+    color: inherit;
+    text-decoration: none;
+  }
+  .analytics-page table {
+    break-inside: auto;
+  }
+  .analytics-page tr {
+    break-inside: avoid;
+  }
+}

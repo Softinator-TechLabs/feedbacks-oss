@@ -256,12 +256,14 @@ export function registerOperationRoute(
         });
         return;
       }
+      rate(`api-ingress:${req.ip ?? "unknown"}`, 600, res);
       const token = bearer(req),
         actor = await ops.auth.authenticate(token, token ? undefined : cookie(req));
       if (!token) {
         requireOrigin(req);
         if (name !== "auth.me") await ops.auth.csrf(actor, req.get("X-CSRF-Token"));
       }
+      rate(`api-actor:${actor.id}`, 240, res);
       const data = await ops.executeOperation(actor, name, req.body);
       if (name === "auth.me" && !token) {
         const csrf = secret();

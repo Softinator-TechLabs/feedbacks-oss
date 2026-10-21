@@ -1,6 +1,8 @@
 # Integration adapters
 
-Owners open **Setup → Manage integrations**. The `/integrations` page lists implemented providers and current connection counts, then opens their management pages. GitHub is the first registered adapter. GitLab, Bitbucket, Asana, Jira and ClickUp are future work and are not available in this release. See the [GitHub walkthrough](../site-docs/guide/github.md).
+Owners open **Setup → Manage integrations**. The `/integrations` page lists implemented adapters and current connection counts. GitHub retains its [App setup and Issue workflow](../site-docs/guide/github.md). **Task trackers** at `/trackers` manages Jira Cloud, Linear, Asana, ClickUp, monday.com, Trello, Productive and Teamwork connections per project. GitLab and Bitbucket adapters are not implemented.
+
+An implemented adapter is not proof of an approved provider app or a successful connection to your account. Every connection starts unchecked; **Test connection** performs real authenticated reads of its destination and status mappings. Keep external sandbox checks, provider app approval and deployment verification separate from the synthetic contract tests.
 
 ## Shared foundation
 
@@ -12,9 +14,102 @@ The vault grants no authorization and verifies no provider permissions. Adapters
 
 ## Provider boundaries
 
-The [GitHub adapter](../src/server/integrations/github.ts) supplies catalog metadata and uses the common vault through a small wrapper. GitHub registration, installation approval, project App selection, Issue history and uncertain write recovery keep their existing domain rules. This foundation does not add a universal CRUD service or arbitrary runtime plugin loading.
+The [GitHub adapter](../src/server/integrations/github.ts) supplies catalog metadata and uses the common vault through a small wrapper. GitHub registration, installation approval, project App selection, Issue history and uncertain write recovery keep their existing domain rules. [Tracker adapters](../src/server/integrations/trackers/providers.ts) use fixed provider HTTPS origins and provider-specific requests. There is no arbitrary runtime plugin loading.
 
-Future providers may use OAuth, App credentials or API tokens. Implement their own refresh leases, consent callbacks, permission scopes, webhook signatures, remote resource selection and project bindings. Use fixed or explicitly approved provider endpoints; validate redirects and avoid sending credentials to arbitrary URLs. Add provider migrations when those persistence requirements are known; do not put unrelated tokens into GitHub App rows. Historical links and pending writes must pin their original provider and connection. Disabling must not silently substitute environment credentials or another account.
+Each tracker connection pins its project, provider, encrypted credential and destination. Changing configuration increments its revision and requires verification again. Disabled connections retain historical task links; they never fall back to another account. API redirects are rejected. Jira and Teamwork account site names are validated single DNS labels. Tracker operations require a signed-in human with current project maintainer access; only server owners manage tracker credentials. Existing agent keys receive no tracker write scope.
+
+## Tracker setup and synchronization
+
+Create a connection, run **Test connection**, then edit its status mappings using the remote IDs shown by the test. Mappings are one-to-one and can cover the six existing work states. For Jira, a write mapping also needs the workflow transition ID; a status ID and transition ID are different provider concepts.
+
+| Provider   | Authentication                                            | Destination                                                           |
+| ---------- | --------------------------------------------------------- | --------------------------------------------------------------------- |
+| Jira Cloud | Distributable OAuth app through the optional broker below | Consented Jira site, project ID or key, issue type ID                 |
+| Linear     | API token or OAuth credential                             | Team ID; workflow state IDs                                           |
+| Asana      | API token or OAuth credential                             | Project ID; `open` and `completed`                                    |
+| ClickUp    | API token or OAuth credential                             | List ID; status names                                                 |
+| monday.com | API token or OAuth credential                             | Board ID, description text column ID, status column ID; status labels |
+| Trello     | API key and delegated token                               | Board ID and intake list ID; list IDs as statuses                     |
+| Productive | API token                                                 | Organization ID, task list ID; workflow status IDs                    |
+| Teamwork   | API token or OAuth credential                             | Account site name, task list ID; `open` and `completed`               |
+
+The web setup accepts documented API credentials for non-Jira providers. OAuth credential import through the API is useful for operator-managed recovery; the bundled consent broker currently implements Jira Cloud only. Provider permissions, account plans and token lifetime remain provider-specific requirements.
+
+In a feedback thread, **External tasks** creates a task from a reviewed title and description or verifies and links an existing task in the configured destination. **Send comment** shares only the text reviewed in that form. **Read remote comments** retrieves a bounded provider discussion page and preserves provider attribution; it does not turn external authors into Feedbacks members or local discussion replies. Private screenshots, diagnostics, attachments and the rest of the discussion are not automatically copied.
+
+**Use remote status** and **Send local status** make the direction explicit. Optional five-minute polling imports remote status changes using outbound HTTPS, so a server on localhost or a LAN needs no incoming provider webhook. When local and remote states have both changed, polling records a conflict for a maintainer to resolve. An unmapped state is shown as an error rather than guessed. The integration owner must remain active and keep project maintainer access for automatic polling.
+
+**Refresh remote state** reads the current provider state for a maintainer's decision while retaining the last applied synchronization checkpoint. Refreshing alone does not change local work status or silently consume an update that polling still needs to apply.
+
+Actions use persistent reservations and idempotency keys. Definite transient rejection can retry with backoff; a timeout, interrupted attempt or ambiguous provider write becomes **uncertain**. Check the remote system and record the verified result before trying again. Created tasks can be reconciled by their remote ID. Connection rotation, disablement, current access and attempt leases are rechecked around credential reads and writes. Disabling cannot undo a request already accepted by a provider. [Worker implementation](../src/server/integrations/trackers/worker.ts) and [regression tests](../tests/trackers.test.ts).
+
+Moving feedback retains original-provider task and time history without granting the destination project's members access to it. A historical reference is visible only when the reader can access the moved thread and still maintain the original connection project. It is labeled historical and offers no sync, comment or logging actions from the moved thread. Polling retires those old links, and pending deliveries are cancelled. Processing or uncertain external writes must finish or be reconciled before moving the feedback. A move never deletes external tasks, comments or time entries.
+
+## Optional Jira OAuth broker
+
+Jira Cloud accepts OAuth credentials only. Do not ask every customer to create an individual OAuth app or collect their Jira API tokens. A distributor or operator registers a distributable confidential app in Atlassian's developer console and deploys [`tracker-oauth-broker.mjs`](../scripts/tracker-oauth-broker.mjs) once at an HTTPS origin. Its client secret stays on that service; it is never included in an OSS client, local installation or image layer.
+
+Configure these secrets on the broker through the deployment's secret manager:
+
+- `TRACKER_BROKER_PUBLIC_ORIGIN`: exact public HTTPS origin.
+- `TRACKER_BROKER_JIRA_CLIENT_ID` and `TRACKER_BROKER_JIRA_CLIENT_SECRET`: the distributable app credentials.
+- `TRACKER_BROKER_INSTALLATION_KEYS`: a JSON array of distinct strong installation keys, each at least 32 characters.
+- `PORT`: optional loopback port, default `4786`.
+
+Register `<broker-origin>/oauth/jira/callback` as the Jira callback. The requested classic scopes are `read:jira-work`, `write:jira-work`, `read:jira-user` and `offline_access`. Enable distribution according to Atlassian's current app policy before sharing it with other installations.
+
+On each Feedbacks installation set `TRACKER_OAUTH_BROKER_URL` and its own `TRACKER_OAUTH_INSTALLATION_KEY`. The owner enters the target project and issue type, opens Jira consent, returns to Feedbacks and selects a consented site. The local flow is bound to the original signed-in session and expires after ten minutes. Replay, another sign-in and non-consented sites are rejected. Token delivery is acknowledged after the local encrypted record commits. Refreshes use a connection lease and the broker briefly caches rotated-token responses for lost-response recovery.
+
+Run `node scripts/tracker-oauth-broker.mjs` behind an HTTPS reverse proxy. [`Dockerfile.oauth-broker`](../Dockerfile.oauth-broker) packages the same dependency-free service as a non-root Node image. It binds loopback; the reverse proxy must share its network namespace (for example a Linux host-network deployment) instead of publishing an unreachable container port. The main app image does not require the broker. The broker keeps pending flows and short refresh-retry receipts in memory only: a restart invalidates unfinished consent and removes those receipts. Keep it monitored, protect installation keys, and reconnect any account whose refresh outcome cannot be recovered. Do not treat the local broker tests as live Atlassian approval.
+
+## Slack and Microsoft Teams
+
+Project maintainers opt into each activity type under **Slack and Teams notifications**: new feedback, discussion, work status and assignments. Create the provider's incoming webhook for the intended channel, store its secret URL and send a test. Teams Workflows must accept the Adaptive Card payload; assign a workflow co-owner so notifications survive staff changes. Existing legacy Teams incoming URLs can also be retained where Microsoft still permits them.
+
+Webhook URLs are encrypted and never returned in settings. Delivery accepts only recognized Slack/Teams HTTPS endpoint shapes, pins public DNS addresses and follows no redirects. Each message contains an activity label and a Feedbacks link, without the feedback body, discussion or project name. Everyone in the selected external channel can see that metadata; opening the link still requires current Feedbacks access and access to the local server or VPN. Saved event subscriptions, current maintainer access, revocation, retries and uncertain-delivery reconciliation are enforced on the server. [Implementation](../src/server/integrations/channels.ts), [tests](../tests/channels.test.ts).
+
+## Fullstory and LogRocket session references
+
+A reviewer can attach a provider session URL to a thread after confirming the exact page and capture time. The server compares normalized page URLs, validates the provider session URL and rejects credential-bearing links. The UI labels these references **reviewer-provided**; this is not independent proof that a session contains that page or person. There is no fuzzy user matching, cookie extraction or import of private provider recordings. Provider login, retention and regional availability still apply.
+
+Applications can obtain the correct link using Fullstory's `FS('getSessionAsync', { format: 'url.now' })` or LogRocket's `getSessionURL` callback before a reviewer shares it. Never construct session links by guessing identifiers. [Implementation](../src/server/integrations/replay-links.ts), [tests](../tests/replay-links.test.ts).
+
+## TestMu CI intake
+
+[`testmu-intake.mjs`](../scripts/testmu-intake.mjs) sends a reviewed, normalized TestMu/LambdaTest failure through the existing authenticated `threads.create` operation. It is a CI adapter, not an unauthenticated native webhook receiver. Obtain build and test IDs from your runner or the provider's session details, select the actual reviewed page and viewport, and remove private logs, credentials and personal data from the summary.
+
+Give the CI job a deliberately issued, project-scoped Feedbacks key with only `threads.create`, plus the `FEEDBACKS_URL` and `FEEDBACKS_PROJECT_ID` settings. Store the key as `FEEDBACKS_TOKEN` in the CI secret store. Run from a locked-dependency checkout:
+
+```sh
+node scripts/testmu-intake.mjs < reviewed-testmu-report.json
+```
+
+The input is a strict JSON object with `version: 1`, `reviewed: true`, `buildId`, `testId`, `checkpoint`, `name`, `status` (`failed` or `error`), `summary`, `pageUrl`, a private provider dashboard `sessionUrl`, ISO `capturedAt`, and the real `viewport: { width, height }`. Raw logs, screenshot bytes and unknown fields are rejected. See the [executable schema](../scripts/lib/testmu-intake.mjs) and [real authenticated HTTP test](../tests/testmu-intake.test.ts).
+
+The provider/build/test/checkpoint identity produces a stable retry key. Repeating the same report returns the same thread; changed content under that identity is an idempotency conflict for the sender to review. Current project scope, write grants, exact approved origins and credential revocation are checked by the normal server operation. A private local server can receive this outbound CI request only when the CI runner has network access (for example a local runner or VPN).
+
+## Explicit Harvest and Time Doctor entries
+
+Owners configure an encrypted time connection for a provider account, project, task and optional provider user in project settings. Maintainers test the destination, then submit reviewed minutes, date and note from **Log reviewed work time** in a thread. No background activity tracking, automatic timer or billing approval is enabled.
+
+Harvest connections require duration mode and an active project task assignment. A submitted duration creates a stopped entry and an external reference back to the Feedbacks thread. Time Doctor uses its documented JWT API token, company/project/task/user IDs and a reviewed local start time converted to UTC. It creates an `add` manual-time edit with `approved: false`; provider approval policy still applies. API availability and the caller's provider role remain account setup gates.
+
+Persistent entry reservations prevent duplicate HTTP retries; failed access checks stop delivery. Timeouts become uncertain rather than creating time twice. Verify the provider's history and record its entry ID to reconcile. Previously submitted time remains in the provider when a connection is disabled. [Implementation](../src/server/integrations/time-tracking.ts), [tests](../tests/time-tracking.test.ts).
+
+## Firmao discovery boundary
+
+Firmao's official API documents separate customers, tasks, projects and time entries using organization-scoped API credentials. Choosing among those workflows changes what business data would be created. There is no Firmao adapter registered here because a concrete object mapping, responsible people, status policy and authorized sandbox account have not been selected. An automation can use the [signed event/API workflow](webhooks.md) after that mapping is reviewed; do not describe generic API availability as native Firmao support.
+
+## External references
+
+Provider documentation checked on 2026-10-21; provider schemas, plans and approval rules may change:
+
+- [Atlassian OAuth app policy and flow](https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/), [Jira REST v3](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/).
+- [Linear GraphQL](https://linear.app/developers/graphql), [Asana tasks](https://developers.asana.com/reference/createtask), [ClickUp tasks](https://developer.clickup.com/reference/createtask).
+- [monday.com items](https://developer.monday.com/api-reference/reference/items), [Trello cards](https://developer.atlassian.com/cloud/trello/rest/api-group-cards), [Productive](https://developer.productive.io/), [Teamwork tasks](https://apidocs.teamwork.com/docs/teamwork/v1/tasks/post-tasklists-id-tasks-json).
+- [Slack incoming webhooks](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks), [Teams Workflows incoming webhooks](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook).
+- [Fullstory session details](https://developer.fullstory.com/browser/get-session-details/), [LogRocket session URL](https://docs.logrocket.com/reference/get-session-url), [TestMu runner test identity](https://www.testmuai.com/support/docs/analytics-test-case-insights/).
+- [Harvest time entries](https://help.getharvest.com/api-v2/timesheets-api/timesheets/time-entries/), [Time Doctor API](https://timedoctor.redoc.ly/), [Firmao API](https://firmao.io/api-documentation/).
 
 ## Adding a provider
 

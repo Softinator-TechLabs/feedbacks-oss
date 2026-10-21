@@ -1,3 +1,8 @@
+import { processTimeEntries } from "./integrations/time-tracking.js";
+import { processChannelDeliveries } from "./integrations/channels.js";
+import { seedMailEnvironment } from "./notifications/environment.js";
+import { processTrackerJobs, pollTrackerLinks } from "./integrations/trackers/worker.js";
+import { deliverNotifications } from "./notifications/worker.js";
 import { drainThreadDeletionQueue } from "./thread-deletion.js";
 import { configFromEnv } from "./config.js";
 import { postgres } from "./db.js";
@@ -17,6 +22,7 @@ try {
   const db = postgres(config.databaseUrl, config.databasePoolMax);
   await migrate(db);
   const store = assetStore(config);
+  await seedMailEnvironment(db, store, config);
   const server = createApp(config, db, store).listen(config.port, "0.0.0.0", () =>
     console.info(`Feedbacks listening on port ${config.port}`),
   );
@@ -45,6 +51,11 @@ try {
       purgeExpiredPairings(db),
       drainExpiredDiagnosticEvidence(db, store),
       deliverWebhooks(db),
+      deliverNotifications(db, config, store),
+      processChannelDeliveries(db, store, config),
+      processTimeEntries(db, store, config),
+      processTrackerJobs(db, store, config),
+      pollTrackerLinks(db, store, config),
       pollGithubStatusSync(db, config, undefined, store),
       runScheduledQa(db),
     ])
