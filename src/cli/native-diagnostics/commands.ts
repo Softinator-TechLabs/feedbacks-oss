@@ -20,8 +20,11 @@ export type NativeCommand = {
 const windowsScript = `
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-$filter = @{LogName='Application'; ProviderName=@('Application Error','Application Hang','Windows Error Reporting'); Data=$env:FEEDBACKS_DIAGNOSTIC_PROCESS; StartTime=[DateTimeOffset]::Parse($env:FEEDBACKS_DIAGNOSTIC_START).LocalDateTime; EndTime=[DateTimeOffset]::Parse($env:FEEDBACKS_DIAGNOSTIC_END).LocalDateTime}
-try { $events = @(Get-WinEvent -FilterHashtable $filter -MaxEvents 101 -ErrorAction Stop) }
+$process = $env:FEEDBACKS_DIAGNOSTIC_PROCESS
+$start = [DateTimeOffset]::Parse($env:FEEDBACKS_DIAGNOSTIC_START).UtcDateTime.ToString('o')
+$end = [DateTimeOffset]::Parse($env:FEEDBACKS_DIAGNOSTIC_END).UtcDateTime.ToString('o')
+$query = "*[System[(Provider[@Name='Application Error'] or Provider[@Name='Application Hang'] or Provider[@Name='Windows Error Reporting']) and TimeCreated[@SystemTime >= '$start' and @SystemTime <= '$end']] and EventData[Data='$process']]"
+try { $events = @(Get-WinEvent -LogName Application -FilterXPath $query -MaxEvents 101 -ErrorAction Stop) }
 catch { if ($_.FullyQualifiedErrorId -like 'NoMatchingEventsFound*') { $events = @() } else { throw } }
 $result = @($events | ForEach-Object { $message = [string]$_.Message; [PSCustomObject]@{at=$_.TimeCreated.ToUniversalTime().ToString('o'); level=[int]$_.Level; eventId=[string]$_.Id; message=$message.Substring(0,[Math]::Min(4000,$message.Length))} })
 ConvertTo-Json -InputObject $result -Compress -Depth 4

@@ -70,7 +70,10 @@ test("OS commands bind exact process/time values as data and reject shell/predic
   const script = Buffer.from(windows.args.at(-1)!, "base64").toString("utf16le");
   assert.ok(
     script.includes("Get-WinEvent") &&
-      script.includes("Data=$env:FEEDBACKS_DIAGNOSTIC_PROCESS"),
+      script.includes("$process = $env:FEEDBACKS_DIAGNOSTIC_PROCESS") &&
+      script.includes("-LogName Application -FilterXPath $query -MaxEvents 101") &&
+      script.includes("EventData[Data='$process']") &&
+      script.includes("@SystemTime >= '$start' and @SystemTime <= '$end'"),
   );
   assert.ok(!script.includes("SyntheticApp.exe"));
   assert.equal(windows.env!.FEEDBACKS_DIAGNOSTIC_PROCESS, "SyntheticApp.exe");
