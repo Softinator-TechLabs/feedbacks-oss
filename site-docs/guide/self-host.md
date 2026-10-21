@@ -20,12 +20,12 @@ The [public Docker Hub image](https://hub.docker.com/r/softinator/feedbacks) sup
 
 ### 1. Download Compose
 
-In a new installation directory, download the [0.2.1 release Compose](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/v0.2.1/compose.registry.yaml) as `compose.yaml`:
+In a new installation directory, download the [0.2.3 release Compose](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/v0.2.3/compose.registry.yaml) as `compose.yaml`:
 
 ```sh
 mkdir feedbacks-server
 cd feedbacks-server
-curl -fL https://raw.githubusercontent.com/Softinator-TechLabs/feedbacks-oss/v0.2.1/compose.registry.yaml -o compose.yaml
+curl -fL https://raw.githubusercontent.com/Softinator-TechLabs/feedbacks-oss/v0.2.3/compose.registry.yaml -o compose.yaml
 umask 077
 touch .env
 chmod 600 .env
@@ -36,7 +36,7 @@ chmod 600 .env
 Paste these fields into `.env`, then fill every empty value. Use your HTTPS origin, private bucket and scoped application key from the [storage guide](/guide/storage). Generate a database password with `openssl rand -hex 32` and a unique organization UUID with `uuidgen`; preserve both for this installation. `TRUST_PROXY_HOPS=1` assumes one trusted reverse proxy; match your actual ingress path.
 
 ```dotenv
-FEEDBACKS_IMAGE=softinator/feedbacks@sha256:f7d759e671b48906a4aa5deff92b4644a73a6a4239f32b4cebba5cfcef8cc97b
+FEEDBACKS_IMAGE=softinator/feedbacks:0.2.3
 APP_ORIGIN=
 POSTGRES_PASSWORD=
 ORGANIZATION_ID=
@@ -58,6 +58,14 @@ docker compose pull
 docker compose up -d --wait
 docker compose ps
 ```
+
+For production, pin the pulled image before the first `up` (or before an upgrade):
+
+```sh
+docker image inspect softinator/feedbacks:0.2.3 --format '{{index .RepoDigests 0}}'
+```
+
+Copy that full `softinator/feedbacks@sha256:…` result into `FEEDBACKS_IMAGE` in your private `.env`, then run `docker compose up -d --wait`. Keep the previous digest for recovery. The publication workflow creates versioned tags once; it does not move them or `latest`.
 
 Connect your HTTPS reverse proxy to service `app`, port `3000`. Compose keeps the app and database ports private; running `up` alone does not create a public URL. `--wait` checks container startup and PostgreSQL health; verify application readiness and media below.
 
