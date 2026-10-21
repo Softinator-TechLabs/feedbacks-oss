@@ -76,3 +76,15 @@ The [image publication workflow](../.github/workflows/images.yml) runs manually 
 A publisher configures the repository variable `DOCKERHUB_NAMESPACE` and private Actions secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`. Create the public `feedbacks` and `feedbacks-site` repositories in that namespace before dispatch. Scope the publisher token to the required image repositories where the registry supports it. Registry login is removed at job completion.
 
 After publication, inspect the manifest, record the application digest and verify an anonymous pull. Use [registry Compose](../compose.registry.yaml) with `FEEDBACKS_IMAGE=namespace/feedbacks@sha256:<verified digest>` and the same private production values from [self-hosting](self-hosting.md). This Compose file preserves PostgreSQL in a named volume and does not expose database or app ports directly. TLS ingress and actual storage upload/readback must be verified separately. The static-site image requires no application secrets.
+
+## Promote the local quickstart
+
+Fresh installations read [`quickstart-stable.txt`](../site/public/quickstart-stable.txt), not a moving Docker `latest` tag. The file selects a public stable application version, its multi-platform image digest and a commit-pinned Compose checksum. Existing installations keep their saved digest; the fresh installer is not an upgrade command.
+
+After publishing the application release and both image architectures, prepare the channel update:
+
+```sh
+node scripts/prepare-quickstart.mjs vMAJOR.MINOR.PATCH COMPOSE_COMMIT_SHA
+```
+
+Replace both arguments with the actual stable tag and full reviewed Compose commit SHA. The script checks the public GitHub release and published Docker manifest, downloads that exact Compose and computes its checksum. Test the candidate metadata with a fresh isolated installation before merging its PR. Require all normal CI gates, deploy the website and verify the public metadata and installer together. Do not promote an unpublished image or prerelease, move an existing release tag or change the digest in existing private installations. The channel intentionally stays on the previous verified release until this promotion is complete.

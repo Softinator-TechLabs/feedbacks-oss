@@ -14,9 +14,45 @@ curl -fsSL https://feedbacks.softinator.ai/install.sh | bash
 
 Open **`http://localhost:3000`** and sign in with the generated owner login printed by the installer. PostgreSQL and screenshots are saved in **persistent Docker volumes**. No source build, domain or S3 credentials needed.
 
-The installer creates a private `feedbacks-server` directory and refuses to overwrite an existing one. It saves the password in `feedbacks-server/owner-password`; keep that file private. Use the printed stop/resume commands for this installation. They preserve its volumes; `down -v` deletes their data.
+The installer displays each setup stage and Docker's image-download progress. It selects the **latest verified stable quickstart release**, then saves its exact image digest in your installation. Restarting does not silently upgrade it.
 
-[Inspect the installer](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/site/public/install.sh). For another port or directory, append `-s -- --port 3300 --directory feedbacks-local` after `bash`. This local quickstart listens only on your computer. For a shared team URL, use the HTTPS production setup below.
+### Stop, start and inspect
+
+Run these from the generated installation directory:
+
+```sh
+cd feedbacks-server
+docker compose stop
+docker compose up -d --wait
+docker compose ps
+docker compose logs -f --tail=50
+```
+
+`stop` preserves the database and screenshots. Press **Ctrl+C** to leave the log view; the app keeps running. The installer also prints commands scoped to its unique Compose project.
+
+### Use another port
+
+If port 3000 is occupied, the installer stops **before downloading images or creating an installation directory**. Choose a free port and a new directory:
+
+```sh
+curl -fsSL https://feedbacks.softinator.ai/install.sh | bash -s -- --port 3300 --directory feedbacks-3300
+```
+
+Open **`http://localhost:3300`**. Use `cd feedbacks-3300` before its stop/start commands. To change an existing installation's port, update **both** `FEEDBACKS_PORT` and `APP_ORIGIN` in its private `.env` (for example, `3300` and `http://localhost:3300`), then run `docker compose up -d --wait` from that directory. Keep its `COMPOSE_PROJECT_NAME` unchanged so its original volumes are reused.
+
+### Login and setup recovery
+
+The installer creates a private directory and refuses to overwrite an existing one. It saves the generated owner password in `owner-password` inside that directory; keep it private. `down -v` deletes volume data.
+
+If setup fails after containers were created, the directory and volumes remain. Correct the reported problem, then run `docker compose up -d --wait` from that directory. If setup stopped **before** creating the first owner, complete that step using the saved password:
+
+```sh
+cat owner-password | docker compose exec -T -e BOOTSTRAP_EMAIL=owner@example.test -e BOOTSTRAP_NAME=Owner app node dist/cli/bootstrap.js
+```
+
+This cannot replace an existing owner. Do not rerun the fresh-install command over an existing directory.
+
+[Inspect the installer](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/main/site/public/install.sh) and its [stable release metadata](https://feedbacks.softinator.ai/quickstart-stable.txt). This local quickstart listens only on your computer. For a shared team URL, use the HTTPS production setup below.
 
 One installation serves one organization. Deploy a shared HTTPS server; reviewers connect to it from the extension.
 
