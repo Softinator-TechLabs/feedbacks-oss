@@ -2,6 +2,8 @@
 
 The global **Analytics** page aggregates currently accessible projects; a project's **Analytics** tab selects one project. Human members with current read access can inspect its metrics. `analytics.get` is an optional read scope for agents, intersected with current project grants and token project restrictions. Existing keys gain no new scope automatically. The server authorizes each request and drilldown; client project selectors are not access controls.
 
+The interface separates **Overview**, **Trends** and **Explore**. Overview shows current work and project comparisons; Trends shows period activity and completed-duration observations; Explore groups work by its context. Counts open matching threads. Supporting tables and metric definitions are available on demand. Project scope remains explicit; period controls apply to historical views, while current work remains a live snapshot. Display preferences stay in that browser for the current account/context.
+
 Choose explicit inclusive `from` and exclusive `to` instants, at most 366 elapsed days apart, and an IANA `timeZone` for daily grouping. The UI interprets its From/Through calendar dates in that timezone and converts them to instants, including daylight-saving changes. Refresh reads live data and shows generation time. A response can include `detail {metric,dimension?,key?,offset,limit}` for an exact filtered list of authorized thread IDs without copying their discussion text. Server results remain authoritative when a thread moves or access changes before opening it.
 
 ## Counts and cohorts

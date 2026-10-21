@@ -6,7 +6,7 @@ Status: in progress. Owner: Codex. Date: 2026-10-21.
 
 Add a keyboard-accessible board alongside the feedback list, preserving thread identity, filters, permissions and revision conflicts. Add opt-in email notifications for project members, including external clients, with server defaults and project overrides for delivery and templates. Support SMTP (including Google), Mailjet and Amazon SES without requiring an inbound public endpoint.
 
-Extend the same workspace with scoped analytics, permanent website intake, explicit tracker/channel/replay/time connections and authenticated automation. The organization roadmap and provider rollout inventory remain private. This plan describes this implementation only; it does not certify untested external integrations.
+Extend the same workspace with scoped analytics, permanent website intake, explicit tracker/channel/replay/time connections and authenticated automation. Analytics separates visual current project priorities, period trends and contextual exploration into Overview, Trends and Explore tabs; supporting tables and definitions stay optional. The organization roadmap and provider rollout inventory remain private. This plan describes this implementation only; it does not certify untested external integrations.
 
 ## Evidence and approach
 
@@ -17,7 +17,7 @@ Reuse the [thread operations](../../src/server/feedback.ts), [event transaction]
 - [x] Inspect current source and privately record the requested roadmap scope.
 - [x] Implement board configuration, queries, moves and batch actions with denied-access and conflict coverage.
 - [x] Implement scoped current project analytics and historical activity metrics.
-- [ ] Verify project charts and exact pending, overdue and high-priority drilldowns, including saved-timezone boundaries.
+- [x] Verify project charts and exact pending, overdue and high-priority drilldowns, including saved-timezone boundaries.
 - [x] Implement email configuration, safe templates, subscriptions and a durable delivery worker.
 - [x] Verify provider request construction and ambiguous-send recovery with synthetic transports.
 - [x] Update canonical guides and generated operation facts.
@@ -39,6 +39,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 ## Decision log
 
 - Keep the existing application typography, theme and controls. The board is an alternate project view.
+- Separate current work, historical activity and contextual breakdowns into visual tabs. Keep pending, overdue and high-priority project comparisons explicit, with exact matching-thread actions.
 - Treat provider acceptance separately from inbox delivery. Do not label queued or accepted messages delivered.
 - SMTP uses Nodemailer for TLS, authentication and MIME handling; SES uses its official client; Mailjet uses its HTTPS Send API. These dependencies serve concrete requested transports.
 
