@@ -3,6 +3,81 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 export async function verifySetup({ context, worker, post, access, extensionId, root }) {
+  const popup = await context.newPage();
+  await popup.setViewportSize({ width: 368, height: 600 });
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.locator("#server-settings[open]").waitFor();
+  await popup.locator("#server").fill("http://localhost:3000");
+  const localOption = popup.getByRole("checkbox", {
+    name: "Allow local HTTP development server",
+  });
+  assert.equal(await localOption.isVisible(), true, "Local opt-in is beside the URL");
+  assert.equal(await localOption.isChecked(), false, "Typing localhost never opts in");
+  const localBounds = await localOption.boundingBox();
+  const serverBounds = await popup.locator("#server").boundingBox();
+  const connectBounds = await popup.locator("#pair").boundingBox();
+  assert.ok(
+    serverBounds.y < localBounds.y &&
+      localBounds.y < connectBounds.y &&
+      connectBounds.y + connectBounds.height <= 600,
+    "URL, local opt-in and Connect fit together without scrolling",
+  );
+  await popup.evaluate(() => {
+    window.localServerPermissionRequests = [];
+    chrome.permissions.request = async (permissions) => {
+      window.localServerPermissionRequests.push(permissions);
+      return true;
+    };
+  });
+  await popup.locator("#pair").click();
+  await popup.locator("#message").filter({ hasText: "Use HTTPS" }).waitFor();
+  assert.equal(
+    await popup.evaluate(() => window.localServerPermissionRequests.length),
+    0,
+    "Unchecked HTTP is rejected before requesting access or preparing pairing",
+  );
+  assert.equal(
+    (await worker.evaluate(() => chrome.storage.local.get("pair"))).pair,
+    undefined,
+  );
+  const popupOutput = join(root, "output/playwright/server-setup");
+  await mkdir(popupOutput, { recursive: true });
+  for (const colorScheme of ["light", "dark"]) {
+    await popup.emulateMedia({ colorScheme });
+    await popup.screenshot({ path: join(popupOutput, `local-http-${colorScheme}.png`) });
+  }
+  await localOption.focus();
+  await localOption.press("Space");
+  assert.equal(await localOption.isChecked(), true);
+  await popup.locator("#server").fill("http://public.example.com");
+  await popup.locator("#pair").click();
+  await popup.locator("#message").filter({ hasText: "Use HTTPS" }).waitFor();
+  assert.equal(
+    await popup.evaluate(() => window.localServerPermissionRequests.length),
+    0,
+  );
+  await popup.locator("#server").fill(access.url);
+  const pairingPageOpened = context.waitForEvent("page");
+  await popup.locator("#pair").click();
+  const pairingPage = await pairingPageOpened;
+  await pairingPage.waitForURL(`${access.url}/pair?*`);
+  await popup
+    .locator("#connection")
+    .filter({ hasText: "Approve the connection" })
+    .waitFor();
+  assert.deepEqual(await popup.evaluate(() => window.localServerPermissionRequests), [
+    { origins: [access.url + "/*"] },
+  ]);
+  await popup.reload();
+  await popup.locator("#server-settings[open]").waitFor();
+  assert.equal(
+    await localOption.isChecked(),
+    true,
+    "An explicit choice survives reopening",
+  );
+  await pairingPage.close();
+  await popup.close();
+  await worker.evaluate(() => chrome.storage.local.clear());
   // Exercise setup before pairing, using the real background route and page bridge.
   // The temporary manifest above grants test access; native prompts are separate.
   const setupPage = await context.newPage();

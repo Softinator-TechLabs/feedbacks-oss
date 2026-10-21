@@ -57,6 +57,13 @@
         autocomplete="url"
       />
       <datalist id="recent-servers"></datalist>
+      <label class="check"
+        ><input id="allow-local" type="checkbox" aria-describedby="local-http-help" />
+        Allow local HTTP development server</label
+      >
+      <p id="local-http-help" class="hint">
+        Local HTTP is unencrypted. Use HTTPS for a shared team server.
+      </p>
       <p id="server-help" class="hint">
         Your team must install a Feedbacks server first. Ask your owner for its URL and
         your account. Open the extension on your server’s Setup page to detect its
@@ -283,11 +290,6 @@
     </details>
     <details id="connection-settings">
       <summary>Advanced</summary>
-      <label class="check"
-        ><input id="allow-local" type="checkbox" /> Allow local HTTP development
-        server</label
-      >
-      <p class="hint">Local HTTP is unencrypted. Use HTTPS for a shared team server.</p>
       <button id="pair-custom">Connect to this server</button>
       <button id="disconnect">Disconnect account</button>
       <button id="narrow">Open mobile preview window</button>
