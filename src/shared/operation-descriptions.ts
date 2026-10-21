@@ -1,5 +1,31 @@
 // Shared discovery guidance for MCP and the JSON CLI; authorization stays in domain services.
 export const operationDescriptions: Record<string, string> = {
+  "board.get":
+    "Read project board column configuration and revision; columns partition the existing authoritative work statuses.",
+  "board.column":
+    "Read one board column using the shared filters with independent pagination and exact totals. Card data retains its authoritative thread and assignment revision.",
+  "board.configure":
+    "A project maintainer saves revision-checked column labels, grouping, order and intake. Existing thread status history remains authoritative.",
+  "board.batch":
+    "Atomically move, assign or archive selected current thread snapshots. Requires current thread and assignment revisions, a stable idempotency key and the underlying action scopes and project permissions. Conflicts roll back the whole batch.",
+  "analytics.get":
+    "Read current permission-scoped aggregate lifecycle and backlog metrics in an explicit date range and timezone. Drilldowns return only matching authorized thread metadata; current-record and recorded-history limits are explicit. No private discussion bodies or automatic individual performance ranking.",
+  "notifications.settings":
+    "Read safe email provider metadata and template inheritance. Human server owner, or project maintainer for project settings; never returns credentials.",
+  "notifications.configure":
+    "Save revision-checked email settings and plain-text templates. Project maintainers manage project templates and enabled status; human server owners alone change credentials and verified sender identities. Omitted secrets retain the same provider's saved authentication; SES authMode explicitly selects server-role credentials or paired static keys.",
+  "notifications.subscribe":
+    "Change only the signed-in member's explicit project email subscription using its current revision. Empty events unsubscribe; excerpts and own activity have separate opt-ins.",
+  "notifications.subscription":
+    "Read the signed-in member's own project email preferences and revision. Unconfigured projects send no mail.",
+  "notifications.preview":
+    "Render a plain-text email template with synthetic values. Only documented variables are accepted; no executable expressions or private evidence.",
+  "notifications.test":
+    "Deliberately queue a synthetic test email to the requesting human account only. Provider acceptance and inbox delivery are separate; rate limited and idempotent.",
+  "notifications.deliveries":
+    "Read bounded recent email attempt metadata in the authorized scope. Accepted means provider acceptance, not proven inbox delivery; no secrets or message bodies returned.",
+  "notifications.reconcile":
+    "Reconcile a failed or uncertain email send using its current revision. Retry requires explicit confirmation that the provider did not accept the earlier attempt. Never retry an ambiguous outcome blindly.",
   "threads.create":
     "Create feedback in an authorized project with an idempotencyKey. Choose website context, pageUrl, document or appCapture; appCapture records reviewer-supplied app/platform details and coordinate notes without a fabricated website URL or browser diagnostics. Optional capture triage atomically sets priority and a durable assignee; priority also requires threads.plan and assignment requires assignments.assign. Changed retry content is rejected.",
   "members.list":

@@ -40,6 +40,8 @@ Thread-owned images/videos and their renditions use the configured local or S3 `
 
 Deletion invalidates existing project export snapshots to avoid serving their deleted discussion content. A small audit tombstone retains thread IDs, actor and deletion time; cleanup receipts retain object keys. Hash/ID-only idempotency mappings are retained so delayed create/upload retries cannot resurrect deleted content. External GitHub issues are retained, and in-flight issue creation must be reconciled before deletion. Existing applied migrations and object keys are not rewritten.
 
+Workflow integrations retain their provider records. Feedback deletion removes local tracker, replay, time-entry and channel-delivery references, while preserving project connection settings. Active external writes must finish and uncertain writes must be reconciled first; pending local sends are removed with the thread. An active email send also blocks deletion until it finishes. Deleting feedback never deletes a remote task, session or provider time entry.
+
 ## GitHub App credential recovery
 
 Migration 28 stores encrypted managed App records and expiring setup requests.

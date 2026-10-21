@@ -1,3 +1,5 @@
+import { enqueueChannels } from "./integrations/channels.js";
+import { enqueueNotifications } from "./notifications/queue.js";
 import type { Database } from "./db.js";
 import type { Actor } from "../shared/contracts.js";
 import { fail } from "./errors.js";
@@ -77,16 +79,59 @@ export async function event(
     "SELECT pg_advisory_xact_lock(hashtextextended('feedbacks.events:' || $1::text,0))",
     [projectId ?? "organization"],
   );
-  await db.query(
-    "INSERT INTO events(project_id,entity_id,kind,actor,data) VALUES($1,$2,$3,$4,$5)",
+  const recorded = await db.one(
+    "INSERT INTO events(project_id,entity_id,kind,actor,data) VALUES($1,$2,$3,$4,$5) RETURNING cursor",
     [projectId, entityId, kind, JSON.stringify(publicActor(a)), JSON.stringify(data)],
   );
+  if (
+    projectId &&
+    ["assignments.assign", "assignments.cancel"].includes(kind) &&
+    typeof data?.threadId === "string"
+  ) {
+    await enqueueChannels(
+      db,
+      projectId,
+      data.threadId,
+      kind,
+      data.revision,
+      String(recorded.cursor),
+    );
+    await enqueueNotifications(
+      db,
+      projectId,
+      data.threadId,
+      kind,
+      data.revision,
+      publicActor(a),
+      String(recorded.cursor),
+      data?.replyId,
+    );
+  }
   if (
     projectId &&
     (kind === "thread.created" ||
       kind.startsWith("threads.") ||
       kind === "guest.reply") &&
     typeof data?.revision === "number"
-  )
+  ) {
     await enqueueWebhook(db, projectId, entityId, kind, data.revision);
+    await enqueueChannels(
+      db,
+      projectId,
+      entityId,
+      kind,
+      data.revision,
+      String(recorded.cursor),
+    );
+    await enqueueNotifications(
+      db,
+      projectId,
+      entityId,
+      kind,
+      data.revision,
+      publicActor(a),
+      String(recorded.cursor),
+      data?.replyId,
+    );
+  }
 }

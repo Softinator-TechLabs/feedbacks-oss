@@ -322,6 +322,7 @@ export async function feedback(
   checkRevision(row, i.revision);
   const actor = publicActor(a),
     at = new Date().toISOString();
+  let createdReplyId: string | undefined;
   if (op === "threads.annotationStatus") {
     await setAnnotationStatus(db, a, row, i);
   } else if (op === "threads.annotationPlan") {
@@ -340,8 +341,9 @@ export async function feedback(
     const intent = i.intent ?? (a.kind === "agent" ? "response" : "request");
     if (a.kind === "agent" && intent === "request")
       fail("VALIDATION", "Only a human participant can create a human request");
+    createdReplyId = randomUUID();
     await db.query("INSERT INTO replies(id,thread_id,data) VALUES($1,$2,$3)", [
-      randomUUID(),
+      createdReplyId,
       row.id,
       JSON.stringify({
         body: i.body,
@@ -481,17 +483,19 @@ export async function feedback(
     a,
     row,
     op,
-    op === "threads.editReply" || op === "threads.deleteReply"
-      ? { replyId: i.replyId }
-      : op === "threads.plan"
-        ? { workPlan: i.workPlan }
-        : op === "threads.annotationPlan"
-          ? { annotationId: i.annotationId, workPlan: i.workPlan }
-          : op === "threads.priority"
-            ? { topPriority: i.topPriority }
-            : op === "threads.annotationStatus"
-              ? { annotationId: i.annotationId, state: i.state }
-              : {},
+    op === "threads.reply"
+      ? { replyId: createdReplyId }
+      : op === "threads.editReply" || op === "threads.deleteReply"
+        ? { replyId: i.replyId }
+        : op === "threads.plan"
+          ? { workPlan: i.workPlan }
+          : op === "threads.annotationPlan"
+            ? { annotationId: i.annotationId, workPlan: i.workPlan }
+            : op === "threads.priority"
+              ? { topPriority: i.topPriority }
+              : op === "threads.annotationStatus"
+                ? { annotationId: i.annotationId, state: i.state }
+                : {},
   );
   await remember(db, a, op, i, row.id);
   return fullThread(db, a, saved);

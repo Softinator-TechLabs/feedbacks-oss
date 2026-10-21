@@ -51,7 +51,7 @@ The provided Compose file forwards both optional variables from the deployment e
 
 The guest and survey pages load Cloudflare's widget and the server verifies each submission token through [Siteverify](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/), including the action and application hostname in production. This optional feature therefore makes a request to Cloudflare; the core signed-in review workflow does not need Turnstile. The app also applies a per-IP ingress limit and caps each link's replies or new feedback submissions. Survey links have their own expiry, response cap and revocation. Configure a shared ingress limit before running multiple application replicas.
 
-For an embeddable website widget, configure the Cloudflare Turnstile site key for every exact approved website hostname as well as the Feedbacks hostname. The widget verifies the host hostname and `widget_submit` action on the server. The host site's Content Security Policy must permit the Feedbacks server for scripts, styles and cross-origin `fetch`, and permit `https://challenges.cloudflare.com` for scripts and frames. The widget sends text feedback, page URL and viewport context; use the Chrome extension for private screenshot capture. Test the actual host site and browser before sharing the snippet; a local sandbox only proves the synthetic flow.
+For an embeddable website widget, configure the Cloudflare Turnstile site key for every exact approved website hostname as well as the Feedbacks hostname. The widget verifies the host hostname and the `intake_submit` action for permanent intake (`widget_submit` for legacy bounded links) on the server. The host site's Content Security Policy must permit the Feedbacks server for scripts, styles and cross-origin `fetch`, and permit `https://challenges.cloudflare.com` for scripts and frames. Permanent public intake sends explicit feedback, a query/fragment-free page address, viewport and optional element tag/position or voluntarily shared contact; it captures no page text, form values or screenshot. Legacy widget links retain their bounded token behavior. Use the Chrome extension for private screenshot capture. Permanent intake has PostgreSQL-backed per-IP and installation budgets shared across replicas; the other public workflows retain their existing ingress/link limits. Test the actual host site and browser before sharing the snippet; a local sandbox only proves the synthetic flow.
 
 ## Create the first owner
 
@@ -223,3 +223,7 @@ Back up before upgrading. Older builds ignore managed overrides and may reuse
 environment credentials: disable GitHub writes/sync before rollback and deploy
 a compatible forward fix before resuming. Preserve the database, storage and
 original environment default for historical links.
+
+## Email delivery
+
+Configure outbound email and optional project senders from the owner UI, or seed an unconfigured installation with private deployment variables. See [email notifications](email-notifications.md) for SMTP, Mailjet, SES, templates, subscriptions and queue recovery.

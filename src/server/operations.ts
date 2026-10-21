@@ -1,3 +1,11 @@
+import { timeTrackingOperation } from "./integrations/time-tracking.js";
+import { replayLinksOperation } from "./integrations/replay-links.js";
+import { channelOperation } from "./integrations/channels.js";
+import { manageIntake } from "./public-intake.js";
+import { trackerOperation } from "./integrations/trackers/operations.js";
+import { analyticsGet } from "./analytics.js";
+import { boardOperation } from "./board.js";
+import { notificationOperation } from "./notifications/operations.js";
 import { videoPreview } from "./video-preview.js";
 import { manageThreadDeletion, cleanupDeletedObjects } from "./thread-deletion.js";
 import {
@@ -128,6 +136,17 @@ export class Operations {
       );
     if (name === "qa.compare")
       return compareQaImages(this.db, actor, this.store, parsed.data as any);
+    if (name.startsWith("timeTracking."))
+      return timeTrackingOperation(
+        this.db,
+        this.store,
+        this.config,
+        actor,
+        name,
+        parsed.data,
+      );
+    if (name.startsWith("trackers."))
+      return trackerOperation(this.db, this.store, this.config, actor, name, parsed.data);
     if (name.startsWith("github."))
       return githubOperation(
         this.db,
@@ -158,6 +177,15 @@ export class Operations {
         const auth = new Auth(db),
           a = await this.currentForOperation(db, actor, name),
           i: any = parsed.data;
+        if (name === "intake.settings" || name === "intake.save")
+          return manageIntake(db, a, name, i, this.config);
+        if (name === "analytics.get") return analyticsGet(db, a, i);
+        if (name.startsWith("channels."))
+          return channelOperation(db, this.store, this.config, a, name, i);
+        if (name.startsWith("replayLinks.")) return replayLinksOperation(db, a, name, i);
+        if (name.startsWith("board.")) return boardOperation(db, a, name, i);
+        if (name.startsWith("notifications."))
+          return notificationOperation(db, this.store, this.config, a, name, i);
         if (name === "integrations.catalog") {
           if (a.kind !== "human") fail("FORBIDDEN", "Human server owner required", 403);
           ownerOnly(a);

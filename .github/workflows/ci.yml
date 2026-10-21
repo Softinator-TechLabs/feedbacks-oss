@@ -71,6 +71,7 @@ jobs:
           node-version: 22
       - run: docker build --tag feedbacks-app:check .
       - run: docker build --file Dockerfile.site --tag feedbacks-site:check .
+      - run: docker build --file Dockerfile.oauth-broker --tag feedbacks-oauth-broker:check .
       - run: npm run test:containers
 
   extension-browser:
@@ -91,6 +92,8 @@ jobs:
       - run: npm run build
       - name: Extension-free app capture and widget acceptance
         run: FEEDBACKS_APP_CAPTURE_BROWSER=1 node --import tsx --test tests/app-capture-browser.test.ts
+      - name: Project workflows and permanent intake browser acceptance
+        run: FEEDBACKS_BOARD_BROWSER_SMOKE=1 FEEDBACKS_RECORDING_BROWSER_SMOKE=1 node --import tsx --test --test-concurrency=1 tests/board-browser.test.ts tests/analytics-browser.test.ts tests/public-intake-browser.test.ts tests/notifications-browser.test.ts tests/integrations-browser.test.ts tests/github-comments-browser.test.ts
       - run: npm run qa:recording-browser
       - run: npm run qa:extension-browser
       - run: npm run qa:public-site

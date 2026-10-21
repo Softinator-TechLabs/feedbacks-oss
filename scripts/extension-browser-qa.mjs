@@ -75,7 +75,7 @@ await writeFile(
   ),
 );
 
-const sandbox = spawn(process.execPath, ["scripts/dev-sandbox.mjs"], {
+const sandbox = spawn(process.execPath, ["scripts/dev-sandbox.mjs", "--pace-api"], {
   cwd: root,
   stdio: ["ignore", "pipe", "pipe"],
 });
@@ -86,6 +86,8 @@ try {
     const timer = setTimeout(() => reject(Error("Sandbox startup timed out")), 30000);
     sandbox.stdout.on("data", (chunk) => {
       output += String(chunk);
+      const pacing = String(chunk).match(/QA API pacing: (\{[^\r\n]+\})/);
+      if (pacing) console.log(`QA API pacing: ${pacing[1]}`);
       const match = output.match(/Local access file: ([^\r\n]+)/);
       if (match) {
         clearTimeout(timer);
@@ -95,7 +97,7 @@ try {
     sandbox.once("exit", () => reject(Error("Sandbox exited during startup")));
   });
   const access = JSON.parse(await readFile(accessPath, "utf8"));
-  const post = async (name, input, auth = {}, renew = true) => {
+  const post = async (name, input, auth = {}, renew = true, rateRetries = 0) => {
     const response = await fetch(`${access.url}/api/${name}`, {
       method: "POST",
       headers: {
@@ -107,12 +109,29 @@ try {
       signal: AbortSignal.timeout(10000),
     });
     const result = await response.json();
+    // Large synthetic setup (including 99-member search coverage) obeys the
+    // same API budgets as clients. A definite ingress rejection executes no
+    // operation; pace that identical fixture request rather than lifting limits
+    // or replaying browser actions/assertions. Never retry ambiguous responses.
+    const retryAfter = response.headers.get("retry-after");
+    if (
+      response.status === 429 &&
+      result.error?.code === "RATE_LIMITED" &&
+      retryAfter &&
+      /^[1-9]\d*$/.test(retryAfter) &&
+      Number(retryAfter) <= 60 &&
+      rateRetries < 2
+    ) {
+      console.log(`Fixture API pacing: ${name}; Retry-After ${retryAfter}s`);
+      await new Promise((resolve) => setTimeout(resolve, Number(retryAfter) * 1000 + 25));
+      return post(name, input, auth, renew, rateRetries + 1);
+    }
     // A browser tab can renew this same cookie session while the harness runs.
     if (result.error?.code === "CSRF" && auth.cookie && renew && name !== "auth.me") {
-      const refreshed = await post("auth.me", {}, auth, false);
+      const refreshed = await post("auth.me", {}, auth, false, rateRetries);
       auth.csrf = refreshed.data.csrf;
       if (refreshed.cookie) auth.cookie = refreshed.cookie;
-      return post(name, input, auth, false);
+      return post(name, input, auth, false, rateRetries);
     }
     if (!response.ok || !result.ok)
       throw Error(`${name}: ${result.error?.message || response.status}`);
@@ -126,6 +145,15 @@ try {
     password: access.password,
   });
   const auth = { cookie: login.cookie, csrf: login.data.csrf };
+  // Browser tabs serialize CSRF renewal with Web Locks. Keep Node fixture
+  // requests on their own session so they cannot race that browser-only lock.
+  const browserLogin = await post("auth.login", {
+    email: access.email,
+    password: access.password,
+  });
+  assert.equal(browserLogin.data.actor.userId, login.data.actor.userId);
+  assert.notEqual(browserLogin.cookie, auth.cookie);
+  const browserAuth = { cookie: browserLogin.cookie, csrf: browserLogin.data.csrf };
   await post(
     "projects.create",
     { name: "General", origins: [], captureMode: "any" },
@@ -382,6 +410,7 @@ try {
     extensionId,
     post,
     auth,
+    browserAuth,
     access,
   });
   await verifyLiveSelection({ page, send, id, worker, exposeReviewRoot, root, results });
@@ -624,7 +653,7 @@ try {
     });
     await verifyThreadReview({
       context,
-      auth,
+      browserAuth,
       access,
       inlineThread,
       inlineThreadId,

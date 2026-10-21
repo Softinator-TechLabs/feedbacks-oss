@@ -6,6 +6,7 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Project board and subscribed email delivery](project-board-and-email.md)
 - [Review capture and source navigation](reviewer-usability.md)
 
 - [Static website hosting on Cloudflare](static-site-cloudflare.md)

@@ -141,6 +141,10 @@ export const projectsInputs = {
     confirmedAbsent: z.literal(true),
   }),
   "github.issueRefresh": z.object({ threadId: id, revision, issueUrl: z.string().url() }),
+  "webhooks.test": z.object({
+    projectId: id,
+    idempotencyKey: z.string().min(8).max(200),
+  }),
   "webhooks.get": z.object({ projectId: id }),
   "webhooks.save": z.object({ projectId: id, url: z.string().url().max(2048) }),
   "webhooks.rotate": z.object({ projectId: id }),
@@ -166,6 +170,7 @@ export const projectsInputs = {
 };
 
 export const projectsOutputs = {
+  "webhooks.test": z.object({ queued: z.literal(true), eventId: id }),
   "github.appSetupStart": z.object({
     actionUrl: z.string().url(),
     manifest: z.string().max(8000),

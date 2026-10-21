@@ -2,6 +2,7 @@
   all: initial;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #17324d;
+  --feedbacks-color: #17324d;
 }
 .feedbacks-widget * {
   box-sizing: border-box;
@@ -29,7 +30,7 @@
   border: 0;
   border-radius: 999px;
   padding: 12px 20px;
-  background: #17324d;
+  background: var(--feedbacks-color);
   color: white;
   box-shadow: 0 8px 28px #17324d33;
   font-weight: 700;
@@ -59,6 +60,12 @@
   justify-content: space-between;
   align-items: start;
   gap: 8px;
+  position: sticky;
+  top: -20px;
+  z-index: 1;
+  margin: -20px -20px 0;
+  padding: 16px 20px 8px;
+  background: white;
 }
 .feedbacks-widget small {
   color: #657487;
@@ -123,10 +130,70 @@
 .feedbacks-widget .send {
   border: 0;
   border-radius: 7px;
-  background: #17324d;
+  background: var(--feedbacks-color);
   color: white;
   width: 100%;
   font-weight: 700;
+}
+.feedbacks-widget[data-color="forest"] {
+  --feedbacks-color: #215c43;
+}
+.feedbacks-widget[data-color="slate"] {
+  --feedbacks-color: #394959;
+}
+.feedbacks-widget[data-position="left"] .launcher,
+.feedbacks-widget[data-position="left"] .panel {
+  right: auto;
+  left: 24px;
+}
+.feedbacks-widget .consent {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400;
+}
+.feedbacks-widget .consent input {
+  width: 18px;
+  min-height: 18px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+}
+.feedbacks-widget .feedbacks-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.feedbacks-widget .pick-element {
+  background: white;
+  color: #17324d;
+  border: 1px solid #aebdcc;
+  border-radius: 7px;
+  padding: 8px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+.feedbacks-widget .pick-tip {
+  position: fixed;
+  inset: auto 12px 76px;
+  z-index: 2147483647;
+  padding: 16px;
+  text-align: center;
+  background: #17324d;
+  color: white;
+  border-radius: 8px;
+}
+@supports (height: 100dvh) {
+  .feedbacks-widget .panel {
+    max-height: calc(100dvh - 108px);
+  }
+  .feedbacks-widget header {
+    top: -16px;
+    margin: -16px -16px 0;
+    padding: 12px 16px 8px;
+  }
 }
 .feedbacks-widget .send:disabled {
   opacity: 0.6;
@@ -149,5 +216,9 @@
     bottom: 68px;
     padding: 16px;
     max-height: calc(100vh - 80px);
+  }
+  .feedbacks-widget[data-position="left"] .launcher,
+  .feedbacks-widget[data-position="left"] .panel {
+    left: 12px;
   }
 }

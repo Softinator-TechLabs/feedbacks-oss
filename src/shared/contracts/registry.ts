@@ -1,3 +1,15 @@
+import {
+  githubCommentsInputs,
+  githubCommentsOutputs,
+} from "./domains/github-comments.js";
+import { timeTrackingInputs, timeTrackingOutputs } from "./domains/time-tracking.js";
+import { replayLinksInputs, replayLinksOutputs } from "./domains/replay-links.js";
+import { channelsInputs, channelsOutputs } from "./domains/channels.js";
+import { intakeInputs, intakeOutputs } from "./domains/intake.js";
+import { analyticsInputs, analyticsOutputs } from "./domains/analytics.js";
+import { boardInputs, boardOutputs } from "./domains/board.js";
+import { trackersInputs, trackersOutputs } from "./domains/trackers.js";
+import { notificationsInputs, notificationsOutputs } from "./domains/notifications.js";
 import { z } from "zod";
 import { assignmentsInputs, assignmentsOutputs } from "./domains/assignments.js";
 import { identityInputs, identityOutputs } from "./domains/identity.js";
@@ -13,6 +25,15 @@ import { assetsInputs, assetsOutputs } from "./domains/assets.js";
 import { integrationsInputs, integrationsOutputs } from "./domains/integrations.js";
 
 export const inputSchemas = {
+  ...githubCommentsInputs,
+  ...timeTrackingInputs,
+  ...channelsInputs,
+  ...replayLinksInputs,
+  ...intakeInputs,
+  ...analyticsInputs,
+  ...boardInputs,
+  ...trackersInputs,
+  ...notificationsInputs,
   ...integrationsInputs,
   "assignments.delegations": assignmentsInputs["assignments.delegations"],
   "assignments.assign": assignmentsInputs["assignments.assign"],
@@ -78,6 +99,7 @@ export const inputSchemas = {
   "github.issueReconcile": projectsInputs["github.issueReconcile"],
   "github.issueAbandon": projectsInputs["github.issueAbandon"],
   "github.issueRefresh": projectsInputs["github.issueRefresh"],
+  "webhooks.test": projectsInputs["webhooks.test"],
   "webhooks.get": projectsInputs["webhooks.get"],
   "webhooks.save": projectsInputs["webhooks.save"],
   "webhooks.rotate": projectsInputs["webhooks.rotate"],
@@ -173,6 +195,15 @@ export const inputSchemas = {
 export type OperationName = keyof typeof inputSchemas;
 
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
+  ...githubCommentsOutputs,
+  ...channelsOutputs,
+  ...replayLinksOutputs,
+  ...timeTrackingOutputs,
+  ...intakeOutputs,
+  ...analyticsOutputs,
+  ...boardOutputs,
+  ...trackersOutputs,
+  ...notificationsOutputs,
   ...integrationsOutputs,
   "assignments.delegations": assignmentsOutputs["assignments.delegations"],
   "assignments.assign": assignmentsOutputs["assignments.assign"],
@@ -239,6 +270,7 @@ export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
   "github.issueReconcile": projectsOutputs["github.issueReconcile"],
   "github.issueAbandon": projectsOutputs["github.issueAbandon"],
   "github.issueRefresh": projectsOutputs["github.issueRefresh"],
+  "webhooks.test": projectsOutputs["webhooks.test"],
   "webhooks.get": projectsOutputs["webhooks.get"],
   "webhooks.save": projectsOutputs["webhooks.save"],
   "webhooks.rotate": projectsOutputs["webhooks.rotate"],

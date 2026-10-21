@@ -1,0 +1,47 @@
+.email-settings {
+  max-width: 760px;
+}
+.email-settings details,
+.email-subscription {
+  margin-block: 16px;
+}
+.email-settings fieldset,
+.email-subscription fieldset {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.email-settings .checkbox,
+.email-subscription .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.email-preview {
+  padding: 16px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #cbd5df);
+  border-radius: 8px;
+}
+.email-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.email-deliveries {
+  padding-left: 20px;
+}
+.email-deliveries > li {
+  padding-block: 12px;
+  overflow-wrap: anywhere;
+}
+.email-settings .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.email-settings input,
+.email-settings textarea,
+.email-settings select {
+  max-width: 100%;
+}

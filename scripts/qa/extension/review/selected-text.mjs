@@ -18,6 +18,7 @@ export async function verifySelectedText({
   extensionId,
   post,
   auth,
+  browserAuth,
   access,
 }) {
   fixture.mode = "short";
@@ -312,11 +313,11 @@ export async function verifySelectedText({
   );
   const issue = (await post("threads.issueDraft", { threadId }, auth)).data;
   assert.match(issue.body, /Clearer reviewed page/);
-  const split = auth.cookie.indexOf("=");
+  const split = browserAuth.cookie.indexOf("=");
   await context.addCookies([
     {
-      name: auth.cookie.slice(0, split),
-      value: auth.cookie.slice(split + 1),
+      name: browserAuth.cookie.slice(0, split),
+      value: browserAuth.cookie.slice(split + 1),
       url: access.url,
       sameSite: "Strict",
     },

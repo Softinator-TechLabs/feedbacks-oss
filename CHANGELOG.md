@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.0 — 2026-10-21
+
+- Add a configurable project Kanban board with shared thread filters, keyboard controls and atomic batch status, assignment and archive changes.
+- Add permission-scoped analytics with separate Overview, Trends and Explore tabs. Visual counts and project charts show pending, overdue and high-priority tasks with exact drilldowns; activity charts and completed response/triage/resolution distributions support planning. CSV and print keep aggregate totals.
+- Preserve keyboard focus when a reviewer enters a detail control before the panel's deferred navigation finishes.
+- Add subscribed email for feedback, discussion, mentions, work status and assignment changes. Configure SMTP (including Google), Mailjet or Amazon SES, server defaults, project senders and safe text templates. Delivery history distinguishes accepted and uncertain sends.
+- Add explicit tracker connections for Jira, Linear, Asana, ClickUp, Monday, Trello, Productive, Teamwork and Firmao CRM, with reviewed writes, status mappings, encrypted credentials and reconciliation. Jira OAuth uses a separately operated confidential broker.
+- Add explicit reviewed GitHub Issue comments with bounded remote discussion readback, durable reservations and uncertain-write reconciliation.
+- Add Slack/Teams channels, reviewed FullStory/LogRocket session links, explicit Harvest/Time Doctor time entries and versioned automation webhook tests.
+- Add permanent project website intake with exact approved origins, Turnstile, bounded abuse controls and optional contact consent. Existing expiring review links remain available.
+- Package Codex/Claude Code plugins 0.3.0 and extension 0.1.63. The extension retains the current server-selection behavior and capture improvements, and includes the updated project-wide dependency notices.
+
+### Upgrade from 0.2.3
+
+Back up PostgreSQL and private object storage together and verify recovery before upgrading. Preserve organization identity, volumes, encryption keys and storage prefixes. Additive migrations create workflow, subscription, queue and integration tables without rewriting applied migrations. Existing installations send no email until configured and members subscribe. Optional email environment values seed only an absent server configuration; saved settings take precedence.
+
+Pin the published image digest and use the existing private environment. Verify sign-in, a synthetic screenshot readback, project access and a subscribed test event after startup. Retain a compatible database/storage backup and previous image; use a forward fix if an older build cannot safely understand the new integration state.
+
+### Provider acceptance and limits
+
+Provider request and failure tests use synthetic transports. Individual provider account permissions, consent, quotas, sender-domain verification, inbox placement, CMS deployment policies and production Turnstile configuration require live acceptance. No marketplace listing or Store update is implied. Local tracker writes use outbound calls and polling; Jira OAuth additionally needs the separately operated broker. Firmao creates reviewed CRM tasks in an explicitly configured project; task comments remain unavailable through the documented API. See [integrations](docs/integrations.md), [email](docs/email-notifications.md), [board](docs/project-board.md) and [analytics](docs/analytics.md).
+
 ## 0.2.3 — 2026-10-21
 
 - Refresh the locked MCP server/client SDK and Vite build tooling to patched compatible versions; the current lockfile passes `npm audit`.

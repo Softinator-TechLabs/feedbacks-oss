@@ -3,16 +3,16 @@ import { join } from "node:path";
 
 export async function verifyThreadReview({
   context,
-  auth,
+  browserAuth,
   access,
   inlineThread,
   inlineThreadId,
   root,
   results,
 }) {
-  const cookieSplit = auth.cookie.indexOf("=");
-  const cookieName = auth.cookie.slice(0, cookieSplit);
-  const cookieValue = auth.cookie.slice(cookieSplit + 1);
+  const cookieSplit = browserAuth.cookie.indexOf("=");
+  const cookieName = browserAuth.cookie.slice(0, cookieSplit);
+  const cookieValue = browserAuth.cookie.slice(cookieSplit + 1);
   await context.addCookies([
     { name: cookieName, value: cookieValue, url: access.url, sameSite: "Strict" },
   ]);
