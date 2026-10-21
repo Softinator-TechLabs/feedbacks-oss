@@ -10,7 +10,7 @@
 - Add explicit reviewed GitHub Issue comments with bounded remote discussion readback, durable reservations and uncertain-write reconciliation.
 - Add Slack/Teams channels, reviewed FullStory/LogRocket session links, explicit Harvest/Time Doctor time entries and versioned automation webhook tests.
 - Add permanent project website intake with exact approved origins, Turnstile, bounded abuse controls and optional contact consent. Existing expiring review links remain available.
-- Package Codex/Claude Code plugins 0.3.0 and extension 0.1.62. The extension retains the current server-selection behavior and includes the updated project-wide dependency notices.
+- Package Codex/Claude Code plugins 0.3.0 and extension 0.1.63. The extension retains the current server-selection behavior and capture improvements, and includes the updated project-wide dependency notices.
 
 ### Upgrade from 0.2.3
 

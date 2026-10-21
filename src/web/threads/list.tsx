@@ -1,5 +1,9 @@
 import { EmailSubscription } from "../notifications/subscription.js";
-import { DeleteThreadsButton, ThreadDeletionCleanup } from "./deletion.js";
+import {
+  ArchiveSelectedThreads,
+  DeleteThreadsButton,
+  ThreadDeletionCleanup,
+} from "./deletion.js";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { calendarDate, localTimeZone } from "../work-plan-model.js";
 import { ProjectAssignments } from "../assignments/project-assignments.js";
@@ -303,7 +307,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
               })
             }
           >
-            {filters.archived ? "Back to inbox" : "Archive"}
+            {filters.archived ? "Back to inbox" : "View archive"}
           </button>
           {actor.owner && (
             <button
@@ -362,7 +366,7 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
             <div
               className="thread-bulk-actions"
               role="group"
-              aria-label="Select feedback for deletion"
+              aria-label="Select feedback to archive or delete"
             >
               <label className="thread-select-all">
                 <input
@@ -389,6 +393,18 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
                   setVersion((value) => value + 1);
                 }}
               />
+              {!filters.archived && (
+                <ArchiveSelectedThreads
+                  threads={data.items.filter((item) => selected.has(item.id))}
+                  onArchived={(ids) => {
+                    setSelected(
+                      (current) =>
+                        new Set([...current].filter((id) => !ids.includes(id))),
+                    );
+                    setVersion((value) => value + 1);
+                  }}
+                />
+              )}
             </div>
           )}
         </>

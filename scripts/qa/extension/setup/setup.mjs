@@ -30,7 +30,15 @@ export async function verifySetup({ context, worker, post, access, extensionId, 
     };
   });
   await popup.locator("#pair").click();
-  await popup.locator("#message").filter({ hasText: "Use HTTPS" }).waitFor();
+  await popup
+    .locator("#server-error")
+    .filter({ hasText: 'check "Allow local HTTP development server" above' })
+    .waitFor();
+  assert.equal(
+    await localOption.evaluate((el) => el === document.activeElement),
+    true,
+    "Local HTTP guidance puts keyboard focus on the explicit opt-in",
+  );
   assert.equal(
     await popup.evaluate(() => window.localServerPermissionRequests.length),
     0,

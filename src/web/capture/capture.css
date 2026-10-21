@@ -18,6 +18,9 @@
 .app-capture-sources .field {
   margin: 0;
 }
+.app-capture-sources {
+  align-items: flex-end;
+}
 .app-capture-tools [aria-pressed="true"] {
   background: var(--oxford, #17324d);
   color: #fff;
@@ -44,9 +47,20 @@
 }
 .app-capture-pin {
   position: absolute;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  cursor: grab;
+}
+.app-capture-pin span {
   width: 1.75rem;
   height: 1.75rem;
-  transform: translate(-50%, -50%);
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -55,7 +69,17 @@
   border: 2px solid #fff;
   font-size: 0.8rem;
   font-weight: 700;
-  pointer-events: none;
+}
+.app-capture-pin[aria-pressed="true"] span {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.app-capture-pin:active {
+  cursor: grabbing;
+}
+.app-capture-pin:disabled {
+  background: transparent;
+  cursor: default;
 }
 .app-capture-note {
   display: grid;

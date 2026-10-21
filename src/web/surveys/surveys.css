@@ -27,6 +27,27 @@
   width: 20px;
   height: 20px;
 }
+.survey-choices {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.survey-choices p {
+  margin-block: 4px 12px;
+}
+.survey-choice {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.survey-choice .field {
+  flex: 1;
+  margin: 0;
+}
+.survey-choice button {
+  flex: none;
+}
 .survey-options {
   display: grid;
   grid-column: 1 / -1;

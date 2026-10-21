@@ -174,17 +174,58 @@ export function Surveys({ project }: { project: Project }) {
                       </select>
                     </Field>
                     {question.type === "single_choice" && (
-                      <Field label="Choices" hint="One per line, 2–8 distinct choices">
-                        <textarea
-                          value={question.options?.join("\n") ?? ""}
-                          rows={3}
-                          onChange={(e) =>
+                      <fieldset className="survey-choices">
+                        <legend>Choices</legend>
+                        <p className="muted">Add 2–8 distinct choices.</p>
+                        {(question.options ?? []).map((option, optionIndex) => (
+                          <div className="survey-choice" key={optionIndex}>
+                            <Field label={`Choice ${optionIndex + 1}`}>
+                              <input
+                                value={option}
+                                required
+                                maxLength={80}
+                                onChange={(event) =>
+                                  editQuestion(question.id, {
+                                    options: question.options!.map((value, index) =>
+                                      index === optionIndex ? event.target.value : value,
+                                    ),
+                                  })
+                                }
+                              />
+                            </Field>
+                            <button
+                              type="button"
+                              disabled={question.options!.length <= 2}
+                              aria-label={`Remove choice ${optionIndex + 1}`}
+                              onClick={(event) => {
+                                const group = event.currentTarget.closest("fieldset")!;
+                                const options = question.options!.filter(
+                                  (_, index) => index !== optionIndex,
+                                );
+                                editQuestion(question.id, { options });
+                                requestAnimationFrame(() =>
+                                  group
+                                    .querySelectorAll("input")
+                                    [Math.min(optionIndex, options.length - 1)]?.focus(),
+                                );
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          disabled={(question.options?.length ?? 0) >= 8}
+                          onClick={() =>
                             editQuestion(question.id, {
-                              options: e.target.value.split("\n"),
+                              options: [...(question.options ?? []), ""],
                             })
                           }
-                        />
-                      </Field>
+                        >
+                          Add choice
+                        </button>
+                      </fieldset>
                     )}
                     <label>
                       <input

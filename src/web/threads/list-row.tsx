@@ -2,7 +2,7 @@ import { WorkPlanSummary } from "./work-plan.js";
 import { ThreadQuickPriority, ThreadQuickStatus } from "./row-controls.js";
 import { ThreadListPointProgress } from "./list-point-progress.js";
 import { HumanTime } from "../human-time.js";
-import { ExternalLink } from "../ui.js";
+import { ThreadSourceLink } from "./source-link.js";
 import { filterQuery } from "../review-filters.js";
 import {
   builtInCategories,
@@ -71,7 +71,11 @@ export function ThreadListRow({
       (asset) => asset.contentType === "image/webp" && asset.rendition === "thumbnail",
     ) ?? t.assets?.find((asset) => asset.contentType === "image/webp");
   return (
-    <div className="thread-row" data-thread-id={t.id}>
+    <div
+      className="thread-row"
+      data-thread-id={t.id}
+      data-selected={selected ? "true" : undefined}
+    >
       <div className="thread-row-leading">
         {actor.kind === "human" && project.permissions.canMaintain && (
           <label className="thread-select">
@@ -191,9 +195,7 @@ export function ThreadListRow({
           ))}
         </div>
         <div className="thread-row-evidence">
-          {t.context.url && (
-            <ExternalLink href={t.context.url}>Open website ↗</ExternalLink>
-          )}
+          <ThreadSourceLink thread={t} />
           <span>
             {t.context.annotations?.filter(
               (point) => t.annotationStates?.[point.id]?.state !== "removed",
