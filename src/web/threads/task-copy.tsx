@@ -4,6 +4,27 @@ import { Icon } from "../icons.js";
 import { api, type Project, type Thread } from "../api.js";
 import { ErrorNotice, showToast, useAction } from "../ui.js";
 
+// Some embedded browsers leave a clipboard permission request pending indefinitely.
+// Always return control so the existing manual-copy dialog remains reachable.
+export async function writeTaskClipboard(
+  text: string,
+  write: (value: string) => Promise<void> = (value) =>
+    navigator.clipboard.writeText(value),
+  timeoutMs = 3000,
+): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      write(text),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Clipboard unavailable")), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function ThreadTaskCopy({
   thread,
   project,
@@ -31,7 +52,7 @@ export function ThreadTaskCopy({
           project,
         });
         try {
-          await navigator.clipboard.writeText(result.text);
+          await writeTaskClipboard(result.text);
           showToast(
             result.truncated
               ? "Task preview copied. Your agent can read more when needed."
