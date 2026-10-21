@@ -168,6 +168,14 @@ export async function prepareRelease({ root: base = root, tag, sha }) {
     sbom.metadata?.component?.purl !== `pkg:npm/${packageName}@${version}`
   )
     throw new Error("SBOM does not describe this application version.");
+  const changelog = await readFile(await safeFile(base, "CHANGELOG.md"), "utf8");
+  const entry = changelog
+    .split(/^## /m)
+    .slice(1)
+    .find((section) => section.startsWith(`${version} — `));
+  if (!entry?.trim()) throw new Error(`Missing curated changelog entry for ${version}.`);
+  const notes = entry.slice(entry.indexOf("\n") + 1).trim();
+  if (!notes) throw new Error(`Empty curated changelog entry for ${version}.`);
   const output = join(base, "dist/releases/github");
   // The output must not resolve through a symlink before recursive cleanup.
   for (const path of ["dist", "dist/releases", "dist/releases/github"]) {
@@ -195,7 +203,7 @@ export async function prepareRelease({ root: base = root, tag, sha }) {
   await writeFile(join(output, "release.json"), JSON.stringify(manifest, null, 2) + "\n");
   await writeFile(
     join(output, "release-notes.md"),
-    `Feedbacks ${tag}\n\nSource commit: ${sha}\n\n- Application and source: ${version}\n- Chrome extension: ${extension.version}\n- Codex and Claude Code plugins: ${plugin.version}\n\nThese components have separate version schemes. The Git tag follows the application version.\n\nAssets include the reviewed source export, public extension ZIP, standalone plugins and CycloneDX dependency inventory. Verify SHA256SUMS before installation.\n\nThis is a draft for release review. Record upgrade instructions, compatibility and known limitations before publishing. Container registry publication, hosted deployment and Chrome Web Store upload/review are separate steps; this workflow does not perform them.\n`,
+    `Feedbacks ${tag}\n\nSource commit: ${sha}\n\n- Application and source: ${version}\n- Chrome extension: ${extension.version}\n- Codex and Claude Code plugins: ${plugin.version}\n\nThese components have separate version schemes. The Git tag follows the application version.\n\n${notes}\n\nAssets include the reviewed source export, public extension ZIP, standalone plugins and CycloneDX dependency inventory. Verify SHA256SUMS before installation. Container registry publication, hosted deployment and Chrome Web Store upload/review are separate steps.\n`,
   );
   const names = [
     ...assets.map((asset) => asset.name),

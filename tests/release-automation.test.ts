@@ -108,6 +108,10 @@ async function fixture() {
   }
   const json = (value: unknown) => JSON.stringify(value);
   await put("package.json", json({ name: "feedbacks", version: "1.2.3" }));
+  await put(
+    "CHANGELOG.md",
+    "# Changelog\n\n## 1.2.3 — 2026-10-21\n\nUse a verified backup before upgrading.\n\n### Compatibility\n\nKeep the existing data volume.\n\n## 1.2.2 — 2026-10-01\n\nOlder release only.\n",
+  );
   await put("extension/manifest.json", json({ version: "0.9.8" }));
   await put("plugins/feedbacks/plugin.json", json({ version: "0.4.0" }));
   await put(
@@ -217,10 +221,29 @@ test("preparation includes only versioned verified artifacts and records separat
       assert.ok(checksums.includes(`${asset.sha256}  ${asset.name}\n`));
     }
     assert.ok(!checksums.includes("private-dump"));
-    assert.match(
-      await readFile(join(out, "release-notes.md"), "utf8"),
-      /Chrome Web Store/,
-    );
+    const notes = await readFile(join(out, "release-notes.md"), "utf8");
+    assert.match(notes, /Chrome Web Store/);
+    assert.match(notes, /verified backup/);
+    assert.match(notes, /### Compatibility/);
+    assert.doesNotMatch(notes, /Older release only|draft for release review/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("preparation refuses a missing or empty release changelog entry", async () => {
+  const { root, put } = await fixture();
+  try {
+    for (const text of [
+      "# Changelog\n\n## 1.2.4 — 2026-10-21\nOther version.\n",
+      "# Changelog\n\n## 1.2.3 — 2026-10-21\n\n## 1.2.2 — 2026-10-01\nOlder version.\n",
+    ]) {
+      await put("CHANGELOG.md", text);
+      await assert.rejects(
+        prepareRelease({ root, tag: "v1.2.3", sha }),
+        /curated changelog/,
+      );
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }

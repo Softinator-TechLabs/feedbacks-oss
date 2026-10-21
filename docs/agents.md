@@ -2,6 +2,15 @@
 
 MCP gives an authorized assistant the same thread your team sees: screenshot, page context, named messages, revisions and current permissions. Approved project instructions and owner-approved reviewer guidance travel separately from untrusted discussion. Subject weights are advice about expertise. Humans choose the assignee, priority and timing; weights cannot override those choices or authorize work.
 
+## Official directory status
+
+Checked 2026-10-21. The publisher's [public marketplace](https://github.com/Softinator-TechLabs/feedbacks-plugins) supports direct installation independently of official directory approval.
+
+- **Claude Code:** submitted version 0.2.2 passed its security scan; the publish request is waiting for an Anthropic reviewer. It is not yet listed in the official directory.
+- **OpenAI:** local command/stdio MCP submission access is pending review. The package is not submitted for directory review or published. OpenAI's [desktop-only submission guide](https://developers.openai.com/plugins/deploy/desktop-only) requires publisher approval and organization allowlisting before submission.
+
+No publication date is confirmed. A new source release, direct marketplace install or passed test does not publish either official listing. Keep each customer's own server URL and personal scoped key; directory review does not require a separate proprietary product fork.
+
 ## Start with your personal connection
 
 Your team needs a server and a prepared project first. Sign in as yourself, open **Setup → Connect your coding agent** and create your setup prompt, or choose narrower projects and permissions in Account. Paste the private prompt into your own coding tool and verify accessible projects before changing feedback. Reviewers do not need MCP to submit captures. Follow the [step-by-step developer guide](../site-docs/guide/mcp.md) for Codex, Claude Code or Antigravity.
