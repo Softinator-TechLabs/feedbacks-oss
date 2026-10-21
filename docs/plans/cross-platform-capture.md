@@ -6,7 +6,7 @@ Status: desktop browser/import pilot implemented; verification in progress; nati
 
 Extend the shared feedback workflow to explicitly identified native-app captures, starting with a desktop browser window-capture pilot. Follow with verified host-app mobile integrations, optional desktop/mobile companions and deliberately instrumented diagnostics. Current and proposed capabilities remain separate in the [compatibility matrix](../platform-compatibility.md) and [Upcoming](../upcoming.md).
 
-This plan does not claim implementation, OS-wide inspection, automatic HTTPS decryption, anonymous customer SDK availability, real-device acceptance or Store publication. Private release schedules and launch material remain outside tracked source.
+The implemented pilot covers reviewed screenshots. OS-wide inspection, automatic HTTPS decryption, anonymous customer SDK availability, real-device acceptance and Store publication remain outside its verified scope. Private release schedules and launch material remain outside tracked source.
 
 ## Evidence and approach
 
