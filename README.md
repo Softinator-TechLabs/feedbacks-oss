@@ -22,7 +22,15 @@ Show the problem with a screenshot, exact text suggestion or video + session rec
 
 Feedbacks is an early 0.x release. Each application deployment serves one organization. Public registration, billing, SSO and shared-database customer tenancy are not implemented. See [architecture and deployment boundaries](docs/architecture.md).
 
-## Run locally
+## Try it with Docker
+
+```sh
+curl -fsSL https://feedbacks.softinator.ai/install.sh | bash
+```
+
+Open `http://localhost:3000` with the generated owner login. PostgreSQL and screenshots persist in Docker volumes; no S3 account or source build is required. The installer requires Docker Compose, Bash, curl and OpenSSL, and preserves existing installation directories. See the [quickstart and production guide](site-docs/guide/self-host.md).
+
+## Develop from source
 
 Requirements: Node.js 22 or 24, npm, and Docker Compose for PostgreSQL.
 

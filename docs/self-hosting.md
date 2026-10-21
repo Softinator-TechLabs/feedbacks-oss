@@ -4,6 +4,8 @@ This is the server operator reference. Install one Feedbacks server for your com
 
 Use your own domain, PostgreSQL database and S3-compatible object storage. Wasabi, AWS S3 and other compatible providers can be configured through the same environment variables. Compatibility depends on support for authenticated `PutObject`, `GetObject` and `DeleteObject` requests with path-style addressing; verify upload and authorized readback with your chosen provider. No Softinator storage account is required.
 
+The [one-command local quickstart](../site-docs/guide/self-host.md#up-and-running-with-one-command) pulls the verified Docker Hub image, starts PostgreSQL, stores screenshots in a named Docker volume and generates an owner login. It binds only to loopback, uses development configuration and requires no S3 account. It refuses existing directories. Shared production hosting follows the HTTPS/S3 configuration below; the quickstart is not an upgrade or production migration command.
+
 ## Local development
 
 Follow the README. For video contact sheets outside Docker, install `ffmpeg` and `ffprobe` on the server PATH; the standard application image includes them. Missing decoders return explicit preview unavailability. `compose.dev.yaml` starts PostgreSQL on loopback and the application uses private local files under `.local/assets`. Local file storage is for development; production configuration requires S3.
