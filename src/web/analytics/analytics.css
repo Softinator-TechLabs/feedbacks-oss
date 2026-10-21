@@ -69,10 +69,12 @@
   min-height: 158px;
   padding: 22px 24px;
   text-align: left;
+  border-radius: 8px;
+}
+.analytics-stat:not(.primary) {
   background: var(--surface);
   color: inherit;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border-color: var(--border);
 }
 .analytics-stat > span {
   font-size: 15px;
@@ -89,20 +91,12 @@
   font-size: 12px;
   color: var(--muted);
 }
-.analytics-stat-backlog {
-  background: var(--accent);
-  color: var(--surface);
-  border-color: var(--accent);
-}
 .analytics-stat-backlog > small {
   color: inherit;
   opacity: 0.85;
 }
 .analytics-stat:not(.analytics-stat-backlog):hover {
   background: color-mix(in srgb, var(--accent) 5%, var(--surface));
-}
-.analytics-stat-backlog:hover {
-  filter: brightness(1.08);
 }
 .analytics-stat:focus-visible,
 .analytics-project-metric:focus-visible,

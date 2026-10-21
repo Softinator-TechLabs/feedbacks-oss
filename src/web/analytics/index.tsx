@@ -695,7 +695,7 @@ export function Analytics({
               {currentMetrics.map(({ metric, label, note }) => (
                 <button
                   id={`analytics-current-${metric}`}
-                  className={`analytics-stat analytics-stat-${metric}`}
+                  className={`analytics-stat analytics-stat-${metric}${metric === "backlog" ? " primary" : ""}`}
                   key={metric}
                   type="button"
                   onClick={() =>
