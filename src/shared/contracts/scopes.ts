@@ -173,6 +173,7 @@ const readOperations = new Set<string>([
   "trackers.list",
   "trackers.accounts",
   "trackers.discover",
+  "trackers.oauthDiscover",
   "trackers.links",
   "notifications.settings",
   "notifications.subscription",

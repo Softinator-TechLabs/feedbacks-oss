@@ -103,6 +103,12 @@
 .tracker-advanced-switch {
   margin-top: 20px;
 }
+.tracker-jira-setup a[aria-disabled="true"] {
+  color: var(--muted);
+  background: var(--soft-surface);
+  border-color: var(--border);
+  cursor: wait;
+}
 .tracker-mappings {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

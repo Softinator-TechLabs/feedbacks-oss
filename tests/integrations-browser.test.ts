@@ -2025,3 +2025,494 @@ test(
     }
   },
 );
+
+test(
+  "Jira consent-first setup discovers named destinations and safely retries canonical completion",
+  {
+    skip: process.env.FEEDBACKS_RECORDING_BROWSER_SMOKE !== "1",
+    timeout: 120000,
+  },
+  async () => {
+    const pg = new PGlite(),
+      db = new Database(pg as any),
+      originalFetch = globalThis.fetch;
+    const objects = new Map<string, Buffer>();
+    const store: any = {
+      put: async (key: string, value: Buffer) => objects.set(key, value),
+      get: async (key: string) => objects.get(key)!,
+      remove: async (key: string) => objects.delete(key),
+    };
+    const config: any = {
+      appOrigin: "http://127.0.0.1",
+      production: false,
+      organizationId: randomUUID(),
+    };
+    const cloudId = "b59926c7-6474-4931-8cc2-34af0d589444",
+      otherCloudId = "9d1d2481-19b0-4987-a50e-8623f6f54a79";
+    const checks: string[] = [],
+      screenshots: string[] = [],
+      errors: string[] = [];
+    let server: ReturnType<typeof createServer> | undefined,
+      browser: Awaited<ReturnType<typeof chromium.launch>> | undefined,
+      authorized = false,
+      remoteExpired = false,
+      remoteFlows = 0,
+      pollCount = 0;
+    const json = (data: unknown) =>
+      new Response(JSON.stringify(data), {
+        headers: { "Content-Type": "application/json" },
+      });
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      if (["127.0.0.1", "localhost"].includes(url.hostname))
+        return originalFetch(input, init);
+      if (url.origin === "https://broker.example.test") {
+        if (url.pathname === "/v1/start") {
+          remoteFlows++;
+          authorized = false;
+          return json({
+            flowId: `synthetic-remote-${remoteFlows}`,
+            pollToken: `synthetic-poll-secret-${remoteFlows}`,
+            authorizeUrl: `https://auth.atlassian.com/authorize?state=synthetic-${remoteFlows}`,
+          });
+        }
+        if (url.pathname === "/v1/ack") return json({ removed: true });
+        if (url.pathname === "/v1/poll") {
+          pollCount++;
+          if (remoteExpired) {
+            remoteExpired = false;
+            return new Response(JSON.stringify({ error: "expired_or_restarted" }), {
+              status: 410,
+            });
+          }
+          return json(
+            !authorized
+              ? { status: "pending" }
+              : {
+                  status: "ready",
+                  token: {
+                    access_token: "synthetic-jira-ui-access",
+                    refresh_token: "synthetic-jira-ui-refresh",
+                    expires_in: 3600,
+                  },
+                  resources: [
+                    {
+                      id: otherCloudId,
+                      name: "Studio archive",
+                      url: "https://archive.atlassian.net",
+                    },
+                    {
+                      id: cloudId,
+                      name: "Studio delivery",
+                      url: "https://delivery.atlassian.net",
+                    },
+                  ],
+                },
+          );
+        }
+      }
+      if (url.origin === "https://api.atlassian.com") {
+        assert.equal(
+          new Headers(init?.headers).get("authorization"),
+          "Bearer synthetic-jira-ui-access",
+        );
+        const base = `/ex/jira/${cloudId}/rest/api/3`;
+        if (url.pathname === `${base}/project/search`)
+          return json({
+            values: [{ id: "123", name: "Website launch" }],
+            startAt: 0,
+            maxResults: 50,
+            total: 1,
+          });
+        if (url.pathname === `${base}/issue/createmeta/123/issuetypes`)
+          return json({
+            issueTypes: [
+              { id: "10001", name: "Task", subtask: false },
+              { id: "10002", name: "Bug", subtask: false },
+              { id: "10003", name: "Subtask", subtask: true },
+            ],
+            startAt: 0,
+            maxResults: 50,
+            total: 3,
+          });
+        if (url.pathname === `${base}/issue/createmeta/123/issuetypes/10001`)
+          return json({
+            fields: ["project", "issuetype", "summary", "description"].map((fieldId) => ({
+              fieldId,
+              key: fieldId,
+              required: true,
+              hasDefaultValue: false,
+              operations: ["set"],
+            })),
+            startAt: 0,
+            maxResults: 50,
+            total: 4,
+          });
+        if (url.pathname === `${base}/project/123`)
+          return json({
+            id: "123",
+            key: "WEB",
+            name: "Website launch",
+            issueTypes: [
+              { id: "10001", name: "Task", subtask: false },
+              { id: "10002", name: "Bug", subtask: false },
+              { id: "10003", name: "Subtask", subtask: true },
+            ],
+          });
+        if (url.pathname === `${base}/project/123/statuses`)
+          return json([
+            {
+              id: "10001",
+              statuses: [
+                { id: "1", name: "Open" },
+                { id: "2", name: "Done" },
+              ],
+            },
+            {
+              id: "10002",
+              statuses: [
+                { id: "1", name: "Open" },
+                { id: "2", name: "Done" },
+              ],
+            },
+          ]);
+      }
+      throw new Error(`Unexpected synthetic Jira request: ${url.origin}${url.pathname}`);
+    };
+    try {
+      await migrate(db);
+      const ops = new Operations(db, store, config),
+        password = "Synthetic-Jira-UI-Password-123";
+      const owner = await ops.auth.bootstrap(
+        "owner@example.test",
+        "Synthetic owner",
+        password,
+      );
+      const pacing = paceQaApi(createApp(config, db, store));
+      server = createServer(pacing).listen(0, "127.0.0.1");
+      await new Promise<void>((resolve) => server!.once("listening", resolve));
+      const address = server.address();
+      assert.ok(address && typeof address !== "string");
+      const origin = `http://127.0.0.1:${address.port}`;
+      config.appOrigin = origin;
+      browser = await chromium.launch({ headless: true });
+      await mkdir(".local/integration-tabs-qa", { recursive: true });
+      for (const [device, width, height] of [
+        ["desktop", 1440, 1000],
+        ["mobile", 390, 844],
+      ] as const) {
+        const project = await ops.executeOperation(owner, "projects.create", {
+          name: `Jira review ${device}`,
+          origins: ["https://example.test"],
+        });
+        const context = await browser.newContext({
+          viewport: { width, height },
+          timezoneId: "UTC",
+        });
+        const login = await context.request.post(`${origin}/api/auth.login`, {
+          headers: { Origin: origin },
+          data: { email: "owner@example.test", password },
+        });
+        assert.equal(login.status(), 200);
+        const page = await context.newPage();
+        page.setDefaultTimeout(10000);
+        page.on("pageerror", (error) => errors.push(error.message));
+        page.on("dialog", (dialog) => dialog.accept());
+        const responseBodies: string[] = [];
+        page.on("response", async (response) => {
+          if (response.url().includes("/api/trackers.oauth"))
+            responseBodies.push(await response.text().catch(() => ""));
+        });
+        await page.goto(`${origin}/projects/${project.id}/settings#integrations-tasks`);
+        await page
+          .getByRole("button", { name: "Add Jira Cloud connection", exact: true })
+          .click();
+        const form = page.locator(".tracker-jira-setup");
+        await form
+          .getByRole("heading", { name: "Connect Jira Cloud", exact: true })
+          .waitFor();
+        for (const name of [
+          "API token",
+          "Jira project ID or key",
+          "Jira issue type ID",
+          "Connection name",
+        ])
+          assert.equal(await form.getByLabel(name, { exact: true }).count(), 0);
+        config.trackerOAuth = undefined;
+        await form
+          .getByRole("button", { name: "Connect with Jira Cloud", exact: true })
+          .click();
+        await form
+          .getByRole("alert")
+          .filter({ hasText: "operator must configure" })
+          .waitFor();
+        assert.equal(
+          await db
+            .one("SELECT count(*)::int n FROM tracker_oauth_flows WHERE project_id=$1", [
+              project.id,
+            ])
+            .then((row) => row.n),
+          0,
+        );
+        config.trackerOAuth = {
+          brokerUrl: "https://broker.example.test",
+          installationKey: "synthetic-installation-key".padEnd(40, "a"),
+        };
+        const started = page.waitForResponse(
+          (response) =>
+            response.url().endsWith("/api/trackers.oauthStart") &&
+            response.status() === 200,
+        );
+        await form
+          .getByRole("button", { name: "Connect with Jira Cloud", exact: true })
+          .click();
+        const startResponse = await started,
+          initialFlow = (await startResponse.json()).data;
+        assert.deepEqual(startResponse.request().postDataJSON(), {
+          projectId: project.id,
+          provider: "jira",
+          guided: true,
+        });
+        await form
+          .getByRole("link", { name: "Authorize Jira Cloud", exact: true })
+          .waitFor();
+        assert.match(
+          (await form
+            .getByRole("link", { name: "Authorize Jira Cloud", exact: true })
+            .getAttribute("href")) ?? "",
+          /^https:\/\/auth\.atlassian\.com\/authorize\?/,
+        );
+        const consentCapture = `.local/integration-tabs-qa/${device}-jira-consent.png`;
+        await form.screenshot({ path: consentCapture });
+        screenshots.push(consentCapture);
+        let release!: () => void, arrived!: () => void;
+        const held = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        const requested = new Promise<void>((resolve) => {
+          arrived = resolve;
+        });
+        await page.route("**/api/trackers.oauthDiscover", async (route) => {
+          arrived();
+          await held;
+          await route.continue();
+        });
+        await form
+          .getByRole("button", { name: "Check connection status", exact: true })
+          .click();
+        await requested;
+        assert.equal(
+          await form
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .isDisabled(),
+          true,
+        );
+        assert.equal(
+          await form.getByRole("button", { name: "Cancel", exact: true }).isDisabled(),
+          true,
+        );
+        assert.equal(
+          await form
+            .getByRole("button", { name: "Advanced setup", exact: true })
+            .isDisabled(),
+          true,
+        );
+        release();
+        await form
+          .getByRole("status")
+          .filter({ hasText: "Finish authorization" })
+          .waitFor();
+        await page.unroute("**/api/trackers.oauthDiscover");
+        assert.equal(
+          await form.getByRole("combobox", { name: "Jira site", exact: true }).count(),
+          0,
+        );
+        await db.query(
+          "UPDATE tracker_oauth_flows SET expires_at=now()-interval '1 second' WHERE id=$1",
+          [initialFlow.flowId],
+        );
+        await form
+          .getByRole("button", { name: "Check connection status", exact: true })
+          .click();
+        await form.getByRole("alert").filter({ hasText: "expired" }).waitFor();
+        const restarted = page.waitForResponse(
+          (response) =>
+            response.url().endsWith("/api/trackers.oauthStart") &&
+            response.status() === 200,
+        );
+        await form.getByRole("button", { name: "Start again", exact: true }).click();
+        const remoteExpiryFlow = (await (await restarted).json()).data;
+        await form
+          .getByRole("link", { name: "Authorize Jira Cloud", exact: true })
+          .waitFor();
+        assert.equal(
+          (
+            await db.one(
+              "SELECT expires_at>now() AS active FROM tracker_oauth_flows WHERE id=$1",
+              [remoteExpiryFlow.flowId],
+            )
+          ).active,
+          true,
+        );
+        remoteExpired = true;
+        const remoteExpiry = page.waitForResponse(
+          (response) =>
+            response.url().endsWith("/api/trackers.oauthDiscover") &&
+            response.status() === 409,
+        );
+        await form
+          .getByRole("button", { name: "Check connection status", exact: true })
+          .click();
+        const remoteExpiryPayload = await (await remoteExpiry).json();
+        assert.equal(remoteExpiryPayload.error.code, "TRACKER_OAUTH_EXPIRED");
+        assert.match(remoteExpiryPayload.error.message, /broker/i);
+        assert.match(remoteExpiryPayload.error.message, /restart|expired/i);
+        assert.match(remoteExpiryPayload.error.message, /start.*again/i);
+        await form
+          .getByRole("alert")
+          .filter({ hasText: /broker/i })
+          .waitFor();
+        await form.getByRole("button", { name: "Start again", exact: true }).click();
+        await form
+          .getByRole("link", { name: "Authorize Jira Cloud", exact: true })
+          .waitFor();
+        authorized = true;
+        await form
+          .getByRole("button", { name: "Check connection status", exact: true })
+          .click();
+        const site = form.getByRole("combobox", { name: "Jira site", exact: true });
+        await site.waitFor();
+        assert.deepEqual(await site.locator("option").allTextContents(), [
+          "Choose a site",
+          "Studio archive · archive.atlassian.net",
+          "Studio delivery · delivery.atlassian.net",
+        ]);
+        await site.selectOption(cloudId);
+        await form.getByRole("button", { name: "Continue", exact: true }).press("Enter");
+        await form
+          .getByRole("combobox", { name: "Project", exact: true })
+          .selectOption("123");
+        await form.getByRole("button", { name: "Continue", exact: true }).press("Enter");
+        const issueType = form.getByRole("combobox", { name: "Issue type", exact: true });
+        await issueType.waitFor();
+        assert.deepEqual(await issueType.locator("option").allTextContents(), [
+          "Choose issue type",
+          "Task",
+          "Bug",
+        ]);
+        await issueType.selectOption("10001");
+        await form.getByRole("button", { name: "Continue", exact: true }).press("Enter");
+        await form.getByRole("button", { name: "Connect", exact: true }).waitFor();
+        assert.match(
+          await form.locator(".tracker-setup-ready").innerText(),
+          /Studio delivery.*Task.*Website launch/s,
+        );
+        assert.equal(
+          await form
+            .getByLabel("Connection name (optional)", { exact: true })
+            .isVisible(),
+          false,
+        );
+        const readyCapture = `.local/integration-tabs-qa/${device}-jira-destination-ready.png`;
+        await form.screenshot({ path: readyCapture });
+        screenshots.push(readyCapture);
+        await form.getByText("Advanced options", { exact: true }).press("Enter");
+        await form
+          .getByLabel("Connection name (optional)", { exact: true })
+          .fill(`Jira review ${device}`);
+        await form.getByRole("button", { name: "Back", exact: true }).click();
+        assert.equal(
+          await form
+            .getByRole("combobox", { name: "Issue type", exact: true })
+            .inputValue(),
+          "10001",
+        );
+        await form.getByRole("button", { name: "Continue", exact: true }).press("Enter");
+        await form.getByRole("button", { name: "Connect", exact: true }).waitFor();
+        await form.getByText("Advanced options", { exact: true }).press("Enter");
+        assert.equal(
+          await form
+            .getByLabel("Connection name (optional)", { exact: true })
+            .inputValue(),
+          `Jira review ${device}`,
+        );
+        let loseResponse = true;
+        const completionKeys: string[] = [];
+        await page.route("**/api/trackers.oauthComplete", async (route) => {
+          completionKeys.push(route.request().postDataJSON().idempotencyKey);
+          if (!loseResponse) return route.continue();
+          loseResponse = false;
+          const response = await route.fetch();
+          assert.equal(response.status(), 200);
+          await route.abort("failed");
+        });
+        await form.getByRole("button", { name: "Connect", exact: true }).click();
+        await form.getByRole("alert").filter({ hasText: "Connection failed" }).waitFor();
+        assert.equal(
+          await db
+            .one("SELECT count(*)::int n FROM tracker_connections WHERE project_id=$1", [
+              project.id,
+            ])
+            .then((row) => row.n),
+          1,
+        );
+        const pollsBeforeRetry = pollCount;
+        await form.getByRole("button", { name: "Connect", exact: true }).click();
+        await form.waitFor({ state: "detached" });
+        await page.unroute("**/api/trackers.oauthComplete");
+        await page
+          .getByRole("heading", { name: `Jira review ${device}`, exact: true })
+          .waitFor();
+        assert.equal(completionKeys.length, 2);
+        assert.ok(completionKeys[0]);
+        assert.equal(completionKeys[0], completionKeys[1]);
+        assert.equal(pollCount, pollsBeforeRetry);
+        const connections = await db.query(
+          "SELECT * FROM tracker_connections WHERE project_id=$1",
+          [project.id],
+        );
+        assert.equal(connections.length, 1);
+        assert.equal(connections[0].health, "healthy");
+        assert.equal(connections[0].configuration.targetId, "123");
+        assert.equal(connections[0].configuration.issueTypeId, "10001");
+        assert.equal(connections[0].configuration.cloudId, cloudId);
+        const browserEvidence = (await page.content()) + responseBodies.join("");
+        for (const secret of [
+          "synthetic-jira-ui-access",
+          "synthetic-jira-ui-refresh",
+          "synthetic-poll-secret",
+          "synthetic-installation-key",
+        ])
+          assert.equal(browserEvidence.includes(secret), false);
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        );
+        checks.push(
+          `${device}: missing broker is actionable; consent starts without IDs, pending checks disable in-flight controls, local expiry and real broker-poll HTTP410 both offer a working restart, named site/project/type choices retain Back drafts, completion retries one canonical healthy connection without exposing credentials`,
+        );
+        await context.close();
+      }
+      assert.deepEqual(errors, []);
+      assert.equal(pacing.stats.overflow, 0);
+      await writeFile(
+        ".local/jira-consent-first-qa-receipt.json",
+        JSON.stringify(
+          {
+            checks,
+            screenshots,
+            pageErrors: errors,
+            apiPacing: pacing.stats,
+            brokerAndProvider: "Synthetic transports only; no live account grant",
+          },
+          null,
+          2,
+        ),
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      await browser?.close();
+      if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
+      await pg.close();
+    }
+  },
+);
