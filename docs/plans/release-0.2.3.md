@@ -14,8 +14,8 @@ The application release 0.2.1 predates current main. Its generated notes still d
 
 - [x] Inspect versions, current CI and distribution status.
 - [x] Prepare version, changelog and public directory status.
-- [ ] Verify release-note selection and missing-entry failure.
-- [ ] Run repository checks and merge through required CI.
+- [x] Verify release-note selection and missing-entry failure.
+- [x] Run repository checks and merge preparation through required CI.
 - [ ] Verify exact-source CI, publish artifacts/images, and download/check the published assets.
 
 ## Compatibility and recovery
@@ -25,3 +25,7 @@ This preparation changes release metadata and documentation, not database schema
 ## Completion receipt
 
 Source, exact-revision CI, published artifacts and deployment acceptance are recorded separately. A draft or workflow dispatch is not publication.
+
+## Walkthrough finding
+
+A clipboard permission request that never settles left task handoff busy indefinitely. Bound that request to three seconds, preserving the existing manual-copy dialog, and verify pending, successful and denied clipboard writes in [regression tests](../../tests/task-clipboard.test.ts). Browser readback confirms the full task text remains available through the fallback.

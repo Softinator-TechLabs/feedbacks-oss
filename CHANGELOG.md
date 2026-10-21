@@ -4,6 +4,7 @@
 
 - Refresh the locked MCP server/client SDK and Vite build tooling to patched compatible versions; the current lockfile passes `npm audit`.
 - Package the current application with extension 0.1.60 and Claude Code/Codex plugins 0.2.3, including context-efficient task reads and updated review guidance.
+- Recover task handoff with a manual-copy dialog when a browser clipboard permission request never completes.
 - Repair review controls inside native modal previews and clarify stale project access and General-project fallback.
 - Add optional browser sign-in for HTTP MCP clients with own-server OAuth; local stdio plugins and personal project-scoped keys remain supported.
 - Keep recording, diagnostic and public-website documentation aligned with the current review workflow. State official plugin-directory review status separately from direct installation.
