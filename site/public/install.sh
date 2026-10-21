@@ -78,6 +78,7 @@ main() {
   umask 077
   mkdir -m 700 "$directory" || fail 'Could not create the installation directory.'
   trap setup_stopped EXIT
+  printf '*\n' > "$directory/.gitignore"
   progress 2 'Finding the latest verified stable release…'
   download --max-filesize 4096 https://feedbacks.softinator.ai/quickstart-stable.txt --output "$directory/release.txt"
   read_release

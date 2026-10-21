@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { chmod, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -187,6 +187,14 @@ test("fresh install follows stable metadata and prints progress and management c
   try {
     assert.equal(f.result.status, 0, f.result.stderr);
     assert.match(f.result.stdout, /Selected Feedbacks 0.9.7/);
+    execFileSync("git", ["init", "--quiet", f.target]);
+    assert.equal(
+      execFileSync("git", ["check-ignore", ".env", "owner-password", "compose.yaml"], {
+        cwd: f.target,
+        encoding: "utf8",
+      }).trim(),
+      ".env\nowner-password\ncompose.yaml",
+    );
     for (let step = 1; step <= 7; step++)
       assert.ok(f.result.stdout.includes(`[${step}/7]`));
     for (const label of ["Stop:", "Start:", "Status:", "Logs:"])
