@@ -99,6 +99,7 @@ test(
       config.appOrigin = origin;
       browser = await chromium.launch({ headless: true });
       await mkdir(".local/analytics-qa", { recursive: true });
+      await mkdir(".local/analytics-hover-qa", { recursive: true });
       async function signedPage(width: number, height: number) {
         const page = await browser!.newPage({
           viewport: { width, height },
@@ -133,6 +134,81 @@ test(
         await counts
           .getByRole("button", { name: "View 3 pending tasks now threads", exact: true })
           .waitFor();
+        const pendingCard = counts.getByRole("button", {
+          name: "View 3 pending tasks now threads",
+          exact: true,
+        });
+        async function readableCard(state: string, theme: string) {
+          await page.screenshot({
+            path: `.local/analytics-hover-qa/${device}-${theme}-${state}.png`,
+          });
+          const colors = await pendingCard.evaluate((card) => ({
+            background: getComputedStyle(card).backgroundColor,
+            items: [...card.children].map((child) => ({
+              text: child.textContent,
+              color: getComputedStyle(child).color,
+              opacity: Number(getComputedStyle(child).opacity),
+            })),
+          }));
+          const rgb = (value: string) =>
+            value
+              .match(/[\d.]+/g)!
+              .slice(0, 3)
+              .map(Number);
+          const luminance = (color: number[]) =>
+            color.reduce((sum, channel, index) => {
+              const value = channel / 255;
+              return (
+                sum +
+                [0.2126, 0.7152, 0.0722][index] *
+                  (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+              );
+            }, 0);
+          const background = rgb(colors.background);
+          for (const item of colors.items) {
+            const foreground = rgb(item.color).map(
+              (channel, index) =>
+                channel * item.opacity + background[index] * (1 - item.opacity),
+            );
+            const values = [luminance(foreground), luminance(background)];
+            const contrast = (Math.max(...values) + 0.05) / (Math.min(...values) + 0.05);
+            assert.ok(
+              contrast >= 4.5,
+              `${device} ${theme} ${state}: ${item.text} contrast is ${contrast}`,
+            );
+          }
+        }
+        for (const theme of ["light", "dark"]) {
+          await page.evaluate((value) => {
+            document.documentElement.dataset.theme = value;
+          }, theme);
+          await page.mouse.move(0, 0);
+          await readableCard("rest", theme);
+          await pendingCard.hover();
+          await readableCard("hover", theme);
+          await page.mouse.down();
+          try {
+            await readableCard("pressed", theme);
+          } finally {
+            await page.mouse.move(0, 0);
+            await page.mouse.up();
+          }
+          await pendingCard.focus();
+          await page.keyboard.press("Tab");
+          await page.keyboard.press("Shift+Tab");
+          assert.equal(
+            await pendingCard.evaluate((card) => card.matches(":focus-visible")),
+            true,
+          );
+          await readableCard("focus", theme);
+        }
+        await page.evaluate(() => {
+          document.documentElement.dataset.theme = "light";
+          (document.activeElement as HTMLElement)?.blur();
+        });
+        checks.push(
+          `${device}: pending card text retains readable contrast at rest, hover, press and keyboard focus in both themes`,
+        );
         await surface.getByText("Past planned date", { exact: true }).waitFor();
         assert.equal(await surface.getByRole("tabpanel").count(), 1);
         assert.equal(await surface.getByLabel("From", { exact: true }).count(), 0);
