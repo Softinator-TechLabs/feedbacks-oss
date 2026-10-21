@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
+import { createServer } from "node:http";
+import { paceQaApi } from "../scripts/lib/qa-api-pacing.mjs";
 import { chromium, type Locator } from "playwright";
 import { PGlite } from "@electric-sql/pglite";
 import { Database } from "../src/server/db.js";
@@ -40,7 +42,9 @@ test(
       errors: string[] = [],
       screenshots: string[] = [];
     const providerLayouts: { device: string; provider: string; fields: number }[] = [];
-    let server: any, browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+    let server: any,
+      browser: Awaited<ReturnType<typeof chromium.launch>> | undefined,
+      pacing: ReturnType<typeof paceQaApi> | undefined;
     // Provider verification is the only mocked boundary. App HTTP requests,
     // credentials, grants, persistence, validation and queue writes remain real.
     globalThis.fetch = async (input, init) => {
@@ -53,6 +57,59 @@ test(
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
+      if (url.origin === "https://api.clickup.com") {
+        if (new Headers(init?.headers).get("authorization")?.includes("denied"))
+          return new Response("{}", { status: 401 });
+        if (url.pathname === "/api/v2/team")
+          return json({ teams: [{ id: "team1", name: "Synthetic studio" }] });
+        if (url.pathname === "/api/v2/team/team1/space")
+          return json({ spaces: [{ id: "space1", name: "Web development" }] });
+        if (url.pathname === "/api/v2/space/space1/folder")
+          return json({ folders: [{ id: "folder1", name: "Client projects" }] });
+        if (url.pathname === "/api/v2/space/space1/list")
+          return json({ lists: [{ id: "list2", name: "Intake" }] });
+        if (url.pathname === "/api/v2/folder/folder1/list")
+          return json({ lists: [{ id: "list1", name: "Website tasks" }] });
+        if (["/api/v2/list/list1", "/api/v2/list/list2"].includes(url.pathname))
+          return json({
+            name: url.pathname.endsWith("list1") ? "Website tasks" : "Intake",
+            statuses: [{ status: "Open" }, { status: "Closed" }],
+          });
+      }
+      if (url.origin === "https://api.monday.com" && url.pathname === "/v2") {
+        const body = JSON.parse(String(init?.body));
+        if (body.query.includes("boards(limit:50"))
+          return json({
+            data: {
+              boards:
+                body.variables.page === 1
+                  ? Array.from({ length: 50 }, (_, index) => ({
+                      id: String(1000 + index),
+                      name: `Studio board ${index + 1}`,
+                    }))
+                  : [{ id: "5001", name: "Synthetic launch board" }],
+            },
+          });
+        return json({
+          data: {
+            boards: [
+              {
+                id: "5001",
+                name: "Synthetic launch board",
+                columns: [
+                  { id: "long_text", title: "Task details", type: "long_text" },
+                  {
+                    id: "status",
+                    title: "Work stage",
+                    type: "status",
+                    settings: { labels: [{ label: "New" }, { label: "Complete" }] },
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      }
       if (
         url.origin === "https://app.asana.com" &&
         url.pathname === "/api/1.0/projects/123"
@@ -189,7 +246,8 @@ test(
         await db.query("UPDATE users SET must_change_password=false WHERE id=$1", [
           member.id,
         ]);
-      server = createApp(config, db, store).listen(0, "127.0.0.1");
+      pacing = paceQaApi(createApp(config, db, store));
+      server = createServer(pacing).listen(0, "127.0.0.1");
       await new Promise<void>((resolve) => server.once("listening", resolve));
       const origin = `http://127.0.0.1:${server.address().port}`;
       config.appOrigin = origin;
@@ -311,7 +369,11 @@ test(
             .inputValue(),
           "openproject",
         );
-        await page.getByLabel("OpenProject instance URL", { exact: true }).waitFor();
+        await page
+          .getByLabel("OpenProject instance URL", { exact: true })
+          .or(page.getByRole("combobox", { name: "Account", exact: true }))
+          .first()
+          .waitFor();
         await page.getByRole("button", { name: "Cancel", exact: true }).click();
         checks.push(
           `${device}: empty project Tasks shows all 10 named providers and the OpenProject shortcut opens its form without a project selector`,
@@ -328,8 +390,15 @@ test(
           .selectOption(project.id);
         await trackers
           .getByRole("button", { name: "Add tracker connection", exact: true })
+          .and(trackers.locator("button:enabled"))
+          .waitFor();
+        await trackers
+          .getByRole("button", { name: "Add tracker connection", exact: true })
           .press("Enter");
         const trackerForm = trackers.locator(".tracker-form");
+        await trackerForm
+          .getByRole("button", { name: "Advanced setup", exact: true })
+          .click();
         const trackerProviders = [
           "jira",
           "linear",
@@ -426,6 +495,9 @@ test(
           .getByRole("button", { name: "Add tracker connection", exact: true })
           .press("Enter");
         await trackerForm
+          .getByRole("button", { name: "Advanced setup", exact: true })
+          .click();
+        await trackerForm
           .getByLabel("Connection name", { exact: true })
           .fill(`Unsent tracker ${device}`);
         await trackerForm
@@ -449,6 +521,9 @@ test(
         await trackers
           .getByRole("button", { name: "Add tracker connection", exact: true })
           .press("Enter");
+        await trackerForm
+          .getByRole("button", { name: "Advanced setup", exact: true })
+          .click();
         checks.push(
           `${device}: dismissed project and tracker editor replacements preserve project, token and configuration; accepted discard changes editor`,
         );
@@ -516,6 +591,9 @@ test(
         await trackers
           .getByRole("button", { name: "Add tracker connection", exact: true })
           .press("Enter");
+        await trackerForm
+          .getByRole("button", { name: "Advanced setup", exact: true })
+          .click();
         await trackerForm
           .getByRole("combobox", { name: "Provider", exact: true })
           .selectOption("jira");
@@ -797,6 +875,9 @@ test(
           .getByRole("button", { name: "Add connection", exact: true })
           .click();
         const projectTaskForm = taskSettings.locator(".tracker-form");
+        await projectTaskForm
+          .getByRole("button", { name: "Advanced setup", exact: true })
+          .click();
         assert.deepEqual(
           await projectTaskForm
             .getByRole("combobox", { name: "Provider", exact: true })
@@ -969,6 +1050,298 @@ test(
         assert.deepEqual(new Set(taskProjectRequests), new Set([project.id]));
         checks.push(
           `${device}: Tasks pins its project, offers all 10 providers, preserves OpenProject drafts across tabs, saves encrypted origin/project/type/token and verifies Basic API access and mapped status IDs`,
+        );
+        async function startGuided(provider: string) {
+          await taskSettings
+            .getByRole("button", { name: "Add connection", exact: true })
+            .click();
+          await projectTaskForm
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .selectOption(provider);
+          await projectTaskForm
+            .getByRole("button", { name: "Continue", exact: true })
+            .waitFor();
+          await page.waitForFunction(
+            () => !document.querySelector(".tracker-setup .loading"),
+          );
+        }
+        async function chooseDestination(title: string, value: string) {
+          const field = projectTaskForm.getByRole("combobox", {
+            name: title,
+            exact: true,
+          });
+          await field.selectOption(value);
+          await projectTaskForm
+            .getByRole("button", { name: "Continue", exact: true })
+            .press("Enter");
+        }
+        await startGuided("clickup");
+        if (
+          await projectTaskForm
+            .getByRole("combobox", { name: "Account", exact: true })
+            .count()
+        )
+          await projectTaskForm
+            .getByRole("combobox", { name: "Account", exact: true })
+            .selectOption("");
+        await projectTaskForm
+          .getByLabel("API token", { exact: true })
+          .fill(`synthetic-clickup-denied-${device}`);
+        assert.equal(
+          await projectTaskForm.getByLabel("Connection name", { exact: true }).count(),
+          0,
+        );
+        assert.equal(
+          await projectTaskForm.getByLabel("ClickUp list ID", { exact: true }).count(),
+          0,
+        );
+        const accountCapture = `.local/integration-tabs-qa/${device}-guided-clickup-account.png`;
+        await projectTaskForm.screenshot({ path: accountCapture });
+        screenshots.push(accountCapture);
+        await projectTaskForm
+          .getByRole("button", { name: "Continue", exact: true })
+          .press("Enter");
+        await projectTaskForm.getByRole("alert").waitFor();
+        assert.equal(
+          await projectTaskForm.getByLabel("API token", { exact: true }).inputValue(),
+          `synthetic-clickup-denied-${device}`,
+        );
+        await projectTaskForm
+          .getByLabel("API token", { exact: true })
+          .fill(`synthetic-clickup-${device}`);
+        await emailSettingsTab.click();
+        await integrationsSettingsTab.click();
+        await providerTab("Tasks").click();
+        assert.equal(
+          await projectTaskForm.getByLabel("API token", { exact: true }).inputValue(),
+          `synthetic-clickup-${device}`,
+        );
+        await projectTaskForm
+          .getByRole("button", { name: "Continue", exact: true })
+          .press("Enter");
+        await projectTaskForm
+          .getByRole("combobox", { name: "Workspace", exact: true })
+          .waitFor();
+        assert.equal(
+          await projectTaskForm
+            .getByRole("combobox", { name: "Workspace", exact: true })
+            .evaluate((element) => element === document.activeElement),
+          true,
+        );
+        await chooseDestination("Workspace", "team1");
+        await chooseDestination("Space", "space1");
+        await chooseDestination("Folder or list", "folder_folder1");
+        await chooseDestination("List", "list1");
+        await projectTaskForm
+          .getByRole("button", { name: "Connect", exact: true })
+          .waitFor();
+        assert.match(
+          await projectTaskForm.locator(".tracker-setup-ready").innerText(),
+          /Synthetic studio.*Web development.*Client projects/s,
+        );
+        assert.equal(
+          await projectTaskForm
+            .getByLabel("Connection name", { exact: true })
+            .isVisible(),
+          false,
+        );
+        assert.equal(
+          await projectTaskForm
+            .getByRole("combobox", { name: "Open", exact: true })
+            .isVisible(),
+          false,
+        );
+        const destinationCapture = `.local/integration-tabs-qa/${device}-guided-clickup-ready.png`;
+        await projectTaskForm.screenshot({ path: destinationCapture });
+        screenshots.push(destinationCapture);
+        await projectTaskForm
+          .getByText("Advanced options", { exact: true })
+          .press("Enter");
+        await projectTaskForm
+          .getByRole("combobox", { name: "Open", exact: true })
+          .selectOption("Open");
+        await projectTaskForm
+          .getByRole("combobox", { name: "Resolved", exact: true })
+          .selectOption("Closed");
+        await projectTaskForm
+          .getByLabel("Import remote status changes automatically", { exact: false })
+          .check();
+        assert.equal(
+          await projectTaskForm
+            .getByRole("combobox", { name: "Closed", exact: true })
+            .locator('option[value="Closed"]')
+            .evaluate((option: HTMLOptionElement) => option.disabled),
+          true,
+        );
+        await projectTaskForm.getByRole("button", { name: "Back", exact: true }).click();
+        assert.equal(
+          await projectTaskForm
+            .getByRole("combobox", { name: "List", exact: true })
+            .inputValue(),
+          "list1",
+        );
+        await projectTaskForm
+          .getByRole("button", { name: "Continue", exact: true })
+          .press("Enter");
+        await projectTaskForm
+          .getByRole("button", { name: "Connect", exact: true })
+          .waitFor();
+        await projectTaskForm
+          .getByText("Advanced options", { exact: true })
+          .press("Enter");
+        assert.equal(
+          await projectTaskForm
+            .getByRole("combobox", { name: "Resolved", exact: true })
+            .inputValue(),
+          "Closed",
+        );
+        await projectTaskForm
+          .getByRole("button", { name: "Connect", exact: true })
+          .click();
+        await taskSettings
+          .getByRole("heading", { name: "ClickUp · Website tasks", exact: true })
+          .waitFor();
+        await projectTaskForm.waitFor({ state: "detached" });
+        const clickup = (
+          await post("trackers.list", { projectId: project.id })
+        ).connections.find((item: any) => item.label === "ClickUp · Website tasks");
+        assert.equal(clickup.health, "healthy");
+        assert.equal(clickup.configuration.targetId, "list1");
+        assert.equal(clickup.configuration.poll, true);
+        assert.deepEqual(
+          clickup.configuration.states.map((state: any) => state.remote),
+          ["Open", "Closed"],
+        );
+        assert.equal(
+          (await page.content()).includes(`synthetic-clickup-${device}`),
+          false,
+        );
+        await startGuided("clickup");
+        await projectTaskForm
+          .getByRole("combobox", { name: "Account", exact: true })
+          .selectOption(clickup.id);
+        assert.equal(
+          await projectTaskForm.getByLabel("API token", { exact: true }).count(),
+          0,
+        );
+        await projectTaskForm
+          .getByRole("button", { name: "Continue", exact: true })
+          .press("Enter");
+        await chooseDestination("Workspace", "team1");
+        await chooseDestination("Space", "space1");
+        await chooseDestination("Folder or list", "list_list2");
+        await projectTaskForm
+          .getByRole("button", { name: "Connect", exact: true })
+          .click();
+        await taskSettings
+          .getByRole("heading", { name: "ClickUp · Intake", exact: true })
+          .waitFor();
+        await projectTaskForm.waitFor({ state: "detached" });
+        const reused = (
+          await post("trackers.list", { projectId: project.id })
+        ).connections.find((item: any) => item.label === "ClickUp · Intake");
+        assert.equal(reused.health, "healthy");
+        assert.deepEqual(reused.configuration.states, []);
+        assert.equal(reused.configuration.poll, false);
+        checks.push(
+          `${device}: guided ClickUp preserves rejected-token and tab drafts, discovers named workspace/space/folder/list, focuses the next choice, auto-names, retains optional named mappings across Back, verifies save and reuses an encrypted account without showing its token`,
+        );
+        await startGuided("monday");
+        if (
+          await projectTaskForm
+            .getByRole("combobox", { name: "Account", exact: true })
+            .count()
+        )
+          await projectTaskForm
+            .getByRole("combobox", { name: "Account", exact: true })
+            .selectOption("");
+        await projectTaskForm
+          .getByLabel("API token", { exact: true })
+          .fill(`synthetic-monday-${device}`);
+        await projectTaskForm
+          .getByRole("button", { name: "Continue", exact: true })
+          .press("Enter");
+        await projectTaskForm
+          .getByRole("button", { name: "Load more", exact: true })
+          .click();
+        await projectTaskForm
+          .getByRole("combobox", { name: "Board", exact: true })
+          .locator('option[value="5001"]')
+          .waitFor({ state: "attached" });
+        await chooseDestination("Board", "5001");
+        await chooseDestination("Description column", "long_text");
+        await chooseDestination("Status column", "status");
+        await projectTaskForm
+          .getByRole("button", { name: "Connect", exact: true })
+          .waitFor();
+        assert.equal(
+          await projectTaskForm
+            .getByLabel("Connection name", { exact: true })
+            .isVisible(),
+          false,
+        );
+        const mondayCapture = `.local/integration-tabs-qa/${device}-guided-monday-ready.png`;
+        await projectTaskForm.screenshot({ path: mondayCapture });
+        screenshots.push(mondayCapture);
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        );
+        const saveKeys: string[] = [];
+        let loseMondayResponse = true;
+        await page.route("**/api/trackers.save", async (route) => {
+          const input = route.request().postDataJSON();
+          if (input.provider !== "monday") return route.continue();
+          saveKeys.push(input.idempotencyKey);
+          if (!loseMondayResponse) return route.continue();
+          loseMondayResponse = false;
+          const response = await route.fetch();
+          assert.equal(response.status(), 200);
+          await route.abort("failed");
+        });
+        await projectTaskForm
+          .getByRole("button", { name: "Connect", exact: true })
+          .click();
+        await projectTaskForm
+          .getByRole("alert")
+          .filter({ hasText: "Connection failed" })
+          .waitFor();
+        assert.equal(
+          (await post("trackers.list", { projectId: project.id })).connections.filter(
+            (item: any) => item.provider === "monday",
+          ).length,
+          1,
+        );
+        await projectTaskForm
+          .getByRole("button", { name: "Connect", exact: true })
+          .click();
+        await taskSettings
+          .getByRole("heading", {
+            name: "monday.com · Synthetic launch board",
+            exact: true,
+          })
+          .waitFor();
+        await projectTaskForm.waitFor({ state: "detached" });
+        await page.unroute("**/api/trackers.save");
+        assert.equal(saveKeys.length, 2);
+        assert.ok(saveKeys[0]);
+        assert.equal(saveKeys[0], saveKeys[1]);
+        assert.equal(
+          (await post("trackers.list", { projectId: project.id })).connections.filter(
+            (item: any) => item.provider === "monday",
+          ).length,
+          1,
+        );
+        const monday = (
+          await post("trackers.list", { projectId: project.id })
+        ).connections.find((item: any) => item.provider === "monday");
+        assert.equal(monday.health, "healthy");
+        assert.equal(monday.configuration.targetId, "5001");
+        assert.equal(monday.configuration.secondaryId, "long_text");
+        assert.equal(monday.configuration.statusColumn, "status");
+        assert.equal(monday.configuration.descriptionColumnType, "long_text");
+        assert.deepEqual(monday.configuration.states, []);
+        checks.push(
+          `${device}: monday setup loads another board page, chooses description/status columns by name and connects with automatic label and no status-mapping requirement; a committed save whose HTTP response is lost retries with the same key and creates exactly one connection`,
         );
         await page.goto(`${settingsUrl}#integrations-email`);
         await page
@@ -1622,6 +1995,7 @@ test(
         await signed.context.close();
       }
       assert.deepEqual(errors, []);
+      assert.equal(pacing.stats.overflow, 0);
       const html = await readFile("dist/web/index.html", "utf8");
       const bundle = html.match(/src="([^"]+\.js)"/)?.[1];
       await mkdir(".local", { recursive: true });
@@ -1637,6 +2011,7 @@ test(
             htmlSha256: createHash("sha256").update(html).digest("hex"),
             screenshots,
             providerLayouts,
+            apiPacing: pacing.stats,
           },
           null,
           2,

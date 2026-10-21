@@ -6,14 +6,16 @@ import type { Actor } from "../../../shared/contracts.js";
 import {
   trackerConfiguration,
   trackerCredential,
+  trackerDiscoverySelection,
   type TrackerCredential,
 } from "../../../shared/contracts/domains/trackers.js";
 import { Auth, accountLock, hash } from "../../auth.js";
 import { access, event, ownerOnly } from "../../access.js";
-import { checkRevision, threadRow } from "../../feedback.js";
+import { checkRevision, threadRow, retry, remember } from "../../feedback.js";
 import { fail } from "../../errors.js";
 import { credentialScope, sealCredential, openCredential } from "../credential-vault.js";
 import { TrackerClient, TrackerError, type TrackerTransport } from "./providers.js";
+import { discoverTracker } from "./discovery.js";
 
 export const connectionSummary = (r: any) => ({
   id: r.id,
@@ -79,6 +81,21 @@ export async function trackerClient(
   connection: any,
   transport?: TrackerTransport,
 ) {
+  const credential = await trackerCredentialValue(db, store, config, connection);
+  return new TrackerClient(
+    connection.provider,
+    trackerConfiguration.parse(connection.configuration),
+    credential,
+    transport,
+    config.openProjectAllowedOrigins,
+  );
+}
+async function trackerCredentialValue(
+  db: Database,
+  store: AssetStore,
+  config: Config,
+  connection: any,
+) {
   const plaintext = await openCredential(
     store,
     credentialScope(config, connection.provider, connection.id),
@@ -90,13 +107,24 @@ export async function trackerClient(
     credential = await (
       await import("./oauth.js")
     ).refreshTrackerOAuth(db, store, config, connection);
-  return new TrackerClient(
-    connection.provider,
-    trackerConfiguration.parse(connection.configuration),
-    credential,
-    transport,
-    config.openProjectAllowedOrigins,
-  );
+  return credential;
+}
+function assertAccountContext(source: any, configuration: any) {
+  if (!source) return;
+  const field = (
+    {
+      openproject: "instanceOrigin",
+      teamwork: "site",
+      productive: "workspaceId",
+      firmao: "workspaceId",
+    } as Record<string, string>
+  )[source.provider];
+  if (field && source.configuration[field] !== configuration?.[field])
+    fail(
+      "TRACKER_ACCOUNT_CONTEXT_CHANGED",
+      "This saved account belongs to another provider site or organization. Enter new credentials for that account.",
+      400,
+    );
 }
 export async function trackerOperation(
   db: Database,
@@ -116,6 +144,160 @@ export async function trackerOperation(
       name,
       input,
     );
+  const ownerSnapshot = (sourceId?: string, sourceRevision?: number) =>
+    db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await trackerHuman(tx, actor);
+      ownerOnly(a);
+      await access(tx, a, input.projectId, "maintain");
+      const source = sourceId ? await trackerConnection(tx, a, sourceId) : undefined;
+      if (
+        source &&
+        (source.provider !== input.provider || source.revision !== sourceRevision)
+      )
+        fail("CONFLICT", "Saved account changed; choose it again", 409);
+      assertAccountContext(
+        source,
+        name === "trackers.discover" ? input.selection : input.configuration,
+      );
+      return { a, source };
+    });
+  const savedRetry = async (tx: Database, a: Actor) => {
+    if (!input.idempotencyKey || input.connectionId) return null;
+    const prior = await retry(tx, a, "trackers.save", input);
+    if (!prior) return null;
+    const row = await trackerConnection(tx, a, prior);
+    if (row.project_id !== input.projectId || row.provider !== input.provider)
+      fail("CONFLICT", "Saved connection belongs to another destination", 409);
+    return connectionSummary(row);
+  };
+  if (name === "trackers.save" && input.idempotencyKey && !input.connectionId) {
+    const prior = await db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await trackerHuman(tx, actor);
+      ownerOnly(a);
+      await access(tx, a, input.projectId, "maintain");
+      return savedRetry(tx, a);
+    });
+    if (prior) return prior;
+  }
+  if (name === "trackers.accounts") {
+    return db.transaction(async (tx) => {
+      await accountLock(tx);
+      const a = await trackerHuman(tx, actor);
+      ownerOnly(a);
+      await access(tx, a, input.projectId, "maintain");
+      // A rotating Jira refresh token must have one canonical owner; copying it would invalidate siblings.
+      if (input.provider === "jira") return { accounts: [] };
+      const accounts = await tx.query(
+        "SELECT c.id,c.revision,c.label,c.configuration,p.data->>'name' AS project_name FROM tracker_connections c JOIN projects p ON p.id=c.project_id WHERE c.enabled=true AND c.provider=$1 ORDER BY c.created_at DESC,c.id LIMIT 100",
+        [input.provider],
+      );
+      return {
+        accounts: accounts.map((row) => ({
+          connectionId: row.id,
+          revision: row.revision,
+          label: row.label,
+          projectName: row.project_name ?? "Project",
+          selection: trackerDiscoverySelection.parse({
+            site: row.configuration.site,
+            cloudId: row.configuration.cloudId,
+            instanceOrigin: row.configuration.instanceOrigin,
+            ...(["productive", "firmao"].includes(input.provider)
+              ? { workspaceId: row.configuration.workspaceId }
+              : {}),
+          }),
+        })),
+      };
+    });
+  }
+  if (name === "trackers.discover") {
+    if (
+      !!input.credential === !!input.sourceConnectionId ||
+      !!input.sourceConnectionId !== !!input.sourceRevision
+    )
+      fail("VALIDATION", "Choose one account credential source");
+    const snapshot = await ownerSnapshot(input.sourceConnectionId, input.sourceRevision);
+    const credential =
+      input.credential ??
+      (await trackerCredentialValue(db, store, config, snapshot.source));
+    await ownerSnapshot(input.sourceConnectionId, input.sourceRevision);
+    let result;
+    try {
+      result = await discoverTracker(
+        input.provider,
+        input.selection,
+        credential,
+        input.cursor,
+        transport,
+        config.openProjectAllowedOrigins,
+      );
+    } catch (error) {
+      // Provider failures contain only stable codes, never response bodies or credentials.
+      if (error instanceof TrackerError)
+        fail(
+          error.code,
+          "Could not read this provider account. Check access and try again.",
+          400,
+        );
+      throw error;
+    }
+    await ownerSnapshot(input.sourceConnectionId, input.sourceRevision);
+    return result;
+  }
+  let verifiedSource: any;
+  let destinationVerified = false;
+  if (name === "trackers.save" && input.reuseConnectionId && input.provider === "jira") {
+    await ownerSnapshot(input.reuseConnectionId, input.reuseRevision);
+    fail("JIRA_OAUTH_REQUIRED", "Authorize Jira separately for this project.", 400);
+  }
+  if (name === "trackers.save" && (input.verifyDestination || input.reuseConnectionId)) {
+    const snapshot = await ownerSnapshot(input.reuseConnectionId, input.reuseRevision);
+    verifiedSource = snapshot.source;
+    let credential = input.credential;
+    if (!credential) {
+      const existing =
+        verifiedSource ??
+        (await db.transaction(async (tx) => {
+          await accountLock(tx);
+          const a = await trackerHuman(tx, actor);
+          ownerOnly(a);
+          const row = await trackerConnection(tx, a, input.connectionId, false);
+          if (
+            row.project_id !== input.projectId ||
+            row.provider !== input.provider ||
+            row.revision !== input.revision
+          )
+            fail("CONFLICT", "Connection changed; reload before saving", 409);
+          assertAccountContext(row, input.configuration);
+          return row;
+        }));
+      credential = await trackerCredentialValue(db, store, config, existing);
+    }
+    await ownerSnapshot(input.reuseConnectionId, input.reuseRevision);
+    try {
+      const target = await new TrackerClient(
+        input.provider,
+        input.configuration,
+        credential,
+        transport,
+        config.openProjectAllowedOrigins,
+      ).target();
+      if (
+        !target.name ||
+        input.configuration.states.some(
+          (mapping: any) => !target.states.some((state) => state.id === mapping.remote),
+        )
+      )
+        throw new TrackerError("TRACKER_MAPPING_INVALID");
+    } catch (error) {
+      if (error instanceof TrackerError)
+        fail(error.code, "Check the account and destination, then try again.", 400);
+      throw error;
+    }
+    await ownerSnapshot(input.reuseConnectionId, input.reuseRevision);
+    destinationVerified = true;
+  }
   if (name === "trackers.comments") {
     const check = () =>
       db.transaction(async (tx) => {
@@ -301,9 +483,13 @@ export async function trackerOperation(
     if (name === "trackers.save") {
       ownerOnly(a);
       await access(tx, a, input.projectId, "maintain");
+      const prior = await savedRetry(tx, a);
+      if (prior) return prior;
       const existing = input.connectionId
         ? await trackerConnection(tx, a, input.connectionId, false)
         : null;
+      if (existing && !input.credential && !input.reuseConnectionId)
+        assertAccountContext(existing, input.configuration);
       if (
         existing &&
         (existing.project_id !== input.projectId || existing.provider !== input.provider)
@@ -311,7 +497,18 @@ export async function trackerOperation(
         fail("VALIDATION", "A connection keeps its original project and provider");
       if (existing && existing.revision !== input.revision)
         fail("CONFLICT", "Connection changed; reload before saving", 409);
-      if (!existing && !input.credential)
+      const reuse = input.reuseConnectionId
+        ? await trackerConnection(tx, a, input.reuseConnectionId)
+        : null;
+      assertAccountContext(reuse, input.configuration);
+      if (
+        reuse &&
+        (reuse.provider !== input.provider ||
+          reuse.revision !== input.reuseRevision ||
+          reuse.revision !== verifiedSource?.revision)
+      )
+        fail("CONFLICT", "Saved account changed; choose it again", 409);
+      if (!existing && !input.credential && !reuse)
         fail("VALIDATION", "A provider credential is required");
       if (
         !existing &&
@@ -334,9 +531,9 @@ export async function trackerOperation(
           JSON.parse(
             await openCredential(
               store,
-              credentialScope(config, input.provider, id),
-              existing.credential_key,
-              existing.credential,
+              credentialScope(config, input.provider, reuse?.id ?? id),
+              (reuse ?? existing).credential_key,
+              (reuse ?? existing).credential,
             ),
           ),
         );
@@ -377,16 +574,17 @@ export async function trackerOperation(
           );
         throw error;
       }
-      const sealed = input.credential
-        ? await sealCredential(
-            store,
-            credentialScope(config, input.provider, id),
-            JSON.stringify(credential),
-          )
-        : { objectKey: existing.credential_key, envelope: existing.credential };
+      const sealed =
+        input.credential || reuse
+          ? await sealCredential(
+              store,
+              credentialScope(config, input.provider, id),
+              JSON.stringify(credential),
+            )
+          : { objectKey: existing.credential_key, envelope: existing.credential };
       const row = await tx.one(
-        `INSERT INTO tracker_connections(id,project_id,provider,label,configuration,credential_key,credential,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
-       ON CONFLICT(id) DO UPDATE SET label=excluded.label,configuration=excluded.configuration,credential_key=excluded.credential_key,credential=excluded.credential,revision=tracker_connections.revision+1,health='unchecked',error_code=NULL,checked_at=NULL RETURNING *`,
+        `INSERT INTO tracker_connections(id,project_id,provider,label,configuration,credential_key,credential,created_by,health,checked_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,CASE WHEN $9='healthy' THEN now() ELSE NULL END)
+       ON CONFLICT(id) DO UPDATE SET label=excluded.label,configuration=excluded.configuration,credential_key=excluded.credential_key,credential=excluded.credential,revision=tracker_connections.revision+1,health=excluded.health,error_code=NULL,checked_at=excluded.checked_at RETURNING *`,
         [
           id,
           input.projectId,
@@ -396,11 +594,13 @@ export async function trackerOperation(
           sealed.objectKey,
           JSON.stringify(sealed.envelope),
           a.userId,
+          destinationVerified ? "healthy" : "unchecked",
         ],
       );
       await event(tx, a, input.projectId, id, "tracker.configured", {
         provider: input.provider,
       });
+      if (!existing) await remember(tx, a, "trackers.save", input, id);
       return connectionSummary(row);
     }
     if (name === "trackers.enable") {

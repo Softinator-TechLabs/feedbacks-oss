@@ -197,6 +197,8 @@ The [project board](src/web/board/index.tsx) groups review cards into counted la
 
 The [tracker](src/web/integrations/trackers.tsx), [notification channel](src/web/integrations/channels.tsx) and [time connection](src/web/integrations/time-tracking.tsx) editors use native discard confirmations before an in-page switch replaces an unsaved draft. Cancel keeps the current editor and values in place. Keep these guards alongside the existing navigation protection.
 
+New task connections use an account step followed by named destination choices. Generate the connection name and keep raw IDs, status mappings and polling out of the normal path. Saved account reuse shows a label and source project, never its credential. Keep first-time provider authorization explicit; provider browser sign-in alone is not a connected account. Manual configuration remains available under Advanced setup.
+
 ## Do's and Don'ts
 
 ### Do

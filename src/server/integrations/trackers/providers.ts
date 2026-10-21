@@ -184,6 +184,7 @@ export class TrackerClient {
       method,
       headers,
       redirect: "error",
+      signal: AbortSignal.timeout(15000),
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     };
     // Keep authorization failures outside the network catch: no request has been sent.
@@ -214,12 +215,30 @@ export class TrackerClient {
         Math.min(3600, Math.max(1, Number(response.headers.get("retry-after")) || 60)),
       );
     }
-    const bytes = await response.arrayBuffer();
-    if (bytes.byteLength > 2_000_000)
-      throw new TrackerError("TRACKER_RESPONSE_TOO_LARGE", write);
-    if (!bytes.byteLength) return {};
+    const reader = response.body?.getReader();
+    if (!reader) return {};
+    const chunks: Uint8Array[] = [];
+    let size = 0;
     try {
-      return JSON.parse(Buffer.from(bytes).toString("utf8"));
+      for (;;) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > 2_000_000) {
+          await reader.cancel();
+          throw new TrackerError("TRACKER_RESPONSE_TOO_LARGE", write);
+        }
+        chunks.push(chunk.value);
+      }
+    } catch (error) {
+      if (error instanceof TrackerError) throw error;
+      throw new TrackerError("TRACKER_NETWORK", write);
+    } finally {
+      reader.releaseLock();
+    }
+    if (!size) return {};
+    try {
+      return JSON.parse(Buffer.concat(chunks).toString("utf8"));
     } catch {
       throw new TrackerError("TRACKER_INVALID_RESPONSE", write);
     }
@@ -618,18 +637,34 @@ export class TrackerClient {
       case "monday": {
         const raw = (
           await this.graphql(
-            "query($ids:[ID!]!){boards(ids:$ids){name columns{id title settings_str}}}",
+            "query($ids:[ID!]!){boards(ids:$ids){name columns{id title type settings}}}",
             { ids: [c.targetId] },
           )
         ).boards[0];
+        const description = raw?.columns?.find((v: any) => v.id === c.secondaryId);
+        if (
+          !description ||
+          !["text", "long_text"].includes(description.type) ||
+          (description.type === "long_text" && !c.descriptionColumnType) ||
+          (c.descriptionColumnType && c.descriptionColumnType !== description.type)
+        )
+          throw new TrackerError("TRACKER_DESCRIPTION_COLUMN_REQUIRED");
         const column = raw.columns.find((v: any) => v.id === c.statusColumn);
-        const labels = JSON.parse(column?.settings_str ?? "{}").labels ?? {};
+        if (column?.type !== "status") throw new TrackerError("TRACKER_MAPPING_INVALID");
+        const labels = column?.settings?.labels ?? [];
         return {
           name: raw.name,
-          states: Object.values(labels).map((name) => ({
-            id: String(name),
-            name: String(name),
-          })),
+          states: labels
+            .filter(
+              (entry: any) =>
+                typeof entry.label === "string" &&
+                entry.label.trim() &&
+                entry.is_deactivated !== true,
+            )
+            .map((entry: any) => ({
+              id: entry.label,
+              name: entry.label,
+            })),
         };
       }
       case "trello": {
@@ -761,13 +796,37 @@ export class TrackerClient {
         ).id;
         break;
       case "monday": {
+        let descriptionType = c.descriptionColumnType;
+        if (!descriptionType) {
+          // Existing saved connections predate the typed description setting. Resolve it
+          // with a read, then keep the normal authorization boundary immediately before mutation.
+          const boards = (
+            await this.graphql(
+              "query($ids:[ID!]!){boards(ids:$ids){id columns{id type}}}",
+              { ids: [c.targetId] },
+            )
+          ).boards;
+          const board =
+            Array.isArray(boards) && boards.find((v: any) => String(v.id) === c.targetId);
+          const column = board?.columns?.find((v: any) => v.id === c.secondaryId);
+          if (!column || !["text", "long_text"].includes(column.type))
+            throw new TrackerError("TRACKER_DESCRIPTION_COLUMN_REQUIRED");
+          descriptionType = column.type;
+        }
+        if (descriptionType === "long_text" && body.length > 2000)
+          throw new TrackerError("MONDAY_DESCRIPTION_TOO_LONG");
         const data = (
           await this.graphql(
             "mutation($board:ID!,$name:String!,$values:JSON){create_item(board_id:$board,item_name:$name,column_values:$values){id}}",
             {
               board: c.targetId,
               name: title,
-              values: c.secondaryId ? JSON.stringify({ [c.secondaryId]: body }) : "{}",
+              values: c.secondaryId
+                ? JSON.stringify({
+                    [c.secondaryId]:
+                      descriptionType === "long_text" ? { text: body } : body,
+                  })
+                : "{}",
             },
             true,
           )
