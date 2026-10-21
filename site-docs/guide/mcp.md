@@ -64,6 +64,8 @@ Install Node.js 22.12+ or 24 and Git on the client machine. Install and sign in 
 
 These commands use the [public Feedbacks marketplace](https://github.com/Softinator-TechLabs/feedbacks-plugins); no server checkout or `npm ci` is needed.
 
+Official directory status, checked **21 October 2026**: Claude's submitted 0.2.2 package passed its security scan and its publication request is waiting for an Anthropic reviewer. OpenAI local-MCP submission access is pending review. Neither official listing is live, and no publication date is confirmed. The direct commands below work independently of those reviews.
+
 **Claude Code**
 
 ```sh

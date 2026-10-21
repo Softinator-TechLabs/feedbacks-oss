@@ -45,6 +45,17 @@ Production requires HTTPS, PostgreSQL and private S3-compatible storage. Follow 
 
 For a registry deployment, use the [public Docker Hub image](https://hub.docker.com/r/softinator/feedbacks) and [registry Compose](compose.registry.yaml). The [illustrated storage guide](site-docs/guide/storage.md) maps the five prerequisites to their environment fields. Developers can install the bundled [Claude Code and Codex plugins](https://github.com/Softinator-TechLabs/feedbacks-plugins) in two commands, then connect their own scoped key.
 
+## Plugin directory status
+
+Checked **21 October 2026**. [Direct Claude Code and Codex installation](site-docs/guide/mcp.md#native-plugins) is available from our public marketplace.
+
+| Official directory | Current status                                                                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code        | Version 0.2.2 passed its security scan. Publication was requested and is waiting for an Anthropic reviewer; it is not live in the official directory.     |
+| OpenAI             | Local command/stdio MCP submission access is pending OpenAI review. Official directory submission and publication are not yet available for this package. |
+
+These reviews have no confirmed publication date. Use the direct installation instructions today; directory status does not change the self-hosted Apache-2.0 product. See [agent setup and distribution boundaries](docs/agents.md#official-directory-status).
+
 ## Browser extension
 
 Build with `npm run build:extension`. Load the `dist/extension/unpacked/` directory from Chrome's **Load unpacked**, or use the ZIP in `dist/extension/`. Enter your own Feedbacks server address and approve pairing in the web application. Website-wide permission is a separate optional action. Existing saved server connections remain available.

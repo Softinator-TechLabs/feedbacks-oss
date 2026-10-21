@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.3 — 2026-10-21
+
+- Refresh the locked MCP server/client SDK and Vite build tooling to patched compatible versions; the current lockfile passes `npm audit`.
+- Package the current application with extension 0.1.60 and Claude Code/Codex plugins 0.2.3, including context-efficient task reads and updated review guidance.
+- Repair review controls inside native modal previews and clarify stale project access and General-project fallback.
+- Add optional browser sign-in for HTTP MCP clients with own-server OAuth; local stdio plugins and personal project-scoped keys remain supported.
+- Keep recording, diagnostic and public-website documentation aligned with the current review workflow. State official plugin-directory review status separately from direct installation.
+
+### Upgrade from 0.2.1 or the unpublished 0.2.2 preparation
+
+Back up PostgreSQL and private object storage, and verify a restore before upgrading. Preserve the database volume, `ORGANIZATION_ID`, storage bucket/prefix and existing encryption secrets. Pin the new application image by its published digest; pull it and run `docker compose up -d --wait` using the existing private environment. Startup applies pending migrations. Verify sign-in, one synthetic screenshot upload/readback and an allowed agent read before handing the server back to the team. Do not use `docker compose down -v`.
+
+OAuth is opt-in (`MCP_OAUTH_ENABLED=true`) and requires your own HTTPS deployment; existing URL/key connections continue to work. Existing personal keys retain their original projects and scopes. The extension retains saved server connections. This application release does not submit or publish an extension to the Chrome Web Store or a plugin to an official directory.
+
+### Compatibility and known limits
+
+One installation serves one organization; public registration, billing, SSO and shared-database customer tenancy are not included. Recording coverage depends on the explicitly enabled channels and browser support. Keep the previous image digest and a compatible database/storage backup pair for recovery; an older image is not guaranteed to understand a migrated database. See [operations](docs/operations.md), [self-hosting](docs/self-hosting.md) and [release guidance](docs/releasing.md).
+
 ## 0.2.1 — 2026-10-01
 
 - Build native Claude Code and Codex plugin packages from the same MCP adapter and skills, with independent platform manifests and versioned release checksums.
