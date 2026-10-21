@@ -62,6 +62,11 @@ export default defineConfig({
           { text: "Owner: projects and people", link: "/guide/team-setup" },
           { text: "Capture and review", link: "/guide/review-feedback" },
           { text: "Install, pin and send", link: "/guide/chrome-extension" },
+          {
+            text: "Platform compatibility",
+            link: "/reference/manual/platform-compatibility",
+          },
+          { text: "Upcoming", link: "/reference/manual/upcoming" },
         ],
       },
       {

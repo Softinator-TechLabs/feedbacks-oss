@@ -2,6 +2,8 @@
 
 The [iOS Swift package](../sdk/ios/Package.swift) and [Android Kotlin library module](../sdk/android/build.gradle.kts) let a **signed-in team reviewer** send feedback and a screenshot from inside their own app. They use the same [public HTTP API](api.md) as the Chrome extension. This does not give anonymous app users a feedback widget, capture another app, or record the whole device.
 
+For current integration status, OS capture limits and proposed standalone clients, see [platform compatibility](platform-compatibility.md) and [Upcoming](upcoming.md). The existing clients do not automatically collect host-app logs, network traces or crash reports.
+
 ## Prepare a project and connect a device
 
 1. Create a Feedbacks project whose approved origin matches a canonical HTTPS URL for each app screen, such as `https://app.example.com/screens/cart`. The URL is a review location, preferably a real universal/app link. It is not a request to load that page. A project set to **Any website** also accepts a canonical HTTPS screen URL, but project membership still applies.

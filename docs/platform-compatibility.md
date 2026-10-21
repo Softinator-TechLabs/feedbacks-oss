@@ -1,0 +1,72 @@
+# Platform compatibility and capture limits
+
+Reviewed 2026-10-21. This page separates implemented Feedbacks clients from the feasibility of future clients. Source and synthetic tests do not certify every OS, browser or physical device. See [verification](verification.md) for the evidence required before claiming support, and [Upcoming](upcoming.md) for proposed work.
+
+## Available integrations
+
+| Target                                      | Current Feedbacks integration                                                                         | Boundary and evidence                                                                                                                                           |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Websites in desktop Chrome                  | [Chrome extension](extension.md): screenshot points, tab video, session replay and debugging evidence | Capture is scoped to the selected website/tab and project. Packaged browser tests and installed-client verification are separate gates.                         |
+| Your own iOS app                            | [Swift integration kit](mobile-sdk.md) for paired team reviewers                                      | Captures the host app's supplied view and submits a screenshot/comment. Real-device pairing, capture and upload remain unverified.                              |
+| Your own Android app                        | [Kotlin integration kit](mobile-sdk.md), API 26 or newer                                              | Captures the host app's window with PixelCopy. A compile-only host and HTTP contract tests exist; real-device operation remains unverified.                     |
+| Other Windows, Ubuntu or macOS applications | Proposed                                                                                              | No standalone Feedbacks desktop companion or native window-capture workflow is provided. Running Chrome on an OS does not establish native-app capture support. |
+| Other Android or iOS applications           | Proposed                                                                                              | No standalone Feedbacks mobile companion, share extension or broadcast extension is provided. The existing SDKs capture only their host app.                    |
+
+The extension's [session recordings](session-replay.md) can include DOM replay, activity, console, network, performance and environment evidence. Detailed capture uses Chrome debugger attachment during an explicitly started recording; bounded network bodies are a separate option. Channel coverage, protected pages and browser limits still apply. The legacy opt-in screenshot diagnostic packet has a narrower format. Neither path collects another native application's internal state.
+
+## Feasibility of future clients
+
+The following matrix describes what could be built without changing the target app. It is **not current Feedbacks availability**. Assume a normal production device, explicit user action and OS-approved access, without root, jailbreak or developer-tool privileges.
+
+**Capture** means a supported OS capture path; **Limited** means permission, toolkit, file access or additional setup is required; **Import** means a user supplies an exported file; **Integration** means cooperation from the target app or backend is needed.
+
+| Evidence                                      | Windows                                     | Ubuntu/Linux                                | macOS                                       | Android                                                        | iOS                                                           |
+| --------------------------------------------- | ------------------------------------------- | ------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------- |
+| Screenshot                                    | Capture                                     | Capture                                     | Capture                                     | Capture, except protected surfaces                             | System screenshot shared/imported                             |
+| Screen/window video                           | Capture                                     | Capture; desktop/backend dependent          | Capture                                     | User-approved projection                                       | User-started broadcast or imported recording                  |
+| Pins, arrows and comments on a captured image | Feasible                                    | Feasible                                    | Feasible                                    | Feasible                                                       | Feasible                                                      |
+| Basic OS/device/display context               | Feasible                                    | Feasible                                    | Feasible                                    | Feasible                                                       | Feasible within public APIs                                   |
+| Target app identity/version                   | Limited                                     | Limited                                     | Limited                                     | Limited by package visibility                                  | Usually supplied by the user/app                              |
+| Structured buttons, text and UI tree          | Limited: UI Automation                      | Limited: AT-SPI/toolkit support             | Limited: Accessibility APIs                 | Limited: enabled Accessibility service and policy requirements | No general cross-app inspection API for an ordinary companion |
+| Target app logs                               | Limited to accessible files/exports         | Limited to accessible files/journal/exports | Limited to accessible logs/exports          | Import or app integration                                      | Import or app integration                                     |
+| Crash report/stack                            | Limited: configured collection/import       | Limited: available reports/import           | Limited: available reports/import           | Import or developer/app integration                            | Import or developer/app integration                           |
+| Target process CPU/memory                     | Limited by process access                   | Limited by process access                   | Limited by process access                   | No general reliable companion access                           | No general companion access                                   |
+| Full HTTPS request/response bodies            | Integration or compatible debug proxy setup | Integration or compatible debug proxy setup | Integration or compatible debug proxy setup | Integration or compatible debug proxy setup                    | Integration or compatible debug proxy setup                   |
+| Backend logs/database context                 | Backend integration                         | Backend integration                         | Backend integration                         | Backend integration                                            | Backend integration                                           |
+
+Capture can omit secure/system surfaces and protected media. Android's `FLAG_SECURE` can block screenshots and projection. An Accessibility tree contains only what the target app/toolkit exposes; it is not a universal DOM. Image pins annotate a saved image. Reattaching a pin to the same live native control requires stable identifiers or reliable app-specific matching.
+
+Screen capture does not grant log, filesystem, debugger or network-decryption access. Packet/VPN capture does not itself decrypt HTTPS; trust configuration and certificate pinning can prevent proxy inspection. Desktop crash collection may need deliberate setup: Windows local dump collection, for example, is disabled by default and enabling it requires administrator privileges. Imported dumps and logs still need appropriate parsers and authorization in a future Feedbacks client.
+
+Wide tables scroll horizontally when the page is narrow.
+
+## Proposed capture routes
+
+| Client                | Candidate mechanism                                                    | Additional verification                                                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop browser pilot | User-selected window/display through the Screen Capture API            | Supported desktop Chrome on Windows, macOS and Ubuntu; real picker, denial, stop and upload behavior. This is a new workflow, not the existing tab-bound recorder.    |
+| Windows companion     | Windows Graphics Capture; optional UI Automation context               | Signed packaging, process/privilege boundaries, protected surfaces and physical desktop acceptance.                                                                   |
+| Ubuntu companion      | XDG ScreenCast portal and PipeWire on Wayland; separate X11 handling   | Desktop/compositor/backend combinations, window-source availability and packaging.                                                                                    |
+| macOS companion       | ScreenCaptureKit; optional Accessibility context                       | OS capture/Accessibility permission paths, signed distribution and actual app windows.                                                                                |
+| Android companion     | Screenshot sharing and MediaProjection                                 | Consent for each projection session, foreground-service lifecycle, secure surfaces and real devices. Accessibility is a separate optional design, with policy review. |
+| iOS companion         | Screenshot/video sharing first; optional ReplayKit broadcast extension | Share/broadcast lifecycle, explicit user start, app/extension storage boundaries and real devices.                                                                    |
+
+## When the target app integrates an SDK
+
+A host integration can supply app/build/screen identity, selected logs and errors, recent navigation/action events, HTTP status/timing/request IDs, and platform-specific crash/performance diagnostics. These need explicit instrumentation and bounded collection. They are **future diagnostic work**, not features of the existing screenshot-only mobile integration kits.
+
+Network payloads require deliberate selection and redaction. Backend logs need a server integration and request/trace correlation. Crash symbolication needs matching symbols/build metadata. Events that were not recorded cannot be recovered retrospectively. No SDK guarantees every crash, request or performance metric on every platform.
+
+The intended product boundary is a common project/thread/evidence workflow, with platform capture adapters and optional app diagnostics. Native app identity and capture provenance must be represented explicitly; native pixels must not be paired with unrelated browser DOM/network evidence or use fabricated URLs to bypass project authorization.
+
+## Primary sources and applicability
+
+Accessed 2026-10-21. These sources establish platform mechanisms and restrictions, not Feedbacks implementation or Store approval.
+
+- Google Chrome, [screen-sharing controls](https://developer.chrome.com/docs/web-platform/screen-sharing-controls): desktop browser window/display selection and recording as a pilot mechanism.
+- Microsoft, [screen capture](https://learn.microsoft.com/en-us/windows/apps/develop/media-authoring-processing/screen-capture), [UI Automation security](https://learn.microsoft.com/en-us/dotnet/framework/ui-automation/ui-automation-security-overview) and [user-mode dumps](https://learn.microsoft.com/en-us/windows/win32/wer/collecting-user-mode-dumps): Windows capture, privilege boundaries and deliberate crash-collection setup.
+- XDG Desktop Portal maintainers, [ScreenCast](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.ScreenCast.html), and GNOME, [accessibility architecture](https://gnome.pages.gitlab.gnome.org/at-spi2-core/devel-docs/architecture.html): Linux portal/PipeWire capture and toolkit-provided UI information.
+- Apple, [ScreenCaptureKit](https://developer.apple.com/documentation/screencapturekit), [Accessibility attributes](https://developer.apple.com/documentation/applicationservices/1462085-axuielementcopyattributevalue), [ReplayKit security](https://support.apple.com/guide/security/replaykit-security-seca5fc039dd/web) and [runtime isolation](https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web): macOS capture, incomplete Accessibility support, user-approved iOS broadcasts and sandbox boundaries.
+- Google Android, [MediaProjection](https://developer.android.com/media/grow/media-projection), [secure activities](https://developer.android.com/security/fraud-prevention/activities), [log access](https://developer.android.com/privacy-and-security/risks/log-info-disclosure) and [network security configuration](https://developer.android.com/privacy-and-security/security-config): per-session consent, protected pixels, restricted logs and TLS trust/pinning.
+- Google, [Accessibility services](https://developer.android.com/guide/topics/ui/accessibility/views/service) and [Play Accessibility policy](https://support.google.com/googleplay/android-developer/answer/10964491?hl=en): optional cross-app UI access requires its own consent and distribution review.
+- Apple, [MetricKit](https://developer.apple.com/documentation/metrickit): a host-app diagnostics mechanism, not permission to inspect other apps.

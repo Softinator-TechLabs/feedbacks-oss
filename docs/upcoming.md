@@ -1,0 +1,25 @@
+# Upcoming
+
+Cross-platform app feedback is proposed work. The items below are not released features, installation instructions or delivery-date commitments. Check [platform compatibility](platform-compatibility.md) for current integrations and the distinction between visual capture and internal diagnostics.
+
+## Proposed sequence
+
+| Work                       | Intended outcome                                                                                 | Status                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| Desktop app screenshots    | Choose an app window/display, annotate or mask its screenshot, and send feedback to your project | Proposed                                           |
+| Mobile SDK verification    | Complete pairing, screenshot review and upload in real iOS/Android host apps                     | Source available; real-device verification pending |
+| Desktop companions         | Start capture from a shortcut, tray or menu bar on Windows, Ubuntu and macOS                     | Proposed                                           |
+| Mobile sharing and capture | Share screenshots/video to Feedbacks, with optional Android projection and iOS broadcasting      | Proposed                                           |
+| App-integrated diagnostics | Include selected logs, recent actions, network failures and platform crash/performance context   | Proposed                                           |
+
+The sequence prioritizes a complete visual feedback workflow before adding deeper OS-specific integrations. Scope can change after the desktop pilot and real-device testing. Detailed acceptance criteria are in the [cross-platform capture plan](plans/cross-platform-capture.md).
+
+## What stays consistent
+
+Use the same organization installation, project access, review threads, private evidence and agent workflow. Each client must enforce explicit capture, preview before submission, current server authorization, revocable credentials and recoverable retries. Existing browser and mobile integrations must continue to work.
+
+## Platform boundaries
+
+Universal feedback collection does not imply universal debugging privileges. Native screen pixels do not reveal another app's internal logs, HTTPS bodies, database state or stack traces. App/backend integrations are needed for those channels. Historical activity exists only when collection was already enabled. Protected surfaces and OS restrictions remain applicable.
+
+Only move a proposed item to available after implementation and its stated acceptance checks have evidence. A source package, successful compilation, synthetic stream, published ZIP and Store-installed application are distinct milestones.

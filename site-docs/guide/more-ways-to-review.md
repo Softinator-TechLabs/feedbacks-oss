@@ -27,3 +27,5 @@ Guest links, widgets and surveys need configured Turnstile. Choose expiry and re
 Use assignments, work-status filters, categories, tags, saved views and individual point progress. Link delivery evidence and verify the result before resolving. [Work through a review queue](/guide/review-feedback).
 
 For custom integrations, [API, MCP and CLI](/reference/api-cli) provide authorized reads and writes through the same server operations.
+
+For native app capture, check [platform compatibility](/reference/manual/platform-compatibility) and [Upcoming](/reference/manual/upcoming). Standalone desktop/mobile companions are proposed; the existing mobile SDKs capture only their host app and still need real-device verification.
