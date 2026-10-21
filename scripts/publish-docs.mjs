@@ -13,6 +13,7 @@ const queue = [
   "generated/operations",
   "review-workflow",
   "project-routing",
+  "project-board",
   "agent-setup",
   "agents",
   "mcp-contract",
