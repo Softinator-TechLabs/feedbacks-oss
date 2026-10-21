@@ -4,6 +4,7 @@ import type { Actor } from "../shared/contracts.js";
 import type { AnalyticsInput, AnalyticsReport } from "../shared/analytics.js";
 import { analyticsDimensions, analyticsMetrics } from "../shared/analytics.js";
 import { analyticsInputs } from "../shared/contracts/domains/analytics.js";
+import { workPlanSchema, type WorkPlan } from "../shared/contracts/common.js";
 import type { Database } from "./db.js";
 import { access } from "./access.js";
 import { fail } from "./errors.js";
@@ -24,6 +25,8 @@ export type AnalyticsRecord = {
   columns?: BoardColumn[];
   tags: string[];
   priority: string;
+  topPriority?: boolean;
+  workPlan?: unknown;
   origin: string;
   page: string;
   device: string;
@@ -64,6 +67,7 @@ export function buildAnalytics(
   input: AnalyticsInput,
   generatedAt = new Date().toISOString(),
   projectCount = new Set(records.map((row) => row.projectId)).size,
+  projectIdentities?: Array<{ id: string; name: string }>,
 ): AnalyticsReport {
   const from = instant(input.from),
     to = instant(input.to),
@@ -123,15 +127,48 @@ export function buildAnalytics(
   const firstResponse: number[] = [],
     firstTriage: number[] = [],
     firstResolution: number[] = [];
+  const plans = new Map<string, WorkPlan | null>();
+  const localToday = new Map<string, string>();
+  const currentProjects = new Map<string, AnalyticsReport["currentProjects"][number]>(
+    (projectIdentities ?? []).map((project) => [
+      project.id,
+      {
+        projectId: project.id,
+        projectName: project.name,
+        pending: 0,
+        overdue: 0,
+        highPriority: 0,
+        stalled: 0,
+      },
+    ]),
+  );
   function add(metric: Metric, record: AnalyticsRecord, at?: number) {
     selected[metric].add(record.id);
-    if (at !== undefined && metric !== "backlog" && metric !== "stalled") {
+    if (
+      at !== undefined &&
+      metric !== "backlog" &&
+      metric !== "stalled" &&
+      metric !== "overdue" &&
+      metric !== "high_priority"
+    ) {
       const bucket = trend.get(day(at));
       if (bucket) bucket[metric]++;
     }
   }
   for (const record of records) {
     const created = instant(record.createdAt);
+    const parsedPlan = workPlanSchema.safeParse(record.workPlan);
+    const plan = parsedPlan.success ? parsedPlan.data : null;
+    plans.set(record.id, plan);
+    const project = currentProjects.get(record.projectId) ?? {
+      projectId: record.projectId,
+      projectName: record.projectName,
+      pending: 0,
+      overdue: 0,
+      highPriority: 0,
+      stalled: 0,
+    };
+    currentProjects.set(record.projectId, project);
     const columns = record.columns ?? defaultBoardConfiguration.columns;
     const columnFor = (state: string) =>
       columns.find((column) => column.states.some((item) => item === state));
@@ -211,6 +248,36 @@ export function buildAnalytics(
     });
     if (!record.archived && activeStates.has(record.state)) {
       add("backlog", record);
+      project.pending++;
+      if (
+        record.priority === "high" ||
+        record.priority === "top" ||
+        record.topPriority === true
+      ) {
+        add("high_priority", record);
+        project.highPriority++;
+      }
+      if (plan?.scheduledFor) {
+        let today = localToday.get(plan.timeZone);
+        if (!today) {
+          const parts = Object.fromEntries(
+            new Intl.DateTimeFormat("en", {
+              timeZone: plan.timeZone,
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            })
+              .formatToParts(new Date(now))
+              .map((part) => [part.type, part.value]),
+          );
+          today = `${parts.year.padStart(4, "0")}-${parts.month}-${parts.day}`;
+          localToday.set(plan.timeZone, today);
+        }
+        if (plan.scheduledFor < today) {
+          add("overdue", record);
+          project.overdue++;
+        }
+      }
       // Interpret retained work history through the current board mapping. A
       // transition between states in one column does not restart column dwell.
       let stateSince = created,
@@ -220,7 +287,10 @@ export function buildAnalytics(
         if (column !== prior) stateSince = instant(entry.at);
         prior = column;
       }
-      if (now - stateSince >= 7 * dayMs) add("stalled", record);
+      if (now - stateSince >= 7 * dayMs) {
+        add("stalled", record);
+        project.stalled++;
+      }
     }
     if (inPeriod(created)) {
       const response = instant(record.firstResponse);
@@ -285,17 +355,25 @@ export function buildAnalytics(
           column: dimensions.get(record.id)!.column[0].label,
           createdAt: record.createdAt,
           ageDays: Math.max(0, Math.floor((now - instant(record.createdAt)) / dayMs)),
+          priority: record.priority || "normal",
+          topPriority: record.topPriority === true || record.priority === "top",
+          workPlan: plans.get(record.id) ?? null,
         })),
     };
   }
   return {
     generatedAt,
     period: { from: input.from, to: input.to, timeZone: input.timeZone },
-    projectCount,
+    projectCount: projectIdentities?.length ?? projectCount,
     coverage: "current_records_and_recorded_history",
     counts: Object.fromEntries(
       analyticsMetrics.map((metric) => [metric, selected[metric].size]),
     ) as AnalyticsReport["counts"],
+    currentProjects: [...currentProjects.values()].sort(
+      (a, b) =>
+        a.projectName.localeCompare(b.projectName) ||
+        a.projectId.localeCompare(b.projectId),
+    ),
     durations: {
       firstResponse: distribution(firstResponse),
       firstTriage: distribution(firstTriage),
@@ -308,6 +386,7 @@ export function buildAnalytics(
       "Period bounds are inclusive from and exclusive to. Period totals count distinct threads; daily totals count distinct threads per local day and can sum above period totals.",
       "Incoming means created in the period. Triaged means first recorded organization, planning, assignment, priority change or departure from Open; classification supplied during capture alone has no separate recorded triage time. Reopened means a recorded closed-to-active transition. Resolved, declined and duplicate count recorded transitions independently.",
       "Backlog, state, column, age, assignee and stalled are current non-archived active threads, independent of the date filter. Stalled means at least seven elapsed days in the current board column, deriving retained status history through the current column mapping. Changes between states within one column do not reset dwell. This is not historical board-configuration reconstruction or time since discussion activity.",
+      "Pending is the current backlog. Project pending, overdue, high-priority and stalled counts include currently accessible zero-task projects and ignore the historical date period. Overdue is a valid saved dated work plan scheduled before today's calendar date in that plan's timezone; today, future, Later, unscheduled and invalid plans are excluded. It describes a saved planning date, not a separate deadline. High priority means current High priority or the top-priority flag. Overdue and high priority are overlapping subsets of pending.",
       "Category, tag, priority, project, origin, page, browser and device describe the incoming cohort using current metadata. Tag and assignee rows overlap. Page URLs omit credentials, query strings and fragments. Browser was not collected and is Unknown.",
       "Durations are elapsed hours from creation for threads created in the period, to their first currently retained response, first recorded triage or first resolution, observed up to generation time. Incomplete observations are excluded; samples under five are marked. Median averages the middle pair; P90 uses nearest rank.",
       "Response means a retained response-intent reply by another participant (or a legacy agent reply). Deleted replies and threads disappear from analytics. Edits, moves, archival and later classification changes can change historical reports; original first-triage events may be unavailable after a project move.",
@@ -347,7 +426,7 @@ export async function analyticsGet(
       "Select a project to analyze a workspace with more than 1,000 projects",
     );
   const generatedAt = new Date().toISOString();
-  if (!projects.length) return buildAnalytics([], input, generatedAt, 0);
+  if (!projects.length) return buildAnalytics([], input, generatedAt, 0, []);
   const projectIds = projects.map((project) => project.id);
   const condition = `t.project_id=ANY($1::uuid[]) AND t.created_at <= $3::timestamptz
     AND (t.created_at >= $2::timestamptz OR t.updated_at >= $2::timestamptz OR
@@ -366,6 +445,7 @@ export async function analyticsGet(
     `SELECT t.id,t.project_id,t.created_at,
     t.data->>'category' AS category,t.data->'tags' AS tags,t.data->>'archived' AS archived,
     COALESCE(t.data->'work'->>'state','open') AS state,t.data->'workPlan'->>'priority' AS priority,
+    t.data->'workPlan' AS work_plan,
     t.data->>'topPriority' AS top_priority,t.data->'context'->>'origin' AS origin,
     t.data->'context'->>'url' AS page,t.data->'context'->>'deviceClass' AS device,
     (SELECT jsonb_agg(jsonb_build_object('state',h->>'state','at',h->>'at','duplicate',h->>'duplicateOf' IS NOT NULL)) FROM jsonb_array_elements(COALESCE(t.data->'work'->'history','[]'::jsonb)) h) AS history,
@@ -429,6 +509,8 @@ export async function analyticsGet(
           ?.columns,
         tags: row.tags ?? [],
         priority: row.top_priority === "true" ? "top" : (row.priority ?? "normal"),
+        topPriority: row.top_priority === "true",
+        workPlan: row.work_plan,
         origin: row.origin ?? "Unknown",
         page: row.page ?? "",
         device: row.device ?? "Unknown",
@@ -441,5 +523,6 @@ export async function analyticsGet(
     input,
     generatedAt,
     projects.length,
+    projects.map((project) => ({ id: project.id, name: project.name ?? "Project" })),
   );
 }

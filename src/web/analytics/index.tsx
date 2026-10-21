@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api, type Project } from "../api.js";
 import { ErrorNotice, Field, Loading, useLoad } from "../ui.js";
 import {
@@ -16,7 +16,9 @@ const metricLabels: Record<keyof AnalyticsReport["counts"], string> = {
   reopened: "Reopened",
   declined: "Declined",
   duplicate: "Marked duplicate",
-  backlog: "Active backlog now",
+  backlog: "Pending tasks now",
+  overdue: "Overdue tasks now",
+  high_priority: "High priority tasks now",
   stalled: "In the same column for 7+ days",
 };
 const dimensionLabels: Record<keyof AnalyticsReport["breakdowns"], string> = {
@@ -74,6 +76,101 @@ const hours = (value: number | null) =>
     ? "—"
     : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value)} h`;
 
+const projectMetrics = [
+  { metric: "backlog", key: "pending", label: "Pending" },
+  { metric: "overdue", key: "overdue", label: "Overdue" },
+  { metric: "high_priority", key: "highPriority", label: "High priority" },
+] as const;
+function ProjectTaskChart({
+  rows,
+  page,
+  onPage,
+  onInspect,
+}: {
+  rows: AnalyticsReport["currentProjects"];
+  page: number;
+  onPage: (page: number) => void;
+  onInspect: (
+    metric: (typeof projectMetrics)[number]["metric"],
+    projectId: string,
+    originId: string,
+  ) => void;
+}) {
+  const currentPage = Math.min(page, Math.max(0, Math.ceil(rows.length / 20) - 1)),
+    offset = currentPage * 20,
+    visible = rows.slice(offset, offset + 20),
+    maximum = Math.max(0, ...rows.map((row) => row.pending));
+  return (
+    <section className="analytics-projects" aria-labelledby="analytics-projects-title">
+      <div className="analytics-breakdown-head">
+        <h2 id="analytics-projects-title">Pending tasks by project</h2>
+        <span className="muted analytics-project-scale">
+          Common scale: 0–{maximum} tasks
+        </span>
+      </div>
+      <p className="muted" id="analytics-projects-note">
+        Current snapshot, independent of the selected period. Overdue and high priority
+        are subsets of pending tasks and can overlap. Select a count to inspect its tasks.
+      </p>
+      <ul className="analytics-project-list" aria-describedby="analytics-projects-note">
+        {visible.map((project) => (
+          <li key={project.projectId}>
+            <h3>{project.projectName}</h3>
+            <div className="analytics-project-bars">
+              {projectMetrics.map(({ metric, key, label }) => {
+                const count = project[key],
+                  originId = `analytics-project-${project.projectId}-${metric}`;
+                return (
+                  <button
+                    key={metric}
+                    id={originId}
+                    type="button"
+                    className="analytics-project-metric"
+                    onClick={() => onInspect(metric, project.projectId, originId)}
+                    aria-label={`View ${count} ${metricLabels[metric].toLowerCase()} for ${project.projectName}`}
+                  >
+                    <span>{label}</span>
+                    <span className="analytics-project-track" aria-hidden="true">
+                      <span
+                        style={{ width: `${maximum ? (count / maximum) * 100 : 0}%` }}
+                      />
+                    </span>
+                    <strong>{count}</strong>
+                  </button>
+                );
+              })}
+            </div>
+          </li>
+        ))}
+      </ul>
+      {!rows.length && <p>No accessible projects.</p>}
+      {rows.length > 20 && (
+        <nav className="analytics-pagination" aria-label="Project chart pages">
+          <button
+            type="button"
+            aria-label="Previous projects"
+            disabled={!currentPage}
+            onClick={() => onPage(currentPage - 1)}
+          >
+            Previous
+          </button>
+          <span>
+            Projects {offset + 1}–{offset + visible.length} of {rows.length}
+          </span>
+          <button
+            type="button"
+            aria-label="Next projects"
+            disabled={offset + 20 >= rows.length}
+            onClick={() => onPage(currentPage + 1)}
+          >
+            Next
+          </button>
+        </nav>
+      )}
+    </section>
+  );
+}
+
 export function Analytics({
   projectId,
   projects,
@@ -97,7 +194,11 @@ export function Analytics({
     timeZone: preferences.timeZone,
   }));
   const [detail, setDetail] = useState<AnalyticsInput["detail"]>(),
-    [version, setVersion] = useState(0);
+    [version, setVersion] = useState(0),
+    [projectPage, setProjectPage] = useState(0);
+  const detailHeading = useRef<HTMLHeadingElement>(null),
+    focusAfterLoad = useRef<"detail" | "origin" | undefined>(undefined),
+    inspectOrigin = useRef<string | undefined>(undefined);
   const [dimension, setDimension] =
     useState<keyof AnalyticsReport["breakdowns"]>("category");
   const requestKey = JSON.stringify({ ...input, detail });
@@ -109,6 +210,17 @@ export function Analytics({
     [requestKey, version],
   );
   const report = result.data?.key === requestKey ? result.data.report : undefined;
+  useEffect(() => {
+    if (!report) return;
+    if (focusAfterLoad.current === "detail" && detail && report.details) {
+      detailHeading.current?.focus({ preventScroll: true });
+      detailHeading.current?.scrollIntoView({ block: "start" });
+      focusAfterLoad.current = undefined;
+    } else if (focusAfterLoad.current === "origin" && !detail) {
+      if (inspectOrigin.current) document.getElementById(inspectOrigin.current)?.focus();
+      focusAfterLoad.current = undefined;
+    }
+  }, [report, detail]);
   function apply(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
@@ -126,6 +238,7 @@ export function Analytics({
       setFormError("");
       setInput(next);
       setDetail(undefined);
+      setProjectPage(0);
       try {
         localStorage.setItem(
           preferenceKey,
@@ -141,7 +254,10 @@ export function Analytics({
   function inspect(
     metric: keyof AnalyticsReport["counts"],
     filter?: { dimension: keyof AnalyticsReport["breakdowns"]; key: string },
+    originId?: string,
   ) {
+    inspectOrigin.current = originId;
+    focusAfterLoad.current = "detail";
     setDetail({ metric, ...filter, offset: 0, limit: 25 });
   }
   function exportCsv() {
@@ -256,10 +372,19 @@ export function Analytics({
           </div>
           {!report.counts.incoming && !report.counts.backlog && (
             <p className="notice">
-              No incoming feedback in this period and no active backlog. Try another
-              period or project.
+              No incoming feedback in this period and no pending tasks. Try another period
+              or project.
             </p>
           )}
+          <ProjectTaskChart
+            key={input.projectId ?? "all"}
+            rows={report.currentProjects}
+            page={projectPage}
+            onPage={setProjectPage}
+            onInspect={(metric, projectId, originId) =>
+              inspect(metric, { dimension: "project", key: projectId }, originId)
+            }
+          />
           <div className="analytics-columns">
             <div className="analytics-table-wrap">
               <table>
@@ -452,11 +577,18 @@ export function Analytics({
           {detail && report.details && (
             <section className="analytics-detail" aria-label="Matching threads">
               <div className="analytics-breakdown-head">
-                <h2>
+                <h2 ref={detailHeading} tabIndex={-1}>
                   {metricLabels[detail.metric]}
-                  {detail.dimension && ` · ${dimensionLabels[detail.dimension]}`}
+                  {detail.dimension &&
+                    ` · ${detail.dimension === "project" ? (report.currentProjects.find((project) => project.projectId === detail.key)?.projectName ?? "Project") : dimensionLabels[detail.dimension]}`}
                 </h2>
-                <button type="button" onClick={() => setDetail(undefined)}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (inspectOrigin.current) focusAfterLoad.current = "origin";
+                    setDetail(undefined);
+                  }}
+                >
                   Close list
                 </button>
               </div>

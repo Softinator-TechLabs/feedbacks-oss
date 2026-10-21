@@ -1,3 +1,7 @@
+import {
+  githubCommentsInputs,
+  githubCommentsOutputs,
+} from "./domains/github-comments.js";
 import { timeTrackingInputs, timeTrackingOutputs } from "./domains/time-tracking.js";
 import { replayLinksInputs, replayLinksOutputs } from "./domains/replay-links.js";
 import { channelsInputs, channelsOutputs } from "./domains/channels.js";
@@ -21,6 +25,7 @@ import { assetsInputs, assetsOutputs } from "./domains/assets.js";
 import { integrationsInputs, integrationsOutputs } from "./domains/integrations.js";
 
 export const inputSchemas = {
+  ...githubCommentsInputs,
   ...timeTrackingInputs,
   ...channelsInputs,
   ...replayLinksInputs,
@@ -190,6 +195,7 @@ export const inputSchemas = {
 export type OperationName = keyof typeof inputSchemas;
 
 export const outputSchemas: Record<OperationName, z.ZodObject<any>> = {
+  ...githubCommentsOutputs,
   ...channelsOutputs,
   ...replayLinksOutputs,
   ...timeTrackingOutputs,

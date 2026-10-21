@@ -3,12 +3,13 @@
 ## 0.3.0 — 2026-10-21
 
 - Add a configurable project Kanban board with shared thread filters, keyboard controls and atomic batch status, assignment and archive changes.
-- Add permission-scoped analytics for lifecycle activity, response and resolution time, backlog aging, trends and workload, with CSV and print views.
+- Add permission-scoped analytics for lifecycle activity, response and resolution time, backlog aging, trends and workload. Project charts show pending, overdue and high-priority tasks with exact drilldowns; CSV and print keep aggregate totals.
 - Add subscribed email for feedback, discussion, mentions, work status and assignment changes. Configure SMTP (including Google), Mailjet or Amazon SES, server defaults, project senders and safe text templates. Delivery history distinguishes accepted and uncertain sends.
-- Add explicit tracker connections for Jira, Linear, Asana, ClickUp, Monday, Trello, Productive and Teamwork, with reviewed writes, status mappings, encrypted credentials and reconciliation. Jira OAuth uses a separately operated confidential broker.
+- Add explicit tracker connections for Jira, Linear, Asana, ClickUp, Monday, Trello, Productive, Teamwork and Firmao CRM, with reviewed writes, status mappings, encrypted credentials and reconciliation. Jira OAuth uses a separately operated confidential broker.
+- Add explicit reviewed GitHub Issue comments with bounded remote discussion readback, durable reservations and uncertain-write reconciliation.
 - Add Slack/Teams channels, reviewed FullStory/LogRocket session links, explicit Harvest/Time Doctor time entries and versioned automation webhook tests.
 - Add permanent project website intake with exact approved origins, Turnstile, bounded abuse controls and optional contact consent. Existing expiring review links remain available.
-- Package Codex/Claude Code plugins 0.3.0; the extension version remains 0.1.60.
+- Package Codex/Claude Code plugins 0.3.0; the extension version remains 0.1.61.
 
 ### Upgrade from 0.2.3
 
@@ -18,7 +19,7 @@ Pin the published image digest and use the existing private environment. Verify 
 
 ### Provider acceptance and limits
 
-Provider request and failure tests use synthetic transports. Individual provider account permissions, consent, quotas, sender-domain verification, inbox placement, CMS deployment policies and production Turnstile configuration require live acceptance. No marketplace listing or Store update is implied. Local tracker writes use outbound calls and polling; Jira OAuth additionally needs the separately operated broker. Firmao workflow discovery is still required before a concrete adapter can be specified. See [integrations](docs/integrations.md), [email](docs/email-notifications.md), [board](docs/project-board.md) and [analytics](docs/analytics.md).
+Provider request and failure tests use synthetic transports. Individual provider account permissions, consent, quotas, sender-domain verification, inbox placement, CMS deployment policies and production Turnstile configuration require live acceptance. No marketplace listing or Store update is implied. Local tracker writes use outbound calls and polling; Jira OAuth additionally needs the separately operated broker. Firmao creates reviewed CRM tasks in an explicitly configured project; task comments remain unavailable through the documented API. See [integrations](docs/integrations.md), [email](docs/email-notifications.md), [board](docs/project-board.md) and [analytics](docs/analytics.md).
 
 ## 0.2.3 — 2026-10-21
 

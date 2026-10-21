@@ -104,7 +104,12 @@ export async function manageThreadDeletion(
       "Reconcile the pending GitHub issue creation before deleting this feedback",
       409,
     );
-  for (const table of ["tracker_jobs", "external_time_entries", "channel_deliveries"]) {
+  for (const table of [
+    "tracker_jobs",
+    "external_time_entries",
+    "channel_deliveries",
+    "github_comment_jobs",
+  ]) {
     if (
       await db.one(
         `SELECT id FROM ${table} WHERE thread_id=ANY($1::uuid[]) AND status IN ('processing','uncertain') LIMIT 1`,
@@ -184,6 +189,7 @@ export async function manageThreadDeletion(
     "channel_deliveries",
     "external_replay_links",
     "external_time_entries",
+    "github_comment_jobs",
   ])
     await db.query(`DELETE FROM ${table} WHERE thread_id=ANY($1::uuid[])`, [ids]);
 

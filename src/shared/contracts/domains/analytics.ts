@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { id } from "../common.js";
+import { id, workPlanSchema } from "../common.js";
 
 export const analyticsMetrics = [
   "incoming",
@@ -9,6 +9,8 @@ export const analyticsMetrics = [
   "declined",
   "duplicate",
   "backlog",
+  "overdue",
+  "high_priority",
   "stalled",
 ] as const;
 export const analyticsDimensions = [
@@ -77,6 +79,8 @@ const metricCounts = z.object({
   declined: count,
   duplicate: count,
   backlog: count,
+  overdue: count,
+  high_priority: count,
   stalled: count,
 });
 const output = z.object({
@@ -85,6 +89,16 @@ const output = z.object({
   projectCount: count,
   coverage: z.literal("current_records_and_recorded_history"),
   counts: metricCounts,
+  currentProjects: z.array(
+    z.object({
+      projectId: id,
+      projectName: z.string(),
+      pending: count,
+      overdue: count,
+      highPriority: count,
+      stalled: count,
+    }),
+  ),
   durations: z.object({
     firstResponse: duration,
     firstTriage: duration,
@@ -128,6 +142,9 @@ const output = z.object({
           column: z.string(),
           createdAt: z.string(),
           ageDays: count,
+          priority: z.string(),
+          topPriority: z.boolean(),
+          workPlan: workPlanSchema.nullable(),
         }),
       ),
     })

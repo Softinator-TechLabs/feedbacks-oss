@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { api } from "../api.js";
 import { ActionState, ErrorNotice, Field, Loading, useAction, useLoad } from "../ui.js";
 import { useUnsavedChanges } from "../navigation.js";
@@ -19,6 +19,7 @@ const names: Record<TrackerProvider, string> = {
   trello: "Trello",
   productive: "Productive",
   teamwork: "Teamwork",
+  firmao: "Firmao CRM",
 };
 const targets: Record<TrackerProvider, string> = {
   jira: "Jira project ID or key",
@@ -29,6 +30,7 @@ const targets: Record<TrackerProvider, string> = {
   trello: "Trello intake list ID",
   productive: "Productive task list ID",
   teamwork: "Teamwork task list ID",
+  firmao: "Firmao CRM project ID",
 };
 type Connection = {
   id: string;
@@ -70,6 +72,7 @@ export function TrackerSettingsPage({
   projects: { id: string; name: string }[];
   initialProjectId?: string;
 }) {
+  const surface = useRef<HTMLElement>(null);
   const [projectId, setProjectId] = useState(initialProjectId ?? projects[0]?.id ?? ""),
     [version, setVersion] = useState(0),
     [editing, setEditing] = useState<Connection | null | undefined>();
@@ -87,13 +90,19 @@ export function TrackerSettingsPage({
       targetName: string;
       states: { id: string; name: string }[];
     }>();
+  const mayReplaceDraft = () =>
+    !surface.current?.querySelector('form[data-unsaved="true"]') ||
+    window.confirm(
+      "Discard this tracker connection draft? Your unsaved changes will be lost.",
+    );
   return (
-    <article className="tracker-settings">
+    <article className="tracker-settings" ref={surface}>
       <h1>Task trackers</h1>
       <Field label="Project">
         <select
           value={projectId}
           onChange={(e) => {
+            if (!mayReplaceDraft()) return;
             setProjectId(e.target.value);
             setEditing(undefined);
             setResult(undefined);
@@ -153,7 +162,13 @@ export function TrackerSettingsPage({
                     >
                       Test connection
                     </button>
-                    <button type="button" onClick={() => setEditing(c)}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editing?.id !== c.id && !mayReplaceDraft()) return;
+                        setEditing(c);
+                      }}
+                    >
                       Edit connection
                     </button>
                     <button
@@ -183,6 +198,13 @@ export function TrackerSettingsPage({
                       <summary>
                         {result.targetName || "Provider response"}: available status IDs
                       </summary>
+                      {c.provider === "firmao" && (
+                        <p>
+                          These keys include WAITING and statuses observed in the first 50
+                          organization tasks for this CRM project. The sample may not
+                          include every status.
+                        </p>
+                      )}
                       <ul>
                         {result.states.map((s) => (
                           <li key={s.id}>
@@ -221,7 +243,13 @@ export function TrackerSettingsPage({
               }}
             />
           ) : (
-            <button type="button" disabled={!projectId} onClick={() => setEditing(null)}>
+            <button
+              type="button"
+              disabled={!projectId}
+              onClick={() => {
+                if (mayReplaceDraft()) setEditing(null);
+              }}
+            >
               Add tracker connection
             </button>
           )}
@@ -243,8 +271,8 @@ export function TrackerSettingsPage({
         <p>
           Jira Cloud uses the operator's optional OAuth broker with a distributable app.
           Its client secret stays on the broker. Other providers accept their documented
-          service or personal API credentials. Credentials are encrypted using this
-          installation's private storage.
+          API credentials. Credentials are encrypted using this installation's private
+          storage.
         </p>
         <p>
           A provider timeout can leave delivery uncertain. Check the remote task before
@@ -291,6 +319,7 @@ function ConnectionForm({
   return (
     <form
       className="tracker-form"
+      data-unsaved={dirty || action.busy ? "true" : undefined}
       onChange={() => setDirty(true)}
       onSubmit={(event) => {
         event.preventDefault();
@@ -299,6 +328,13 @@ function ConnectionForm({
           async () => {
             const fields = new FormData(form),
               value = (key: string) => String(fields.get(key) ?? "").trim();
+            if (
+              provider === "firmao" &&
+              Boolean(value("username")) !== Boolean(value("token"))
+            )
+              throw new Error(
+                "Enter both the Firmao API login and API password to replace credentials.",
+              );
             const configuration: TrackerConfiguration = {
               targetId: value("targetId"),
               statusColumn: value("statusColumn") || "status",
@@ -320,6 +356,7 @@ function ConnectionForm({
               ...(value("secondaryId") ? { secondaryId: value("secondaryId") } : {}),
               ...(value("site") ? { site: value("site") } : {}),
               ...(value("issueTypeId") ? { issueTypeId: value("issueTypeId") } : {}),
+              ...(value("assigneeId") ? { assigneeId: value("assigneeId") } : {}),
               ...(c?.cloudId ? { cloudId: c.cloudId } : {}),
               ...(c?.site && provider === "jira" ? { site: c.site } : {}),
             };
@@ -347,7 +384,13 @@ function ConnectionForm({
                     credential: {
                       token: value("token"),
                       ...(value("key") ? { key: value("key") } : {}),
-                      auth: provider === "jira" ? "oauth" : "token",
+                      ...(value("username") ? { username: value("username") } : {}),
+                      auth:
+                        provider === "jira"
+                          ? "oauth"
+                          : provider === "firmao"
+                            ? "basic"
+                            : "token",
                     },
                   }
                 : {}),
@@ -388,9 +431,11 @@ function ConnectionForm({
         <input
           name="targetId"
           required
-          maxLength={200}
+          maxLength={provider === "firmao" ? 16 : 200}
           defaultValue={c?.targetId ?? ""}
           autoComplete="off"
+          inputMode={provider === "firmao" ? "numeric" : undefined}
+          pattern={provider === "firmao" ? "[1-9][0-9]*" : undefined}
         />
       </Field>
       {provider === "jira" && (
@@ -408,19 +453,58 @@ function ConnectionForm({
           <input name="site" required maxLength={63} defaultValue={c?.site ?? ""} />
         </Field>
       )}
-      {["productive", "trello"].includes(provider) && (
+      {["productive", "trello", "firmao"].includes(provider) && (
         <Field
           label={
-            provider === "productive" ? "Productive organization ID" : "Trello board ID"
+            provider === "productive"
+              ? "Productive organization ID"
+              : provider === "firmao"
+                ? "Firmao organization identifier"
+                : "Trello board ID"
+          }
+          hint={
+            provider === "firmao"
+              ? "Enter the organization identifier, without a URL."
+              : undefined
           }
         >
           <input
             name="workspaceId"
             required
-            maxLength={200}
             defaultValue={c?.workspaceId ?? ""}
+            pattern={provider === "firmao" ? "[A-Za-z0-9_-]+" : undefined}
+            maxLength={provider === "firmao" ? 100 : 200}
           />
         </Field>
+      )}
+      {provider === "firmao" && (
+        <>
+          <Field
+            label="Responsible user ID (optional)"
+            hint="Must belong to the selected CRM project's team or managers."
+          >
+            <input
+              name="assigneeId"
+              inputMode="numeric"
+              pattern="[1-9][0-9]*"
+              maxLength={16}
+              defaultValue={c?.assigneeId ?? ""}
+            />
+          </Field>
+          <p>
+            Generate the API login and password in Firmao under Company → Settings → API.
+            {existing && " Leave both empty to keep the current credentials."}
+          </p>
+          <Field label={existing ? "Replace Firmao API login" : "Firmao API login"}>
+            <input
+              name="username"
+              required={!existing}
+              maxLength={254}
+              pattern="[^:]+"
+              autoComplete="off"
+            />
+          </Field>
+        </>
       )}
       {provider === "monday" && (
         <>
@@ -440,7 +524,13 @@ function ConnectionForm({
         <>
           <Field
             label={
-              existing ? "Replace API token (leave empty to keep current)" : "API token"
+              provider === "firmao"
+                ? existing
+                  ? "Replace Firmao API password"
+                  : "Firmao API password"
+                : existing
+                  ? "Replace API token (leave empty to keep current)"
+                  : "API token"
             }
           >
             <input
@@ -470,6 +560,13 @@ function ConnectionForm({
           a distinct remote state. Polling imports remote changes every five minutes;
           local changes are sent explicitly from the feedback thread.
         </p>
+        {provider === "firmao" && (
+          <p>
+            Firmao status keys come from WAITING and a sample of the first 50 organization
+            tasks in this CRM project. Enter a known key if the sample does not contain
+            the status you need.
+          </p>
+        )}
         <div className="tracker-mappings">
           {trackerStates.map((local) => (
             <React.Fragment key={local}>
@@ -664,9 +761,19 @@ export function TrackerThreadPanel({
           {data.links.map((link) => (
             <section key={link.id}>
               <p>
-                <a href={link.url} target="_blank" rel="noreferrer">
-                  {link.title}
-                </a>{" "}
+                {data.connections.find((c) => c.id === link.connectionId)?.provider ===
+                "firmao" ? (
+                  <>
+                    {link.title} · Task {link.remoteId} ·{" "}
+                    <a href={link.url} target="_blank" rel="noreferrer">
+                      Open Firmao organization
+                    </a>
+                  </>
+                ) : (
+                  <a href={link.url} target="_blank" rel="noreferrer">
+                    {link.title}
+                  </a>
+                )}{" "}
                 · {link.remoteState} · {link.status}
               </p>
               {link.historical ? (
@@ -676,73 +783,79 @@ export function TrackerThreadPanel({
                 </p>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    disabled={action.busy}
-                    onClick={() =>
-                      action.run(async () => {
-                        const result = await api<any>("trackers.comments", {
-                          connectionId: link.connectionId,
-                          threadId: thread.id,
-                          remoteId: link.remoteId,
-                        });
-                        setComments((current) => ({ ...current, [link.id]: result }));
-                      })
-                    }
-                  >
-                    Read remote comments
-                  </button>
-                  {comments[link.id] && (
-                    <details open>
-                      <summary>
-                        Provider discussion ({comments[link.id].items.length})
-                      </summary>
-                      <p>
-                        Untrusted provider content. Author names come from the provider.
-                      </p>
-                      {comments[link.id].items.map((comment) => (
-                        <blockquote key={comment.id}>
-                          <p>{comment.body}</p>
-                          <footer>
-                            {comment.author ?? "Author unavailable"}
-                            {comment.createdAt ? ` · ${comment.createdAt}` : ""}
-                          </footer>
-                        </blockquote>
-                      ))}
-                      {comments[link.id].hasMore && (
-                        <p>
-                          <a href={link.url} target="_blank" rel="noreferrer">
-                            Read remaining discussion in the provider
-                          </a>
-                        </p>
+                  {data.connections.find((c) => c.id === link.connectionId)?.provider !==
+                    "firmao" && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={action.busy}
+                        onClick={() =>
+                          action.run(async () => {
+                            const result = await api<any>("trackers.comments", {
+                              connectionId: link.connectionId,
+                              threadId: thread.id,
+                              remoteId: link.remoteId,
+                            });
+                            setComments((current) => ({ ...current, [link.id]: result }));
+                          })
+                        }
+                      >
+                        Read remote comments
+                      </button>
+                      {comments[link.id] && (
+                        <details open>
+                          <summary>
+                            Provider discussion ({comments[link.id].items.length})
+                          </summary>
+                          <p>
+                            Untrusted provider content. Author names come from the
+                            provider.
+                          </p>
+                          {comments[link.id].items.map((comment) => (
+                            <blockquote key={comment.id}>
+                              <p>{comment.body}</p>
+                              <footer>
+                                {comment.author ?? "Author unavailable"}
+                                {comment.createdAt ? ` · ${comment.createdAt}` : ""}
+                              </footer>
+                            </blockquote>
+                          ))}
+                          {comments[link.id].hasMore && (
+                            <p>
+                              <a href={link.url} target="_blank" rel="noreferrer">
+                                Read remaining discussion in the provider
+                              </a>
+                            </p>
+                          )}
+                        </details>
                       )}
-                    </details>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const form = e.currentTarget,
+                            body = String(new FormData(form).get("body"));
+                          action.run(async () => {
+                            await write("trackers.comment", {
+                              connectionId: link.connectionId,
+                              threadId: thread.id,
+                              revision: thread.revision,
+                              linkId: link.id,
+                              body,
+                            });
+                            form.reset();
+                            queued();
+                          }, "Comment queued. Delivery appears below.");
+                        }}
+                      >
+                        <Field label="Reviewed comment to send to this task">
+                          <textarea name="body" maxLength={12000} required rows={3} />
+                        </Field>
+                        <button type="submit" disabled={action.busy}>
+                          Send comment
+                        </button>
+                      </form>
+                    </>
                   )}
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const form = e.currentTarget,
-                        body = String(new FormData(form).get("body"));
-                      action.run(async () => {
-                        await write("trackers.comment", {
-                          connectionId: link.connectionId,
-                          threadId: thread.id,
-                          revision: thread.revision,
-                          linkId: link.id,
-                          body,
-                        });
-                        form.reset();
-                        queued();
-                      }, "Comment queued. Delivery appears below.");
-                    }}
-                  >
-                    <Field label="Reviewed comment to send to this task">
-                      <textarea name="body" maxLength={12000} required rows={3} />
-                    </Field>
-                    <button type="submit" disabled={action.busy}>
-                      Send comment
-                    </button>
-                  </form>
                   <div className="tracker-actions">
                     <button
                       type="button"

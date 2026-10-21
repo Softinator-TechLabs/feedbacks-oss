@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { api } from "../api.js";
 import { ActionState, ErrorNotice, Field, Loading, useAction, useLoad } from "../ui.js";
 import { useUnsavedChanges } from "../navigation.js";
@@ -15,6 +15,7 @@ type Channel = {
   errorCode: string | null;
 };
 export function ChannelSettings({ projectId }: { projectId: string }) {
+  const surface = useRef<HTMLElement>(null);
   const [version, setVersion] = useState(0),
     [editing, setEditing] = useState<Channel | null | undefined>();
   const { data, error } = useLoad(
@@ -39,8 +40,13 @@ export function ChannelSettings({ projectId }: { projectId: string }) {
   );
   const action = useAction();
   const refresh = () => setVersion((v) => v + 1);
+  const mayReplaceDraft = () =>
+    !surface.current?.querySelector('form[data-unsaved="true"]') ||
+    window.confirm(
+      "Discard this notification channel draft? Your unsaved changes will be lost.",
+    );
   return (
-    <section>
+    <section ref={surface}>
       <h2>Slack and Teams notifications</h2>
       <p>
         Choose the activity each channel receives. Messages contain an activity label and
@@ -81,7 +87,13 @@ export function ChannelSettings({ projectId }: { projectId: string }) {
                   >
                     Send test message
                   </button>
-                  <button type="button" onClick={() => setEditing(c)}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editing?.id !== c.id && !mayReplaceDraft()) return;
+                      setEditing(c);
+                    }}
+                  >
                     Edit connection
                   </button>
                   <button
@@ -123,7 +135,12 @@ export function ChannelSettings({ projectId }: { projectId: string }) {
               }}
             />
           ) : (
-            <button type="button" onClick={() => setEditing(null)}>
+            <button
+              type="button"
+              onClick={() => {
+                if (mayReplaceDraft()) setEditing(null);
+              }}
+            >
               Add notification channel
             </button>
           )}
@@ -206,6 +223,7 @@ function ChannelForm({
   useUnsavedChanges(dirty || action.busy);
   return (
     <form
+      data-unsaved={dirty || action.busy ? "true" : undefined}
       onChange={() => setDirty(true)}
       onSubmit={(e) => {
         e.preventDefault();

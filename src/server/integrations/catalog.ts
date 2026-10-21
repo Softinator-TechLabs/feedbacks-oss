@@ -9,7 +9,10 @@ const trackerAdapters: IntegrationAdapter[] = (
   descriptor: {
     id,
     name,
-    description: `Create, link and explicitly share comments or status changes. Verify account access in setup before use.`,
+    description:
+      id === "firmao"
+        ? "Create reviewed CRM tasks in a selected Firmao project, verify task IDs and explicitly sync mapped statuses. Task comments are unavailable."
+        : `Create, link and explicitly share comments or status changes. Verify account access in setup before use.`,
     managePath: "/trackers",
     capabilities: ["issue_create", "issue_link", "issue_status_sync"],
   },

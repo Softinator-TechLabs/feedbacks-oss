@@ -154,6 +154,8 @@ export const ownerEvidenceReadScopes = [
   "diagnostics.search",
 ] as const;
 const readOperations = new Set<string>([
+  "github.comments",
+  "github.commentHistory",
   "trackers.comments",
   "timeTracking.list",
   "timeTracking.history",

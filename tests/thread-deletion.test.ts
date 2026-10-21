@@ -393,13 +393,22 @@ test("deletion removes local integration references and blocks active or uncerta
       "INSERT INTO external_replay_links(id,thread_id,project_id,provider,session_url,page_url,captured_at,created_by,idempotency_key,input_hash) VALUES($1,$2,$3,'fullstory','https://app.fullstory.com/ui/org/session/id','https://example.test',now(),$4,'synthetic','hash')",
       [randomUUID(), thread.id, project.id, owner.userId],
     );
+    await db.query(
+      "INSERT INTO github_comment_jobs(id,thread_id,project_id,github_app_id,app_revision,repository,issue_url,issue_number,body,actor,created_by,idempotency_key,input_hash,status) VALUES($1,$2,$3,'123',0,'example/repo','https://github.com/example/repo/issues/1',1,'Synthetic comment','{}',$4,'synthetic','hash','delivered')",
+      [randomUUID(), thread.id, project.id, owner.userId],
+    );
     const input = {
       projectId: project.id,
       threads: [{ threadId: thread.id, revision: thread.revision }],
       idempotencyKey: randomUUID(),
       confirmation: "DELETE",
     };
-    for (const table of ["tracker_jobs", "external_time_entries", "channel_deliveries"]) {
+    for (const table of [
+      "tracker_jobs",
+      "external_time_entries",
+      "channel_deliveries",
+      "github_comment_jobs",
+    ]) {
       for (const status of ["processing", "uncertain"]) {
         await db.query(`UPDATE ${table} SET status=$1`, [status]);
         await assert.rejects(ops.executeOperation(owner, "threads.delete", input), {
@@ -417,6 +426,7 @@ test("deletion removes local integration references and blocks active or uncerta
       "channel_deliveries",
       "external_time_entries",
       "external_replay_links",
+      "github_comment_jobs",
     ])
       assert.equal((await db.one(`SELECT count(*)::int n FROM ${table}`)).n, 0);
     assert.ok(await db.one("SELECT id FROM tracker_connections WHERE id=$1", [tracker]));

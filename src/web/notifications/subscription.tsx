@@ -13,7 +13,7 @@ const names: Record<NotificationEvent, string> = {
   status: "Status changes",
   assignment: "Assignment changes",
 };
-export function EmailSubscription({ projectId }: { projectId: string }) {
+function EmailSubscriptionEditor({ projectId }: { projectId: string }) {
   const { data, error, setData } = useLoad(
     () =>
       api<{
@@ -29,8 +29,7 @@ export function EmailSubscription({ projectId }: { projectId: string }) {
   const current = draft ?? data;
   useUnsavedChanges(!!draft || action.busy);
   return (
-    <details className="email-subscription">
-      <summary>Email notifications</summary>
+    <>
       <ErrorNotice error={error} />
       {!current && !error && <Loading />}
       {current && (
@@ -113,6 +112,21 @@ export function EmailSubscription({ projectId }: { projectId: string }) {
           )}
         </form>
       )}
+    </>
+  );
+}
+
+export function EmailSubscription({ projectId }: { projectId: string }) {
+  const [opened, setOpened] = useState(false);
+  return (
+    <details
+      className="email-subscription"
+      onToggle={(event) => {
+        if (event.currentTarget.open) setOpened(true);
+      }}
+    >
+      <summary>Email notifications</summary>
+      {opened && <EmailSubscriptionEditor projectId={projectId} />}
     </details>
   );
 }

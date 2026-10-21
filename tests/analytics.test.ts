@@ -152,6 +152,8 @@ test("analytics defines distinct lifecycle counts, cohort durations, backlog agi
     declined: 1,
     duplicate: 1,
     backlog: 1,
+    overdue: 0,
+    high_priority: 0,
     stalled: 1,
   });
   assert.deepEqual(report.durations.firstResponse, {
@@ -231,6 +233,189 @@ test("analytics median and nearest-rank P90 retain zero, omit incomplete observa
   assert.equal(empty.counts.backlog, 0);
 });
 
+test("current project counts include empty projects, overlap overdue/high priority and match isolated drilldowns outside the period", () => {
+  const a = base().projectId,
+    b = randomUUID(),
+    empty = randomUUID();
+  const plan = (scheduledFor: string | null, patch: Record<string, unknown> = {}) => ({
+    priority: "normal",
+    schedule: scheduledFor ? "today" : "unscheduled",
+    scheduledFor,
+    timeZone: "UTC",
+    ...patch,
+  });
+  const records = [
+    base({ priority: "high", workPlan: plan("2026-01-31", { priority: "high" }) }),
+    base({ workPlan: plan("2026-02-01") }),
+    base({ priority: "low", workPlan: plan("2026-02-02", { priority: "low" }) }),
+    base({ priority: "high", workPlan: plan(null, { priority: "high" }) }),
+    base({ topPriority: true, workPlan: plan(null, { schedule: "later" }) }),
+    base({ workPlan: plan("2026-01-31", { timeZone: "invalid/timezone" }) }),
+    base({ workPlan: plan("2026-02-30") }),
+    base({ workPlan: plan("2026-01-31", { schedule: "unscheduled" }) }),
+    base({
+      projectId: b,
+      projectName: "Beta",
+      topPriority: true,
+      workPlan: plan("2026-01-31"),
+    }),
+    base({ projectId: b, projectName: "Beta", workPlan: plan("2026-01-30") }),
+    ...["resolved", "declined", "closed"].map((state) =>
+      base({
+        projectId: b,
+        projectName: "Beta",
+        state,
+        priority: "high",
+        topPriority: true,
+        workPlan: plan("2026-01-31"),
+      }),
+    ),
+    base({
+      projectId: b,
+      projectName: "Beta",
+      archived: true,
+      priority: "high",
+      topPriority: true,
+      workPlan: plan("2026-01-31"),
+    }),
+  ];
+  const projects = [
+    { id: a, name: "Alpha" },
+    { id: b, name: "Beta" },
+    { id: empty, name: "Empty" },
+  ];
+  const outsidePeriod = {
+    ...input,
+    from: "2025-11-01T00:00:00Z",
+    to: "2025-12-01T00:00:00Z",
+  };
+  const report = buildAnalytics(
+    records,
+    {
+      ...outsidePeriod,
+      detail: { metric: "overdue", dimension: "project", key: b, offset: 0, limit: 25 },
+    },
+    now,
+    projects.length,
+    projects,
+  );
+  assert.equal(
+    report.counts.incoming,
+    0,
+    "historical period does not control the current workload",
+  );
+  assert.equal(report.counts.backlog, 10);
+  assert.equal(report.counts.overdue, 3);
+  assert.equal(report.counts.high_priority, 4);
+  assert.deepEqual(report.currentProjects, [
+    {
+      projectId: a,
+      projectName: "Alpha",
+      pending: 8,
+      overdue: 1,
+      highPriority: 3,
+      stalled: 8,
+    },
+    {
+      projectId: b,
+      projectName: "Beta",
+      pending: 2,
+      overdue: 2,
+      highPriority: 1,
+      stalled: 2,
+    },
+    {
+      projectId: empty,
+      projectName: "Empty",
+      pending: 0,
+      overdue: 0,
+      highPriority: 0,
+      stalled: 0,
+    },
+  ]);
+  assert.equal(report.projectCount, 3);
+  assert.equal(report.details?.total, 2);
+  assert.ok(
+    report.details?.items.every(
+      (row) => row.projectId === b && row.workPlan?.scheduledFor! < "2026-02-01",
+    ),
+  );
+  assert.equal(report.details?.items.find((row) => row.topPriority)?.priority, "normal");
+  const high = buildAnalytics(
+    records,
+    {
+      ...outsidePeriod,
+      detail: {
+        metric: "high_priority",
+        dimension: "project",
+        key: a,
+        offset: 0,
+        limit: 25,
+      },
+    },
+    now,
+    projects.length,
+    projects,
+  );
+  assert.equal(high.details?.total, 3);
+  assert.ok(high.details?.items.every((row) => row.projectId === a));
+  const invalid = buildAnalytics(
+    records,
+    {
+      ...outsidePeriod,
+      detail: { metric: "backlog", dimension: "project", key: a, offset: 0, limit: 25 },
+    },
+    now,
+  );
+  assert.equal(
+    invalid.details?.items.filter((row) => row.workPlan === null).length,
+    3,
+    "invalid retained plans expose no invalid planning fields and cannot become overdue",
+  );
+  assert.doesNotThrow(() => analyticsOutputs["analytics.get"].parse(report));
+  assert.deepEqual(buildAnalytics([], input, now, 1, [projects[2]]).currentProjects, [
+    {
+      projectId: empty,
+      projectName: "Empty",
+      pending: 0,
+      overdue: 0,
+      highPriority: 0,
+      stalled: 0,
+    },
+  ]);
+});
+
+test("overdue follows each saved planning timezone across midnight and DST rather than the report timezone or elapsed hours", () => {
+  const dated = (scheduledFor: string, timeZone: string) =>
+    base({ workPlan: { priority: "normal", schedule: "today", scheduledFor, timeZone } });
+  for (const [at, scheduledFor, timeZone, expected] of [
+    ["2026-03-08T04:59:59Z", "2026-03-07", "America/New_York", 0],
+    ["2026-03-08T04:59:59Z", "2026-03-07", "UTC", 1],
+    ["2026-03-08T05:00:00Z", "2026-03-07", "America/New_York", 1],
+    ["2026-03-08T06:59:59Z", "2026-03-08", "America/New_York", 0],
+    ["2026-03-08T07:00:00Z", "2026-03-08", "America/New_York", 0],
+    ["2026-03-09T03:59:59Z", "2026-03-08", "America/New_York", 0],
+    ["2026-03-09T04:00:00Z", "2026-03-08", "America/New_York", 1],
+    ["2026-11-01T05:59:59Z", "2026-11-01", "America/New_York", 0],
+    ["2026-11-01T06:00:00Z", "2026-11-01", "America/New_York", 0],
+    ["2026-11-02T04:59:59Z", "2026-11-01", "America/New_York", 0],
+    ["2026-11-02T05:00:00Z", "2026-11-01", "America/New_York", 1],
+    ["2026-01-31T18:29:59Z", "2026-01-31", "Asia/Kolkata", 0],
+    ["2026-01-31T18:30:00Z", "2026-01-31", "Asia/Kolkata", 1],
+  ] as const) {
+    for (const reportTimeZone of ["UTC", "Pacific/Honolulu"])
+      assert.equal(
+        buildAnalytics(
+          [dated(scheduledFor, timeZone)],
+          { ...input, timeZone: reportTimeZone },
+          at,
+        ).counts.overdue,
+        expected,
+        `${scheduledFor} in ${timeZone} at ${at}`,
+      );
+  }
+});
+
 test("analytics timezone days, inclusive/exclusive bounds and daylight-saving boundaries are explicit", () => {
   assert.equal(
     analyticsDateBoundary("2026-01-01", "Asia/Kolkata"),
@@ -307,6 +492,7 @@ test("analytics SQL honors current grants and token project limits, response int
       viewerId = randomUUID(),
       otherId = randomUUID(),
       projectId = randomUUID(),
+      emptyProjectId = randomUUID(),
       privateId = randomUUID();
     for (const [id, name, owner] of [
       [ownerId, "Owner", true],
@@ -327,6 +513,14 @@ test("analytics SQL honors current grants and token project limits, response int
       projectId,
       viewerId,
     ]);
+    await db.query("INSERT INTO projects(id,data) VALUES($1,$2)", [
+      emptyProjectId,
+      JSON.stringify({ name: "Allowed empty" }),
+    ]);
+    await db.query("INSERT INTO grants(project_id,user_id,role) VALUES($1,$2,'viewer')", [
+      emptyProjectId,
+      viewerId,
+    ]);
     const threadId = randomUUID(),
       privateThreadId = randomUUID();
     const data = {
@@ -336,6 +530,13 @@ test("analytics SQL honors current grants and token project limits, response int
       context: { url: "https://example.test/path?secret=token", deviceClass: "mobile" },
       tags: ["PRIVATE-TAG"],
       archived: false,
+      topPriority: true,
+      workPlan: {
+        priority: "normal",
+        schedule: "today",
+        scheduledFor: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10),
+        timeZone: "UTC",
+      },
       work: { state: "open", history: [] },
     };
     await db.query(
@@ -376,7 +577,27 @@ test("analytics SQL honors current grants and token project limits, response int
       detail: { metric: "incoming", offset: 0, limit: 25 },
     });
     assert.equal(report.counts.incoming, 1);
-    assert.equal(report.projectCount, 1);
+    assert.equal(report.projectCount, 2);
+    assert.equal(report.counts.overdue, 1);
+    assert.equal(report.counts.high_priority, 1);
+    assert.deepEqual(report.currentProjects, [
+      {
+        projectId,
+        projectName: "Allowed",
+        pending: 1,
+        overdue: 1,
+        highPriority: 1,
+        stalled: 1,
+      },
+      {
+        projectId: emptyProjectId,
+        projectName: "Allowed empty",
+        pending: 0,
+        overdue: 0,
+        highPriority: 0,
+        stalled: 0,
+      },
+    ]);
     assert.equal(report.durations.firstResponse.medianHours, 3);
     assert.equal(
       report.durations.firstTriage.medianHours,
@@ -394,6 +615,20 @@ test("analytics SQL honors current grants and token project limits, response int
     assert.ok(!JSON.stringify(report).includes("PRIVATE-PROJECT"));
     assert.ok(!JSON.stringify(report).includes("PRIVATE DISCUSSION"));
     assert.ok(!JSON.stringify(report).includes("secret=token"));
+    assert.equal(report.details?.items[0].workPlan?.timeZone, "UTC");
+    assert.equal(report.details?.items[0].topPriority, true);
+    const forbiddenDetail = await analyticsGet(db, viewer, {
+      ...input,
+      detail: {
+        metric: "overdue",
+        dimension: "project",
+        key: privateId,
+        offset: 0,
+        limit: 25,
+      },
+    });
+    assert.equal(forbiddenDetail.details?.total, 0);
+    assert.ok(!JSON.stringify(forbiddenDetail).includes("PRIVATE-PROJECT"));
     await assert.rejects(analyticsGet(db, viewer, { ...input, projectId: privateId }), {
       code: "FORBIDDEN",
     });

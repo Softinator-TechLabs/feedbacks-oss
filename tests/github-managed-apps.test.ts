@@ -800,6 +800,7 @@ test("common integration catalog lists only implemented providers and safe curre
         "trello",
         "productive",
         "teamwork",
+        "firmao",
       ],
     );
     assert.equal(before.providers[0].configuredConnections, 1);

@@ -84,6 +84,15 @@ export function TimeTrackingSettings({
                   <button
                     type="button"
                     onClick={() => {
+                      if (editing?.id === c.id) return;
+                      if (
+                        (dirty || action.busy) &&
+                        !window.confirm(
+                          "Discard this time connection draft? Your unsaved changes will be lost.",
+                        )
+                      )
+                        return;
+                      setDirty(false);
                       setEditing(c);
                       setProvider(c.provider);
                     }}
@@ -115,6 +124,7 @@ export function TimeTrackingSettings({
         (editing !== undefined ? (
           <form
             key={editing?.id ?? "new"}
+            data-unsaved={dirty || action.busy ? "true" : undefined}
             onChange={() => setDirty(true)}
             onSubmit={(e) => {
               e.preventDefault();

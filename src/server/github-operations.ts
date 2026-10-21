@@ -1,3 +1,7 @@
+import {
+  githubCommentOperationNames,
+  githubCommentOperation,
+} from "./github/comments.js";
 import type { Actor } from "../shared/contracts.js";
 import type { Database } from "./db.js";
 import type { Config } from "./config.js";
@@ -28,6 +32,8 @@ export async function githubOperation(
   client: GithubApp,
   store?: AssetStore,
 ) {
+  if (githubCommentOperationNames.has(name))
+    return githubCommentOperation(db, actor, name, i, config, client, store);
   if (githubManagementOperations.has(name))
     return githubManagementOperation(db, actor, name, i, config, client, store);
   config = await managedGithubConfig(db, config, store);

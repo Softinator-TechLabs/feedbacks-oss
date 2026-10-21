@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
-import { chromium } from "playwright";
+import { chromium, type Locator } from "playwright";
 import { PGlite } from "@electric-sql/pglite";
 import { Database } from "../src/server/db.js";
 import { migrate } from "../src/server/migrations.js";
@@ -70,6 +70,49 @@ test(
         return json({
           data: { project: { id: "project42" }, name: "Synthetic Time Doctor task" },
         });
+      if (
+        url.origin === "https://system.firmao.pl" &&
+        url.pathname.startsWith("/review_org/svc/v1/")
+      ) {
+        assert.equal(init?.method, "GET");
+        const authorization = new Headers(init?.headers).get("authorization") ?? "";
+        assert.match(authorization, /^Basic /);
+        assert.match(
+          Buffer.from(authorization.slice(6), "base64").toString("utf8"),
+          /^synthetic-firmao-login-(desktop|mobile):synthetic-firmao-password-\1$/,
+        );
+        assert.equal(url.searchParams.get("start"), "0");
+        assert.equal(url.searchParams.get("dataFormat"), "MEDIUM");
+        if (url.pathname.endsWith("/projects")) {
+          assert.equal(url.searchParams.get("limit"), "1");
+          assert.equal(url.searchParams.get("id(eq)"), "123");
+          return json({
+            data: [
+              {
+                id: 123,
+                name: "Synthetic Firmao CRM project",
+                teamMembers: [{ id: 2 }],
+                managers: [],
+                permissions: { project: ["read"], task: ["create", "read", "update"] },
+              },
+            ],
+          });
+        }
+        if (url.pathname.endsWith("/tasks")) {
+          assert.equal(url.searchParams.get("limit"), "50");
+          return json({
+            data: [
+              {
+                id: 50017,
+                name: "Synthetic CRM task",
+                project: { id: 123 },
+                status: { key: "DONE", label_en: "Done" },
+                permissions: { task: ["read", "update"] },
+              },
+            ],
+          });
+        }
+      }
       throw Error("Unexpected external request in synthetic browser verification");
     };
     try {
@@ -148,7 +191,38 @@ test(
         const page = await signed.context.newPage();
         page.setDefaultTimeout(10000);
         page.on("pageerror", (error) => errors.push(error.message));
-        page.on("dialog", (dialog) => dialog.accept());
+        let dismissNextDialog = false;
+        page.on("dialog", (dialog) => {
+          if (dismissNextDialog) {
+            dismissNextDialog = false;
+            return dialog.dismiss();
+          }
+          return dialog.accept();
+        });
+        async function dismissReplacement(
+          form: Locator,
+          replace: () => Promise<unknown>,
+        ) {
+          const snapshot = () =>
+            form.evaluate((element: HTMLFormElement) =>
+              [...new FormData(element).entries()].map(([name, value]) => [
+                name,
+                String(value),
+              ]),
+            );
+          const before = await snapshot();
+          dismissNextDialog = true;
+          const shown = page.waitForEvent("dialog");
+          await replace();
+          const dialog = await shown;
+          assert.match(dialog.message(), /^Discard this .* draft\?/);
+          assert.equal(dismissNextDialog, false);
+          assert.deepEqual(
+            await snapshot(),
+            before,
+            `${device}: cancelled replacement preserves every draft field`,
+          );
+        }
         await page.goto(`${origin}/trackers?projectId=${projects[1 - index].id}`);
         const trackers = page.locator(".tracker-settings");
         await trackers.waitFor({ timeout: 5000 }).catch(async () => {
@@ -185,6 +259,23 @@ test(
         await trackerForm
           .getByLabel("Import remote status changes automatically", { exact: false })
           .check();
+        await dismissReplacement(trackerForm, () =>
+          trackers
+            .getByRole("combobox", { name: "Project", exact: true })
+            .selectOption(projects[1 - index].id),
+        );
+        assert.equal(
+          await trackers
+            .getByRole("combobox", { name: "Project", exact: true })
+            .inputValue(),
+          project.id,
+        );
+        assert.equal(
+          await trackerForm
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .inputValue(),
+          "asana",
+        );
         await trackerForm
           .getByRole("button", { name: "Save connection", exact: true })
           .press("Enter");
@@ -223,6 +314,97 @@ test(
           .getByRole("button", { name: "Add tracker connection", exact: true })
           .press("Enter");
         await trackerForm
+          .getByLabel("Connection name", { exact: true })
+          .fill(`Unsent tracker ${device}`);
+        await trackerForm
+          .getByLabel("Asana project ID", { exact: true })
+          .fill("unsent123");
+        await trackerForm
+          .getByLabel("API token", { exact: true })
+          .fill(`unsent-tracker-secret-${device}`);
+        await dismissReplacement(trackerForm, () =>
+          trackers
+            .getByRole("button", { name: "Edit connection", exact: true })
+            .press("Enter"),
+        );
+        await trackers
+          .getByRole("button", { name: "Edit connection", exact: true })
+          .press("Enter");
+        assert.equal(
+          await trackerForm.getByLabel("Connection name", { exact: true }).inputValue(),
+          `Asana ${device}`,
+        );
+        await trackers
+          .getByRole("button", { name: "Add tracker connection", exact: true })
+          .press("Enter");
+        checks.push(
+          `${device}: dismissed project and tracker editor replacements preserve project, token and configuration; accepted discard changes editor`,
+        );
+        await trackerForm
+          .getByRole("combobox", { name: "Provider", exact: true })
+          .selectOption("firmao");
+        await trackerForm
+          .getByLabel("Connection name", { exact: true })
+          .fill(`Firmao ${device}`);
+        await trackerForm
+          .getByLabel("Firmao CRM project ID", { exact: true })
+          .fill("123");
+        await trackerForm
+          .getByLabel(/^Firmao organization identifier/)
+          .fill("review_org");
+        await trackerForm.getByLabel(/^Responsible user ID \(optional\)/).fill("2");
+        await trackerForm
+          .getByLabel("Firmao API login", { exact: true })
+          .fill(`synthetic-firmao-login-${device}`);
+        await trackerForm
+          .getByLabel("Firmao API password", { exact: true })
+          .fill(`synthetic-firmao-password-${device}`);
+        await trackerForm
+          .getByText("Status mappings and polling", { exact: true })
+          .press("Enter");
+        await trackerForm
+          .getByLabel("open → remote status", { exact: true })
+          .fill("WAITING");
+        await trackerForm
+          .getByLabel("resolved → remote status", { exact: true })
+          .fill("DONE");
+        await trackerForm
+          .getByRole("button", { name: "Save connection", exact: true })
+          .press("Enter");
+        const firmaoRow = trackers.locator("li").filter({
+          has: page.getByRole("heading", { name: `Firmao ${device}`, exact: true }),
+        });
+        await firmaoRow
+          .getByRole("button", { name: "Test connection", exact: true })
+          .press("Enter");
+        await firmaoRow
+          .getByText("Synthetic Firmao CRM project: available status IDs", {
+            exact: true,
+          })
+          .waitFor();
+        const firmao = (
+          await post("trackers.list", { projectId: project.id })
+        ).connections.find((connection: any) => connection.provider === "firmao");
+        assert.equal(firmao.health, "healthy");
+        assert.equal(firmao.configuration.workspaceId, "review_org");
+        assert.equal(firmao.configuration.targetId, "123");
+        assert.equal(firmao.configuration.assigneeId, "2");
+        const storedFirmao = JSON.stringify(
+          await db.one("SELECT * FROM tracker_connections WHERE id=$1", [firmao.id]),
+        );
+        assert.ok(!storedFirmao.includes(`synthetic-firmao-login-${device}`));
+        assert.ok(!storedFirmao.includes(`synthetic-firmao-password-${device}`));
+        assert.ok(
+          !(await page.content()).includes(`synthetic-firmao-password-${device}`),
+        );
+        assert.ok(!(await page.content()).includes(`synthetic-firmao-login-${device}`));
+        checks.push(
+          `${device}: Firmao organization, project, responsible user, basic API login/password and manual status mappings saved encrypted and verified against exact synthetic API filters`,
+        );
+        await trackers
+          .getByRole("button", { name: "Add tracker connection", exact: true })
+          .press("Enter");
+        await trackerForm
           .getByRole("combobox", { name: "Provider", exact: true })
           .selectOption("jira");
         await trackerForm
@@ -241,7 +423,7 @@ test(
           .waitFor();
         assert.equal(
           (await post("trackers.list", { projectId: project.id })).connections.length,
-          1,
+          2,
         );
         assert.equal(
           await trackerForm.getByLabel("Connection name", { exact: true }).inputValue(),
@@ -309,6 +491,31 @@ test(
         );
         checks.push(
           `${device}: channel event settings persisted, webhook encrypted, test queued over real HTTP`,
+        );
+        await channels
+          .getByRole("button", { name: "Add notification channel", exact: true })
+          .press("Enter");
+        await channelForm
+          .getByLabel("Connection name", { exact: true })
+          .fill(`Unsent channel ${device}`);
+        await channelForm
+          .getByLabel("Incoming webhook URL", { exact: true })
+          .fill(`${webhook}-unsent`);
+        await channelForm.getByLabel("Assignments", { exact: true }).check();
+        await dismissReplacement(channelForm, () =>
+          channels
+            .getByRole("button", { name: "Edit connection", exact: true })
+            .press("Enter"),
+        );
+        await channels
+          .getByRole("button", { name: "Edit connection", exact: true })
+          .press("Enter");
+        assert.equal(
+          await channelForm.getByLabel("Connection name", { exact: true }).inputValue(),
+          `Review updates ${device}`,
+        );
+        checks.push(
+          `${device}: dismissed channel editor replacement preserves name, webhook and event settings; accepted discard changes editor`,
         );
         const time = page.locator("section").filter({
           has: page.getByRole("heading", {
@@ -385,6 +592,50 @@ test(
           );
           times.push(connection);
         }
+        const harvestRow = time.locator("li").filter({
+          has: page.getByRole("heading", { name: `harvest ${device}`, exact: true }),
+        });
+        const timeDoctorRow = time.locator("li").filter({
+          has: page.getByRole("heading", { name: `timedoctor ${device}`, exact: true }),
+        });
+        await harvestRow
+          .getByRole("button", { name: "Edit", exact: true })
+          .press("Enter");
+        const timeForm = time.locator("form");
+        await timeForm
+          .getByLabel("Connection name", { exact: true })
+          .fill(`Unsent time ${device}`);
+        await timeForm
+          .getByLabel("Provider project ID", { exact: true })
+          .fill("unsent42");
+        await timeForm
+          .getByLabel("Replace token (leave empty to keep current)", { exact: true })
+          .fill(`unsent-time-secret-${device}`);
+        await dismissReplacement(timeForm, () =>
+          timeDoctorRow.getByRole("button", { name: "Edit", exact: true }).press("Enter"),
+        );
+        assert.equal(
+          await timeForm
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .inputValue(),
+          "harvest",
+        );
+        await timeDoctorRow
+          .getByRole("button", { name: "Edit", exact: true })
+          .press("Enter");
+        assert.equal(
+          await timeForm.getByLabel("Connection name", { exact: true }).inputValue(),
+          `timedoctor ${device}`,
+        );
+        assert.equal(
+          await timeForm
+            .getByRole("combobox", { name: "Provider", exact: true })
+            .inputValue(),
+          "timedoctor",
+        );
+        checks.push(
+          `${device}: dismissed time editor replacement preserves provider, token and destination; accepted discard changes editor`,
+        );
         assert.ok(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
           `${device} project settings fits`,

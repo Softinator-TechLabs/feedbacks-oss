@@ -16,6 +16,8 @@ Reuse the [thread operations](../../src/server/feedback.ts), [event transaction]
 
 - [x] Inspect current source and privately record the requested roadmap scope.
 - [x] Implement board configuration, queries, moves and batch actions with denied-access and conflict coverage.
+- [x] Implement scoped current project analytics and historical activity metrics.
+- [ ] Verify project charts and exact pending, overdue and high-priority drilldowns, including saved-timezone boundaries.
 - [x] Implement email configuration, safe templates, subscriptions and a durable delivery worker.
 - [x] Verify provider request construction and ambiguous-send recovery with synthetic transports.
 - [x] Update canonical guides and generated operation facts.

@@ -143,6 +143,74 @@
   justify-content: space-between;
   margin-top: 16px;
 }
+.analytics-projects {
+  margin: 28px 0 36px;
+}
+.analytics-project-scale {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.analytics-project-list {
+  padding: 0;
+  margin: 20px 0 0;
+  list-style: none;
+}
+.analytics-project-list > li {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+.analytics-project-list h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.analytics-project-bars {
+  display: grid;
+  gap: 2px;
+}
+.analytics-project-metric {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 8px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+}
+.analytics-project-metric:hover {
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+.analytics-project-metric:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.analytics-project-metric strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.analytics-project-track {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--border) 55%, transparent);
+}
+.analytics-project-track > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.analytics-detail h2 {
+  scroll-margin-top: 24px;
+}
 @media (max-width: 850px) {
   .analytics-columns {
     grid-template-columns: 1fr;
@@ -150,6 +218,10 @@
   }
 }
 @media (max-width: 500px) {
+  .analytics-project-metric {
+    grid-template-columns: 7.5rem minmax(0, 1fr) 2rem;
+    gap: 8px;
+  }
   .analytics-filters .field {
     flex-basis: calc(50% - 12px);
     min-width: 125px;
@@ -181,6 +253,7 @@
   .analytics-filters,
   .analytics-actions > div,
   .analytics-breakdown,
+  .analytics-projects,
   .analytics-detail,
   .analytics-method {
     display: none !important;

@@ -1,3 +1,4 @@
+import { githubCommentsMigrationSql } from "./github/comments.js";
 import { timeTrackingMigrationSql } from "./integrations/time-tracking.js";
 import { channelMigrationSql } from "./integrations/channels.js";
 import { replayLinksMigrationSql } from "./integrations/replay-links.js";
@@ -514,6 +515,13 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
         .filter((statement) => statement.trim()))
         await tx.query(statement);
       await tx.query("INSERT INTO migrations(version) VALUES(34)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=35"))) {
+      for (const statement of githubCommentsMigrationSql
+        .split(";")
+        .filter((s) => s.trim()))
+        await tx.query(statement);
+      await tx.query("INSERT INTO migrations(version) VALUES(35)");
     }
   });
 }

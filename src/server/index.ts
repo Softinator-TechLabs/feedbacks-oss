@@ -1,3 +1,4 @@
+import { processGithubComments } from "./github/comments.js";
 import { processTimeEntries } from "./integrations/time-tracking.js";
 import { processChannelDeliveries } from "./integrations/channels.js";
 import { seedMailEnvironment } from "./notifications/environment.js";
@@ -54,6 +55,7 @@ try {
       deliverNotifications(db, config, store),
       processChannelDeliveries(db, store, config),
       processTimeEntries(db, store, config),
+      processGithubComments(db, config, undefined, store),
       processTrackerJobs(db, store, config),
       pollTrackerLinks(db, store, config),
       pollGithubStatusSync(db, config, undefined, store),

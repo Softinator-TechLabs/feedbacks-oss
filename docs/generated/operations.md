@@ -55,6 +55,10 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `github.appSetupComplete`     | No                   | No                             |
 | `github.appSetupStart`        | No                   | No                             |
 | `github.appUpdate`            | No                   | No                             |
+| `github.commentHistory`       | Yes                  | No                             |
+| `github.commentQueue`         | No                   | No                             |
+| `github.commentReconcile`     | No                   | No                             |
+| `github.comments`             | Yes                  | No                             |
 | `github.connect`              | No                   | No                             |
 | `github.connection`           | Yes                  | No                             |
 | `github.disconnect`           | No                   | No                             |

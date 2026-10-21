@@ -4,6 +4,7 @@ import { ActionState, ErrorNotice, Field, useAction, useLoad } from "../ui.js";
 import { Icon } from "../icons.js";
 import { useUnsavedChanges } from "../navigation.js";
 import { GithubStatusSync } from "./status-sync.js";
+import { GithubComments } from "./comments.js";
 
 type Draft = {
   title: string;
@@ -421,6 +422,7 @@ export function GithubIssue({
             </form>
           ) : null}
           <GithubStatusSync thread={thread} project={project} onSaved={onSaved} />
+          <GithubComments thread={thread} project={project} />
           <ActionState action={action} />
           <button
             type="button"

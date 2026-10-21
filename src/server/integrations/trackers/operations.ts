@@ -130,6 +130,12 @@ export async function trackerOperation(
           ))
         )
           fail("NOT_FOUND", "Verified tracker link not found", 404);
+        if (c.provider === "firmao")
+          fail(
+            "FEATURE_UNAVAILABLE",
+            "Firmao task comments are not available through the documented API",
+            409,
+          );
         return c;
       });
     const c = await check(),
@@ -429,6 +435,12 @@ export async function trackerOperation(
     const thread = await threadRow(tx, a, input.threadId, "maintain");
     if (thread.project_id !== connection.project_id)
       fail("FORBIDDEN", "The feedback and tracker must belong to the same project", 403);
+    if (connection.provider === "firmao" && name === "trackers.comment")
+      fail(
+        "FEATURE_UNAVAILABLE",
+        "Firmao task comments are not available through the documented API",
+        409,
+      );
     const kind = name.slice("trackers.".length);
     const inputHash = hash(JSON.stringify({ name, input }));
     const previous = await tx.one(

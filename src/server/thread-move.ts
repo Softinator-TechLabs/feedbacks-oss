@@ -43,7 +43,12 @@ export async function moveThread(
       409,
     );
 
-  for (const table of ["tracker_jobs", "external_time_entries", "channel_deliveries"]) {
+  for (const table of [
+    "tracker_jobs",
+    "external_time_entries",
+    "channel_deliveries",
+    "github_comment_jobs",
+  ]) {
     if (
       await db.one(
         `SELECT id FROM ${table} WHERE thread_id=$1 AND status IN ('processing','uncertain') LIMIT 1`,
@@ -216,7 +221,12 @@ export async function moveThread(
   }
   // Credentials and provider histories keep their original project authority.
   // Moving feedback never retargets or resumes an old connection's remote writes.
-  for (const table of ["tracker_jobs", "external_time_entries", "channel_deliveries"])
+  for (const table of [
+    "tracker_jobs",
+    "external_time_entries",
+    "channel_deliveries",
+    "github_comment_jobs",
+  ])
     await db.query(
       `UPDATE ${table} SET status='cancelled',error_code='THREAD_MOVED' WHERE thread_id=$1 AND status='pending'`,
       [row.id],

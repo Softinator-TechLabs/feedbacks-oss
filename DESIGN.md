@@ -185,6 +185,18 @@ The [Website widget panel](src/web/projects/settings.tsx) uses the existing Sect
 
 Navigation preserves applied filters and protects unsaved drafts. Thread rows keep a narrow selection column at every breakpoint, with actions below the content on mobile. The Saved views icon stays in the filter panel’s top-right corner without reserving a separate column. Top priority uses the same outlined control treatment as Archive. Optional organization, personal views and diagnostics use disclosure sections. Screenshot comparison preserves proportions and provides a labeled native range control. Arrow-key navigation must not intercept typing, selectors, sliders or dialogs. Keep response obligation, work status and delivery evidence distinct.
 
+### Operate project workflows
+
+Project workflows extend the compact application system: system typography, Oxford actions, quiet surfaces, native controls and visible focus. Start with one heading and relevant filters or concise settings context, followed by the board, report or configuration action. Use native disclosures for optional credentials, templates, definitions and history.
+
+The [project board](src/web/board/index.tsx) groups review cards into counted lanes. Selection and **Move selected** provide a native-control alternative to dragging; revision-checked changes show success or conflict recovery beside the actions. At 600px and below, lanes and batch controls stack vertically. Keep the [board styling](src/web/board/board.css) scoped to this alternate project view.
+
+[Analytics](src/web/analytics/index.tsx) keeps project, period and time-zone scope explicit, with semantic tables and a disclosure for metric definitions and coverage. Project summaries use labeled, clickable grouped bars on a common scale; overdue and high-priority counts overlap pending work and must not be stacked as disjoint categories. **Export totals CSV** and **Print totals** produce aggregate totals and dates; project labels, matching thread details and identifying content stay out of these outputs. Preserve readable narrow-screen tables and the scoped print layout.
+
+[Email preferences](src/web/notifications/subscription.tsx) make event subscriptions and content excerpts explicit opt-ins. [Email setup](src/web/notifications/settings.tsx) discloses sender, credentials and plain-text template editing, with an inline **Preview template** result. Keep provider acceptance distinct from inbox delivery. The [website widget settings](src/web/projects/permanent-intake.tsx) offer optional contact collection; the [widget](public/widget.js) requires a separate consent checkbox before sharing an entered email.
+
+The [tracker](src/web/integrations/trackers.tsx), [notification channel](src/web/integrations/channels.tsx) and [time connection](src/web/integrations/time-tracking.tsx) editors use native discard confirmations before an in-page switch replaces an unsaved draft. Cancel keeps the current editor and values in place. Keep these guards alongside the existing navigation protection.
+
 ## Do's and Don'ts
 
 ### Do

@@ -10,6 +10,7 @@ export const trackerProvider = z.enum([
   "trello",
   "productive",
   "teamwork",
+  "firmao",
 ]);
 export type TrackerProvider = z.infer<typeof trackerProvider>;
 export const trackerStates = [
@@ -37,6 +38,14 @@ export const trackerConfiguration = z
     targetId: remoteId,
     workspaceId: remoteId.optional(),
     secondaryId: remoteId.optional(),
+    assigneeId: z
+      .string()
+      .regex(/^[1-9]\d{0,15}$/)
+      .refine(
+        (value) => Number.isSafeInteger(Number(value)),
+        "Use a safe numeric user ID",
+      )
+      .optional(),
     statusColumn: remoteId.default("status"),
     site: z
       .string()
@@ -67,9 +76,16 @@ export type TrackerConfiguration = z.infer<typeof trackerConfiguration>;
 export const trackerCredential = z.object({
   token: z.string().trim().min(5).max(16000),
   key: z.string().trim().max(1000).optional(),
+  username: z
+    .string()
+    .trim()
+    .min(1)
+    .max(254)
+    .regex(/^[^:\r\n]+$/)
+    .optional(),
   refreshToken: z.string().trim().max(16000).optional(),
   expiresAt: z.string().datetime().optional(),
-  auth: z.enum(["token", "oauth"]).default("token"),
+  auth: z.enum(["token", "oauth", "basic"]).default("token"),
 });
 export type TrackerCredential = z.infer<typeof trackerCredential>;
 const connection = z.object({

@@ -154,10 +154,13 @@ export async function processTrackerJobs(
           )
             throw new TrackerError("TRACKER_LEASE_EXPIRED");
         });
+      client.beforeWrite = async () => {
+        await preWrite();
+        performedWrite = true;
+      };
       await preWrite();
       let issue: RemoteIssue | undefined;
       if (job.kind === "create") {
-        performedWrite = true;
         issue = await client.create(job.payload.title, job.payload.body);
         writeAccepted = true;
         remoteId = issue.id;
@@ -169,7 +172,6 @@ export async function processTrackerJobs(
         remoteId = issue.id;
         if (job.kind === "comment") {
           await preWrite();
-          performedWrite = true;
           await client.comment(issue.id, job.payload.body);
           writeAccepted = true;
         } else if (job.payload.source === "feedbacks") {
@@ -181,7 +183,6 @@ export async function processTrackerJobs(
           if (!mapping) throw new TrackerError("TRACKER_STATE_UNMAPPED");
           if (issue.state !== mapping.remote) {
             await preWrite();
-            performedWrite = true;
             await client.setState(issue.id, mapping.remote, mapping.transition);
             writeAccepted = true;
             issue = await client.read(issue.id);
@@ -248,6 +249,12 @@ export async function processTrackerJobs(
         "TRACKER_NOT_FOUND",
         "TRACKER_STATE_INVALID",
         "JIRA_TRANSITION_REQUIRED",
+        "FIRMAO_PROJECT_PERMISSION_REQUIRED",
+        "FIRMAO_TASK_PERMISSION_REQUIRED",
+        "FIRMAO_ASSIGNEE_NOT_IN_PROJECT",
+        "FIRMAO_COMMENTS_UNSUPPORTED",
+        "FIRMAO_NUMERIC_ID_REQUIRED",
+        "TRACKER_STATE_UNMAPPED",
       ].includes(code);
       const uncertain =
         writeAccepted ||

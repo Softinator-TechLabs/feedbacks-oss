@@ -48,16 +48,39 @@ export const trackerNames: Record<TrackerProvider, string> = {
   trello: "Trello",
   productive: "Productive",
   teamwork: "Teamwork",
+  firmao: "Firmao CRM",
 };
 
 /** Credentials only go to fixed provider origins. Account sites are a single validated DNS label. */
 export class TrackerClient {
+  /** Recheck durable authorization immediately before an external mutation leaves the process. */
+  beforeWrite?: () => Promise<void>;
   constructor(
     public provider: TrackerProvider,
     public configuration: TrackerConfiguration,
     private credential: TrackerCredential,
     private transport: TrackerTransport = boundedFetch,
   ) {
+    if (provider !== "firmao" && credential.auth === "basic")
+      throw new TrackerError("TRACKER_AUTH_INVALID");
+    if (provider === "firmao") {
+      if (
+        credential.auth !== "basic" ||
+        !credential.username ||
+        !/^[^:\r\n]{1,254}$/.test(credential.username)
+      )
+        throw new TrackerError("FIRMAO_API_LOGIN_REQUIRED");
+      if (
+        !configuration.workspaceId ||
+        !/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/.test(configuration.workspaceId)
+      )
+        throw new TrackerError("FIRMAO_ORGANIZATION_REQUIRED");
+      if (
+        !this.firmaoNumericId(configuration.targetId) ||
+        (configuration.assigneeId && !this.firmaoNumericId(configuration.assigneeId))
+      )
+        throw new TrackerError("FIRMAO_NUMERIC_ID_REQUIRED");
+    }
     if (
       provider === "jira" &&
       (credential.auth !== "oauth" ||
@@ -90,15 +113,28 @@ export class TrackerClient {
       trello: "https://api.trello.com",
       productive: "https://api.productive.io",
       teamwork: `https://${this.configuration.site}.teamwork.com`,
+      firmao: "https://system.firmao.pl",
     }[this.provider];
   }
-  private async request(path: string, method = "GET", body?: unknown) {
+  private async request(
+    path: string,
+    method = "GET",
+    body?: unknown,
+    write = method !== "GET",
+  ) {
     const url = this.origin() + path;
     const headers: Record<string, string> = {
       accept: "application/json",
       "content-type": "application/json",
     };
-    if (this.provider === "productive")
+    if (this.provider === "firmao")
+      headers.authorization =
+        "Basic " +
+        Buffer.from(
+          `${this.credential.username}:${this.credential.token}`,
+          "utf8",
+        ).toString("base64");
+    else if (this.provider === "productive")
       Object.assign(headers, {
         "content-type": "application/vnd.api+json",
         "X-Auth-Token": this.credential.token,
@@ -116,15 +152,18 @@ export class TrackerClient {
           ? this.credential.token
           : `Bearer ${this.credential.token}`;
     if (this.provider === "monday") headers["API-Version"] = "2026-07";
+    const init: RequestInit = {
+      method,
+      headers,
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    };
+    // Keep authorization failures outside the network catch: no request has been sent.
+    if (write) await this.beforeWrite?.();
     let response: Response;
     try {
-      response = await this.transport(url, {
-        method,
-        headers,
-        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-      });
+      response = await this.transport(url, init);
     } catch {
-      throw new TrackerError("TRACKER_NETWORK", method !== "GET");
+      throw new TrackerError("TRACKER_NETWORK", write);
     }
     if (!response.ok) {
       await response.body?.cancel();
@@ -140,18 +179,18 @@ export class TrackerClient {
                 : "TRACKER_REQUEST_REJECTED";
       throw new TrackerError(
         code,
-        method !== "GET" && response.status >= 500,
+        write && response.status >= 500,
         Math.min(3600, Math.max(1, Number(response.headers.get("retry-after")) || 60)),
       );
     }
     const bytes = await response.arrayBuffer();
     if (bytes.byteLength > 2_000_000)
-      throw new TrackerError("TRACKER_RESPONSE_TOO_LARGE", method !== "GET");
+      throw new TrackerError("TRACKER_RESPONSE_TOO_LARGE", write);
     if (!bytes.byteLength) return {};
     try {
       return JSON.parse(Buffer.from(bytes).toString("utf8"));
     } catch {
-      throw new TrackerError("TRACKER_INVALID_RESPONSE", method !== "GET");
+      throw new TrackerError("TRACKER_INVALID_RESPONSE", write);
     }
   }
   private async graphql(
@@ -163,6 +202,7 @@ export class TrackerClient {
       this.provider === "linear" ? "/graphql" : "/v2",
       "POST",
       { query, variables },
+      mutation,
     );
     if (result.errors?.length || !result.data)
       throw new TrackerError("TRACKER_GRAPHQL_REJECTED", mutation);
@@ -170,6 +210,76 @@ export class TrackerClient {
   }
   private jira(path: string) {
     return `/ex/jira/${encoded(this.configuration.cloudId!)}/rest/api/3${path}`;
+  }
+  private firmaoNumericId(value: string) {
+    return /^[1-9]\d{0,15}$/.test(value) && Number.isSafeInteger(Number(value));
+  }
+  private firmao(path: string) {
+    return `/${encoded(this.configuration.workspaceId!)}/svc/v1${path}`;
+  }
+  private firmaoRows(result: any) {
+    if (!Array.isArray(result?.data)) throw new TrackerError("TRACKER_INVALID_RESPONSE");
+    return result.data;
+  }
+  private async firmaoProject() {
+    const rows = this.firmaoRows(
+      await this.request(
+        this.firmao(
+          `/projects?start=0&limit=1&id%28eq%29=${encoded(this.configuration.targetId)}&dataFormat=MEDIUM`,
+        ),
+      ),
+    );
+    if (!rows.length) throw new TrackerError("TRACKER_NOT_FOUND");
+    if (
+      rows.length !== 1 ||
+      String(rows[0].id) !== this.configuration.targetId ||
+      typeof rows[0].name !== "string"
+    )
+      throw new TrackerError("TRACKER_TARGET_MISMATCH");
+    const project = rows[0];
+    if (
+      !Array.isArray(project.permissions?.task) ||
+      !project.permissions.task.includes("create") ||
+      !project.permissions.task.includes("read")
+    )
+      throw new TrackerError("FIRMAO_PROJECT_PERMISSION_REQUIRED");
+    if (
+      this.configuration.assigneeId &&
+      ![
+        ...(Array.isArray(project.teamMembers) ? project.teamMembers : []),
+        ...(Array.isArray(project.managers) ? project.managers : []),
+      ].some((member: any) => String(member.id) === this.configuration.assigneeId)
+    )
+      throw new TrackerError("FIRMAO_ASSIGNEE_NOT_IN_PROJECT");
+    return project;
+  }
+  private async firmaoTask(id: string, write = false) {
+    if (!this.firmaoNumericId(id)) throw new TrackerError("FIRMAO_NUMERIC_ID_REQUIRED");
+    const rows = this.firmaoRows(
+      await this.request(
+        this.firmao(`/tasks?start=0&limit=1&id%28eq%29=${encoded(id)}&dataFormat=MEDIUM`),
+      ),
+    );
+    if (!rows.length) throw new TrackerError("TRACKER_NOT_FOUND");
+    if (rows.length !== 1 || String(rows[0].id) !== id)
+      throw new TrackerError("TRACKER_INVALID_RESPONSE");
+    const task = rows[0];
+    if (String(task.project?.id ?? task.project) !== this.configuration.targetId)
+      throw new TrackerError("TRACKER_TARGET_MISMATCH");
+    if (
+      typeof task.name !== "string" ||
+      !task.name.trim() ||
+      typeof task.status?.key !== "string" ||
+      !/^[^\x00-\x1f]{1,200}$/.test(task.status.key)
+    )
+      throw new TrackerError("TRACKER_INVALID_RESPONSE");
+    if (
+      !Array.isArray(task.permissions?.task) ||
+      !task.permissions.task.includes("read") ||
+      (write && !task.permissions.task.includes("update"))
+    )
+      throw new TrackerError("FIRMAO_TASK_PERMISSION_REQUIRED");
+    return task;
   }
   private normalize(raw: any): RemoteIssue {
     const c = this.configuration;
@@ -234,6 +344,14 @@ export class TrackerClient {
           state: raw.completed ? "completed" : "open",
         };
         break;
+      case "firmao":
+        result = {
+          id: String(raw.id),
+          url: `https://system.firmao.pl/${encoded(c.workspaceId!)}`,
+          title: raw.name,
+          state: raw.status?.key,
+        };
+        break;
     }
     if (
       !result.id ||
@@ -253,6 +371,7 @@ export class TrackerClient {
       trello: "trello.com",
       productive: "app.productive.io",
       teamwork: `${c.site}.teamwork.com`,
+      firmao: "system.firmao.pl",
     };
     const expected = hosts[this.provider];
     if (
@@ -332,6 +451,9 @@ export class TrackerClient {
         raw = (await this.request(`/tasks/${e}.json`))["todo-item"];
         if (String(raw?.["todo-list-id"]) !== this.configuration.targetId)
           throw new TrackerError("TRACKER_TARGET_MISMATCH");
+        break;
+      case "firmao":
+        raw = await this.firmaoTask(id);
         break;
     }
     return this.normalize(raw);
@@ -419,6 +541,39 @@ export class TrackerClient {
             { id: "open", name: "Open" },
             { id: "completed", name: "Completed" },
           ],
+        };
+      }
+      case "firmao": {
+        const project = await this.firmaoProject();
+        const states = new Map<string, string>([
+          ["WAITING", "Waiting (documented initial status)"],
+        ]);
+        if (c.states.length) {
+          const rows = this.firmaoRows(
+            await this.request(this.firmao("/tasks?start=0&limit=50&dataFormat=MEDIUM")),
+          );
+          if (rows.length > 50) throw new TrackerError("TRACKER_INVALID_RESPONSE");
+          for (const task of rows)
+            if (
+              String(task.project?.id ?? task.project) === c.targetId &&
+              Array.isArray(task.permissions?.task) &&
+              task.permissions.task.includes("read") &&
+              typeof task.status?.key === "string" &&
+              /^[^\x00-\x1f]{1,200}$/.test(task.status.key)
+            )
+              states.set(
+                task.status.key,
+                (typeof task.status.label_en === "string"
+                  ? task.status.label_en
+                  : typeof task.status.label === "string"
+                    ? task.status.label
+                    : task.status.key
+                ).slice(0, 200),
+              );
+        }
+        return {
+          name: project.name,
+          states: [...states].map(([id, name]) => ({ id, name })),
         };
       }
     }
@@ -514,6 +669,32 @@ export class TrackerClient {
           ).id,
         );
         break;
+      case "firmao": {
+        await this.firmaoProject();
+        const created = await this.request(this.firmao("/tasks"), "POST", {
+          taskType: "PROJECT",
+          name: title,
+          description: body,
+          project: Number(c.targetId),
+          status:
+            c.states.find((mapping) => mapping.local === "open")?.remote ?? "WAITING",
+          ...(c.assigneeId ? { responsibleUsers: [{ id: Number(c.assigneeId) }] } : {}),
+        });
+        const identifiers = [
+          ...new Set<string>(
+            (Array.isArray(created.changelog) ? created.changelog : [])
+              .filter(
+                (entry: any) =>
+                  entry?.modification === "CREATE" && entry.objectClass === "task",
+              )
+              .map((entry: any) => String(entry.objectId)),
+          ),
+        ];
+        if (identifiers.length !== 1 || !this.firmaoNumericId(identifiers[0]))
+          throw new TrackerError("FIRMAO_CREATE_ID_MISSING", true);
+        id = identifiers[0];
+        break;
+      }
     }
     try {
       return await this.read(id);
@@ -524,6 +705,7 @@ export class TrackerClient {
     }
   }
   async comment(id: string, body: string) {
+    if (this.provider === "firmao") throw new TrackerError("FIRMAO_COMMENTS_UNSUPPORTED");
     const e = encoded(id);
     switch (this.provider) {
       case "jira":
@@ -578,6 +760,7 @@ export class TrackerClient {
     }
   }
   async comments(id: string) {
+    if (this.provider === "firmao") throw new TrackerError("FIRMAO_COMMENTS_UNSUPPORTED");
     const e = encoded(id);
     let rows: any[],
       hasMore = false;
@@ -775,6 +958,12 @@ export class TrackerClient {
           `/tasks/${e}/${state === "completed" ? "complete" : "uncomplete"}.json`,
           "PUT",
         );
+        break;
+      case "firmao":
+        if (!c.states.some((mapping) => mapping.remote === state))
+          throw new TrackerError("TRACKER_STATE_UNMAPPED");
+        await this.firmaoTask(id, true);
+        await this.request(this.firmao(`/tasks/${e}`), "PUT", { status: state });
         break;
     }
   }

@@ -38,3 +38,11 @@ Use **Create GitHub issue** on the thread; multiple repositories require a desti
 Attachment links require Feedbacks sign-in and current project access. One native Issue request is allowed per thread; uncertain writes pause to avoid duplicates. [Recover a pending request](/guide/troubleshooting#an-issue-request-is-pending).
 
 **Status sync** is opt-in. First mismatches, changes on both sides and uncertain writes pause for a maintainer decision. Changing App clears connections/sync; historical Issue links keep their original App. [Sync rules and limits](/reference/manual/api#optional-github-app).
+
+## Review and share Issue discussion
+
+Open **More actions → GitHub issue options → Issue discussion** on a thread with a verified linked Issue. A human project maintainer can load a page of up to 20 GitHub comments or write a separate comment, preview its exact text, confirm the destination and queue it. The existing GitHub App needs **Issues: read and write** on that repository. Each displayed comment is capped at 12,000 characters; open its GitHub link for the complete original.
+
+Only the reviewed text is sent. Feedbacks replies, screenshots and private notes are not automatically mirrored. Delivery history records the result without including the comment body. Current permissions, the original App and the connected repository are checked again before sending.
+
+If a write may have succeeded, automatic retries stop. Inspect the Issue, then enter the actual comment ID to verify delivery or confirm it is absent and retire that action. A new send requires a separately reviewed action. Moving or deleting feedback waits for active or uncertain writes; a move cancels pending comments and retains history for people who can still maintain the original project.
