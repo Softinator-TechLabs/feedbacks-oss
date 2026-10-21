@@ -88,6 +88,23 @@ test(
           );
           await comment.fill("Synthetic modal review", { timeout: 2000 });
           assert.equal(await comment.inputValue(), "Synthetic modal review");
+          const drawer = page.locator(".bar");
+          const handle = page.locator(".drawer-handle");
+          if (await drawer.isVisible()) await handle.click();
+          await handle.hover();
+          assert.equal(
+            await drawer.isVisible(),
+            false,
+            "Hovering page controls must not cover an active comment",
+          );
+          assert.equal(await comment.inputValue(), "Synthetic modal review");
+          await handle.click();
+          assert.equal(
+            await drawer.isVisible(),
+            true,
+            "An explicit click still opens the controls while commenting",
+          );
+          await handle.click();
           const menu = page.getByRole("dialog", {
             name: "Feedback at this point",
             exact: true,

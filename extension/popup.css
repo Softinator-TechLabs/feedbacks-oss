@@ -290,6 +290,10 @@ button {
   margin: 0 0 8px;
   font-size: 13px;
 }
+#server-error {
+  color: var(--error);
+  margin: 8px 0;
+}
 #update-status {
   margin: 8px 0 0;
   min-height: 1.3em;

@@ -100,6 +100,20 @@ test(
       );
       await page.goto(`${base}/qa`);
       await page.getByRole("heading", { name: "App screenshot", exact: true }).waitFor();
+      const captureButton = await page
+        .getByRole("button", { name: "Capture window", exact: true })
+        .boundingBox();
+      const importInput = await page
+        .getByLabel("Import screenshot", { exact: true })
+        .boundingBox();
+      assert.ok(
+        captureButton &&
+          importInput &&
+          Math.abs(
+            captureButton.y + captureButton.height - importInput.y - importInput.height,
+          ) < 1,
+        "Capture and import controls share the same baseline",
+      );
       const source = await sharp(
         Buffer.from(
           `<svg width="800" height="450" xmlns="http://www.w3.org/2000/svg"><rect width="800" height="450" fill="white"/><rect width="800" height="70" fill="#17324d"/><text x="24" y="43" fill="white" font-family="sans-serif" font-size="23">Synthetic finance app — test fixture</text><text x="24" y="112" fill="#17324d" font-family="sans-serif" font-size="22">Invoice review</text><rect x="24" y="142" width="752" height="222" fill="#f2f5f7"/><text x="48" y="178" fill="#17324d" font-family="sans-serif" font-size="18">Customer and invoice details</text><rect x="650" y="388" width="126" height="42" rx="6" fill="#17324d"/><text x="691" y="415" fill="white" font-family="sans-serif" font-size="18">Save</text></svg>`,
@@ -111,11 +125,54 @@ test(
         .getByLabel("Import screenshot", { exact: true })
         .setInputFiles({ name: "synthetic.png", mimeType: "image/png", buffer: source });
       await page.getByLabel("App name", { exact: true }).fill("Synthetic finance app");
+      const preview = await page.locator(".app-capture-image").boundingBox();
+      assert.ok(
+        preview && preview.width <= 800 && preview.height <= 600,
+        "The preview fits the viewport without enlarging the imported image",
+      );
+      await page.locator(".app-capture-image").click({ position: { x: 120, y: 100 } });
+      const pin = page.getByRole("button", { name: "Point 1", exact: true });
+      await pin.focus();
+      const beforeMove = await pin.getAttribute("style");
+      await pin.press("ArrowRight");
+      assert.notEqual(await pin.getAttribute("style"), beforeMove);
+      const beforeDrag = await pin.getAttribute("style");
+      const pinBounds = (await pin.boundingBox())!;
+      await page.mouse.move(
+        pinBounds.x + pinBounds.width / 2,
+        pinBounds.y + pinBounds.height / 2,
+      );
+      await page.mouse.down();
+      await page.mouse.move(pinBounds.x + 80, pinBounds.y + 70);
+      await page.mouse.up();
+      assert.notEqual(await pin.getAttribute("style"), beforeDrag);
+      assert.equal(
+        await page.locator(".app-capture-pin").count(),
+        1,
+        "Dragging a marker moves the same point instead of adding another",
+      );
+      await page.getByRole("button", { name: /Remove selected point/ }).click();
+      assert.equal(await page.locator(".app-capture-pin").count(), 0);
+      await page
+        .getByRole("button", { name: "Add point at center", exact: true })
+        .click();
+      await page.getByRole("button", { name: "Point 1", exact: true }).press("Delete");
+      assert.equal(
+        await page.locator(".app-capture-pin").count(),
+        0,
+        "Keyboard users can remove a focused marker",
+      );
       await page.getByLabel("Platform", { exact: true }).selectOption("linux");
       await page
         .getByRole("button", { name: "Add point at center", exact: true })
         .click();
-      await page.getByLabel("Point 1", { exact: true }).fill("Make Save easier to find");
+      assert.equal(
+        await page.getByRole("button", { name: /Remove selected point/ }).isEnabled(),
+        true,
+      );
+      await page
+        .getByRole("textbox", { name: "Point 1", exact: true })
+        .fill("Make Save easier to find");
       await page.getByText("Hide an area with coordinates", { exact: true }).click();
       await page.getByRole("button", { name: "Add hidden area", exact: true }).click();
       await page

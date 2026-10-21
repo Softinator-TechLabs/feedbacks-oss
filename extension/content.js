@@ -1547,7 +1547,10 @@
     finalizeButton.append(finalizeIcon, finalizeLabel);
     bar.id = "feedbacks-drawer";
     bar.addEventListener("toggle", positionControls, true);
-    drawerHandle.addEventListener("pointerenter", () => revealDrawer());
+    drawerHandle.addEventListener("pointerenter", () => {
+      if (chosen || draftEditing || activePreviewHide) return;
+      revealDrawer();
+    });
     reviewDock.addEventListener("pointerleave", collapseAfterLeave);
     bar.addEventListener("pointerenter", () => clearTimeout(drawerTimer));
     bar.addEventListener("pointerleave", collapseAfterLeave);

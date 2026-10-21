@@ -14,6 +14,7 @@ import { ThreadRecordings } from "../recordings/thread-recordings.js";
 import { ScreenshotMarkup, type MarkupTarget } from "../screenshot-markup.js";
 import { ThreadAttachments } from "./attachments.js";
 import { ThreadLinks } from "./links.js";
+import { ThreadSourceLink } from "./source-link.js";
 import {
   DiagnosticEvidencePanel,
   type DiagnosticEvidenceSummary,
@@ -256,6 +257,11 @@ export function ThreadDetail({
             </p>
             <PointProgressRing thread={t} />
           </div>
+          {(t.context.document || t.context.url) && (
+            <p className="thread-source">
+              <ThreadSourceLink thread={t} detailed />
+            </p>
+          )}
         </div>
         <div
           className="thread-header-actions"
@@ -317,21 +323,6 @@ export function ThreadDetail({
             />
           )}
           <div className="thread-tools" role="group" aria-label="Feedback actions">
-            {t.context.url && (
-              <ExternalLink href={t.context.url}>
-                <span
-                  className="icon-action"
-                  data-tooltip={
-                    t.context.document ? "Open document" : "Open original page"
-                  }
-                >
-                  <Icon name="external" />
-                  <span className="sr-only">
-                    {t.context.document ? "Open document" : "Open original page"}
-                  </span>
-                </span>
-              </ExternalLink>
-            )}
             {project?.permissions.canMaintain && (
               <button
                 type="button"

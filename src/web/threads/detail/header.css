@@ -20,6 +20,14 @@
   align-items: center;
   gap: 10px;
 }
+.thread-page-heading .thread-source {
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.thread-source a {
+  display: inline-block;
+  padding-block: 4px;
+}
 .thread-header-actions {
   display: flex;
   align-items: center;
