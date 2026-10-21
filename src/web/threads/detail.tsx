@@ -1,3 +1,7 @@
+import { TimeEntryPanel } from "../integrations/time-tracking.js";
+import { ExternalReplayLinks } from "../integrations/replay-links.js";
+import { IntakeDetails } from "../projects/intake-details.js";
+import { TrackerThreadPanel } from "../integrations/trackers.js";
 import { DeleteThreadsButton, ArchiveThreadButton } from "./deletion.js";
 import { useEffect, useRef, useState } from "react";
 import { ThreadMove } from "./move.js";
@@ -199,6 +203,9 @@ export function ThreadDetail({
       const section = document.getElementById(id);
       if (!section) return;
       if (section instanceof HTMLDetailsElement) section.open = true;
+      // The next frame can arrive after someone has already entered the panel.
+      // Keep that deliberate focus instead of interrupting their next keystroke.
+      if (section.contains(document.activeElement)) return;
       section.scrollIntoView({ block: "start" });
       if (section instanceof HTMLDetailsElement)
         section.querySelector("summary")?.focus({ preventScroll: true });
@@ -791,6 +798,7 @@ export function ThreadDetail({
                     setProjectVersion((value) => value + 1);
                   }}
                 />
+                <IntakeDetails context={t.context} />
                 <ContextPanel context={t.context} />
                 {t.diagnostics && <ThreadDiagnostics diagnostics={t.diagnostics} />}
                 <DiagnosticEvidencePanel
@@ -837,6 +845,17 @@ export function ThreadDetail({
                     )}
                   </details>
                 )}
+                {project?.permissions.canMaintain && (
+                  <TrackerThreadPanel
+                    thread={t}
+                    onChange={() => setVersion((v) => v + 1)}
+                  />
+                )}
+                {project?.permissions.canMaintain && <TimeEntryPanel thread={t} />}
+                <ExternalReplayLinks
+                  thread={t}
+                  canWrite={!!project?.permissions.canWrite}
+                />
                 <ThreadLinks
                   thread={t}
                   canWrite={!!project?.permissions.canWrite}

@@ -1,0 +1,10 @@
+# syntax=docker/dockerfile:1
+FROM node:24-bookworm-slim AS runtime
+ENV NODE_ENV=production PORT=4786
+LABEL org.opencontainers.image.source="https://github.com/Softinator-TechLabs/feedbacks-oss"
+WORKDIR /app
+COPY --link --chown=1000:1000 scripts/tracker-oauth-broker.mjs ./tracker-oauth-broker.mjs
+USER node
+# The broker binds to loopback. Run with a reverse proxy in the same network namespace.
+HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:4786/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "tracker-oauth-broker.mjs"]

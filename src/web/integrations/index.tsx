@@ -43,6 +43,9 @@ export function Integrations() {
           ))}
         </ul>
       )}
+      <p>
+        <a href="/email">Configure email notifications</a>
+      </p>
       <details>
         <summary>Storage and access</summary>
         <p>

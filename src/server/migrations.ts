@@ -1,3 +1,10 @@
+import { githubCommentsMigrationSql } from "./github/comments.js";
+import { timeTrackingMigrationSql } from "./integrations/time-tracking.js";
+import { channelMigrationSql } from "./integrations/channels.js";
+import { replayLinksMigrationSql } from "./integrations/replay-links.js";
+import { migratePublicIntake } from "./public-intake-migration.js";
+import { migrateProjectBoard } from "./board-migration.js";
+import { trackerMigrationSql } from "./integrations/trackers/migrations.js";
 import type { Database } from "./db.js";
 export async function migrate(db: Database) {
   await db.transaction(async (tx) => {
@@ -452,6 +459,69 @@ CREATE INDEX guest_project_links_project ON guest_project_links(project_id,creat
         "CREATE INDEX oauth_refresh_expiry ON oauth_refresh_tokens(expires_at)",
       );
       await tx.query("INSERT INTO migrations(version) VALUES(29)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=30"))) {
+      await tx.query(`CREATE TABLE notification_settings(
+        scope text PRIMARY KEY,project_id uuid UNIQUE REFERENCES projects(id),enabled boolean NOT NULL DEFAULT false,
+        transport jsonb,identity jsonb,envelope jsonb,key_object text,templates jsonb NOT NULL DEFAULT '{}',
+        revision integer NOT NULL DEFAULT 1,updated_at timestamptz NOT NULL DEFAULT now(),
+        CHECK((scope='server' AND project_id IS NULL) OR scope=project_id::text)
+      )`);
+      await tx.query(`CREATE TABLE notification_subscriptions(
+        project_id uuid NOT NULL REFERENCES projects(id),user_id uuid NOT NULL REFERENCES users(id),
+        events jsonb NOT NULL DEFAULT '[]',include_self boolean NOT NULL DEFAULT false,include_content boolean NOT NULL DEFAULT false,
+        unsubscribe_token text NOT NULL UNIQUE,revision integer NOT NULL DEFAULT 1,
+        PRIMARY KEY(project_id,user_id)
+      )`);
+      await tx.query(`CREATE TABLE notification_deliveries(
+        id uuid PRIMARY KEY,project_id uuid REFERENCES projects(id),thread_id uuid REFERENCES threads(id) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(id),event text NOT NULL,event_revision integer,event_key text NOT NULL,payload jsonb NOT NULL,
+        status text NOT NULL CHECK(status IN ('pending','sending','accepted','failed','uncertain','suppressed')),
+        attempts integer NOT NULL DEFAULT 0,revision integer NOT NULL DEFAULT 1,next_at timestamptz NOT NULL DEFAULT now(),
+        lease_until timestamptz,error_code text,test_key text,created_at timestamptz NOT NULL DEFAULT now(),accepted_at timestamptz,
+        UNIQUE(event_key,user_id,event),UNIQUE(user_id,test_key)
+      )`);
+      await tx.query(
+        "CREATE INDEX notification_pending ON notification_deliveries(next_at,created_at) WHERE status='pending'",
+      );
+      await tx.query(
+        "CREATE INDEX notification_project_history ON notification_deliveries(project_id,created_at DESC)",
+      );
+      await tx.query("INSERT INTO migrations(version) VALUES(30)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=31"))) {
+      await migrateProjectBoard(tx);
+      await tx.query("INSERT INTO migrations(version) VALUES(31)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=32"))) {
+      for (const statement of trackerMigrationSql
+        .split(";")
+        .filter((statement) => statement.trim()))
+        await tx.query(statement);
+      await tx.query("INSERT INTO migrations(version) VALUES(32)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=33"))) {
+      await migratePublicIntake(tx);
+      await tx.query("INSERT INTO migrations(version) VALUES(33)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=34"))) {
+      for (const statement of [
+        channelMigrationSql,
+        replayLinksMigrationSql,
+        timeTrackingMigrationSql,
+      ]
+        .join(";")
+        .split(";")
+        .filter((statement) => statement.trim()))
+        await tx.query(statement);
+      await tx.query("INSERT INTO migrations(version) VALUES(34)");
+    }
+    if (!(await tx.one("SELECT version FROM migrations WHERE version=35"))) {
+      for (const statement of githubCommentsMigrationSql
+        .split(";")
+        .filter((s) => s.trim()))
+        await tx.query(statement);
+      await tx.query("INSERT INTO migrations(version) VALUES(35)");
     }
   });
 }

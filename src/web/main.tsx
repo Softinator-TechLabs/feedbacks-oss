@@ -1,3 +1,8 @@
+import { TrackerSettingsPage } from "./integrations/trackers.js";
+import { ProjectBoard } from "./board/index.js";
+import { Analytics } from "./analytics/index.js";
+import { EmailSettings } from "./notifications/settings.js";
+import "./notifications/notifications.css";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api, type Actor, type Project } from "./api.js";
@@ -202,6 +207,9 @@ function App() {
           <a href="/" aria-current={path === "/" ? "page" : undefined}>
             Projects
           </a>
+          <a href="/analytics" aria-current={path === "/analytics" ? "page" : undefined}>
+            Analytics
+          </a>
           {actor?.owner && (
             <a href="/people" aria-current={path === "/people" ? "page" : undefined}>
               People
@@ -273,6 +281,8 @@ function App() {
             <nav aria-label="Project navigation">
               {[
                 ["", "Feedback"],
+                ["board", "Board"],
+                ["analytics", "Analytics"],
                 ["github", "GitHub"],
                 ...(project.documentsEnabled ? [["documents", "Documents"]] : []),
                 ...(project.surveysEnabled ? [["surveys", "Surveys"]] : []),
@@ -305,11 +315,31 @@ function App() {
             <Pairing pairingId={params.get("pairingId") ?? ""} />
           ) : path === "/account" ? (
             <Account actor={actor} projects={projects} onSignOut={signOut} />
+          ) : path === "/analytics" ? (
+            <Analytics key="workspace" projects={projects} userId={actor.userId} />
           ) : path === "/integrations" ? (
             actor.owner ? (
               <Integrations />
             ) : (
               <p role="alert">Server owner access is required to manage integrations.</p>
+            )
+          ) : path === "/trackers" ? (
+            actor.owner ? (
+              <TrackerSettingsPage
+                projects={projects}
+                initialProjectId={params.get("projectId") ?? undefined}
+              />
+            ) : (
+              <p role="alert">Server owner access required.</p>
+            )
+          ) : path === "/email" ? (
+            actor.owner ? (
+              <>
+                <h1>Email notifications</h1>
+                <EmailSettings owner />
+              </>
+            ) : (
+              <p role="alert">Server owner access required.</p>
             )
           ) : path === "/github-apps" ? (
             actor.owner ? (
@@ -341,6 +371,14 @@ function App() {
               </p>
             ) : section === "capture" ? (
               <AppCapturePage project={project} userId={actor.userId} />
+            ) : section === "board" ? (
+              <ProjectBoard project={project} actor={actor} />
+            ) : section === "analytics" ? (
+              <Analytics
+                projectId={project.id}
+                projects={projects}
+                userId={actor.userId}
+              />
             ) : section === "members" ? (
               <Members actor={actor} project={project} />
             ) : section === "instructions" ? (

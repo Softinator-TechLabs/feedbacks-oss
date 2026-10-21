@@ -20,7 +20,7 @@ Choose the workflow your project needs, then set its access and review the evide
 | Screen feedback in your app   | [Native mobile SDK](/reference/manual/mobile-sdk)                                              | iOS/Android host integrations; no standalone Store app                                   |
 | Thread activity notifications | [Signed webhooks](/reference/manual/webhooks)                                                  | Your HTTPS receiver gets event identifiers and revisions, not thread text or screenshots |
 
-Guest links, widgets and surveys need configured Turnstile. Choose expiry and response/submission limits deliberately; revoke guest access when finished. Enable **Documents** and **Surveys** under **Project settings → Project → Optional tools** when needed.
+Guest links, widgets and surveys need configured Turnstile. Permanent website intake remains enabled until disabled and uses durable attempt limits. Guest links, older token-based widgets and surveys keep their expiry and response/submission caps; revoke guest access when finished. Enable **Documents** and **Surveys** under **Project settings → Project → Optional tools** when needed.
 
 ## Organize the work
 

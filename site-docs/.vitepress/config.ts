@@ -81,6 +81,8 @@ export default defineConfig({
           { text: "Project and agent context", link: "/guide/agent-context" },
           { text: "App screenshots", link: "/reference/manual/app-capture" },
           { text: "Website widget", link: "/guide/website-widget" },
+          { text: "Project board", link: "/reference/manual/project-board" },
+          { text: "Analytics", link: "/guide/analytics" },
           { text: "More ways to review", link: "/guide/more-ways-to-review" },
         ],
       },
@@ -89,6 +91,7 @@ export default defineConfig({
         items: [
           { text: "Developers: AI agents and MCP", link: "/guide/mcp" },
           { text: "GitHub Issues", link: "/guide/github" },
+          { text: "Email notifications", link: "/guide/email-notifications" },
           { text: "API and CLI", link: "/reference/api-cli" },
           { text: "Comparison audit method", link: "/reference/comparison-method" },
         ],

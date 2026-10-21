@@ -717,3 +717,87 @@ test("moving recorded feedback preserves replay and updates its project metadata
     await f.pg.close();
   }
 });
+
+test("reviewed replay evidence follows a move and active external work blocks it", async () => {
+  const pg = new PGlite(),
+    db = new Database(pg as any);
+  try {
+    await migrate(db);
+    const ops = new Operations(db, {} as any, {} as any);
+    const owner = await ops.auth.bootstrap(
+      "move-owner@example.test",
+      "Owner",
+      "Correct-Horse-Battery-123",
+    );
+    const source = await ops.executeOperation(owner, "projects.create", {
+      name: "Source",
+      origins: ["https://example.test"],
+    });
+    const target = await ops.executeOperation(owner, "projects.create", {
+      name: "Target",
+      origins: ["https://example.test"],
+    });
+    const thread = await ops.executeOperation(owner, "threads.create", {
+      projectId: source.id,
+      body: "Reviewed session",
+      pageUrl: "https://example.test/",
+      idempotencyKey: randomUUID(),
+    });
+    const link = await ops.executeOperation(owner, "replayLinks.add", {
+      threadId: thread.id,
+      revision: thread.revision,
+      provider: "fullstory",
+      sessionUrl: "https://app.fullstory.com/ui/example/session/example",
+      pageUrl: "https://example.test/",
+      capturedAt: new Date().toISOString(),
+      idempotencyKey: randomUUID(),
+    });
+    const channel = randomUUID();
+    await db.query(
+      "INSERT INTO notification_channels(id,project_id,provider,label,events,credential_key,credential,created_by) VALUES($1,$2,'slack','Synthetic','[]','synthetic','{}',$3)",
+      [channel, source.id, owner.userId],
+    );
+    await db.query(
+      "INSERT INTO channel_deliveries(id,channel_id,channel_revision,thread_id,event,event_key,status) VALUES($1,$2,1,$3,'created','synthetic','uncertain')",
+      [randomUUID(), channel, thread.id],
+    );
+    const input = {
+      threadId: thread.id,
+      revision: thread.revision,
+      projectId: target.id,
+    };
+    await assert.rejects(ops.executeOperation(owner, "threads.move", input), {
+      code: "CONFLICT",
+    });
+    assert.equal(
+      (await ops.executeOperation(owner, "threads.get", { threadId: thread.id }))
+        .projectId,
+      source.id,
+    );
+    await db.query("UPDATE channel_deliveries SET status='pending'");
+    await ops.executeOperation(owner, "threads.move", input);
+    assert.equal(
+      (await db.one("SELECT status FROM channel_deliveries")).status,
+      "cancelled",
+    );
+    const links = await ops.executeOperation(owner, "replayLinks.list", {
+      threadId: thread.id,
+    });
+    assert.equal(links.items.length, 1);
+    assert.equal(
+      (
+        await db.one("SELECT project_id FROM external_replay_links WHERE id=$1", [
+          link.id,
+        ])
+      ).project_id,
+      target.id,
+    );
+    assert.equal(
+      (await ops.executeOperation(owner, "replayLinks.remove", { linkId: link.id }))
+        .removed,
+      true,
+    );
+  } finally {
+    await pg.close();
+  }
+});

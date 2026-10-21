@@ -59,6 +59,7 @@ test("maintainer configures a signed project webhook and thread events queue a b
       deliveries.items[0].id,
     ]);
     assert.deepEqual(queued.payload, {
+      schemaVersion: 1,
       id: deliveries.items[0].id,
       type: "thread.created",
       projectId: project.id,
@@ -102,6 +103,45 @@ test("maintainer configures a signed project webhook and thread events queue a b
     assert.equal(replyPayload.payload.type, "threads.reply");
     assert.equal(replyPayload.payload.revision, 2);
     assert.ok(!JSON.stringify(replyPayload.payload).includes("Follow-up"));
+    const testInput = { projectId: project.id, idempotencyKey: "synthetic-webhook-test" };
+    const testEvent = await ops.executeOperation(owner, "webhooks.test", testInput);
+    assert.deepEqual(
+      await ops.executeOperation(owner, "webhooks.test", testInput),
+      testEvent,
+    );
+    const synthetic = await db.one("SELECT payload FROM webhook_deliveries WHERE id=$1", [
+      testEvent.eventId,
+    ]);
+    assert.deepEqual(synthetic.payload, {
+      schemaVersion: 1,
+      id: testEvent.eventId,
+      type: "webhook.test",
+      test: true,
+      projectId: project.id,
+      threadId: null,
+      revision: 0,
+      occurredAt: synthetic.payload.occurredAt,
+    });
+    for (let index = 0; index < 4; index++)
+      await ops.executeOperation(owner, "webhooks.test", {
+        projectId: project.id,
+        idempotencyKey: `synthetic-test-${index}`,
+      });
+    await assert.rejects(
+      ops.executeOperation(owner, "webhooks.test", {
+        projectId: project.id,
+        idempotencyKey: "synthetic-over-budget",
+      }),
+      { code: "RATE_LIMITED" },
+    );
+    assert.equal(
+      (
+        await db.one(
+          "SELECT count(*)::integer AS n FROM webhook_deliveries WHERE payload->>'type'='webhook.test'",
+        )
+      ).n,
+      5,
+    );
   } finally {
     await pg.close();
   }

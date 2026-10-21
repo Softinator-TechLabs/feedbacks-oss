@@ -1,3 +1,7 @@
+import { TimeTrackingSettings } from "../integrations/time-tracking.js";
+import { ChannelSettings } from "../integrations/channels.js";
+import { PermanentIntake } from "./permanent-intake.js";
+import { EmailSettings } from "../notifications/settings.js";
 import React, { useEffect, useState } from "react";
 import { type Project, type Actor } from "../api.js";
 import { GuestProjectLinks } from "../guest-project-review.js";
@@ -148,7 +152,14 @@ export function ProjectSettings({
             {project.githubConnected ? "Manage GitHub connection" : "Set up GitHub"}
           </a>
         </section>
+        {canMaintain && (
+          <EmailSettings projectId={project.id} owner={actor.owner === true} />
+        )}
         {canMaintain && <WebhookSettings projectId={project.id} />}
+        {canMaintain && <ChannelSettings projectId={project.id} />}
+        {canMaintain && (
+          <TimeTrackingSettings projectId={project.id} owner={actor.owner === true} />
+        )}
       </div>
       {canMaintain && (
         <div
@@ -158,6 +169,7 @@ export function ProjectSettings({
           aria-labelledby="project-settings-tab-widget"
           hidden={selected !== "widget"}
         >
+          <PermanentIntake project={project} />
           <GuestProjectLinks
             projectId={project.id}
             widget

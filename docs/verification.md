@@ -13,6 +13,12 @@ Run commands from the repository root after `npm ci`. Use a supported Node versi
 | Container or deployment configuration      | Both Docker builds and `npm run test:containers`; staging/live acceptance when deployment is in scope                                                                   |
 | Dependency or packaging                    | Lockfile, `npm audit --audit-level=high`, release/source checks and license/provenance review                                                                           |
 
+[HTTP budget tests](../tests/http-rate.test.ts) verify independent member-session and bearer-credential allowances, their individual limits and the shared IP ingress limit. The bulk extension suite spaces its disposable loopback server's API dispatches below these unchanged budgets, with a bounded queue and visible overflow failures. Its setup helper also honors definite HTTP 429 `Retry-After` responses. It does not replay browser actions or relax assertions.
+
+Node fixture requests and Chromium use distinct sessions for the same owner. Browser tabs coordinate CSRF renewal with Web Locks; a separate fixture session prevents Node requests from racing that browser coordination.
+
+The [integration browser acceptance](../tests/integrations-browser.test.ts) holds a navigation frame to verify that opening feedback details preserves an already focused disclosure. It also checks the normal initial panel focus before completing the keyboard workflow on desktop and mobile.
+
 ## Fast feedback
 
 Run one test file with `node --import tsx --test tests/harness.test.ts`, replacing the filename for the change. Run `npm run check:harness` without a build for import/docs feedback. `npm run check` includes the built sandbox smoke check, so contributors and CI exercise the same entry point.
@@ -57,3 +63,7 @@ Focused encrypted-catalog, recovery/race and worker checks live in
 `FEEDBACKS_APP_CAPTURE_BROWSER=1 node --import tsx --test tests/app-capture-browser.test.ts` runs after the build in the required browser CI job. It uses a real disposable local API and a fresh browser context without an extension. The fixture verifies image import, coordinate notes and masking, private uploaded pixels, recovery after a committed upload loses its response, reload/retry without duplicate threads/assets, permission denial, synthetic window-frame capture and media-track cleanup. It also generates an installation snippet in Settings and submits widget feedback from a separate approved host origin with a mocked Turnstile challenge.
 
 These tests do not establish native Windows/macOS/Ubuntu picker behavior, physical mobile-device acceptance, production Turnstile/CSP or Store distribution. The synthetic screenshots under ignored `.impeccable/review/` are local review artifacts. See [app screenshots](app-capture.md) and the [widget installation guide](../site-docs/guide/website-widget.md).
+
+## Project workflows and subscribed delivery
+
+After building, `FEEDBACKS_BOARD_BROWSER_SMOKE=1 FEEDBACKS_RECORDING_BROWSER_SMOKE=1 node --import tsx --test --test-concurrency=1 tests/board-browser.test.ts tests/analytics-browser.test.ts tests/public-intake-browser.test.ts tests/notifications-browser.test.ts tests/integrations-browser.test.ts tests/github-comments-browser.test.ts` exercises the real local HTTP app at desktop/mobile sizes, including keyboard actions, scoped metrics/export/print, consent, settings and unsubscribe. Required browser CI runs this group. Provider verification is synthetic in these fixtures; account consent, delivery and external changes remain live acceptance gates.

@@ -1,0 +1,59 @@
+.tracker-settings {
+  max-width: 850px;
+}
+.tracker-connections,
+.tracker-jobs {
+  list-style: none;
+  padding: 0;
+}
+.tracker-connections > li,
+.tracker-jobs > li,
+.tracker-thread > section {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tracker-heading,
+.tracker-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.tracker-heading {
+  justify-content: space-between;
+}
+.tracker-heading h2 {
+  margin: 0;
+}
+.tracker-form {
+  margin-top: 24px;
+  padding-top: 12px;
+}
+.tracker-mappings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+.tracker-settings .field input,
+.tracker-settings .field select,
+.tracker-thread .field input,
+.tracker-thread .field textarea,
+.tracker-thread .field select {
+  width: 100%;
+  min-width: 0;
+}
+.tracker-thread form {
+  margin: 16px 0;
+}
+.tracker-settings code,
+.tracker-thread p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .tracker-mappings {
+    grid-template-columns: 1fr;
+  }
+  .tracker-actions > button {
+    flex: 1 1 auto;
+  }
+}
