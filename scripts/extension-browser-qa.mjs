@@ -145,6 +145,15 @@ try {
     password: access.password,
   });
   const auth = { cookie: login.cookie, csrf: login.data.csrf };
+  // Browser tabs serialize CSRF renewal with Web Locks. Keep Node fixture
+  // requests on their own session so they cannot race that browser-only lock.
+  const browserLogin = await post("auth.login", {
+    email: access.email,
+    password: access.password,
+  });
+  assert.equal(browserLogin.data.actor.userId, login.data.actor.userId);
+  assert.notEqual(browserLogin.cookie, auth.cookie);
+  const browserAuth = { cookie: browserLogin.cookie, csrf: browserLogin.data.csrf };
   await post(
     "projects.create",
     { name: "General", origins: [], captureMode: "any" },
@@ -401,6 +410,7 @@ try {
     extensionId,
     post,
     auth,
+    browserAuth,
     access,
   });
   await verifyLiveSelection({ page, send, id, worker, exposeReviewRoot, root, results });
@@ -643,7 +653,7 @@ try {
     });
     await verifyThreadReview({
       context,
-      auth,
+      browserAuth,
       access,
       inlineThread,
       inlineThreadId,
