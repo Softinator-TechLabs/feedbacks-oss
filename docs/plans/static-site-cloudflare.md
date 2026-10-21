@@ -17,6 +17,7 @@ The [deployment model](../architecture.md#deployment-model) already separates th
 - [x] Document preview, deployment and routing recovery.
 - [x] Verify the local Worker engine, full repository checks and website browser acceptance.
 - [x] Upload a preview artifact; retain per-release acceptance and routing recovery outside public source.
+- [x] Add main-only GitHub Actions deployment after all exact-revision CI jobs pass, with a scoped environment secret and live source receipt.
 
 ## Compatibility and recovery
 
@@ -26,6 +27,7 @@ Cloudflare canonicalizes `.html` links to extensionless paths while preserving t
 
 - Serve static assets directly, with no runtime Worker script, to avoid dynamic request consumption for public pages.
 - Keep automatic production deployment gated on required CI. Account configuration and launch operations remain private.
+- Use the repository's CI completion event for automatic deployment, retaining the current main revision and all six CI jobs as gates. Keep the Cloudflare token out of dependency installation and build steps.
 
 ## Completion receipt
 
