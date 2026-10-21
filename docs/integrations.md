@@ -4,7 +4,19 @@ Owners open **Setup → Manage integrations**. The `/integrations` page lists im
 
 Project maintainers use **Project settings → Integrations** to choose **Tasks**, **Slack & Teams**, **GitHub**, **Webhooks** or **Time tracking**. The **Tasks** tab keeps connections pinned to this project; the owner adds credentials and maintainers can inspect and test saved connections. Email subscriptions and authorized delivery configuration live in **Project settings → Email notifications**; existing `#integrations-email` links open that tab. Only the selected panel is shown. Panels load on first visit and retain drafts when you switch tabs; setup help and delivery history open on demand.
 
-An implemented adapter is not proof of an approved provider app or a successful connection to your account. Every connection starts unchecked; **Test connection** performs real authenticated reads of its destination and status mappings. Keep external sandbox checks, provider app approval and deployment verification separate from the synthetic contract tests.
+An implemented adapter is not proof of an approved provider app or a successful connection to your account. Guided setup verifies its destination before saving. Manual connections start unchecked; **Test connection** performs real authenticated reads of the destination and status mappings. Keep external sandbox checks, provider app approval and deployment verification separate from the synthetic contract tests.
+
+## Connect a task account
+
+Open **Project settings → Integrations → Tasks**, choose a provider and supply its documented account credential once. Where offered, choose a saved account to reuse it for another project. Then select the workspace, project, board or list by name and choose **Connect**. Feedbacks generates the connection name. Status sync and polling are optional; configure them under **Advanced**. **Advanced setup** retains the manual destination fields for recovery and existing installations. Jira requires its own OAuth authorization per connection; its rotating refresh token is not copied between projects.
+
+ClickUp offers workspace, space and folder/list choices. monday.com offers boards and named description/status columns. The other providers expose the destinations their documented APIs permit. Some accounts need an organization identifier, site name or trusted instance origin before discovery. If a destination is missing, check the account's provider permissions; discovery never grants access.
+
+monday.com discovery reads current typed column settings. Text and long-text description columns use their respective API value formats; long-text descriptions over the provider's 2,000-character limit are rejected before task creation. Existing status mappings retain their label values. [Status column reference](https://developer.monday.com/api-reference/docs/status), [long-text reference](https://developer.monday.com/api-reference/docs/long-text), checked 2026-10-21.
+
+The browser's provider login does not authorize API access. First-time credentials come from the provider's own account settings; Jira uses the separately configured OAuth broker described below. A local Feedbacks installation makes outbound HTTPS requests, so named discovery and task creation need no incoming public webhook. The operator must still configure trusted OpenProject origins and any OAuth broker.
+
+Only current human owners can list reusable accounts, discover destinations or save credentials. Account references contain a connection ID and revision, never a token. Reuse decrypts on the server and seals a separate credential for the new connection. Disabling one connection prevents its further use as an account source; independently saved connections retain their own credentials until disabled or revoked at the provider. Discovery keeps a newly entered credential transient and writes no connection on failure. See [discovery](../src/server/integrations/trackers/discovery.ts) and [server operations](../src/server/integrations/trackers/operations.ts).
 
 ## Shared foundation
 

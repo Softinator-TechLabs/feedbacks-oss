@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import type { inputSchemas } from "../../shared/contracts.js";
 import type { z } from "zod";
 type ExternalWrite =
+  | "trackers.save"
   | "trackers.create"
   | "trackers.link"
   | "trackers.comment"

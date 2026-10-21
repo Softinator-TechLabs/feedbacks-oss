@@ -64,6 +64,7 @@ export const trackerConfiguration = z
       )
       .optional(),
     statusColumn: remoteId.default("status"),
+    descriptionColumnType: z.enum(["text", "long_text"]).optional(),
     site: z
       .string()
       .regex(/^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/)
@@ -106,6 +107,51 @@ export const trackerCredential = z.object({
   auth: z.enum(["token", "oauth", "basic"]).default("token"),
 });
 export type TrackerCredential = z.infer<typeof trackerCredential>;
+export const trackerDiscoverySelection = z.object({
+  workspaceId: remoteId.optional(),
+  spaceId: remoteId.optional(),
+  folderId: remoteId.optional(),
+  targetId: remoteId.optional(),
+  secondaryId: remoteId.optional(),
+  statusColumn: remoteId.optional(),
+  issueTypeId: remoteId.optional(),
+  site: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/)
+    .optional(),
+  cloudId: z.string().uuid().optional(),
+  instanceOrigin: trackerInstanceOrigin.optional(),
+});
+export type TrackerDiscoverySelection = z.infer<typeof trackerDiscoverySelection>;
+export const trackerDiscoveryResult = z.object({
+  step: z.enum([
+    "workspaces",
+    "spaces",
+    "folders",
+    "targets",
+    "issueTypes",
+    "columns",
+    "ready",
+  ]),
+  title: z.string().max(100),
+  choices: z
+    .array(
+      z.object({
+        id: remoteId,
+        name: z.string().min(1).max(300),
+        selection: trackerDiscoverySelection,
+      }),
+    )
+    .max(100),
+  hasMore: z.boolean(),
+  nextCursor: z.string().max(1000).optional(),
+  configuration: trackerConfiguration.optional(),
+  targetName: z.string().max(300).optional(),
+  states: z
+    .array(z.object({ id: remoteState, name: z.string().min(1).max(300) }))
+    .max(1000),
+});
+export type TrackerDiscoveryResult = z.infer<typeof trackerDiscoveryResult>;
 const connection = z.object({
   id,
   projectId: id,
@@ -151,6 +197,32 @@ const write = {
   idempotencyKey: z.string().min(8).max(120),
 };
 export const trackersInputs = {
+  "trackers.accounts": z.object({ projectId: id, provider: trackerProvider }),
+  "trackers.discover": z
+    .object({
+      projectId: id,
+      provider: trackerProvider,
+      credential: trackerCredential.optional(),
+      sourceConnectionId: id.optional(),
+      sourceRevision: z.number().int().positive().optional(),
+      selection: trackerDiscoverySelection.default({}),
+      cursor: z
+        .string()
+        .min(1)
+        .max(1000)
+        .regex(/^[A-Za-z0-9_+=:.,/-]+$/)
+        .optional(),
+    })
+    .superRefine((value, context) => {
+      if (
+        !!value.credential === !!value.sourceConnectionId ||
+        !!value.sourceConnectionId !== !!value.sourceRevision
+      )
+        context.addIssue({
+          code: "custom",
+          message: "Choose one credential source and its current revision",
+        });
+    }),
   "trackers.oauthStart": z.object({
     projectId: id,
     provider: z.literal("jira"),
@@ -162,15 +234,35 @@ export const trackersInputs = {
     cloudId: z.string().uuid().optional(),
   }),
   "trackers.list": z.object({ projectId: id }),
-  "trackers.save": z.object({
-    projectId: id,
-    connectionId: id.optional(),
-    revision: z.number().int().positive().optional(),
-    provider: trackerProvider,
-    label: z.string().trim().min(1).max(100),
-    configuration: trackerConfiguration,
-    credential: trackerCredential.optional(),
-  }),
+  "trackers.save": z
+    .object({
+      projectId: id,
+      connectionId: id.optional(),
+      revision: z.number().int().positive().optional(),
+      provider: trackerProvider,
+      label: z.string().trim().min(1).max(100),
+      configuration: trackerConfiguration,
+      credential: trackerCredential.optional(),
+      reuseConnectionId: id.optional(),
+      reuseRevision: z.number().int().positive().optional(),
+      verifyDestination: z.boolean().default(false),
+      idempotencyKey: z.string().min(8).max(120).optional(),
+    })
+    .superRefine((value, context) => {
+      if (
+        (value.credential && value.reuseConnectionId) ||
+        !!value.reuseConnectionId !== !!value.reuseRevision
+      )
+        context.addIssue({
+          code: "custom",
+          message: "Choose one credential source and its current revision",
+        });
+      if (value.connectionId && value.idempotencyKey)
+        context.addIssue({
+          code: "custom",
+          message: "Retry keys are for new connections",
+        });
+    }),
   "trackers.enable": z.object({
     connectionId: id,
     revision: z.number().int().positive(),
@@ -204,6 +296,20 @@ export const trackersInputs = {
   }),
 };
 export const trackersOutputs = {
+  "trackers.accounts": z.object({
+    accounts: z
+      .array(
+        z.object({
+          connectionId: id,
+          revision: z.number().int().positive(),
+          label: z.string(),
+          projectName: z.string(),
+          selection: trackerDiscoverySelection,
+        }),
+      )
+      .max(100),
+  }),
+  "trackers.discover": trackerDiscoveryResult,
   "trackers.oauthStart": z.object({
     flowId: id,
     authorizeUrl: z.string().url(),

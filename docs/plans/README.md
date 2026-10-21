@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Guided task connections](guided-tracker-connections.md)
+
 - [Compact feedback workspace](compact-feedback-workspace.md)
 
 - [Project board and subscribed email delivery](project-board-and-email.md)

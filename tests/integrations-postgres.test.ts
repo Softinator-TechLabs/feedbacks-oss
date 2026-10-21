@@ -86,6 +86,89 @@ test(
           name: "Synthetic",
           origins: ["https://example.test"],
         });
+      // Both callers finish their read-only verification before racing for the account lock.
+      // Only the winning transaction seals a key and creates the remembered connection.
+      const bothVerifying = gate(),
+        finishVerification = gate();
+      let verifications = 0;
+      const guidedInput = {
+        projectId: project.id,
+        provider: "asana",
+        label: "Guided retry",
+        configuration: {
+          targetId: "123",
+          statusColumn: "status",
+          states: [],
+          poll: false,
+        },
+        credential: { token: "synthetic-guided-token", auth: "token" },
+        verifyDestination: true,
+        idempotencyKey: "native-guided-save-retry",
+      };
+      const verifyTransport = async () => {
+        if (++verifications === 2) bothVerifying.release();
+        await finishVerification.promise;
+        return new Response(JSON.stringify({ data: { name: "Synthetic destination" } }));
+      };
+      const concurrentSaves = [1, 2].map(() =>
+        trackerOperation(
+          db,
+          store,
+          config,
+          owner,
+          "trackers.save",
+          guidedInput,
+          verifyTransport,
+        ),
+      );
+      try {
+        await Promise.race([
+          bothVerifying.promise,
+          new Promise((_, reject) => {
+            const timer = setTimeout(
+              () => reject(Error("Guided saves did not reach concurrent verification")),
+              5000,
+            );
+            timer.unref();
+          }),
+        ]);
+      } finally {
+        finishVerification.release();
+      }
+      const [firstSave, secondSave] = await Promise.all(concurrentSaves);
+      assert.equal(firstSave.id, secondSave.id);
+      assert.equal(keys.size, 1, "concurrent saves seal exactly one private key");
+      assert.equal(
+        (await db.one("SELECT count(*)::int n FROM tracker_connections")).n,
+        1,
+      );
+      assert.equal(
+        (
+          await trackerOperation(
+            db,
+            store,
+            config,
+            owner,
+            "trackers.save",
+            guidedInput,
+            verifyTransport,
+          )
+        ).id,
+        firstSave.id,
+      );
+      assert.equal(verifications, 2, "committed retry avoids another provider request");
+      await assert.rejects(
+        trackerOperation(
+          db,
+          store,
+          config,
+          owner,
+          "trackers.save",
+          { ...guidedInput, label: "Changed" },
+          verifyTransport,
+        ),
+        { code: "IDEMPOTENCY_CONFLICT" },
+      );
       const jiraConfiguration = {
         targetId: "QA",
         issueTypeId: "10001",

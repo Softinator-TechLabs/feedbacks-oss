@@ -8,6 +8,7 @@ import {
   type TrackerConfiguration,
 } from "../../shared/contracts/domains/trackers.js";
 import { useTrackerWrite } from "./retry-key.js";
+import { GuidedTrackerConnection } from "./tracker-setup.js";
 
 const names: Record<TrackerProvider, string> = {
   jira: "Jira Cloud",
@@ -361,12 +362,9 @@ function TrackerSettingsContent({
 }
 
 function ConnectionForm({
-  projectId,
   existing,
   initialProvider = "asana",
-  embedded = false,
-  onSaved,
-  onCancel,
+  ...props
 }: {
   projectId: string;
   existing?: Connection;
@@ -374,6 +372,52 @@ function ConnectionForm({
   embedded?: boolean;
   onSaved: () => void;
   onCancel: () => void;
+}) {
+  const [provider, setProvider] = useState(initialProvider);
+  const [manual, setManual] = useState(false);
+  if (existing) return <ManualConnectionForm {...props} existing={existing} />;
+  if (manual)
+    return (
+      <ManualConnectionForm
+        {...props}
+        initialProvider={provider}
+        onGuided={() => setManual(false)}
+        onProviderChange={(next) => {
+          setProvider(next);
+          setManual(true);
+        }}
+      />
+    );
+  return (
+    <GuidedTrackerConnection
+      {...props}
+      key={provider}
+      provider={provider}
+      names={names}
+      onProviderChange={setProvider}
+      onManual={() => setManual(true)}
+    />
+  );
+}
+
+function ManualConnectionForm({
+  projectId,
+  existing,
+  initialProvider = "asana",
+  embedded = false,
+  onSaved,
+  onCancel,
+  onProviderChange,
+  onGuided,
+}: {
+  projectId: string;
+  existing?: Connection;
+  initialProvider?: TrackerProvider;
+  embedded?: boolean;
+  onSaved: () => void;
+  onCancel: () => void;
+  onProviderChange?: (provider: TrackerProvider) => void;
+  onGuided?: () => void;
 }) {
   const [provider, setProvider] = useState<TrackerProvider>(
       existing?.provider ?? initialProvider,
@@ -445,6 +489,14 @@ function ConnectionForm({
               ...(value("assigneeId") ? { assigneeId: value("assigneeId") } : {}),
               ...(c?.cloudId ? { cloudId: c.cloudId } : {}),
               ...(c?.site && provider === "jira" ? { site: c.site } : {}),
+              ...(provider === "monday" && value("descriptionColumnType")
+                ? {
+                    descriptionColumnType:
+                      value("descriptionColumnType") === "long_text"
+                        ? "long_text"
+                        : "text",
+                  }
+                : {}),
             };
             if (provider === "jira" && !existing) {
               setOAuth(
@@ -495,8 +547,20 @@ function ConnectionForm({
       <Field label="Provider">
         <select
           value={provider}
-          disabled={!!existing || !!oauth}
-          onChange={(e) => setProvider(e.target.value as TrackerProvider)}
+          disabled={!!existing || !!oauth || action.busy}
+          onChange={(e) => {
+            if (
+              dirty &&
+              !window.confirm(
+                "Discard this tracker connection draft? Your unsaved changes will be lost.",
+              )
+            )
+              return;
+            const next = e.target.value as TrackerProvider;
+            e.currentTarget.form?.reset();
+            setProvider(next);
+            onProviderChange?.(next);
+          }}
         >
           {Object.entries(names).map(([id, name]) => (
             <option key={id} value={id}>
@@ -510,7 +574,7 @@ function ConnectionForm({
           name="label"
           required
           maxLength={100}
-          defaultValue={existing?.label ?? ""}
+          defaultValue={existing?.label ?? (provider === "jira" ? "Jira Cloud" : "")}
         />
       </Field>
       <Field label={targets[provider]}>
@@ -635,6 +699,16 @@ function ConnectionForm({
         <>
           <Field label="Description text column ID">
             <input name="secondaryId" required defaultValue={c?.secondaryId ?? ""} />
+          </Field>
+          <Field label="Description column type">
+            <select
+              name="descriptionColumnType"
+              defaultValue={c?.descriptionColumnType ?? ""}
+            >
+              <option value="">Not configured</option>
+              <option value="text">Text</option>
+              <option value="long_text">Long text</option>
+            </select>
           </Field>
           <Field label="Status column ID">
             <input
@@ -768,6 +842,23 @@ function ConnectionForm({
         <button type="button" disabled={action.busy} onClick={onCancel}>
           Cancel
         </button>
+        {onGuided && !oauth && (
+          <button
+            type="button"
+            disabled={action.busy}
+            onClick={() => {
+              if (
+                !dirty ||
+                window.confirm(
+                  "Discard this tracker connection draft? Your unsaved changes will be lost.",
+                )
+              )
+                onGuided();
+            }}
+          >
+            Use guided setup
+          </button>
+        )}
       </div>
     </form>
   );

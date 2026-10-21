@@ -27,6 +27,7 @@ const configuration = (provider: TrackerProvider) =>
     targetId: "123",
     workspaceId: "org123",
     secondaryId: "description",
+    ...(provider === "monday" ? { descriptionColumnType: "text" } : {}),
     site: "synthetic",
     cloudId: "b59926c7-6474-4931-8cc2-34af0d589444",
     issueTypeId: "10001",
@@ -1087,7 +1088,29 @@ test("tracker write boundary blocks Firmao mutations after preflight and treats 
         return response(
           provider === "linear"
             ? { data: { team: { name: "Synthetic", states: { nodes: [] } } } }
-            : { data: { boards: [{ name: "Synthetic", columns: [] }] } },
+            : {
+                data: {
+                  boards: [
+                    {
+                      name: "Synthetic",
+                      columns: [
+                        {
+                          id: "description",
+                          type: "text",
+                          title: "Description",
+                          settings: {},
+                        },
+                        {
+                          id: "status",
+                          type: "status",
+                          title: "Status",
+                          settings: { labels: [] },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
         );
       },
     );

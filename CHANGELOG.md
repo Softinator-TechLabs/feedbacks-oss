@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.1 — 2026-10-21
+
+- Guide task connection setup through account access and named destinations. Reuse an existing saved provider account for another project without copying its token into the browser.
+- Generate connection names and keep manual configuration, status mappings and polling optional. Preserve the existing edit and recovery flow.
+- Add bounded, owner-only provider discovery with encrypted credential isolation and stale-account checks.
+- Make connection retries safe after a lost response. Update monday.com column discovery to current typed settings and preserve the correct text/long-text description format.
+- Package Codex and Claude Code plugins 0.3.1 with the updated shared operation contracts. The extension remains 0.1.64.
+
+### Upgrade from 0.3.0
+
+No database migration is introduced. Preserve the existing database, private object storage, organization identity and encryption keys. Existing task connections and explicit reviewed writes retain their behavior. Pin the new application image, recreate the application container and verify account access and a named destination before creating a remote task.
+
+First-time access still needs the provider's documented credential or a configured OAuth app. Signing into the provider in another browser tab does not grant Feedbacks API access. Account consent, provider permissions and a successful remote task remain separate acceptance gates. See [integration setup](docs/integrations.md).
+
 ## 0.3.0 — 2026-10-21
 
 - Add a configurable project Kanban board with shared thread filters, keyboard controls and atomic batch status, assignment and archive changes.

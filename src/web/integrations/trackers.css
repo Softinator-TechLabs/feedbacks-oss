@@ -52,6 +52,57 @@
   margin-top: 24px;
   padding-top: 12px;
 }
+.tracker-setup {
+  max-width: 600px;
+}
+.tracker-setup > h2,
+.tracker-setup > h3 {
+  margin: 0 0 12px;
+}
+.tracker-setup-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  padding: 0 0 12px;
+  margin: 0 0 24px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  list-style-position: inside;
+  font-size: 0.9rem;
+}
+.tracker-setup-steps [aria-current="step"] {
+  color: var(--accent);
+  font-weight: 600;
+}
+.tracker-token-help,
+.tracker-setup-advanced {
+  margin: 0 0 20px;
+}
+.tracker-token-help p {
+  max-width: 60ch;
+}
+.tracker-setup-ready {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 24px;
+  padding: 16px 0;
+  border-block: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.tracker-setup-ready > span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.tracker-setup-ready > strong {
+  font-size: 1.1rem;
+}
+.tracker-setup-advanced > .field {
+  margin-top: 16px;
+}
+.tracker-advanced-switch {
+  margin-top: 20px;
+}
 .tracker-mappings {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

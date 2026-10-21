@@ -30,4 +30,6 @@ Use **People** for expertise. An authorized agent can update member profiles, pr
 
 GitHub is optional. The server owner selects an App; a GitHub account owner installs it on selected repositories; project maintainers connect them. Follow the [GitHub guide](/guide/github).
 
+For task apps, open **Project settings → Integrations → Tasks**. Choose an account, select a destination by name and connect. The owner supplies account access once and can reuse the saved account for other projects. Status sync stays optional. [Provider setup and local-server requirements](/reference/manual/integrations#connect-a-task-account).
+
 For separate websites or moving existing feedback, see [project routing](/reference/manual/project-routing). A move requires access to both projects and does not widen membership.

@@ -1,6 +1,6 @@
 # Plan: one-command Docker Hub quickstart
 
-Status: 0.3.0 candidate installation verified; final stable-channel promotion pending. Date: 2026-10-21.
+Status: complete; 0.3.0 stable-channel publication verified. Date: 2026-10-21.
 
 ## Outcome and scope
 
@@ -17,7 +17,7 @@ Private credentials and a unique project name are generated for each new directo
 - [x] Inspect released image, storage and bootstrap contracts.
 - [x] Implement the local-volume installer and top-of-guide command.
 - [x] Verify refusal, download integrity, private configuration, fresh installation and restart persistence.
-- [ ] Build the site, pass required CI, merge and verify the live guide and installer.
+- [x] Build the site, pass required CI, merge and verify the live guide and installer.
 
 ## Compatibility and recovery
 
@@ -34,7 +34,7 @@ The published 0.2.3 application image was exercised through the installer with t
 - [x] Refuse an occupied port before downloading images or creating installation files.
 - [x] Resolve fresh installs through reviewed stable metadata, validating its digest and commit-pinned Compose checksum without executing downloaded metadata.
 - [x] Document local management, alternative ports, owner-bootstrap recovery and stable promotion.
-- [ ] Verify regression checks, normal CI and published installer behavior.
+- [x] Verify regression checks, normal CI and published installer behavior.
 
 ## 0.3.0 candidate acceptance
 
@@ -42,4 +42,4 @@ Application source: `4a8982e2485faed2937bd866cdbc4da358217475`; [exact-main CI, 
 
 A single fresh candidate installation passed all twelve checks using the unchanged committed installer, candidate metadata and Compose pinned to `28b1c714c115388c4a983b670d0a71443eaa3da1`. Only the exact stable-metadata request was served locally; the installer downloaded the pinned Compose over HTTPS normally. Owner/CSRF/origin checks, non-root/read-only execution, loopback binding, private credentials and synthetic screenshot upload/readback passed. Recreating only that installation's app/PostgreSQL containers retained both named volume identities, the original owner login, project, thread and exact screenshot bytes. Anonymous screenshot access remained denied. The usable synthetic installation and volumes remain running; credentials and raw evidence stay private.
 
-Final stable-channel publication, promotion PR/merged-main CI, public metadata/installer byte comparison and live guide verification remain pending. The candidate test is not a claim that the public stable channel has changed. Provider account consent and production HTTPS/S3/recovery acceptance remain independent of this local-volume test.
+[Promotion PR #236](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/236) merged as `b8643fe629177d965810011de0d3ded9232a82bc`. [Exact merged-main CI](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/39638770905) passed all six jobs; [public-site deployment](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/39640715835) succeeded at the same source. The live deployment receipt matched that revision. Public stable metadata matched the tested 0.3.0 candidate byte for byte; the public installer matched application source `4a8982e2485faed2937bd866cdbc4da358217475`, and the commit-pinned Compose matched checksum `2c078743924d3c0d5128fa79ad354083944acfe904024a5b12a269eceeeecc12`. The live self-host guide in HTML and Markdown showed 0.3.0 and task-app setup with optional Jira broker and OpenProject environment guidance. The existing twelve-check candidate installation supplies fresh-install and persistence evidence. Provider account consent and production HTTPS/S3/recovery acceptance remain independent of this local-volume test.

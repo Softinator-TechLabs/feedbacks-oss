@@ -182,9 +182,11 @@ Read-only is a transport annotation, not an authorization grant. Scope availabil
 | `tokens.create`               | No                   | No                             |
 | `tokens.list`                 | Yes                  | No                             |
 | `tokens.revoke`               | No                   | No                             |
+| `trackers.accounts`           | Yes                  | No                             |
 | `trackers.comment`            | No                   | No                             |
 | `trackers.comments`           | Yes                  | No                             |
 | `trackers.create`             | No                   | No                             |
+| `trackers.discover`           | Yes                  | No                             |
 | `trackers.enable`             | No                   | No                             |
 | `trackers.link`               | No                   | No                             |
 | `trackers.links`              | Yes                  | No                             |
