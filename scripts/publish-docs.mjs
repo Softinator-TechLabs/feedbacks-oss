@@ -12,6 +12,7 @@ const queue = [
   "api",
   "generated/operations",
   "review-workflow",
+  "project-board",
   "project-routing",
   "agent-setup",
   "agents",

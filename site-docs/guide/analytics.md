@@ -7,6 +7,8 @@ description: Use permission-scoped analytics to inspect incoming feedback, lifec
 
 Use **Overview** for current priorities and project comparisons, **Trends** for activity over time, and **Explore** for category, assignee and other breakdowns. Select a count to open its matching feedback. Tables and definitions are available when you need more detail.
 
+<DocPath :steps="['Choose a project', 'Pick a report', 'Open matching tasks']" />
+
 Open **Analytics** for all projects you can read, or a project's **Analytics** tab. Select your project, From/Through dates and timezone, then Apply. The live-read time tells you when the numbers were generated. Select a count to open the matching thread list and follow a thread link to its discussion.
 
 Incoming, first triaged, resolved, reopened, declined and duplicate counts refer to the selected period. Pending, overdue and high-priority tasks, backlog age, stalled columns and current assignees show the present workload independently of that period. Stalled means seven elapsed days in the same column, interpreting retained status history through the current board mapping; it does not measure discussion inactivity. Workload is not an employee performance ranking.
