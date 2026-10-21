@@ -40,3 +40,7 @@ Artifacts: host script, stylesheet, project settings snippet, [synthetic desktop
 Deployment and live verification: source and static assets are deployed; synthetic host submissions do not prove a production host and Turnstile configuration.
 
 Remaining risks or follow-up: test real host CSP and production Turnstile hostname configuration before release.
+
+## Installation follow-up, 2026-10-21
+
+Project settings now provides a dedicated **Website widget** tab with separate installation/link lists, exact-origin prerequisites, the one-time snippet and host installation steps. Re-inserting the same script mounts one launcher. The [installation guide](../../site-docs/guide/website-widget.md) describes CSP, Turnstile hostnames, expiry/caps, verification and revocation. [Browser acceptance](../../tests/app-capture-browser.test.ts) generates a snippet and submits from a fresh, extension-free browser context on a separate approved synthetic host; the challenge is mocked. The text-only capability and server access rules remain unchanged. Production host/CSP/Turnstile verification remains pending.

@@ -308,6 +308,11 @@ export function ThreadList({ project, actor }: { project: Project; actor: Actor 
             </button>
           )}
           {project.permissions.canWrite && (
+            <a className="button" href={`/projects/${project.id}/capture`}>
+              App screenshot
+            </a>
+          )}
+          {project.permissions.canWrite && (
             <button className="primary" onClick={() => setCreating(!creating)}>
               {creating ? "Close form" : "New feedback"}
             </button>

@@ -9,10 +9,11 @@ import { WebhookSettings } from "./webhooks.js";
 
 import { SectionTabs, type SectionTab } from "../section-tabs.js";
 
-type ProjectSettingsTab = "project" | "taxonomy" | "integrations" | "advanced";
+type ProjectSettingsTab = "project" | "taxonomy" | "integrations" | "widget" | "advanced";
 
 function projectSettingsTabFromHash(canMaintain: boolean): ProjectSettingsTab {
   const hash = typeof window === "undefined" ? "" : window.location.hash.slice(1);
+  if (canMaintain && hash === "widget") return "widget";
   if (hash === "integrations") return "integrations";
   if (canMaintain && (hash === "taxonomy" || hash === "project-taxonomy"))
     return "taxonomy";
@@ -50,13 +51,18 @@ export function ProjectSettings({
           },
         ]
       : []),
+    ...(canMaintain
+      ? [{ id: "widget" as const, label: "Website widget", panelId: "settings-widget" }]
+      : []),
     { id: "integrations", label: "Integrations", panelId: "settings-integrations" },
     ...(canMaintain
       ? [{ id: "advanced" as const, label: "Advanced", panelId: "settings-advanced" }]
       : []),
   ];
   const selected =
-    canMaintain || (tab !== "taxonomy" && tab !== "advanced") ? tab : "project";
+    canMaintain || (tab !== "taxonomy" && tab !== "advanced" && tab !== "widget")
+      ? tab
+      : "project";
   const selectTab = (next: ProjectSettingsTab) => {
     setTab(next);
     history.replaceState(null, "", `#${next === "taxonomy" ? "project-taxonomy" : next}`);
@@ -144,6 +150,22 @@ export function ProjectSettings({
         </section>
         {canMaintain && <WebhookSettings projectId={project.id} />}
       </div>
+      {canMaintain && (
+        <div
+          className="section-panel"
+          id="settings-widget"
+          role="tabpanel"
+          aria-labelledby="project-settings-tab-widget"
+          hidden={selected !== "widget"}
+        >
+          <GuestProjectLinks
+            projectId={project.id}
+            widget
+            origins={project.origins}
+            captureMode={project.captureMode}
+          />
+        </div>
+      )}
       {canMaintain && (
         <div
           className="section-panel"

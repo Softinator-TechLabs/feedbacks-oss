@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Cross-platform app feedback](cross-platform-capture.md) — proposed native capture, device verification and app-integrated diagnostics.
+
 - [Guided Docker Hub installation](guided-docker-install.md)
 
 - [Consistent 0.2.3 release artifacts](release-0.2.3.md)

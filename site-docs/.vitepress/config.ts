@@ -62,6 +62,11 @@ export default defineConfig({
           { text: "Owner: projects and people", link: "/guide/team-setup" },
           { text: "Capture and review", link: "/guide/review-feedback" },
           { text: "Install, pin and send", link: "/guide/chrome-extension" },
+          {
+            text: "Platform compatibility",
+            link: "/reference/manual/platform-compatibility",
+          },
+          { text: "Upcoming", link: "/reference/manual/upcoming" },
         ],
       },
       {
@@ -71,6 +76,8 @@ export default defineConfig({
           { text: "Debugging bundles", link: "/guide/debug-bundles" },
           { text: "Exact text suggestions", link: "/guide/text-suggestions" },
           { text: "Project and agent context", link: "/guide/agent-context" },
+          { text: "App screenshots", link: "/reference/manual/app-capture" },
+          { text: "Website widget", link: "/guide/website-widget" },
           { text: "More ways to review", link: "/guide/more-ways-to-review" },
         ],
       },

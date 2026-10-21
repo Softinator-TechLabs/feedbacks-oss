@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { appCaptureSchema } from "../../app-capture.js";
 import {
   id,
   text,
@@ -80,6 +81,7 @@ export const threadsInputs = {
       projectId: id,
       body: text,
       context: contextSchema.optional(),
+      appCapture: appCaptureSchema.optional(),
       pageUrl: z.string().url().max(4096).optional(),
       document: z
         .object({
@@ -103,11 +105,15 @@ export const threadsInputs = {
     })
     .refine(
       (input) =>
-        [input.context, input.document, input.pageUrl].filter(Boolean).length <= 1,
+        [input.context, input.document, input.pageUrl, input.appCapture].filter(Boolean)
+          .length <= 1,
       {
-        message: "Choose a website capture, document position or optional page URL",
+        message: "Choose one website, app capture, document position or page URL",
       },
-    ),
+    )
+    .refine((input) => !input.appCapture || !input.diagnostics, {
+      message: "Browser diagnostics cannot be attached to an app capture",
+    }),
   "threads.reply": z.object({
     ...tm,
     body: text,

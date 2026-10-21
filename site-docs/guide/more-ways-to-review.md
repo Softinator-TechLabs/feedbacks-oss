@@ -14,7 +14,7 @@ Choose the workflow your project needs, then set its access and review the evide
 | A client’s reply              | [Guest discussion link](/reference/manual/review-workflow#invite-a-guest-to-one-discussion)    | One discussion; guests see the original text, not screenshots or existing replies        |
 | New guest requests            | [Guest feedback link](/reference/manual/review-workflow#invite-a-guest-to-submit-new-feedback) | Submission only; no access to your workspace                                             |
 | PDF or image comments         | [Document review](/reference/manual/review-workflow#review-a-pdf-or-image)                     | Project access applies; documents are not exposed to guest links                         |
-| Text feedback on your site    | [Website widget](/reference/manual/review-workflow#add-the-website-widget)                     | Exact approved origins; no screenshot or recording capture                               |
+| Text feedback on your site    | [Website widget](/guide/website-widget)                                                        | Exact approved origins; no screenshot or recording capture                               |
 | Ratings and written responses | [Surveys and NPS](/reference/manual/review-workflow#run-an-opt-in-survey)                      | Opt-in responses stay separate from threads                                              |
 | Recurring public-page checks  | [Scheduled QA](/reference/manual/scheduled-qa)                                                 | Inspect run history and visual baselines; authenticated flows are outside these checks   |
 | Screen feedback in your app   | [Native mobile SDK](/reference/manual/mobile-sdk)                                              | iOS/Android host integrations; no standalone Store app                                   |
@@ -27,3 +27,5 @@ Guest links, widgets and surveys need configured Turnstile. Choose expiry and re
 Use assignments, work-status filters, categories, tags, saved views and individual point progress. Link delivery evidence and verify the result before resolving. [Work through a review queue](/guide/review-feedback).
 
 For custom integrations, [API, MCP and CLI](/reference/api-cli) provide authorized reads and writes through the same server operations.
+
+For extension-free image import and browser window capture, use [App screenshot](/reference/manual/app-capture). For broader native app capture, check [platform compatibility](/reference/manual/platform-compatibility) and [Upcoming](/reference/manual/upcoming). Standalone desktop/mobile companions are proposed; the existing mobile SDKs capture only their host app and still need real-device verification.
