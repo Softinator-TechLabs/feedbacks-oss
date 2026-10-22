@@ -1,4 +1,4 @@
-version=0.3.0
-image=softinator/feedbacks@sha256:7206b9ee6c28cf822fb1738e55c65234315606c5458fcd541f9d559bc88cded7
+version=0.3.1
+image=softinator/feedbacks@sha256:2194f20730c72539dde549bf4c2ff1a95032839e46aed5f83eab873f55a4a422
 compose_sha256=2c078743924d3c0d5128fa79ad354083944acfe904024a5b12a269eceeeecc12
 compose_revision=28b1c714c115388c4a983b670d0a71443eaa3da1

@@ -33,7 +33,7 @@ GitHub operation evidence: [connection and Issue tests](../tests/github-app.test
 
 Native-app expansion remains proposed in [Upcoming](upcoming.md). The [platform matrix](platform-compatibility.md) distinguishes existing browser/mobile integration source from future desktop companions, mobile sharing and app-integrated diagnostics. Real native-window capture, physical-device acceptance and platform distribution require separate evidence in the [capture plan](plans/cross-platform-capture.md).
 
-The public [0.3.0 release](https://github.com/Softinator-TechLabs/feedbacks-oss/releases/tag/v0.3.0) includes reviewed source and Codex/Claude Code plugin packages. Versioned multi-platform Docker Hub images and the [stable installer](plans/guided-docker-install.md) have separate publication and fresh-install evidence. [Dokploy/Coolify catalog templates](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/177), official plugin catalog acceptance and actual client installation remain separate delivery gates; a ZIP or registry image does not establish those outcomes.
+The public [0.3.1 release](https://github.com/Softinator-TechLabs/feedbacks-oss/releases/tag/v0.3.1) includes reviewed source and Codex/Claude Code plugin packages. Versioned multi-platform Docker Hub images and the [stable installer](plans/guided-docker-install.md) have separate publication and fresh-install evidence. [Dokploy/Coolify catalog templates](https://github.com/Softinator-TechLabs/feedbacks-oss/issues/177), official plugin catalog acceptance and actual client installation remain separate delivery gates; a ZIP or registry image does not establish those outcomes.
 
 ## Extension-free capture and widget installation
 

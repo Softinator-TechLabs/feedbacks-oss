@@ -93,12 +93,12 @@ The [public Docker Hub image](https://hub.docker.com/r/softinator/feedbacks) sup
 
 ### 1. Download Compose
 
-In a new installation directory, download the [0.3.0 release Compose](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/v0.3.0/compose.registry.yaml) as `compose.yaml`:
+In a new installation directory, download the [0.3.1 release Compose](https://github.com/Softinator-TechLabs/feedbacks-oss/blob/v0.3.1/compose.registry.yaml) as `compose.yaml`:
 
 ```sh
 mkdir feedbacks-server
 cd feedbacks-server
-curl -fL https://raw.githubusercontent.com/Softinator-TechLabs/feedbacks-oss/v0.3.0/compose.registry.yaml -o compose.yaml
+curl -fL https://raw.githubusercontent.com/Softinator-TechLabs/feedbacks-oss/v0.3.1/compose.registry.yaml -o compose.yaml
 umask 077
 touch .env
 chmod 600 .env
@@ -109,7 +109,7 @@ chmod 600 .env
 Paste these fields into `.env`, then fill every empty value. Use your HTTPS origin, private bucket and scoped application key from the [storage guide](/guide/storage). Generate a database password with `openssl rand -hex 32` and a unique organization UUID with `uuidgen`; preserve both for this installation. `TRUST_PROXY_HOPS=1` assumes one trusted reverse proxy; match your actual ingress path.
 
 ```dotenv
-FEEDBACKS_IMAGE=softinator/feedbacks:0.3.0
+FEEDBACKS_IMAGE=softinator/feedbacks:0.3.1
 APP_ORIGIN=
 POSTGRES_PASSWORD=
 ORGANIZATION_ID=
@@ -135,7 +135,7 @@ docker compose ps
 For production, pin the pulled image before the first `up` (or before an upgrade):
 
 ```sh
-docker image inspect softinator/feedbacks:0.3.0 --format '{{index .RepoDigests 0}}'
+docker image inspect softinator/feedbacks:0.3.1 --format '{{index .RepoDigests 0}}'
 ```
 
 Copy that full `softinator/feedbacks@sha256:…` result into `FEEDBACKS_IMAGE` in your private `.env`, then run `docker compose up -d --wait`. Keep the previous digest for recovery. The publication workflow creates versioned tags once; it does not move them or `latest`.
