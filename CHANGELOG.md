@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.2 — 2026-10-22
+
+- Make the public website and comparison pages show the released Kanban board, project analytics, subscribed email with configurable templates, and guided connections for ten task providers.
+- Keep current Feedbacks features separate from dated competitor research. Link setup and source evidence without changing unverified competitor verdicts.
+- Distinguish available Codex/Claude Code MCP and direct plugin installation from official directory distribution. Label standalone Windows, Ubuntu and macOS companions and Android/iOS sharing as coming soon, with no announced release date.
+- Refresh public guides and platform descriptions. Preserve the distinction between the host-app mobile SDK source, web screenshot pilot and standalone native applications.
+- Isolate the public-intake quota test from previous HTTP submissions and calendar dates; production rate limits and durable counters retain their behavior.
+- Package the current extension 0.1.64 and Codex/Claude Code plugins 0.3.1. This documentation and website release does not publish them to a Store or official plugin directory.
+
+### Upgrade from 0.3.1
+
+No database migration or permission change is introduced. Preserve the database, private object storage, organization identity, encryption keys and saved image pin. Existing 0.3.1 workflow behavior is unchanged. The public website deploys independently; the versioned application/site images include the refreshed documentation. Follow the normal backup and image-pinning procedure when upgrading a server.
+
+Provider-account acceptance, official plugin-directory publication, Chrome Web Store review and native-device testing remain separate milestones. Upcoming native applications are not included as released clients.
+
 ## 0.3.1 — 2026-10-21
 
 - Guide task connection setup through account access and named destinations. Reuse an existing saved provider account for another project without copying its token into the browser.

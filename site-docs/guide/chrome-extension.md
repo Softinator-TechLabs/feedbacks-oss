@@ -32,4 +32,8 @@ New screenshot reviews include captured diagnostics by default. Check their prev
 
 Use **Start diagnostics** before reproducing earlier console/network activity. If uploading is interrupted, keep the draft open and choose **Retry Send**.
 
+After sending, the same thread is available on the project's [Kanban Board](/reference/manual/project-board). [Subscribe to project email](/guide/email-notifications) for discussion and work updates.
+
 [Capture tools, permissions, exit controls and shortcuts](/reference/manual/extension) · [Troubleshooting](/guide/troubleshooting)
+
+Current public Store package: **0.1.64**, updated 21 October 2026 and checked 22 October. [Package and Store status](/reference/manual/chrome-web-store).

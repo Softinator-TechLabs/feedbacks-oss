@@ -16,6 +16,14 @@ For the owner or project lead. Your [team server](/guide/self-host) should alrea
 
 <Demo step="project" />
 
+## Keep work moving
+
+| Need                                                | Use                                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------------- |
+| Move, assign or archive tasks                       | [Project Kanban Board](/reference/manual/project-board)              |
+| Compare pending, overdue and high-priority work     | [Analytics: Overview, Trends and Explore](/guide/analytics)          |
+| Notify subscribed clients, developers and teammates | [Email providers, senders and templates](/guide/email-notifications) |
+
 ## Check the handoff
 
 | Person              | Next action                                                                    |
@@ -30,6 +38,8 @@ Use **People** for expertise. An authorized agent can update member profiles, pr
 
 GitHub is optional. The server owner selects an App; a GitHub account owner installs it on selected repositories; project maintainers connect them. Follow the [GitHub guide](/guide/github).
 
-For task apps, open **Project settings → Integrations → Tasks**. Choose an account, select a destination by name and connect. The owner supplies account access once and can reuse the saved account for other projects. Status sync stays optional. [Provider setup and local-server requirements](/reference/manual/integrations#connect-a-task-account).
+For task apps, open **Project settings → Integrations → Tasks**. Supported adapters are Asana, ClickUp, Jira Cloud, Linear, monday.com, Trello, Productive, Teamwork, Firmao CRM and OpenProject. Choose account access, select a destination by name and connect; Feedbacks generates the connection name.
+
+Jira starts with consent through the operator's configured OAuth broker, then offers named sites, projects and issue types. Other saved provider accounts can be reused where offered. Status sync stays optional, and manual setup remains available. [Provider setup and local-server requirements](/reference/manual/integrations#connect-a-task-account).
 
 For separate websites or moving existing feedback, see [project routing](/reference/manual/project-routing). A move requires access to both projects and does not widen membership.

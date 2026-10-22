@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import prettier from "prettier";
-import { comparisons } from "../site/comparison-data.mjs";
+import { comparisons, feedbacksCurrentRelease } from "../site/comparison-data.mjs";
 import {
   matrixFeatures,
   matrixGroups,
@@ -148,6 +148,16 @@ const shortLabels = {
   independent: "Local accounts",
   storage: "S3 storage",
 };
+function currentFeedbacks() {
+  const release = feedbacksCurrentRelease;
+  return `<section class="comparison-overview" id="feedbacks-current" aria-labelledby="feedbacks-current-heading">
+    <h2 id="feedbacks-current-heading">Available now</h2>
+    <nav class="matrix-jump" aria-label="Current Feedbacks workflows">${release.capabilities.map(({ label, guide }) => `<a href="${escape(guide)}">${escape(label)}</a>`).join("")}</nav>
+    <details><summary>What’s included</summary>${release.capabilities.map(({ label, detail, sourcePath }) => `<p class="matrix-date"><strong>${escape(label)}.</strong> ${escape(detail)} <a href="${source}/blob/${release.sourceRevision}/${sourcePath}" ${externalLink}>Source</a>.</p>`).join("")}<p class="matrix-date">${escape(release.taskProviders.join(", "))}.</p><p class="matrix-date">Feedbacks release scope checked ${escape(release.reviewed)}. The dated comparison below retains its own audit scope.</p></details>
+    <p class="matrix-date"><strong>Codex &amp; Claude Code:</strong> <a href="/docs/guide/mcp">MCP and direct plugin installation are available</a>. Official directories are a separate distribution channel.</p>
+    <p class="matrix-date"><strong>Coming soon:</strong> Windows, Ubuntu and macOS companions; Android and iOS sharing. <a href="/docs/reference/manual/upcoming">Native app plans</a>.</p>
+  </section>`;
+}
 function matrix(activeSlug) {
   const entries = [{ slug: "feedbacks", name: "Feedbacks" }, ...comparisons];
   const unknownCount = entries.reduce(
@@ -187,7 +197,7 @@ function matrix(activeSlug) {
       return `<section class="compare-matrix" id="matrix-${group.id}" aria-labelledby="matrix-${group.id}-heading"><h2 id="matrix-${group.id}-heading">${escape(group.title)}</h2><table><caption>${escape(group.title)}: all 16 tools, dated capability evidence</caption><colgroup><col class="matrix-name-column"/>${group.features.map(() => "<col/>").join("")}</colgroup><thead><tr><th scope="col">Tool</th>${headers}</tr></thead><tbody>${rows}</tbody></table></section>`;
     })
     .join("");
-  return `<div class="comparison-overview"><h2>49 capabilities · 16 tools</h2><nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape({ highlights: "Highlights", capture: "Capture", annotation: "Image tools", recording: "Recordings", collaboration: "Team & agents", hosting: "Self-hosting" }[group.id])}</a>`).join("")}</nav><p class="matrix-key"><strong>✓</strong> Available <span>·</span> <strong>×</strong> Unavailable in the reviewed scope <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Related support <span>·</span> <strong>External / Parts</strong> Requires another tool</p><p class="matrix-date">Reviewed ${matrixReviewed}. ${unknownCount}/784 verdicts remain <strong>Not verified</strong>; each explains the evidence gap. <a href="/docs/reference/comparison-method">How we audit</a>.</p><p class="matrix-date"><strong>Upcoming in Feedbacks:</strong> Windows, Ubuntu and macOS companions, mobile sharing and reviewed OS diagnostics. <a href="/docs/reference/manual/upcoming">Plans and platform limits</a>. These plans are excluded from the 49 capability verdicts.</p></div>${categories}<aside id="evidence-popover" class="evidence-popover" popover role="dialog" aria-labelledby="evidence-title"><button type="button" class="evidence-close">Close evidence <span aria-hidden="true">×</span></button><h3 id="evidence-title"></h3><div class="evidence-content"></div></aside>`;
+  return `${currentFeedbacks()}<div class="comparison-overview"><h2>49 capabilities · 16 tools</h2><nav class="matrix-jump" aria-label="Feature categories">${matrixGroups.map((group) => `<a href="#matrix-${group.id}">${escape({ highlights: "Highlights", capture: "Capture", annotation: "Image tools", recording: "Recordings", collaboration: "Team & agents", hosting: "Self-hosting" }[group.id])}</a>`).join("")}</nav><p class="matrix-key"><strong>✓</strong> Available <span>·</span> <strong>×</strong> Unavailable in the reviewed scope <span>·</span> <strong>Paid</strong> Paid edition <span>·</span> <strong>Partial</strong> Related support <span>·</span> <strong>External / Parts</strong> Requires another tool</p><p class="matrix-date">Capability evidence reviewed ${matrixReviewed}. ${unknownCount}/784 verdicts remain <strong>Not verified</strong>; each explains the evidence gap. <a href="/docs/reference/comparison-method">How we audit</a>. New Feedbacks workflows and planned native apps do not add competitor verdicts.</p></div>${categories}<aside id="evidence-popover" class="evidence-popover" popover role="dialog" aria-labelledby="evidence-title"><button type="button" class="evidence-close">Close evidence <span aria-hidden="true">×</span></button><h3 id="evidence-title"></h3><div class="evidence-content"></div></aside>`;
 }
 
 function detail(entry, index) {
@@ -198,7 +208,7 @@ function detail(entry, index) {
   const canonical = `${home}/compare/${entry.slug}.html`;
   return shell({
     title: `Feedbacks vs ${entry.name} | Website feedback comparison`,
-    description: `${vendorAudits[entry.slug].summary} Dated evidence for all 49 capabilities.`,
+    description: `${vendorAudits[entry.slug].summary} Dated evidence for 49 capabilities, plus current Feedbacks Kanban, analytics, email and task integrations.`,
     canonical,
     content: `<div class="compare-page wrap">
       <p class="compare-return"><a href="/compare/">All comparisons</a> / ${escape(entry.name)}</p>
@@ -238,7 +248,7 @@ function indexPage() {
   return shell({
     title: "Compare Feedbacks with website feedback tools",
     description:
-      "Compare Feedbacks and 15 alternatives across 49 features: visual review, video, session replay, debugging, MCP and self-hosting. Every verdict has dated evidence.",
+      "Compare Feedbacks and 15 alternatives across 49 audited capabilities, plus current Kanban boards, project analytics, email templates and task integrations.",
     canonical,
     content: `<div class="compare-index wrap">
       <h1>Website feedback tools, compared.</h1>
@@ -277,6 +287,14 @@ async function put(path, content) {
 if (new Set(comparisons.map((entry) => entry.slug)).size !== comparisons.length) {
   throw new Error("Duplicate comparison slug");
 }
+if (
+  feedbacksCurrentRelease.taskProviders.length !== 10 ||
+  feedbacksCurrentRelease.capabilities.length !== 4 ||
+  !/^[a-f0-9]{40}$/.test(feedbacksCurrentRelease.sourceRevision)
+)
+  throw new Error(
+    "Current Feedbacks release summary needs its reviewed capability scope",
+  );
 for (const entry of comparisons) {
   if (!/^[a-z0-9-]+$/.test(entry.slug) || !vendorAudits[entry.slug]?.sources.length) {
     throw new Error(`Invalid comparison entry: ${entry.slug}`);

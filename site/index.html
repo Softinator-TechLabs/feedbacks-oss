@@ -6,7 +6,7 @@
     <title>Feedbacks — Free, open-source visual feedback &amp; session replay</title>
     <meta
       name="description"
-      content="Free Apache-2.0 website feedback with screenshots, video, session replay, debugging bundles and AI-agent context. Self-host the complete product."
+      content="Free, self-hosted visual feedback with session replay, Kanban, project analytics, email and task integrations. Bring your team and coding agent."
     />
     <meta name="theme-color" content="#fffdfa" />
     <meta
@@ -68,7 +68,11 @@
           "Debugging evidence bundles",
           "Text suggestions",
           "MCP, API and CLI",
-          "GitHub Issues"
+          "GitHub Issues",
+          "Project Kanban board",
+          "Project analytics and workload drilldowns",
+          "Subscribed email with server and project templates",
+          "ClickUp, monday.com, Jira, Asana and other task integrations"
         ],
         "license": "https://www.apache.org/licenses/LICENSE-2.0"
       }
@@ -86,6 +90,7 @@
       >
       <nav aria-label="Main navigation">
         <a href="#features">Features</a><a href="#comparisons">Compare</a
+        ><a href="#platforms">Coming soon</a
         ><a href="/docs/" target="_blank" rel="noopener noreferrer">Docs</a
         ><a
           href="https://github.com/Softinator-TechLabs/feedbacks-oss"
@@ -210,7 +215,8 @@
         <a href="#recordings">Discuss &amp; hand off</a
         ><a href="#text-changes">Suggest the words</a
         ><a href="#debug-bundle">Take the evidence</a
-        ><a href="#agent-context">Give your agent context</a>
+        ><a href="#agent-context">Give your agent context</a
+        ><a href="#features">Plan &amp; connect</a>
       </nav>
       <section
         class="product-section wrap"
@@ -346,9 +352,46 @@
         aria-labelledby="features-title"
       >
         <div class="section-intro">
-          <h2 id="features-title">One place for the rest of the review.</h2>
+          <h2 id="features-title">From feedback to finished.</h2>
         </div>
         <div class="feature-rows">
+          <a
+            href="/docs/reference/manual/project-board"
+            target="_blank"
+            rel="noopener noreferrer"
+            ><strong>Kanban, built in</strong
+            ><span
+              >Move cards, assign work and update a batch. Keep the feedback
+              attached.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+          <a href="/docs/guide/analytics" target="_blank" rel="noopener noreferrer"
+            ><strong>See what needs attention</strong
+            ><span
+              >Pending, overdue and high-priority work. Visual analytics, project by
+              project.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+          <a
+            href="/docs/reference/manual/integrations#connect-a-task-account"
+            target="_blank"
+            rel="noopener noreferrer"
+            ><strong>Connect your task apps</strong
+            ><span
+              >ClickUp, monday.com, Jira, Asana and six more. Choose destinations by
+              name.</span
+            ><span aria-hidden="true">↗</span></a
+          >
+          <a
+            href="/docs/guide/email-notifications"
+            target="_blank"
+            rel="noopener noreferrer"
+            ><strong>Keep subscribers in the loop</strong
+            ><span
+              >SMTP, Mailjet or Amazon SES. Choose events and customize server or project
+              email templates.</span
+            ><span aria-hidden="true">↗</span></a
+          >
           <a href="/docs/guide/github" target="_blank" rel="noopener noreferrer"
             ><strong>GitHub, across repositories</strong
             ><span
@@ -400,19 +443,49 @@
             target="_blank"
             rel="noopener noreferrer"
             ><strong>Connect the rest of your workflow</strong
-            ><span>iOS and Android integrations, signed webhooks, API and CLI.</span
+            ><span>Host-app mobile SDKs, signed webhooks, API and CLI.</span
             ><span aria-hidden="true">↗</span></a
           >
-          <a
-            href="/docs/reference/manual/upcoming"
-            target="_blank"
-            rel="noopener noreferrer"
-            ><strong>Upcoming: feedback beyond the browser</strong
-            ><span
-              >Windows, Ubuntu and macOS companions, mobile sharing and reviewed OS
-              diagnostics.</span
-            ><span aria-hidden="true">↗</span></a
-          >
+        </div>
+      </section>
+      <section
+        class="client-roadmap wrap"
+        id="platforms"
+        aria-labelledby="platforms-title"
+      >
+        <div class="section-intro">
+          <h2 id="platforms-title">Your workflow. More places.</h2>
+        </div>
+        <div class="client-roadmap-columns">
+          <article>
+            <h3>Available: your coding agent.</h3>
+            <p class="client-platforms">Codex · Claude Code · MCP</p>
+            <p>
+              Connect directly today. Official directories are a separate distribution
+              channel.
+            </p>
+            <a
+              class="text-link"
+              href="/docs/guide/mcp"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Connect your agent <span aria-hidden="true">→</span></a
+            >
+          </article>
+          <article>
+            <h3>Coming soon: native apps.</h3>
+            <p class="client-platforms">Windows · Ubuntu · macOS<br />Android · iOS</p>
+            <p>
+              Planned desktop companions and mobile sharing. No release date announced.
+            </p>
+            <a
+              class="text-link"
+              href="/docs/reference/manual/upcoming"
+              target="_blank"
+              rel="noopener noreferrer"
+              >See what’s planned <span aria-hidden="true">→</span></a
+            >
+          </article>
         </div>
       </section>
       <section class="setup-section" id="setup" aria-labelledby="setup-title">

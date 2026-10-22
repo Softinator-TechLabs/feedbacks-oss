@@ -20,3 +20,14 @@ Feedbacks turns a UI request into screenshots, page details and project context 
 **Team already has a setup?** [Install the Chrome extension](https://chromewebstore.google.com/detail/feedbacks-website-review/dcpfpkfmegpgbfkeeileabpcbbmnoobo), then open **Setup** in your Feedbacks app to copy the server URL and connect.
 
 Clients and reviewers don’t need MCP or an AI subscription. Each developer connects their own agent with their own key.
+
+## After the first review
+
+| Next step                                             | Open                                                                       |
+| ----------------------------------------------------- | -------------------------------------------------------------------------- |
+| Move and assign work                                  | [Project Board](/reference/manual/project-board)                           |
+| Compare pending, overdue and high-priority tasks      | [Analytics: Overview, Trends and Explore](/guide/analytics)                |
+| Get discussion and assignment emails                  | [Email notifications](/guide/email-notifications)                          |
+| Connect Asana, ClickUp, Jira or another supported app | [Guided task setup](/reference/manual/integrations#connect-a-task-account) |
+
+The web app, Chrome extension and [Codex/Claude Code MCP integrations](/guide/mcp) are available. Standalone Windows, Ubuntu, macOS, Android and iOS apps are [Coming soon / planned](/reference/manual/upcoming).

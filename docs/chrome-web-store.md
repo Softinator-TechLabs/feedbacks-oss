@@ -2,21 +2,23 @@
 
 Use this copy for the public, server-neutral extension. Verify the uploaded ZIP, live privacy page and dashboard fields before submission. Packaging a ZIP does not publish a Store update.
 
-## What to update for 0.1.49
+## Current published package: 0.1.64
 
-This worksheet replaces the prepared 0.1.47 handoff. The public Store page showed version 0.1.27 and the older **Feedbacks: Website Review** listing on 2026-09-29; the publisher dashboard may also contain an unpublished draft. Version 0.1.49 includes the merged recording-review and agent-task changes through PR #157. Check the dashboard's published and pending versions before uploading; a prepared ZIP is not a published version.
+Public listing checked **22 October 2026**: [Feedbacks: UI Context for AI Agents](https://chromewebstore.google.com/detail/feedbacks-ui-context-for/dcpfpkfmegpgbfkeeileabpcbbmnoobo?hl=en) shows version **0.1.64**, updated **21 October 2026**. The source manifest, [versioned GitHub package](https://github.com/Softinator-TechLabs/feedbacks-oss/releases/tag/extension-v0.1.64) and live server extension metadata agree on 0.1.64.
 
-| Dashboard field                                                               | Action for this update                                                                                                    |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **Package**                                                                   | Upload the new `feedbacks-extension-0.1.49.zip` inside this bundle. Do not upload the outer handoff ZIP.                  |
-| **Store listing → Title and short description**                               | Replace the older public values with the values below; both match the new package manifest.                               |
-| **Store listing → Detailed description**                                      | Replace the full field with the block below. It now describes the aligned video/session review and focused agent handoff. |
-| **Store listing → Screenshots**                                               | Replace the four ordered screenshots with the current images supplied in this bundle.                                     |
-| **Store listing → Icon and small promo tile**                                 | Upload the supplied `artwork/` files. Their bytes match the prepared 0.1.47 bundle.                                       |
-| **Store listing → Category, language and URLs**                               | Keep the values below unless the existing dashboard differs; verify each link.                                            |
-| **Privacy practices → Single purpose, permissions, remote code and data use** | Recheck every answer against the declarations below and the new package. The permission set did not change since 0.1.47.  |
-| **Distribution**                                                              | Keep the item's current visibility, regions and rollout choices.                                                          |
-| **Test instructions**                                                         | Use the updated reviewer steps below and provide demo access only in Google's private fields if requested.                |
+This records public package availability. Publisher-dashboard state, a future submission and behavior of a particular Store-installed client require their own checks. This documentation update performs no dashboard or submission action. Keep 0.1.64 for the current package; a future extension-code update must use a higher version.
+
+| Dashboard field                                                               | Action for this update                                                                                                                                 |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Package**                                                                   | Current artifact: `feedbacks-extension-0.1.64.zip`. Keep the versioned package and checksum; upload a higher version only for a future package update. |
+| **Store listing → Title and short description**                               | Keep the values below aligned with the actual package manifest.                                                                                        |
+| **Store listing → Detailed description**                                      | Use the block below when a listing update is needed; verify it against the released capture/review flow.                                               |
+| **Store listing → Screenshots**                                               | Verify the four ordered synthetic screenshots against the current interface before replacing listing images.                                           |
+| **Store listing → Icon and small promo tile**                                 | Use the artwork from the same verified package build; inspect dimensions and bytes before upload.                                                      |
+| **Store listing → Category, language and URLs**                               | Keep the values below unless the existing dashboard differs; verify each link.                                                                         |
+| **Privacy practices → Single purpose, permissions, remote code and data use** | Recheck every answer against the declarations below and the actual uploaded package.                                                                   |
+| **Distribution**                                                              | Keep the item's current visibility, regions and rollout choices.                                                                                       |
+| **Test instructions**                                                         | Use the updated reviewer steps below and provide demo access only in Google's private fields if requested.                                             |
 
 ## Package identity
 
@@ -133,6 +135,8 @@ If the dashboard asks for reviewer access, provide a separate non-sensitive demo
 ```
 
 ## Dashboard update order
+
+These steps apply to a future update. The public listing already shows 0.1.64; do not upload that same version as a new package.
 
 1. Confirm the published Store version and this ZIP's higher manifest version. The ZIP must contain `manifest.json` at its root with all extension files ([package guidance](https://developer.chrome.com/docs/webstore/prepare)).
 2. In the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole), open existing Feedbacks item `dcpfpkfmegpgbfkeeileabpcbbmnoobo` → **Package** → **Upload New Package**. Upload the extension ZIP itself, not the outer handoff bundle.

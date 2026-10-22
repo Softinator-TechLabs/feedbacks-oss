@@ -18,6 +18,7 @@ const queue = [
   "agents",
   "mcp-contract",
   "extension",
+  "chrome-web-store",
   "app-capture",
   "platform-compatibility",
   "upcoming",

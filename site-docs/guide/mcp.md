@@ -6,6 +6,8 @@ description: Connect your personal coding agent, verify project access and choos
 
 Sign in to your team's Feedbacks server as yourself. Each developer connects their own agent with their own key.
 
+MCP connections and the direct Codex and Claude Code plugins are **available now**. Choose browser sign-in, a local key connection or a direct plugin below.
+
 <DocPath :steps="['Copy prompt', 'Keep key local', 'Verify access', 'Choose a task']" />
 
 ## Connect in Setup
@@ -58,13 +60,13 @@ Open a thread → **Copy task for agent** → paste with your request. The agent
 | Scopes, limits and exact operations    | [MCP contract](/reference/manual/mcp-contract)                                                      |
 | Evidence, assignments and planning     | [Agent workflow](/reference/manual/agents)                                                          |
 
-## Native plugins
+## Direct plugins: available now
 
 Install Node.js 22.12+ or 24 and Git on the client machine. Install and sign in to your chosen CLI using the [Claude Code quickstart](https://code.claude.com/docs/en/quickstart) or [Codex CLI guide](https://developers.openai.com/codex/cli/). Check `claude --version` or `codex --version` before installing the plugin. A desktop app login alone does not verify that the terminal command is installed or authenticated.
 
 These commands use the [public Feedbacks marketplace](https://github.com/Softinator-TechLabs/feedbacks-plugins); no server checkout or `npm ci` is needed.
 
-Official directory status, checked **21 October 2026**: Claude's submitted 0.2.2 package passed its security scan and its publication request is waiting for an Anthropic reviewer. OpenAI local-MCP submission access is pending review. Neither official listing is live, and no publication date is confirmed. The direct commands below work independently of those reviews.
+The available plugins use the publisher's public marketplace below. Official directory availability is separate from these direct installation commands.
 
 **Claude Code**
 

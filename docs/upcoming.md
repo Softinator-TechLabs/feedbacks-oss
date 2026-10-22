@@ -1,20 +1,33 @@
 # Upcoming
 
-The [app screenshot pilot](app-capture.md) is implemented in the web application. Wider native capture and debugging remain phased work. Each item lists its current status. Proposed items are not released features or delivery-date commitments. Check [platform compatibility](platform-compatibility.md) for current integrations and the distinction between visual capture and internal diagnostics.
+The web workspace, Chrome extension and coding-agent integrations are available today. The native apps below are **Coming soon: planned, not released**, with no confirmed delivery dates. Check [platform compatibility](platform-compatibility.md) for capture and diagnostic limits.
 
-Upcoming desktop companions target Windows, Ubuntu and macOS, followed by Android/iOS sharing. Planned diagnostics reuse Windows Event Log, the Linux journal and macOS Unified Logging for reviewed snapshots beside app screenshots. These are limited to OS-accessible messages; full crash dumps, deeper tracing and broad application/device verification remain separate work.
+## Available today
 
-## Proposed sequence
+| Capability                                                                                                                                                      | Current status                                                                                 |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [Project Kanban board](project-board.md), [visual analytics](analytics.md), [subscribed email](email-notifications.md) and [task integrations](integrations.md) | Released web features                                                                          |
+| [Codex and Claude Code plugins / MCP](agents.md)                                                                                                                | Direct installation and MCP available; official directory publication is a separate gate       |
+| [App screenshot pilot](app-capture.md)                                                                                                                          | Web image import and browser window/display capture; real OS picker acceptance remains pending |
+| [iOS/Android integration kits](mobile-sdk.md)                                                                                                                   | Host-app SDK source available; real-device verification remains pending                        |
 
-| Work                         | Intended outcome                                                                               | Status                                               |
-| ---------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Desktop app screenshot pilot | Choose a window/display or import an image, annotate/mask it, and send feedback                | Implemented pilot; real OS picker acceptance pending |
-| Mobile SDK verification      | Complete pairing, screenshot review and upload in real iOS/Android host apps                   | Source available; real-device verification pending   |
-| Desktop companions           | Start capture from a shortcut, tray or menu bar on Windows, Ubuntu and macOS                   | Proposed                                             |
-| Mobile sharing and capture   | Share screenshots/video to Feedbacks, with optional Android projection and iOS broadcasting    | Proposed                                             |
-| App-integrated diagnostics   | Include selected logs, recent actions, network failures and platform crash/performance context | Proposed                                             |
+## Coming soon: native apps
 
-The sequence prioritizes a complete visual feedback workflow before adding deeper OS-specific integrations. Scope can change after the desktop pilot and real-device testing. Detailed acceptance criteria are in the [cross-platform capture plan](plans/cross-platform-capture.md).
+| Planned client          | Intended workflow                                                   | Status                                        |
+| ----------------------- | ------------------------------------------------------------------- | --------------------------------------------- |
+| Windows companion       | Start app/window capture from a desktop shortcut or tray            | Planned; no released installer                |
+| Ubuntu companion        | Start app/window capture through the supported desktop capture path | Planned; no released package                  |
+| macOS companion         | Start app/window capture from a menu-bar companion                  | Planned; no released app                      |
+| Android app and sharing | Share screenshots/video, with optional user-approved projection     | Planned; no standalone app or share target    |
+| iOS app and sharing     | Share screenshots/video, with optional user-started broadcasting    | Planned; no standalone app or share extension |
+
+Scope and order can change. The existing web pilot and host-app SDKs are separate from these native clients. Detailed acceptance criteria are in the [cross-platform capture plan](plans/cross-platform-capture.md).
+
+## Diagnostics and device verification
+
+Reviewed OS-log snapshots have an [open, unreleased development PR](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/219). Those diagnostic changes are unreleased. The proposed Windows Event Log, Linux journal and macOS Unified Logging paths cover only accessible messages; full crash dumps, deeper tracing and broad device acceptance remain separate work.
+
+App-integrated logs, recent actions, network failures and platform crash/performance context remain proposed. The existing mobile SDKs still need pairing, screenshot review and upload acceptance on real iOS/Android devices.
 
 ## What stays consistent
 
