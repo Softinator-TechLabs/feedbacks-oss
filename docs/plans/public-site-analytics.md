@@ -16,7 +16,7 @@ Post-process only `dist/site` after documentation export. Validate the measureme
 - [x] Implement optional build configuration, consent controls and deployment variables.
 - [x] Verify off/default, invalid configuration, host isolation, consent/withdrawal and public build output.
 - [x] Run repository checks and review the bounded implementation.
-- [ ] Merge through required CI.
+- [x] Merge the initial implementation through required PR CI.
 - [ ] Verify the configured public deployment and GA4 collection separately.
 
 ## Compatibility and recovery
@@ -32,3 +32,5 @@ The current public privacy policy promises no analytics, so its website section 
 Local `npm run check` passed: 633 tests passed, 57 conditional skips, complete builds, isolated application smoke and release checks. Six regression tests cover paired configuration, off-by-default output, exact-host isolation, public-only injection/CSP, consent, expiry, withdrawal and cross-tab changes. An isolated browser check at desktop/mobile widths verified the built public pages with a synthetic measurement ID and all requests intercepted: no Google request before acceptance or after stored decline, one initializer per document, persistent docs controls, no duplicate initializer across VitePress navigation, cookie removal and cross-tab withdrawal, keyboard access and no overflow. Google code was stubbed; this does not establish live GA4 collection. Screenshots and raw receipts remain private.
 
 Required exact-source CI and separate configured public deployment/property acceptance remain pending. No measurement ID, account details or operational receipts belong in source.
+
+The current Google CSP guide was checked directly on 2026-10-22: its table for Analytics without Ads also requires Google connections. The enabled policy therefore allows `https://www.google.com` only in `connect-src`, alongside the existing Analytics and Tagmanager connections. This permits the observed basic collection endpoint without adding Google script/image/frame sources or advertising domains. Unconfigured builds retain their original policy.
