@@ -1,5 +1,7 @@
 # Feedbacks
 
+<a href="https://www.producthunt.com/products/feedbacks-2?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-feedbacks-2" target="_blank" rel="noopener noreferrer"><img alt="Feedbacks - Team and client annotations for developers and AI agents | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1287624&amp;theme=dark&amp;t=1792652994881"></a>
+
 **Free, Apache-2.0 visual feedback, session replay and debugging context.**
 
 Show the problem with a screenshot, exact text suggestion or video + session recording. Keep the discussion, event timeline, browser diagnostics and approved project context together. Your team and coding agent can investigate the evidence, make the agreed change and record verification. The complete product is free to self-host; you provide the infrastructure and any AI tools you use.

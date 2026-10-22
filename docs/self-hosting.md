@@ -108,6 +108,16 @@ The [public-site deployment workflow](../.github/workflows/site.yml) automatical
 
 For independent forks, replace the official canonical URL, sitemap, repository and contact links under `site/` with your own before publishing.
 
+### Optional public website analytics
+
+Public builds have no analytics by default. To enable GA4 only on your public website and docs, set both `PUBLIC_SITE_GA_ID` (the web stream's `G-XXXXXXXXXX` measurement ID) and `PUBLIC_SITE_GA_HOST` (one exact lowercase hostname, without scheme, port, path or wildcard) when running `npm run build:site`. The public-site workflow reads these GitHub variables from its existing deployment environment or repository. These are public configuration values, not credentials. Leave both unset for forks, previews and normal tests; a partial or invalid configuration fails the build. The post-build step changes only `dist/site`, never the team app or extension. The loader also requires HTTPS and the exact configured hostname.
+
+Visitors see Allow analytics / Decline and a persistent Cookie preferences control. Google code and requests start only after Allow; choice persists for up to 180 days. Withdrawal disables collection, clears the integration's host-only analytics cookies and synchronizes other open tabs. Google Signals and advertising personalization are disabled; analytics cookies expire after 90 days without sliding renewal. Only public page/browser analytics are configured, with no Feedbacks account or feedback payloads.
+
+In the GA4 web stream, enable only **Page views → Page changes based on browser history events** under Enhanced Measurement; disable its other automatic events. The loader uses Google's initial pageview and history measurement for VitePress navigation. Do not add a second manual router/pageview tag. Verify actual collection and consent behavior on the configured public domain separately from a build. The [public privacy page](../site/privacy.html) describes this integration; operator policy and GA4 settings must remain consistent with it. Remove both variables and rebuild to disable it. The [implementation plan](plans/public-site-analytics.md) records scope and verification boundaries.
+
+Cloudflare reads the generated `_headers` policy. Other static hosts must apply that enabled policy themselves; an independent server-level CSP can still block the tag. Advertising, Tag Manager preview and broad Google Ads origins are not enabled.
+
 ## Multiple GitHub Apps
 
 One Feedbacks server can use a different GitHub App for each project. Each
