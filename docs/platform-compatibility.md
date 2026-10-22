@@ -1,18 +1,19 @@
 # Platform compatibility and capture limits
 
-Reviewed 2026-10-21. This page separates implemented Feedbacks clients from the feasibility of future clients. Source and synthetic tests do not certify every OS, browser or physical device. See [verification](verification.md) for the evidence required before claiming support, and [Upcoming](upcoming.md) for proposed work.
+Availability reviewed 2026-10-22. This page separates released integrations, host-app SDK source and planned native apps. Source and synthetic tests do not certify every OS, browser or physical device. See [verification](verification.md) for the evidence required before claiming support, and [Upcoming](upcoming.md) for Coming soon work.
 
 ## Available integrations
 
-The [app screenshot pilot](app-capture.md) adds signed-in image import and browser window/display capture without the extension. Native system-picker acceptance remains unverified on the named operating systems.
+The web workspace includes the [Kanban board](project-board.md), [project analytics](analytics.md), [subscribed email](email-notifications.md) and [ten task-provider adapters](integrations.md). The [app screenshot pilot](app-capture.md) adds signed-in image import and browser window/display capture without the extension. Native system-picker acceptance remains unverified on the named operating systems.
 
 | Target                                      | Current Feedbacks integration                                                                         | Boundary and evidence                                                                                                                                                                       |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Websites in desktop Chrome                  | [Chrome extension](extension.md): screenshot points, tab video, session replay and debugging evidence | Capture is scoped to the selected website/tab and project. Packaged browser tests and installed-client verification are separate gates.                                                     |
+| Codex, Claude Code and other MCP clients    | [MCP and direct plugins](agents.md)                                                                   | Available agent connections use current server/project grants. Official directory publication and installation in a particular client are separate checks.                                  |
 | Your own iOS app                            | [Swift integration kit](mobile-sdk.md) for paired team reviewers                                      | Captures the host app's supplied view and submits a screenshot/comment. Real-device pairing, capture and upload remain unverified.                                                          |
 | Your own Android app                        | [Kotlin integration kit](mobile-sdk.md), API 26 or newer                                              | Captures the host app's window with PixelCopy. A compile-only host and HTTP contract tests exist; real-device operation remains unverified.                                                 |
 | Other Windows, Ubuntu or macOS applications | [Web app capture/import pilot](app-capture.md)                                                        | The web app offers a browser capture/import pilot; no standalone Feedbacks desktop companion is provided. Running Chrome on an OS does not establish native-app capture support.            |
-| Other Android or iOS applications           | [Image import pilot](app-capture.md); native companion proposed                                       | No standalone Feedbacks mobile companion, share extension or broadcast extension is provided. The existing SDKs capture only their host app. The web app can accept an imported screenshot. |
+| Other Android or iOS applications           | [Image import pilot](app-capture.md); native apps Coming soon / planned                               | No standalone Feedbacks mobile companion, share extension or broadcast extension is provided. The existing SDKs capture only their host app. The web app can accept an imported screenshot. |
 
 The extension's [session recordings](session-replay.md) can include DOM replay, activity, console, network, performance and environment evidence. Detailed capture uses Chrome debugger attachment during an explicitly started recording; bounded network bodies are a separate option. Channel coverage, protected pages and browser limits still apply. The legacy opt-in screenshot diagnostic packet has a narrower format. Neither path collects another native application's internal state.
 
@@ -42,16 +43,17 @@ Screen capture does not grant log, filesystem, debugger or network-decryption ac
 
 Wide tables scroll horizontally when the page is narrow.
 
-## Proposed capture routes
+## Coming soon: standalone capture clients
 
-| Client                | Candidate mechanism                                                    | Additional verification                                                                                                                                               |
-| --------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Desktop browser pilot | User-selected window/display through the Screen Capture API            | Supported desktop Chrome on Windows, macOS and Ubuntu; real picker, denial, stop and upload behavior. This is a new workflow, not the existing tab-bound recorder.    |
-| Windows companion     | Windows Graphics Capture; optional UI Automation context               | Signed packaging, process/privilege boundaries, protected surfaces and physical desktop acceptance.                                                                   |
-| Ubuntu companion      | XDG ScreenCast portal and PipeWire on Wayland; separate X11 handling   | Desktop/compositor/backend combinations, window-source availability and packaging.                                                                                    |
-| macOS companion       | ScreenCaptureKit; optional Accessibility context                       | OS capture/Accessibility permission paths, signed distribution and actual app windows.                                                                                |
-| Android companion     | Screenshot sharing and MediaProjection                                 | Consent for each projection session, foreground-service lifecycle, secure surfaces and real devices. Accessibility is a separate optional design, with policy review. |
-| iOS companion         | Screenshot/video sharing first; optional ReplayKit broadcast extension | Share/broadcast lifecycle, explicit user start, app/extension storage boundaries and real devices.                                                                    |
+Windows, Ubuntu and macOS companions and Android/iOS standalone or sharing apps are planned, not released. The mechanisms below are design candidates, not available downloads or delivery-date commitments. The browser capture/import pilot above is already implemented separately.
+
+| Client            | Candidate mechanism                                                    | Additional verification                                                                                                                                               |
+| ----------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows companion | Windows Graphics Capture; optional UI Automation context               | Signed packaging, process/privilege boundaries, protected surfaces and physical desktop acceptance.                                                                   |
+| Ubuntu companion  | XDG ScreenCast portal and PipeWire on Wayland; separate X11 handling   | Desktop/compositor/backend combinations, window-source availability and packaging.                                                                                    |
+| macOS companion   | ScreenCaptureKit; optional Accessibility context                       | OS capture/Accessibility permission paths, signed distribution and actual app windows.                                                                                |
+| Android companion | Screenshot sharing and MediaProjection                                 | Consent for each projection session, foreground-service lifecycle, secure surfaces and real devices. Accessibility is a separate optional design, with policy review. |
+| iOS companion     | Screenshot/video sharing first; optional ReplayKit broadcast extension | Share/broadcast lifecycle, explicit user start, app/extension storage boundaries and real devices.                                                                    |
 
 ## When the target app integrates an SDK
 

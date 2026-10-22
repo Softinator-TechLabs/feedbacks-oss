@@ -32,6 +32,8 @@ Choose **Review & send**, inspect the notes and screenshots, then **Send feedbac
 
 When the team shares a fix, open the same page, try the original steps and reply in the feedback thread with what you observed.
 
+Follow the same request on the project's [Board](/reference/manual/project-board), or [subscribe to email updates](/guide/email-notifications) for replies, mentions, status and assignments. Your account still needs project access; guest links keep their separate access limits.
+
 ::: details Received a guest link instead?
 Open the link your team sent and use its review controls. You do not need to install a server or configure an agent. Review your evidence before submitting; ask the team for a replacement if the link no longer works.
 :::

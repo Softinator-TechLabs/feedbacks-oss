@@ -15,24 +15,28 @@ Feedbacks is **free, Apache-2.0 and self-hosted**. Keep the request, original sc
 
 ## What do you want to do?
 
-| Your task                          | Open the guide                                                    |
-| ---------------------------------- | ----------------------------------------------------------------- |
-| Point at a UI change               | [Screenshots and annotations](/guide/review-feedback)             |
-| Show how a bug happens             | [Video, session replay and timeline](/guide/session-replay)       |
-| Investigate why it happened        | [Debug bundles](/guide/debug-bundles)                             |
-| Replace the exact words            | [Text suggestions](/guide/text-suggestions)                       |
-| Help your agent choose useful work | [Team context](/guide/agent-context) → [MCP setup](/guide/mcp)    |
-| Send a task to a repository        | [GitHub Apps and Issues](/guide/github)                           |
-| Collect feedback another way       | [Guests, documents, widgets and more](/guide/more-ways-to-review) |
+| Your task                                        | Open the guide                                                                   |
+| ------------------------------------------------ | -------------------------------------------------------------------------------- |
+| Point at a UI change                             | [Screenshots and annotations](/guide/review-feedback)                            |
+| Show how a bug happens                           | [Video, session replay and timeline](/guide/session-replay)                      |
+| Investigate why it happened                      | [Debug bundles](/guide/debug-bundles)                                            |
+| Replace the exact words                          | [Text suggestions](/guide/text-suggestions)                                      |
+| Help your agent choose useful work               | [Team context](/guide/agent-context) → [MCP setup](/guide/mcp)                   |
+| Send a task to a repository                      | [GitHub Apps and Issues](/guide/github)                                          |
+| Move requests through the work                   | [Project Kanban board](/reference/manual/project-board)                          |
+| See pending, overdue and high-priority work      | [Visual project analytics](/guide/analytics)                                     |
+| Connect Asana, ClickUp, Jira or another task app | [Guided task connections](/reference/manual/integrations#connect-a-task-account) |
+| Follow discussions and work changes by email     | [Subscriptions, providers and templates](/guide/email-notifications)             |
+| Collect feedback another way                     | [Guests, documents, widgets and more](/guide/more-ways-to-review)                |
 
 The extension connects to your team's server. Your team supplies hosting and any AI tools it chooses. Clients and reviewers do not need an AI subscription.
 
-## Upcoming: feedback beyond the browser
+Codex and Claude Code plugins and direct MCP connections are [available now](/guide/mcp). Official directory publication is a separate step.
 
-Standalone Windows, Ubuntu and macOS companions, mobile sharing and reviewed OS diagnostics are planned. See [Upcoming and platform limits](/reference/manual/upcoming); these are not released standalone apps.
+## Coming soon: native apps
+
+Windows, Ubuntu and macOS companions and Android/iOS standalone or sharing apps are **planned, not released**. The web [app screenshot pilot](/reference/manual/app-capture) and host-app [mobile SDK source](/reference/manual/mobile-sdk) are available separately. See [Upcoming and platform limits](/reference/manual/upcoming); no delivery dates are confirmed.
 
 [Troubleshooting](/guide/troubleshooting) · [Access and privacy](/guide/access-privacy) · [API and CLI](/reference/api-cli)
 
 Guides are also available as [Markdown for agents](/llms.txt).
-
-[Subscribe to email notifications](guide/email-notifications.md) for project discussions, status and assignment changes.
