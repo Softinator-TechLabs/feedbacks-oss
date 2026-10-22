@@ -221,34 +221,50 @@ test("permanent public intake is opt-in, current-origin scoped, anonymous-only a
     } finally {
       globalThis.fetch = originalFetch;
     }
-    const row = await db.one("SELECT * FROM public_intake WHERE id=$1", [setting.id]);
-    row.data.dailyLimit = 1;
-    await intakeBudget(
-      db,
-      config,
-      row,
-      "198.51.100.23",
-      "submit",
-      Date.parse("2026-10-22T00:00:00Z"),
+    const priorHttpBudgets = await db.query(
+      "SELECT key,bucket,count FROM public_intake_budgets WHERE key LIKE $1 ORDER BY key,bucket",
+      [`intake:${setting.id}:%`],
     );
+    assert.ok(
+      priorHttpBudgets.some(
+        (budget) => budget.key === `intake:${setting.id}:daily` && budget.count > 0,
+      ),
+      "real HTTP submissions must retain their durable daily quota",
+    );
+    const budgetProject = await ops.executeOperation(owner, "projects.create", {
+      name: "Isolated intake budget",
+      origins: ["https://site.example.test"],
+    });
+    const budgetSetting = await ops.executeOperation(owner, "intake.save", {
+      projectId: budgetProject.id,
+      revision: 0,
+      enabled: true,
+      config: { origins: ["https://site.example.test"], dailyLimit: 1 },
+    });
+    const row = await db.one("SELECT * FROM public_intake WHERE id=$1", [
+      budgetSetting.id,
+    ]);
+    const budgetAt = Math.floor(Date.now() / 86400000) * 86400000;
+    await intakeBudget(db, config, row, "198.51.100.23", "submit", budgetAt);
     const counterCount = (
       await db.one("SELECT count(*)::integer AS n FROM public_intake_budgets")
     ).n;
     await assert.rejects(
-      intakeBudget(
-        db,
-        config,
-        row,
-        "198.51.100.24",
-        "submit",
-        Date.parse("2026-10-22T00:00:01Z"),
-      ),
+      intakeBudget(db, config, row, "198.51.100.24", "submit", budgetAt + 1_000),
       { code: "RATE_LIMITED" },
     );
     assert.equal(
       (await db.one("SELECT count(*)::integer AS n FROM public_intake_budgets")).n,
       counterCount,
       "exhausted installation budget must reject rotating addresses before allocating new IP counters",
+    );
+    assert.deepEqual(
+      await db.query(
+        "SELECT key,bucket,count FROM public_intake_budgets WHERE key LIKE $1 ORDER BY key,bucket",
+        [`intake:${setting.id}:%`],
+      ),
+      priorHttpBudgets,
+      "a separate installation must not reset or replace prior HTTP quota counters",
     );
     await assert.rejects(
       intakeInstallation(
