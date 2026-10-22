@@ -101,6 +101,19 @@ test("the final public artifact alone receives consent assets and the narrow ena
       );
       assert.match(line, /connect-src (?:'self' )?https:\/\/www.googletagmanager.com/);
       assert.match(line, /https:\/\/\*\.google-analytics.com/);
+      const directives = new Map(
+        line
+          .replace(/^\s*Content-Security-Policy: /, "")
+          .split(";")
+          .map((directive) => {
+            const [name, ...sources] = directive.trim().split(/\s+/);
+            return [name, sources];
+          }),
+      );
+      // Google's basic Analytics transport also collects on www.google.com.
+      assert.ok(directives.get("connect-src")?.includes("https://www.google.com"));
+      for (const name of ["script-src", "img-src", "frame-src"])
+        assert.ok(!directives.get(name)?.includes("https://www.google.com"));
       assert.match(line, /frame-ancestors 'none'; form-action 'none'/);
       assert.doesNotMatch(
         line,

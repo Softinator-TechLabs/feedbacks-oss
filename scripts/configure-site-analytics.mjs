@@ -25,6 +25,7 @@ export function analyticsContentSecurityPolicy(headers) {
     "connect-src": [
       "https://www.googletagmanager.com",
       "https://*.google-analytics.com",
+      "https://www.google.com",
       "https://analytics.google.com",
       "https://*.analytics.google.com",
     ],
