@@ -47,6 +47,9 @@ jobs:
         run: npm ci
       - name: Build website and docs with source receipt
         if: steps.gate.outputs.deploy == 'true'
+        env:
+          PUBLIC_SITE_GA_ID: ${{ vars.PUBLIC_SITE_GA_ID }}
+          PUBLIC_SITE_GA_HOST: ${{ vars.PUBLIC_SITE_GA_HOST }}
         run: |
           npm run build:site
           node --input-type=module -e 'import { writeFileSync } from "node:fs"; writeFileSync("dist/site/deployment.json", JSON.stringify({ sha: process.env.TARGET_SHA }) + "\n")'

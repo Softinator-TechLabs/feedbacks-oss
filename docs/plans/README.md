@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Optional public website analytics](public-site-analytics.md)
+
 - [Current features and upcoming clients on the public website](public-feature-status.md)
 
 - [Guided task connections](guided-tracker-connections.md)
