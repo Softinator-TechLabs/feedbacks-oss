@@ -6,6 +6,7 @@ COPY vite.site.config.ts ./
 COPY .prettierrc.json ./
 COPY scripts/generate-comparisons.mjs ./scripts/
 COPY scripts/export-docs.mjs ./scripts/
+COPY scripts/configure-site-analytics.mjs ./scripts/
 COPY scripts/publish-docs.mjs ./scripts/
 COPY scripts/prepare-walkthroughs.mjs scripts/walkthrough-recording.js scripts/walkthrough-recording.css ./scripts/
 COPY extension/session-review.js extension/session-review.css ./extension/
