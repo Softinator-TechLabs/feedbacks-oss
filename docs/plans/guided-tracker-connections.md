@@ -1,6 +1,6 @@
 # Guided task connections
 
-Status: in progress.
+Status: implementation, publication and live UI verified; external provider-account acceptance remains separate.
 
 ## Outcome
 
@@ -24,7 +24,13 @@ Owners connect a task provider by choosing an account and a named destination. T
 
 ## Evidence and remaining gates
 
-Named discovery and the guided form are implemented, including consent-first Jira setup. Focused provider/authorization tests, desktop/mobile browser checks, the operation catalog and native PostgreSQL concurrent-save/completion checks passed during development. Final repository, CI, publication and live deployment checks remain in progress. Real provider authorization and task creation require a usable provider account grant; synthetic transport tests do not establish those gates.
+Named discovery and the guided form are implemented, including consent-first Jira setup. Focused provider/authorization tests, desktop/mobile browser checks, the operation catalog and native PostgreSQL concurrent-save/completion checks passed. Jira broker expiry exposes a working restart, while an identical committed completion retry can recover its connection after consent expiry under the same currently authorized session.
+
+Application source: `6387b8d61971edaf75063aaeb6478a73f41542c5`. [Exact-main CI](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/39648999766), attempt 1, passed all six jobs. The public [0.3.1 release](https://github.com/Softinator-TechLabs/feedbacks-oss/releases/tag/v0.3.1) was downloaded and verified: seven checksummed files and all 1,127 exported source hashes matched. [Image publication](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/39651299190) passed both native architectures; public manifests, parsed SBOM/provenance and actual anonymous pulls were checked.
+
+Twelve isolated released-image checks passed with fresh synthetic data and real S3 storage; cleanup affected only the owned acceptance resources. A separate fresh local-volume installation passed twelve installer, authentication, screenshot and persistence checks. Its original owner login, project, thread and exact screenshot bytes survived recreation of only its own app/PostgreSQL containers with the same named volume identities.
+
+The deployed application passed readiness with its database and S3 storage available. Authenticated UI readback preserved the existing owner session and saved connections, loaded the released build and showed the guided Account, Destination and Connect steps. Real provider authorization and task creation require a usable provider account grant; package publication, visible setup forms and synthetic broker/transport tests do not establish Atlassian registration, distribution, live consent or a successful remote task. Live ClickUp acceptance also verified reuse of the encrypted saved account and named workspace, space and list selection through the ready step. A controlled task, reviewed discussion delivery/readback and explicit status synchronization in both directions passed. Other providers still require their own live account acceptance. Detailed operational evidence remains private.
 
 ## Compatibility and recovery
 
