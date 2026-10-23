@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=4786
 LABEL org.opencontainers.image.source="https://github.com/Softinator-TechLabs/feedbacks-oss"
 WORKDIR /app
