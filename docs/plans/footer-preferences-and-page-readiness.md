@@ -1,6 +1,6 @@
 # Public page readiness and Cloudflare analytics
 
-Status: implementation and collection verified; processed reporting pending. Date: 2026-10-23.
+Status: complete. Date: 2026-10-23.
 
 ## Outcome
 
@@ -21,7 +21,7 @@ Cloudflare's [metrics](https://developers.cloudflare.com/web-analytics/data-metr
 - [x] Verify no Google/consent UI, slow/failed assets, route changes, cancellation, reduced motion, desktop/mobile and no-JavaScript behavior.
 - [x] Run required checks, review and merge through CI.
 - [x] Verify production source, public routes and actual collection on both public hostnames.
-- [ ] Confirm processed analytics with separate hostname and country reports.
+- [x] Confirm processed analytics with separate hostname and country reports.
 
 ## Recovery
 
@@ -35,4 +35,4 @@ The full repository check passed with 636 tests and 57 conditional skips, builds
 
 [PR #246](https://github.com/Softinator-TechLabs/feedbacks-oss/pull/246) merged as `81b905c925d895324fd1550261ed99ac53b016fe`. Exact-main [CI run 39895951640](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/39895951640) passed all six jobs on attempt 2 after retrying only two Node jobs that timed out during Ubuntu package downloads before tests. The normal [public-site deployment 39898125644](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/39898125644) succeeded. Live deployment metadata matches that source; landing, docs, privacy and comparison routes return HTTP 200, and served readiness JavaScript/CSS match the built artifact byte for byte.
 
-The hostname-scoped Cloudflare Configuration Rule retains Rocket Loader off. Its legacy Disable RUM setting was removed so automatic analytics can run; Configuration Rules take precedence over Web Analytics rules. Fresh browser checks on both public hostnames confirmed one automatic beacon script loading with HTTP 200 and an actual vendor collection request to `/cdn-cgi/rum` returning HTTP 204. Google tags and consent controls are absent, and the loading signal was verified during controlled slow loading. Operational receipts and screenshots remain private. Separate hostname/country reports await Cloudflare processing.
+The hostname-scoped Cloudflare Configuration Rule retains Rocket Loader off. Its legacy Disable RUM setting was removed so automatic analytics can run; Configuration Rules take precedence over Web Analytics rules. Fresh browser checks on both public hostnames confirmed one automatic beacon script loading with HTTP 200 and an actual vendor collection request to `/cdn-cgi/rum` returning HTTP 204. Google tags and consent controls are absent, and the loading signal was verified during controlled slow loading. Separate hostname-filtered dashboards and country breakdowns were also verified; the newly observed Feedbacks visits came from QA, including the slow reload. Operational receipts and screenshots remain private.
