@@ -1,5 +1,5 @@
 import DefaultTheme from "vitepress/theme";
-import { h } from "vue";
+import { h, nextTick } from "vue";
 import DocPath from "./DocPath.vue";
 import "./custom.css";
 
@@ -13,7 +13,30 @@ const firstFrames = {
 
 export default {
   extends: DefaultTheme,
-  enhanceApp({ app }) {
+  Layout: () =>
+    h(DefaultTheme.Layout, null, {
+      "doc-after": () =>
+        h("footer", { class: "doc-privacy-footer vp-raw" }, [
+          h("a", { href: "/privacy.html" }, "Privacy"),
+        ]),
+    }),
+  enhanceApp({ app, router }) {
+    if (typeof window !== "undefined") {
+      let pendingPage: string | undefined;
+      // Page-load hooks also cover Back/Forward; anchors do not start a new load.
+      router.onBeforePageLoad = (to) => {
+        pendingPage = new URL(to, location.href).pathname;
+        window.dispatchEvent(new Event("feedbacks:route-start"));
+      };
+      router.onAfterRouteChange = async (to) => {
+        const path = new URL(to, location.href).pathname;
+        if (pendingPage !== path || router.route.path !== path) return;
+        await nextTick();
+        if (pendingPage !== path) return;
+        pendingPage = undefined;
+        window.dispatchEvent(new Event("feedbacks:route-ready"));
+      };
+    }
     app.component("DocPath", DocPath);
     app.component("Evidence", {
       setup: () => () =>

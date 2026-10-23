@@ -1,6 +1,8 @@
 # Optional public website analytics
 
-Status: in progress. Date: 2026-10-22.
+Status: superseded. Date: 2026-10-22.
+
+This historical implementation was retired by [public page readiness and Cloudflare analytics](footer-preferences-and-page-readiness.md). Google Analytics and its consent controls are no longer included in public builds. Prior validation below describes the retired implementation.
 
 ## Outcome and scope
 

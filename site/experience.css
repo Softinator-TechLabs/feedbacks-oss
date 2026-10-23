@@ -1,0 +1,57 @@
+.site-thinking {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 90;
+  pointer-events: none;
+  color: var(--vp-c-text-1, #20241e);
+  animation: thinking-appear 120ms step-end both;
+}
+.site-thinking[hidden] {
+  display: none;
+}
+.site-thinking-label {
+  position: absolute;
+  inset-inline-end: max(20px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  font:
+    600 12px/1.5 Manrope,
+    Arial,
+    sans-serif;
+  letter-spacing: 0.01em;
+}
+.site-thinking-line {
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  background: var(--vp-c-divider, #dfe3da);
+}
+.site-thinking-line::after {
+  content: "";
+  display: block;
+  height: 100%;
+  background: var(--vp-c-brand-1, #c63f29);
+  animation: thinking-travel 1.35s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes thinking-travel {
+  from {
+    transform: translateX(-100%) scaleX(0.2);
+  }
+  to {
+    transform: translateX(100%) scaleX(0.2);
+  }
+}
+@keyframes thinking-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-thinking-line::after {
+    animation: none;
+    transform: scaleX(0.4);
+    transform-origin: left;
+  }
+}

@@ -2,13 +2,17 @@
 
 The public landing uses actual extension and app screenshots with fictional review content. Names, pages, conversations and prices are illustrative, not customer evidence. Behance's home page and Penecho were visual references for scale, composition and concise storytelling; no assets or site code were copied from either.
 
+## Page readiness
+
+The public build adds a two-pixel bottom line and a small “Thinking…” status while visible images, fonts, a visible walkthrough's first frame and finite entrance animations prepare. Content stays interactive. Documentation navigation uses VitePress page-load lifecycle hooks, including browser Back/Forward; anchors do not start another load. Superseded loads, pagehide and explicit cancellation clean up pending work. Failed assets settle to their normal fallback; a 20-second deadline bounds hung resources or navigation. Analytics, offscreen media and endless animation do not block readiness. Fast loads have no minimum display duration; reduced motion retains a stationary signal. The status is hidden when JavaScript is unavailable.
+
 ## Manrope
 
 The self-hosted Manrope font files in `site/public/fonts/` were obtained from Google Fonts on 16 September 2026. They are redistributed under the SIL Open Font License 1.1; the complete copyright and license text is in `site/public/fonts/OFL-Manrope.txt`.
 
 Sources: [Manrope at Google Fonts](https://fonts.google.com/specimen/Manrope), [license source](https://github.com/google/fonts/blob/main/ofl/manrope/OFL.txt). These fonts are used on the public website; the application retains its system font stack.
 
-The landing and public docs load self-hosted WOFF2 language subsets from `site/fonts.css`, retrieved from the [Google Fonts CSS API](https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Caveat:wght@600&display=swap) on 30 September 2026. Manrope uses one variable file per subset for weights 400–800. Unicode ranges retain Latin, extended Latin, Cyrillic, Greek and Vietnamese coverage where the family supports them; browsers request only the subsets needed by the text. Caveat retains weight 600. The original TTF files and both SIL licenses remain available. Versioned WOFF2 filenames permit long origin caching; change the filename when replacing their bytes. Fonts make no Google Fonts request from a visitor's browser; optional public-site analytics is a separate, consent-controlled integration.
+The landing and public docs load self-hosted WOFF2 language subsets from `site/fonts.css`, retrieved from the [Google Fonts CSS API](https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Caveat:wght@600&display=swap) on 30 September 2026. Manrope uses one variable file per subset for weights 400–800. Unicode ranges retain Latin, extended Latin, Cyrillic, Greek and Vietnamese coverage where the family supports them; browsers request only the subsets needed by the text. Caveat retains weight 600. The original TTF files and both SIL licenses remain available. Versioned WOFF2 filenames permit long origin caching; change the filename when replacing their bytes. Fonts make no Google Fonts request from a visitor's browser. The hosted public website uses Cloudflare's separate, automatically injected Web Analytics beacon; public builds contain no Google Analytics integration.
 
 ## Studio chair illustration
 
