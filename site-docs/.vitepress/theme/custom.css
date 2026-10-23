@@ -135,3 +135,16 @@
     flex: 1;
   }
 }
+
+.doc-privacy-footer {
+  margin-top: 32px;
+  padding-block: 12px;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+.doc-privacy-footer a {
+  display: inline-block;
+  padding-block: 10px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

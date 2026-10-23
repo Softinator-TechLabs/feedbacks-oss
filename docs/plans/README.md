@@ -6,6 +6,8 @@ A plan records intent, progress, decisions, verification and unresolved risk. It
 
 ## Plans
 
+- [Public page readiness and Cloudflare analytics](footer-preferences-and-page-readiness.md)
+
 - [Optional public website analytics](public-site-analytics.md)
 
 - [Current features and upcoming clients on the public website](public-feature-status.md)
