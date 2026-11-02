@@ -1,6 +1,6 @@
 # Plan: one-command Docker Hub quickstart
 
-Status: complete; 0.3.2 candidate verified for stable-channel promotion. Date: 2026-10-22.
+Status: complete; 0.3.3 candidate verified for stable-channel promotion. Date: 2026-11-02.
 
 ## Outcome and scope
 
@@ -63,3 +63,9 @@ One successful fresh 0.3.2 candidate installation passed all twelve checks with 
 Only the exact stable-metadata request used the candidate; the installer downloaded the pinned Compose over HTTPS and pulled its images normally. Owner bootstrap, authentication/CSRF/origin, non-root/read-only execution, loopback binding, private credentials, exact screenshot readback and anonymous denial passed. Recreating only the new installation's two containers retained both named volume identities, owner login, project, thread and exact screenshot bytes. An earlier Docker Hub timeout created no containers or volumes; its partial files and receipts were preserved before connectivity diagnosis and one controlled retry. Both prior 0.3.0 and 0.3.1 installations remained ready with unchanged container, image and volume identities. All three usable installations and their data remain available.
 
 The reviewed stable-channel update selects this tested candidate. Its later promotion commit, exact-main CI, public-site deployment and public metadata/installer/Compose byte equality are verified separately through the [promotion procedure](../releasing.md#promote-the-local-quickstart). Existing installations retain their saved digests. Local-volume acceptance remains separate from production HTTPS/S3/recovery and real provider-account consent; credentials and raw operational evidence stay outside source.
+
+## 0.3.3 security update and stable-channel promotion
+
+Application source: `82b425d4bdd216b9fd155da8aed628a7eca95377`; [exact-main CI](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/41387707616) passed all six jobs. The public [0.3.3 release](https://github.com/Softinator-TechLabs/feedbacks-oss/releases/tag/v0.3.3) downloads and seven checksums were verified against the immutable source, including all 1,137 exported source-file hashes. The extension ZIP remains byte-identical to 0.1.64. [Image publication](https://github.com/Softinator-TechLabs/feedbacks-oss/actions/runs/41389175972) passed native AMD64/ARM64 checks; public manifests, exact source/version labels, parsed SBOM/provenance and actual anonymous pulls passed.
+
+A fresh 0.3.3 candidate installation passed all twelve checks with the unchanged installer. Its owner, project, thread and exact private screenshot bytes survived recreation of only its own containers with the same named volumes. The candidate pins `softinator/feedbacks@sha256:730d6b05e44bedb97b3e39bd2bf9d2e0e2fc0017fa6be6552e5664ae6ced5bf0`. Installer SHA-256 remains `666641f2d440b496e6892dcdbe14595d1eb4abdf2e3e350f7d7305d5f03800bb`; Compose remains pinned to `28b1c714c115388c4a983b670d0a71443eaa3da1`, checksum `2c078743924d3c0d5128fa79ad354083944acfe904024a5b12a269eceeeecc12`. Existing installations retain their saved image pin. Candidate acceptance, required CI and website deployment remain separate evidence. Operational receipts stay private.
