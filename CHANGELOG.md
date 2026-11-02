@@ -3,6 +3,7 @@
 ## 0.3.3 — 2026-11-02
 
 - Update the locked HTTP body parser to 2.4.0 and its query-string parser to 6.17.1, including the compressed-request denial-of-service fix.
+- Update the development URI resolver to `fast-uri` 3.1.9 for its scheme, host and relative-reference security fixes.
 - Update compatible Zod, IP-address and MCP Node HTTP-adapter dependencies to patched versions, including Hono's static-path decoding fix. Keep the existing request limits, server authorization and shared operation contracts.
 - Package Codex and Claude Code plugins 0.3.2 with the patched bundled validator. The extension remains 0.1.64.
 
