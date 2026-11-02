@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.3 — 2026-11-02
+
+- Update the locked HTTP body parser to 2.4.0 and its query-string parser to 6.17.1, including the compressed-request denial-of-service fix.
+- Update compatible Zod, IP-address and MCP Node HTTP-adapter dependencies to patched versions, including Hono's static-path decoding fix. Keep the existing request limits, server authorization and shared operation contracts.
+- Package Codex and Claude Code plugins 0.3.2 with the patched bundled validator. The extension remains 0.1.64.
+
+### Upgrade from 0.3.2
+
+No database migration or permission change is introduced. Preserve the database, organization identity, private object storage and encryption keys. Deploy the reviewed application image by digest, retain the previous image for rollback, and verify authenticated access and private screenshot readback. The public website deploys separately. Published packages, deployed installations and Store publication are separate steps.
+
 ## 0.3.2 — 2026-10-22
 
 - Make the public website and comparison pages show the released Kanban board, project analytics, subscribed email with configurable templates, and guided connections for ten task providers.
